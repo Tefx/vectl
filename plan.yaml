@@ -87462,7 +87462,7 @@ phases:
       gate_open_allowed: true'
   - id: orch_drive_deep_review.black-box-drive-verification
     name: black box drive verification
-    status: pending
+    status: claimed
     description: 'Black-box verification using only documented CLI/config surfaces
       and public behavior.
 
@@ -87477,6 +87477,8 @@ phases:
     depends_on:
     - orch_drive_deep_review.spec-conformance
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-15T17:54:03.751981+00:00'
   - id: orch_drive_deep_review.final-gate
     name: final gate
     status: pending

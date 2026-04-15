@@ -87575,7 +87575,7 @@ phases:
       real and verified'
   - id: orch_drive_deep_review.final-gate
     name: final gate
-    status: pending
+    status: claimed
     description: 'Final deep-review gate for the full scheduler.
 
 
@@ -87600,3 +87600,5 @@ phases:
     - orch_drive_deep_review.architecture-review
     - orch_drive_deep_review.black-box-drive-verification
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-15T18:19:36.859612+00:00'

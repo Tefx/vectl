@@ -85974,7 +85974,7 @@ phases:
       \ queue → consume → state change → acknowledge.\n\n## Headline\n- PASS"
 - id: orch_drive_live_acceptance
   name: Orchestration Drive Real OpenCode Acceptance
-  status: pending
+  status: in_progress
   gate: 'Real OpenCode orchestration acceptance is the authoritative proof: mocks/shims
     alone cannot pass this phase.'
   depends_on:
@@ -85982,7 +85982,7 @@ phases:
   steps:
   - id: orch_drive_live_acceptance.real-opencode-acceptance-harness
     name: real opencode acceptance harness
-    status: pending
+    status: claimed
     description: 'Implementation step.
 
 
@@ -86032,6 +86032,8 @@ phases:
     - docs/RFC-orch-drive.md
     - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-15T12:37:34.029414+00:00'
   - id: orch_drive_live_acceptance.real-opencode-acceptance-matrix
     name: real opencode acceptance matrix
     status: pending

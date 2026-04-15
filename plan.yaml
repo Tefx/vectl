@@ -86633,6 +86633,44 @@ phases:
     depends_on:
     - orch_drive_live_acceptance.retest-full-plan-guard-failures
     agent: python-executor
+  - id: orch_drive_live_acceptance.retest-recover-selector-contract
+    name: Retest recover selector contract surface
+    status: pending
+    description: 'Independent green retest for the recover selector contract blocker
+      after `orch_drive_live_acceptance.fix-recover-selector-contract`.
+
+
+      Rerun the authoritative recover-surface repro test first, then rerun the full
+      pytest suite to confirm the selector-contract repair closes the gate-intersecting
+      blocker without introducing regressions.
+
+
+      Commands required:
+
+      - `uv run pytest tests/repro/test_repair_continuity_black_box.py -q`
+
+      - `uv run pytest tests/ -q`
+
+
+      This is a post-implementation green retest. Success requires the recover supported-surface
+      test to pass and the full pytest suite to remain green enough that no blocker-class
+      drive-recover intersection remains.'
+    verification: '- Run `uv run pytest tests/repro/test_repair_continuity_black_box.py
+      -q`
+
+      - Run `uv run pytest tests/ -q`
+
+      - Record whether any remaining failure still intersects `orch_drive_live_acceptance.gate-live-acceptance-phase`
+      drive-recover coverage'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n- No refs for this\
+      \ step.\n\n## Recover Selector Retest Report\n- Command 1:\n  - `uv run pytest\
+      \ tests/repro/test_repair_continuity_black_box.py -q`\n  - Result: <paste summary>\n\
+      - Command 2:\n  - `uv run pytest tests/ -q`\n  - Result: <paste summary>\n-\
+      \ Gate intersection assessment:\n  - <state whether any remaining failure still\
+      \ blocks drive recover coverage>\n- Headline:\n  - PASS | PASS_WITH_DEBT | FAIL\n"
+    depends_on:
+    - orch_drive_live_acceptance.fix-recover-selector-contract
+    agent: integration-verifier-tacit
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
   status: locked

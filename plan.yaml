@@ -87024,7 +87024,7 @@ phases:
   steps:
   - id: orch_drive_deep_review.wiring-audit
     name: wiring audit
-    status: claimed
+    status: done
     description: 'Full wiring audit for the full scheduler implementation.
 
 
@@ -87040,6 +87040,247 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-15T17:22:17.113889+00:00'
+    done_at: '2026-04-15T17:35:18.514123+00:00'
+    evidence: '## Wiring Audit: orch_drive_deep_review.wiring-audit
+
+
+      ### headline: PASS_WITH_DEBT
+
+
+      ### blockers: []
+
+
+      ### findings:
+
+
+      #### 1. CLI Drive Commands — PASS (5/5 registered)
+
+      All five drive CLI commands are registered on the `orch_app` Typer group:
+
+      - `vectl orch drive` → `orch_drive()` (line 1854)
+
+      - `vectl orch drive-status` → `orch_drive_status()` (line 1904)
+
+      - `vectl orch drive-runs` → `orch_drive_runs()` (line 1939)
+
+      - `vectl orch drive-resume` → `orch_drive_resume()` (line 1975)
+
+      - `vectl orch drive-recover` → `orch_drive_recover()` (line 2008)
+
+      All delegate to `orch_app.py::OrchestrationApp.start_drive()`, `.drive_status()`,
+      `.drive_runs()`, `.resume_drive()`, `.recover_drive()` respectively. Max-parallelism
+      validation is enforced at both CLI layer (1-32 range with exit code 2) and config
+      layer. ✅
+
+
+      #### 2. Drive-Scoped Inspection/Control — PASS (7/7 wired)
+
+      Drive-scoped inspection and control surfaces exist in `OrchestrationApp`:
+
+      - `inspect_drive_status()`, `inspect_drive_events()`, `inspect_drive_logs()`,
+      `inspect_drive_artifacts()`, `inspect_drive_actions()` → fully wired with `child_run_id`
+      drill-down
+
+      - `control_drive_pause()`, `control_drive_unpause()`, `control_drive_stop()`
+      → wired through control channel
+
+      - `ChildRunScopeError` for invalid child-run selector (exit code 2 per RFC §7.4)
+
+      - `resolve_latest_drive_id()` and `has_active_drive_for_plan()` for `--latest`
+      semantics
+
+      - `orch run` correctly blocks with `DriveActiveRunBlockedError` when active
+      drive exists (exit code 2 per RFC §7.1) ✅
+
+
+      #### 3. Config Fields — PASS (4/4 present)
+
+      `DriveConfig` dataclass contains all four RFC-specified fields:
+
+      - `max_parallelism` (default 4, validation 1-32)
+
+      - `collect_poll_interval_ms` (default 250ms, >0 validation)
+
+      - `resolver_timeout_seconds` (default 300s, >0 validation)
+
+      - `planner_timeout_seconds` (default 300s, >0 validation)
+
+      `OrchestrationConfig.drive: DriveConfig` field is present and populated by `_dict_to_config()`.
+
+      `DriveConfigFrozen` in `contracts.py` captures all four values plus `frozen_at`
+      timestamp. `freeze_drive_config()` correctly freezes from `OrchestrationConfig`.
+      `DriveStore.save_drive_config_frozen()` and `.load_drive_config_frozen()` persist
+      the frozen config. ✅
+
+
+      #### 4. Event Family — ALL 11 MEMBERS PRESENT (PASS)
+
+      The RFC §16.3 requires 11 drive event kinds. All are defined in `events.py`:
+
+      - `drive_started`, `drive_status_changed`, `drive_barrier_entered`, `drive_barrier_cleared`,
+      `planner_invoked`, `planner_applied`, `resolver_invoked`, `resolver_returned`,
+      `child_run_admitted`, `child_run_final`, `drive_final`
+
+      All have schemas defined in `DRIVE_EVENT_KINDS` with `required_payload_keys`
+      and `optional_payload_keys`.
+
+      `DriveEventEnvelope` class with `drive_id`, `child_run_id`, `step_id` fields
+      and integrity chain (`build_drive_event()` factory). `validate_drive_event_chain()`
+      exists for integrity verification.
+
+      Projection handling for drive events exists in `projections.py` (lines 546-566).
+      ✅
+
+
+      #### 5. Event Emission in Driver Loop — PARTIAL (DEBT)
+
+      The `ConcreteDriveDriver` builds `DriveEventEnvelope` objects via `build_drive_event()`
+      during:
+
+      - `start_drive()` → `drive_started` event
+
+      - `run_drive_loop()` → `drive_status_changed`, `drive_barrier_entered`, `drive_barrier_cleared`,
+      `child_run_admitted`, `drive_final`
+
+      - `_handle_resolve_decision()` → `resolver_invoked`, `resolver_returned`
+
+      - `_handle_replan_decision()` → `planner_invoked`, `planner_applied`
+
+      - `_consume_drive_control()` → `drive_status_changed` for pause/unpause/stop
+
+
+      However, drive event emission relies on `ConcreteDriveDriver._event_sink` wiring.
+      The `DriveDriver` abstract class does not include an event sink parameter —
+      event emission paths are wired into the concrete driver constructor rather than
+      being injected through the protocol. This is acceptable for current scope but
+      creates an implicit coupling that should be tracked. **DEBT: event sink wiring
+      is concrete-class-local rather than protocol-injected.** 🟡
+
+
+      #### 6. Public Symbols Reachability — PASS
+
+      All new public symbols from RFC §18 are reachable:
+
+      - `contracts.py`: `DriveRecord`, `DriveStatus`, `DriveBarrier`, `ChildRunRef`,
+      `DriveLease`, `DriveConfigFrozen`, `ControlDecision`, `PlannerMutationBundle`,
+      `PlannerMutationItem`, `PlannerRequest`, `ResolutionReport`, `ChildRunKind`
+      ✅
+
+      - `driver.py`: `DriveDriver`, `ConcreteDriveDriver`, `DriveStartResult`, `DriveLoopResult`,
+      `DriveResumeResult`, `DriveRecoverResult`, `DriveStatusResult`, `DriveAdmissionError`,
+      `MaxParallelismError`, `validate_drive_transition` ✅
+
+      - `run_store.py`: `DriveStore`, `DriveAdmissionConflictError`, `DriveActiveRunBlockedError`,
+      `AdmissionAuthority` ✅
+
+      - `control.py`: `PlanAwareControl`, `validate_decision_invariants`, `SamePlanRunRejectedError`
+      ✅
+
+      - `config.py`: `DriveConfig`, `OrchestrationConfig.drive` field, `freeze_drive_config`,
+      `build_drive_config_provenance` ✅
+
+      - `orch_app.py`: `start_drive()`, `run_drive_loop()`, `resume_drive()`, `recover_drive()`,
+      `drive_status()`, `drive_runs()`, `inspect_drive_*`, `control_drive_*` ✅
+
+
+      #### 7. No Orphan Exports — PASS
+
+      All exported symbols from `contracts.py`, `driver.py`, `run_store.py`, `control.py`,
+      `config.py` are consumed by at least one downstream module (CLI, orch_app, tests,
+      or projections). No orphan exports detected. ✅
+
+
+      #### 8. Drive Status Transitions — PASS
+
+      `validate_drive_transition()` in `driver.py` (line 440) implements the complete
+      RFC §8.2.1 transition table. The `InvalidDriveTransitionError` is raised for
+      invalid transitions. Unit tests in `test_drive_contracts.py` cover all valid
+      transitions. ✅
+
+
+      #### 9. Admission Policy (§14.1) — PASS
+
+      `AdmissionAuthority` in `run_store.py` enforces:
+
+      - `can_admit_run()` / `assert_can_admit_run()`: checks both active drive and
+      legacy run conflicts
+
+      - `can_admit_drive()` / `assert_can_admit_drive()`: checks for active drive
+      for same plan, uses `DriveStore.active_drive_for_plan()`
+
+      - `resolve_or_create_drive()`: implements "resolve or create" pattern per RFC
+      §7.2
+
+      - `orch run` CLI exits with code 2 and includes `drive_id` when blocked (`DriveActiveRunBlockedError`)
+      ✅
+
+
+      #### 10. Lingering Scheduler Stubs — DEBT
+
+      `RunRegistry.by_id()` (run_store.py line 907) and `RunRegistry.all_for_step()`
+      (line 946) still raise `NotImplementedError` with docstring "Until registry
+      query semantics are specified." These are pre-drive stubs that are **not drive-specific**
+      and are not called by any drive code path (the drive uses `DriveStore` exclusively).
+      However, they represent incomplete implementation debt in the single-run registry
+      surface. **DEBT: RunRegistry has stub methods for `by_id` and `all_for_step`.**
+      🟡
+
+
+      #### 11. Drive Store Persistence — PASS
+
+      `DriveStore` provides all required persistence:
+
+      - `save_drive()` / `load_drive()` / `active_drives()` / `active_drive_for_plan()`
+      / `terminal_drives()` / `all_drives()`
+
+      - `save_child_run()` / `child_runs_for_drive()` / `active_child_runs_for_drive()`
+      / `child_runs_for_step()` / `child_runs_by_kind()` / `child_run_by_id()`
+
+      - `save_lease()` / `lease_by_run_id()` / `active_leases_for_drive()` / `active_lease_for_step()`
+      / `invalidate_lease()` / `invalidate_leases_for_step()`
+
+      - `save_drive_config_frozen()` / `load_drive_config_frozen()` / `freeze_drive_config_from_orch_config()`
+
+      - `replay_drive_state()` / `replay_active_child_run_ids()`
+
+      All use append-only JSONL persistence per RFC §16.4. ✅
+
+
+      #### 12. Drive Frozen Config — PASS
+
+      `DriveConfigFrozen` is persisted at drive creation and reused by `resume_drive`
+      and `recover_drive`. `freeze_drive_config()` in `config.py` correctly populates
+      all four frozen fields from `OrchestrationConfig.drive`. `build_drive_config_provenance()`
+      supports drift detection between frozen and ambient config. ✅
+
+
+      ### verification:
+
+      - 375 unit tests passing (`tests/orchestration/unit/ -k drive`)
+
+      - CLI command registration verified (5 drive commands + 7 drive-scoped inspection/control
+      methods)
+
+      - Config field completeness verified (4/4 DriveConfig fields + frozen config)
+
+      - Event family completeness verified (11/11 drive event kinds)
+
+      - Drive status transition validation verified
+
+      - Admission policy wiring verified
+
+      - No orphan exports detected
+
+      - Drive store persistence completeness verified
+
+
+      **DEBT items (2, non-blocking):**
+
+      1. Event sink is concrete-class-local, not protocol-injected — no functional
+      impact but reduces testability
+
+      2. `RunRegistry.by_id()` and `.all_for_step()` have `NotImplementedError` stubs
+      — pre-drive debt, not called by drive code paths'
   - id: orch_drive_deep_review.spec-conformance
     name: spec conformance
     status: pending

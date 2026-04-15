@@ -86699,6 +86699,32 @@ phases:
       \ warning\n- Gate intersection assessment:\n  - No remaining blocker-class intersection\
       \ for drive recover coverage; previous recover-selector blocker closed.\n- Headline:\n\
       \  - PASS\n\ngate_open_allowed: true"
+  - id: orch_drive_live_acceptance.fix-live-acceptance-blockers
+    name: Fix live acceptance blocker batch
+    status: pending
+    description: 'Batched remediation for gate-live-acceptance-phase blockers. Fix
+      the two CLI regressions caused by `uv run vectl` tempdir/cwd spawn assumptions
+      in the recover and liveness repro surfaces, and close the missing/partial acceptance
+      proof gaps by updating the real acceptance harness/matrix coverage for the required
+      classes: real worktree+merge; long-running parallel branches; merge conflict
+      -> resolver -> continue|operator boundary; review needs_replan -> planner mutation
+      -> continue; runtime failure -> resolver -> continue; pause/unpause/stop under
+      parallel child runs.'
+    verification: 'Code and test changes land for both blocker families: (A) recover
+      + liveness repro tests no longer rely on broken tempdir cwd assumptions under
+      `uv run vectl`; (B) acceptance harness/matrix explicitly covers and proves the
+      required formerly unproven/partial classes. Evidence must identify where each
+      required class is exercised and how operator-boundary behavior is represented.'
+    evidence_template: "- CLI regression remediation surface:\n  - recover path files/tests\
+      \ updated:\n  - liveness path files/tests updated:\n  - why tempdir/cwd spawn\
+      \ assumption is removed/fixed:\n- Acceptance proof mapping:\n  - real worktree+merge\
+      \ ->\n  - long-running parallel branches ->\n  - merge conflict -> resolver\
+      \ -> continue|operator boundary ->\n  - review needs_replan -> planner mutation\
+      \ -> continue ->\n  - runtime failure -> resolver -> continue ->\n  - pause/unpause/stop\
+      \ under parallel child runs ->\n- Commands run during development:\n- Residual\
+      \ gaps / SPEC QUESTIONs:"
+    depends_on:
+    - orch_drive_live_acceptance.retest-recover-selector-contract
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
   status: locked

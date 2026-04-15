@@ -86448,6 +86448,87 @@ phases:
     depends_on:
     - orch_drive_live_acceptance.full-plan-guard
     agent: python-executor
+  - id: orch_drive_live_acceptance.retest-full-plan-guard-failures
+    name: Retest full-plan-guard failure families
+    status: pending
+    description: 'Independent post-remediation retest for the batched failures from
+      `orch_drive_live_acceptance.full-plan-guard`.
+
+
+      Rerun the authoritative broad checks after the fix step and record blocker disposition
+      for any remaining failures.
+
+
+      Commands required:
+
+      - `uv run pytest tests/ -q`
+
+      - `uvx invar-tools guard --all`
+
+
+      This is a post-implementation green retest. Success requires either green results
+      or an explicit blocker disposition showing any remaining failure is non-intersecting;
+      blocker-class intersections keep the gate closed.'
+    verification: '- Run `uv run pytest tests/ -q`
+
+      - Run `uvx invar-tools guard --all`
+
+      - Record blocker disposition for any remaining failures
+
+      - Confirm whether any remaining blocker intersects `orch_drive_live_acceptance.gate-live-acceptance-phase`'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Retest Report
+
+      - step_type: test
+
+      - step_intent: retest_green
+
+      - expected_result: green
+
+
+      ### Commands executed
+
+      ```bash
+
+      uv run pytest tests/ -q
+
+      uvx invar-tools guard --all
+
+      ```
+
+
+      ### Results
+
+      - pytest outcome:
+
+      - invar guard outcome:
+
+
+      ### Blocker disposition
+
+      - blocking-now:
+
+      - non-blocking:
+
+      - gate intersection assessment:
+
+
+      ### Headline
+
+      - PASS | PASS_WITH_DEBT | FAIL'
+    depends_on:
+    - orch_drive_live_acceptance.fix-full-plan-guard-failures
+    agent: integration-verifier-tacit
 - id: orch_drive_doc_sync
   name: Orchestration Drive Documentation Sync
   status: locked

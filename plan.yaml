@@ -86374,7 +86374,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orch_drive_live_acceptance.fix-full-plan-guard-failures
     name: Fix full-plan-guard failure families
-    status: pending
+    status: claimed
     description: 'Batched remediation for the authoritative failures discovered by
       `orch_drive_live_acceptance.full-plan-guard`.
 
@@ -86448,6 +86448,8 @@ phases:
     depends_on:
     - orch_drive_live_acceptance.full-plan-guard
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-15T14:11:44.800428+00:00'
   - id: orch_drive_live_acceptance.retest-full-plan-guard-failures
     name: Retest full-plan-guard failure families
     status: pending

@@ -84632,7 +84632,7 @@ phases:
     - orch_drive_surfaces.cli-drive-lifecycle-surface
     - orch_drive_surfaces.inspection-and-control-surface
     - orch_drive_surfaces.config-and-observability-upgrades
-    - orch_drive_surfaces.drive-cli-liveness-probe
+    - orch_drive_surfaces.flat-surface-default-drive-scope-retest
     agent: gate-reviewer-tacit
   - id: orch_drive_surfaces.flat-surface-default-drive-scope-fix
     name: Fix flat status/control default drive-scope resolution

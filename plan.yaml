@@ -86196,7 +86196,7 @@ phases:
       \ (6 tests, properly skipped)\n\ngate_open_allowed: true"
   - id: orch_drive_live_acceptance.full-plan-guard
     name: full plan guard
-    status: claimed
+    status: done
     description: 'Full-plan-check boundary after the real acceptance harness lands.
 
 
@@ -86212,6 +86212,146 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-15T13:32:59.131016+00:00'
+    done_at: '2026-04-15T14:07:56.850142+00:00'
+    evidence: '## Full Plan Guard Evidence
+
+
+      ### Command + Outcome
+
+      ```
+
+      $ uvx invar-tools guard --all
+
+      Status: failed
+
+      Static: passed=False, errors=400, warnings=84, infos=109
+
+      Doctest: passed=True
+
+      Crosshair: skipped (prior failures)
+
+      Property tests: skipped (prior failures)
+
+      Verification level: STANDARD
+
+      ```
+
+
+      ### Test Suite
+
+      ```
+
+      $ uv run pytest tests/ -q
+
+      9 failed, 2882 passed, 40 skipped in 172.40s
+
+      ```
+
+
+      ### Blocker Disposition: INTERSECTS FINAL GATE
+
+
+      **9 test failures block final acceptance:**
+
+
+      **Root Cause #1 — role_profiles shadows built-in role (6 failures)**:
+
+      - `test_orch_cli_case_lifecycle.py::TestRunnerFailProducesCase::test_case_respond_requires_action_or_response`
+
+      - `test_orch_cli_case_lifecycle.py::TestNotificationStatusTransitions::test_case_respond_with_action_acknowledges_nonexistent_case`
+
+      - `test_orch_cli_recovery_faults.py::TestCorruptContinuityArtifacts::test_recover_detects_malformed_json_in_events`
+
+      - `test_orch_cli_recovery_faults.py::TestCorruptContinuityArtifacts::test_recover_detects_corrupt_state_projection`
+
+      - `test_orch_cli_recovery_faults.py::TestRecoveryExitCodes::test_recover_nonexistent_run_exit_2`
+
+      - `test_orch_cli_recovery_faults.py::TestRecoveryExitCodes::test_recover_dry_run_exit_0`
+
+      - Error: `role_profiles.python-executor: role_profiles.python-executor shadows
+      built-in role; use role_profile_overrides instead`
+
+      - This is a BACKWARD-INCOMPATIBLE contract change from `config_role_profile_overrides`
+      phase. All repro/CLI test fixtures use `role_profiles.python-executor` but validation
+      now rejects it. Fix: update test fixtures to use `role_profile_overrides`, OR
+      use a non-shadowing key like `custom-role`.
+
+
+      **Root Cause #2 — `--step` selector removed from `recover` (2 failures)**:
+
+      - `test_orch_cli_recovery_faults.py::TestRecoveryExitCodes::test_recover_nonexistent_run_exit_2`
+
+      - `test_orch_cli_recovery_faults.py::test_recover_detects_malformed_json_in_events`
+
+      - Error: `Error: Recover requires explicit selector: provide RUN_ID or --latest`
+
+      - Fix: update test to use `--latest` or a RUN_ID instead of `--step core.ready`
+
+
+      **Root Cause #3 — ControlDecision.step_id renamed to step_ids (1 failure)**:
+
+      - `test_runtime_context_vertical_slice.py::test_plan_aware_control_evaluates_dispatch_from_current_sources`
+
+      - Error: `AttributeError: ''ControlDecision'' object has no attribute ''step_id''.
+      Did you mean: ''step_ids''?`
+
+      - Fix: change `decision.step_id` to `decision.step_ids` in test.
+
+
+      ### Static Analysis (400 errors)
+
+      All 400 invar errors are architectural debt (`shell_result`: 303, `entry_point_too_thick`:
+      76, `file_size`: 20, `shell_complexity_debt`: 1). Pre-existing — not regressions
+      from this phase. Not runtime blockers.
+
+
+      ### step_intent
+
+      Record whether remaining repo-wide blockers intersect the final acceptance gate.
+
+
+      ### expected_result
+
+      Guard passes or blockers are non-intersecting with final gate.
+
+
+      ### observed_result
+
+      Guard FAILED. 9 test failures intersect the final acceptance gate. These are
+      regressions from Contract Refresh / role_profile_overrides phases — test fixtures
+      not yet updated to match new validation contracts.
+
+
+      ### failure_alignment
+
+      FAIL — blockers intersect final gate. 6/9 failures are the same root cause (role_profiles
+      shadowing built-in), 2/9 are selector API change, 1/9 is attribute rename. All
+      require test fixture maintenance, not product code fixes.
+
+
+      ### behavioral_proof_register
+
+      - `uvx invar-tools guard --all` → status=failed (400 static errors, all pre-existing
+      debt)
+
+      - `uv run pytest tests/ -q` → 9 failed, 2882 passed, 40 skipped
+
+      - Confirmed root cause: repro test fixtures use deprecated `role_profiles.python-executor`,
+      but validation now rejects it
+
+      - Confirmed: `role_profile_overrides.python-executor` works correctly (exit
+      0, dry-run validation passes)
+
+      - Confirmed: `ControlDecision.step_ids` is the current attribute (contract refresh
+      renamed it)
+
+
+      ### gate_open_allowed
+
+      NO — 9 test failures are blocking regressions in the orchestration/repro test
+      surface. The liveness smoke test (`test_orch_liveness_cli_entrypoint`) fails.
+      The `role_profiles` → `role_profile_overrides` migration was applied to validation
+      logic but not to test fixture data.'
   - id: orch_drive_live_acceptance.gate-live-acceptance-phase
     name: gate live acceptance phase
     status: pending

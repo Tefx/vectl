@@ -85982,7 +85982,7 @@ phases:
   steps:
   - id: orch_drive_live_acceptance.real-opencode-acceptance-harness
     name: real opencode acceptance harness
-    status: claimed
+    status: done
     description: 'Implementation step.
 
 
@@ -86034,6 +86034,81 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-15T12:37:34.029414+00:00'
+    done_at: '2026-04-15T12:47:18.772435+00:00'
+    evidence: '## refs Read Confirmation
+
+      - `docs/RFC-orch-drive.md` — read; key passage: real OpenCode E2E is authoritative
+      acceptance layer.
+
+      - `docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md` — read; key
+      passage: `orch drive` enters drive loop to terminal/operator boundary with drive-scoped
+      selector/control semantics.
+
+      - `tools/vectl/README.md` — NOT READ (not required by step refs).
+
+
+      Artifact:
+
+      - Commit hash(es): 86389d4 (cherry-picked from ce66d7cb9a765f0272f2a90f687abd77a0075bfb)
+
+
+      Verification:
+
+      - Run: `./.venv/bin/pytest tests/orchestration/test_opencode_drive_acceptance_harness.py
+      -v` -> 6 passed, 1 skipped (live smoke gated by env flags)
+
+      - Run: `uv run ruff check tests/orchestration/test_opencode_drive_acceptance_harness.py
+      tests/orchestration/helpers/opencode_drive_harness.py tests/orchestration/helpers/__init__.py`
+      -> all checks passed
+
+
+      Spec link:
+
+      - docs/RFC-orch-drive.md
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md
+
+
+      Files changed:
+
+      - tests/orchestration/test_opencode_drive_acceptance_harness.py
+
+      - tests/orchestration/helpers/__init__.py
+
+      - tests/orchestration/helpers/opencode_drive_harness.py
+
+      - tests/orchestration/fixtures/opencode_drive_acceptance_matrix.yaml
+
+
+      Coverage encoded in fixture matrix:
+
+      - linear DAG auto-drain
+
+      - multi-phase DAG auto-drain
+
+      - parallel frontier dispatch and bounded parallelism
+
+      - real worktree child runs and merge-back path
+
+      - long-running parallel branch execution
+
+      - runtime failure -> resolver -> continue
+
+      - merge conflict -> resolver -> continue|operator boundary
+
+      - review needs_replan -> planner mutation -> continue
+
+      - drive resume/recover and pause/unpause/stop under parallel runs
+
+      - phase/plan auto-close
+
+
+      Gaps/Notes:
+
+      - Live smoke path is scaffolded and authoritative but not executed in this run
+      due to env-gated live runner flags.
+
+      - This step intentionally did not modify production orchestration code.'
   - id: orch_drive_live_acceptance.real-opencode-acceptance-matrix
     name: real opencode acceptance matrix
     status: pending

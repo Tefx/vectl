@@ -84674,7 +84674,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: orch_drive_surfaces.flat-surface-default-drive-scope-fix
     name: Fix flat status/control default drive-scope resolution
-    status: pending
+    status: claimed
     description: 'Fix ALL blocker-class flat selector gaps found by the liveness probe
       for drive-scoped default resolution.
 
@@ -84762,6 +84762,8 @@ phases:
     depends_on:
     - orch_drive_surfaces.drive-cli-liveness-probe
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-15T03:21:18.704077+00:00'
   - id: orch_drive_surfaces.flat-surface-default-drive-scope-retest
     name: Retest flat status/control default drive-scope liveness
     status: pending

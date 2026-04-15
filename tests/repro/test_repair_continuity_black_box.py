@@ -79,6 +79,7 @@ def test_orch_recover_dry_run_json_is_supported_surface() -> None:
                 "vectl",
                 "orch",
                 "recover",
+                "test-run-nonexistent-001",
                 "--step",
                 "core.ready",
                 "--dry-run",

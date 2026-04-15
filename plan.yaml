@@ -84595,7 +84595,7 @@ phases:
       spec design'
   - id: orch_drive_surfaces.drive-cli-liveness-probe
     name: drive cli liveness probe
-    status: claimed
+    status: done
     description: 'Independent runnable-surface probe.
 
 
@@ -84621,6 +84621,44 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-14T21:40:05.422552+00:00'
+    done_at: '2026-04-15T03:20:37.281210+00:00'
+    evidence: "## refs Read Confirmation\n- docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md:\
+      \ Read; key passages include §7.7 drive lifecycle commands and drive-scoped\
+      \ selector defaults, §8.4.1 drive config validation.\n- docs/RFC-orch-drive.md:\
+      \ Read; key passages include §7.2 drive command surface, §7.1 run rejection\
+      \ under active drive, §7.3 drive-scoped control, §16.1 default drive scope.\n\
+      \nArtifact:\n- Probe run evidence captured by blind-tester-tacit in isolated\
+      \ worktree.\n- Verification commit in worktree branch: ffdb9643f0ff44f710d5c980c6b8b7b0eba61e8a\
+      \ (not merged to main; verify-step purity maintained for product code).\n\n\
+      Verification:\n- Run: `.venv/bin/python tests/repro/spec_verify_drive_cli_liveness.py`\
+      \ -> VERDICT ALIVE (10/10 checks passed)\n- Run: `.venv/bin/vectl orch drive\
+      \ --plan <tmp plan> --json` -> exit 0; drive_id created; running status\n- Run:\
+      \ `.venv/bin/vectl orch drive-status <drive_id> --json` -> drive-scoped JSON\
+      \ keys present\n- Run: `.venv/bin/vectl orch drive-runs <drive_id> --json` ->\
+      \ exit 0\n- Run: `.venv/bin/vectl orch drive-resume <drive_id> --json` -> exit\
+      \ 0\n- Run: `.venv/bin/vectl orch drive-recover <drive_id> --dry-run --json`\
+      \ -> exit 0\n- Run: `.venv/bin/vectl orch control pause <drive_id> --json` /\
+      \ `control stop <drive_id> --json` -> exit 0\n- Run: `.venv/bin/vectl orch run\
+      \ --plan ...` with active drive -> exit 2 rejection as expected\n- Run: invalid\
+      \ `--max-parallelism` values 0 and 33 -> exit 2 as expected\n\nSpec link:\n\
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.7, §8.4.1\n\
+      - docs/RFC-orch-drive.md §7.1, §7.2, §7.3, §16.1\n\nTest/verify semantic reporting:\n\
+      - step_intent: runnable-surface liveness probe for drive CLI/control/inspection\
+      \ path\n- expected_result: green\n- observed_result: green for drive-family\
+      \ commands and explicit drive-scoped control/inspection path\n- failure_alignment:\
+      \ blocker discovered outside strict probe happy-path—flat status/control `--latest`\
+      \ default-drive resolution gap\n- product implementation files modified: no\n\
+      \nBehavioral-proof reporting:\n- behavioral_proof_register:\n  1) drive create/resolve\
+      \ works\n  2) drive collect/evaluate cycle reaches frontier evaluation\n  3)\
+      \ inspection/control commands reach real driver path\n  4) drive-status output\
+      \ is drive-scoped\n  5) admission policy blocks `orch run` when active drive\
+      \ exists\n- gate_open_allowed: no (blocked on flat-surface default drive-scope\
+      \ resolution gap intersecting phase gate)\n- uncertainty/blocking source: flat\
+      \ `orch status --latest` and `orch control stop --latest` still run-scoped rather\
+      \ than defaulting to active drive scope.\n\nDisposition:\n- Classified as downstream-blocker\
+      \ intersecting `orch_drive_surfaces.gate-surfaces-phase` acceptance.\n- Batched\
+      \ remediation path created via planner:\n  - orch_drive_surfaces.flat-surface-default-drive-scope-fix\n\
+      \  - orch_drive_surfaces.flat-surface-default-drive-scope-retest"
   - id: orch_drive_surfaces.gate-surfaces-phase
     name: gate surfaces phase
     status: pending

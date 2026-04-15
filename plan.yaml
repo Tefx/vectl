@@ -87015,7 +87015,7 @@ phases:
       \ Proof Gap Status: NONE\n### Gate Open Allowed: true"
 - id: orch_drive_deep_review
   name: Orchestration Drive Deep Review
-  status: in_progress
+  status: done
   gate: Independent audit confirms wiring, spec conformance, architecture boundaries,
     black-box CLI behavior, and that the real OpenCode acceptance matrix is green
     and authoritative.
@@ -87575,7 +87575,7 @@ phases:
       real and verified'
   - id: orch_drive_deep_review.final-gate
     name: final gate
-    status: claimed
+    status: done
     description: 'Final deep-review gate for the full scheduler.
 
 
@@ -87602,3 +87602,16 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-15T18:19:36.859612+00:00'
+    done_at: '2026-04-15T18:33:44.411980+00:00'
+    evidence: "headline: PASS_WITH_DEBT\nblocking_status: CLOSED\nproof_gap_status:\
+      \ NON_BLOCKING\ngate_open_allowed: true\n\nblocker_disposition:\n- none blocking;\
+      \ only non-blocking debt items remain\n\nverification:\n- wiring/spec/architecture/black-box\
+      \ audits all completed and acceptable (PASS_WITH_DEBT)\n- real OpenCode acceptance\
+      \ phase green with required evidence chain\n- explicit matrix-class satisfaction\
+      \ confirmed for all required classes:\n  linear DAG auto-drain; multi-phase\
+      \ auto-drain; parallel ready frontier; bounded parallelism; real worktree+merge;\
+      \ long-running parallel branches; runtime failure->resolver->continue; merge\
+      \ conflict->resolver->continue|operator boundary; review needs_replan->planner\
+      \ mutation->continue; drive resume; drive recover; pause/unpause/stop under\
+      \ parallel child runs; phase/plan auto-close\n- no blocker-class intersection\
+      \ remains for final gate opening"

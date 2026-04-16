@@ -87863,7 +87863,7 @@ phases:
       gate_open_allowed: true'
   - id: orch_drive_post_gate_live_fix.gate
     name: Gate post-gate live fix phase
-    status: pending
+    status: claimed
     description: 'Gate review for `orch_drive_post_gate_live_fix`.
 
 
@@ -87894,3 +87894,5 @@ phases:
     depends_on:
     - orch_drive_post_gate_live_fix.retest-live-cli-regressions
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-16T09:49:07.282619+00:00'

@@ -87716,7 +87716,7 @@ phases:
       \ coverage; no plan/orchestrator state mutation files touched."
   - id: orch_drive_post_gate_live_fix.retest-live-cli-regressions
     name: Retest live orchestrator and CLI selector regressions
-    status: claimed
+    status: done
     description: 'Independent retest after the batched remediation step.
 
 
@@ -87819,6 +87819,48 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-16T09:35:43.276951+00:00'
+    done_at: '2026-04-16T09:48:32.584751+00:00'
+    evidence: '## refs Read Confirmation
+
+      - No refs for this step.
+
+
+      ## Retest Report
+
+      - step_type: test
+
+      - step_intent: retest_green
+
+      - expected_result: green
+
+      - observed_result: green
+
+      - failure_alignment: n/a
+
+      - product_implementation_files_modified: no
+
+
+      ### Command 1
+
+      - Run: RUN_LIVE_RUNNER_TESTS=1 RUN_LONG_LIVE_RUNNER_TESTS=1 uv run pytest tests/live_smoke/test_vectl_orchestrator_e2e_live.py::TestVectlOrchestratorE2ELive::test_full_orchestrator_flow_replan_resolve_and_merge
+      -v --no-header -> 1 passed in 115.58s
+
+
+      ### Command 2
+
+      - Run: uv run pytest tests/test_orch_cli_surface.py::test_orch_inspect_actions_requires_selector
+      -q --no-header -> 1 passed in 0.80s
+
+
+      ### Command 3
+
+      - Run: RUN_LIVE_RUNNER_TESTS=1 RUN_LONG_LIVE_RUNNER_TESTS=1 uv run pytest tests/
+      -q --no-header -> 2927 passed, 17 skipped, 1 warning in 577.51s
+
+
+      headline: PASS
+
+      gate_open_allowed: true'
   - id: orch_drive_post_gate_live_fix.gate
     name: Gate post-gate live fix phase
     status: pending

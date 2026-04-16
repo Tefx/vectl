@@ -254,6 +254,14 @@ class _FakeOrchApp:
         return None
 
 
+class _FakeDriveAwareOrchApp(_FakeOrchApp):
+    def has_active_drive_for_plan(self) -> str | None:
+        return "drv-active"
+
+    def resolve_latest_drive_id(self) -> str | None:
+        return "drv-latest"
+
+
 def test_orch_command_registration_matrix() -> None:
     orch_help = runner.invoke(app, ["orch", "--help"])
     inspect_help = runner.invoke(app, ["orch", "inspect", "--help"])
@@ -347,6 +355,28 @@ def test_orch_inspect_actions_requires_selector() -> None:
     result = runner.invoke(app, ["orch", "inspect", "actions"])
     assert result.exit_code == 1
     assert "Run selector required" in result.output
+
+
+def test_orch_inspect_actions_requires_selector_even_with_active_drive(monkeypatch) -> None:
+    fake = _FakeDriveAwareOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "inspect", "actions"])
+
+    assert result.exit_code == 1
+    assert "Run selector required" in result.output
+    assert "inspect_drive_actions" not in fake.calls
+
+
+def test_orch_status_latest_falls_back_to_legacy_run_scope_when_no_drives(monkeypatch) -> None:
+    fake = _FakeOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "status", "--latest"])
+
+    assert result.exit_code == 0
+    assert "status=running" in result.output
+    assert fake.calls == ["runs", "runs", "inspect_status"]
 
 
 def test_orch_control_and_config_flags_propagate_to_orch_app(monkeypatch) -> None:

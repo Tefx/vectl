@@ -1060,15 +1060,17 @@ def orch_inspect_status(
     # selects a drive, or active drive exists as default, use drive inspection.
     # Authority: docs/RFC-orch-drive.md §7.3, §7.4 — "--latest resolves to
     # active drive scope, not single-run scope, when a drive exists."
-    if (
-        drive_id is not None
-        or child_run_id is not None
-        or latest
-        or (run_id is None and app_runtime.has_active_drive_for_plan() is not None)
-    ):
-        resolved_drive_id = _resolve_drive_selector_or_die(
-            app_runtime, drive_id, latest, child_run_id
-        )
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
         _validate_child_run_scope_or_die(app_runtime, resolved_drive_id, child_run_id)
         payload = app_runtime.inspect_drive_status(
             drive_id=resolved_drive_id, child_run_id=child_run_id
@@ -1082,8 +1084,6 @@ def orch_inspect_status(
         return
 
     # Legacy run-scoped path
-    if run_id is not None and latest:
-        _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if latest and resolved_run is None:
         _die("No runs available for --latest selector", code=2)
@@ -1125,15 +1125,17 @@ def orch_inspect_events(
 
     # Drive-scoped path: --latest resolves to active drive scope.
     # Authority: docs/RFC-orch-drive.md §7.3, §7.4
-    if (
-        drive_id is not None
-        or child_run_id is not None
-        or latest
-        or (run_id is None and app_runtime.has_active_drive_for_plan() is not None)
-    ):
-        resolved_drive_id = _resolve_drive_selector_or_die(
-            app_runtime, drive_id, latest, child_run_id
-        )
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
         _validate_child_run_scope_or_die(app_runtime, resolved_drive_id, child_run_id)
         payload = app_runtime.inspect_drive_events(
             drive_id=resolved_drive_id, child_run_id=child_run_id, limit=limit
@@ -1147,8 +1149,6 @@ def orch_inspect_events(
         return
 
     # Legacy run-scoped path
-    if run_id is not None and latest:
-        _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if resolved_run is not None and step_id is None:
         step_id = _step_id_for_run(app_runtime, resolved_run)
@@ -1187,15 +1187,18 @@ def orch_inspect_logs(
 
     # Drive-scoped path: --latest resolves to active drive scope.
     # Authority: docs/RFC-orch-drive.md §7.3, §7.4
-    if (
-        drive_id is not None
-        or child_run_id is not None
-        or latest
-        or (run_id is None and app_runtime.has_active_drive_for_plan() is not None)
-    ):
-        resolved_drive_id = _resolve_drive_selector_or_die(
-            app_runtime, drive_id, latest, child_run_id
-        )
+    if run_id is not None and latest:
+        _die("Specify either --run or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+        legacy_step_id=step_id,
+    )
+    if resolved_drive_id is not None:
         _validate_child_run_scope_or_die(app_runtime, resolved_drive_id, child_run_id)
         payload = app_runtime.inspect_drive_logs(
             drive_id=resolved_drive_id, child_run_id=child_run_id
@@ -1210,8 +1213,6 @@ def orch_inspect_logs(
         return
 
     # Legacy run-scoped path
-    if run_id is not None and latest:
-        _die("Specify either --run or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     payload = app_runtime.inspect_logs(run_id=resolved_run, step_id=step_id)
     rows = payload.data[-tail:] if tail >= 0 else payload.data
@@ -1248,15 +1249,17 @@ def orch_inspect_artifacts(
 
     # Drive-scoped path: --latest resolves to active drive scope.
     # Authority: docs/RFC-orch-drive.md §7.3, §7.4
-    if (
-        drive_id is not None
-        or child_run_id is not None
-        or latest
-        or (run_id is None and app_runtime.has_active_drive_for_plan() is not None)
-    ):
-        resolved_drive_id = _resolve_drive_selector_or_die(
-            app_runtime, drive_id, latest, child_run_id
-        )
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
         _validate_child_run_scope_or_die(app_runtime, resolved_drive_id, child_run_id)
         payload = app_runtime.inspect_drive_artifacts(
             drive_id=resolved_drive_id, child_run_id=child_run_id
@@ -1268,8 +1271,6 @@ def orch_inspect_artifacts(
         return
 
     # Legacy run-scoped path
-    if run_id is not None and latest:
-        _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if resolved_run is not None and step_id is None:
         step_id = _step_id_for_run(app_runtime, resolved_run)
@@ -1306,15 +1307,17 @@ def orch_inspect_actions(
 
     # Drive-scoped path: --latest resolves to active drive scope.
     # Authority: docs/RFC-orch-drive.md §7.3, §7.4
-    if (
-        drive_id is not None
-        or child_run_id is not None
-        or latest
-        or (run_id is None and app_runtime.has_active_drive_for_plan() is not None)
-    ):
-        resolved_drive_id = _resolve_drive_selector_or_die(
-            app_runtime, drive_id, latest, child_run_id
-        )
+    if run_id is not None and latest:
+        _die("Specify either --run or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=False,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
         _validate_child_run_scope_or_die(app_runtime, resolved_drive_id, child_run_id)
         payload = app_runtime.inspect_drive_actions(
             drive_id=resolved_drive_id, child_run_id=child_run_id
@@ -1326,8 +1329,6 @@ def orch_inspect_actions(
         return
 
     # Legacy run-scoped path
-    if run_id is not None and latest:
-        _die("Specify either --run or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if resolved_run is None:
         _die("Run selector required for action inspection: use --run or --latest")
@@ -1367,12 +1368,16 @@ def orch_case_list(
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
 
     # Drive-scoped path: when drive selector is provided or active drive exists
-    if (
-        drive_id is not None
-        or latest
-        or (run_id is None and app_runtime.has_active_drive_for_plan() is not None)
-    ):
-        resolved_drive_id = _resolve_drive_selector_or_die(app_runtime, drive_id, latest)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
         # Use drive status to get blocked case IDs
         drive_status = app_runtime.drive_status(drive_id=resolved_drive_id)
         if drive_status.blocked_case_ids:
@@ -1394,8 +1399,6 @@ def orch_case_list(
         return
 
     # Legacy path
-    if run_id is not None and latest:
-        _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     del resolved_run
     allowed_statuses = {"open", "resolved", "halt"}
@@ -1496,16 +1499,17 @@ def orch_control_pause(
     # Drive-scoped path: when drive selector is provided, --latest resolves to
     # active drive, or active drive exists as default (no explicit run/step).
     # Authority: docs/RFC-orch-drive.md §7.3, §7.4
-    if (
-        drive_id is not None
-        or latest
-        or (
-            run_id is None
-            and step_id is None
-            and app_runtime.has_active_drive_for_plan() is not None
-        )
-    ):
-        resolved_drive_id = _resolve_drive_selector_or_die(app_runtime, drive_id, latest)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+        legacy_step_id=step_id,
+    )
+    if resolved_drive_id is not None:
         try:
             result = app_runtime.control_drive_pause(drive_id=resolved_drive_id, reason=reason)
         except Exception as exc:
@@ -1517,8 +1521,6 @@ def orch_control_pause(
         return
 
     # Legacy run-scoped path
-    if run_id is not None and latest:
-        _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if step_id is None and resolved_run is not None:
         step_id = _step_id_for_run(app_runtime, resolved_run)
@@ -1555,16 +1557,17 @@ def orch_control_unpause(
     # Drive-scoped path: when drive selector is provided, --latest resolves to
     # active drive, or active drive exists as default (no explicit run/step).
     # Authority: docs/RFC-orch-drive.md §7.3, §7.4
-    if (
-        drive_id is not None
-        or latest
-        or (
-            run_id is None
-            and step_id is None
-            and app_runtime.has_active_drive_for_plan() is not None
-        )
-    ):
-        resolved_drive_id = _resolve_drive_selector_or_die(app_runtime, drive_id, latest)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+        legacy_step_id=step_id,
+    )
+    if resolved_drive_id is not None:
         try:
             result = app_runtime.control_drive_unpause(drive_id=resolved_drive_id, reason=reason)
         except Exception as exc:
@@ -1576,8 +1579,6 @@ def orch_control_unpause(
         return
 
     # Legacy run-scoped path
-    if run_id is not None and latest:
-        _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if step_id is None and resolved_run is not None:
         step_id = _step_id_for_run(app_runtime, resolved_run)
@@ -1622,12 +1623,16 @@ def orch_control_stop(
 
     # Drive-scoped path: --latest resolves to active drive scope.
     # Authority: docs/RFC-orch-drive.md §7.3, §7.3.1, §7.4
-    if (
-        drive_id is not None
-        or latest
-        or (run_id is None and app_runtime.has_active_drive_for_plan() is not None)
-    ):
-        resolved_drive_id = _resolve_drive_selector_or_die(app_runtime, drive_id, latest)
+    if run_id is not None and latest:
+        _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
         try:
             result = app_runtime.control_drive_stop(
                 drive_id=resolved_drive_id, reason=reason, force=force
@@ -1641,8 +1646,6 @@ def orch_control_stop(
         return
 
     # Legacy run-scoped path
-    if run_id is not None and latest:
-        _die("Specify either RUN_ID or --latest, not both")
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if resolved_run is None and latest:
         _die("No runs available for --latest selector", code=2)
@@ -1769,6 +1772,68 @@ def _resolve_latest_drive_id(app_runtime: Any) -> str | None:
     return app_runtime.resolve_latest_drive_id()
 
 
+def _resolve_optional_drive_scope(
+    app_runtime: Any,
+    *,
+    drive_id: str | None,
+    latest: bool,
+    child_run_id: str | None = None,
+    allow_active_drive_default: bool,
+    legacy_run_id: str | None = None,
+    legacy_step_id: str | None = None,
+) -> str | None:
+    """Resolve drive scope only when a drive selector is actually available.
+
+    Authority: docs/RFC-orch-drive.md sections 7.3, 7.4
+
+    ``--latest`` routes to drive scope only when a drive exists. Otherwise the
+    flat CLI surface falls back to the legacy run-scoped ``--latest`` behavior.
+
+    Args:
+        app_runtime: The orchestration app runtime.
+        drive_id: Explicit drive selector.
+        latest: Whether ``--latest`` was provided.
+        child_run_id: Optional child-run selector.
+        allow_active_drive_default: Whether missing selectors may default to
+            the active drive for the plan.
+        legacy_run_id: Legacy run selector for conflict/default checks.
+        legacy_step_id: Legacy step selector for conflict/default checks.
+
+    Returns:
+        The resolved drive identifier when drive scope applies, else ``None``.
+
+    Raises:
+        typer.Exit: On selector conflicts or invalid child-run defaults.
+    """
+    if child_run_id is not None and (drive_id is not None or latest):
+        _die("--child-run-id is exclusive with DRIVE_ID and --latest", code=2)
+    if drive_id is not None and latest:
+        _die("Specify either DRIVE_ID or --latest, not both")
+
+    if drive_id is not None:
+        return drive_id
+
+    if latest:
+        return _resolve_latest_drive_id(app_runtime)
+
+    active_drive_id = app_runtime.has_active_drive_for_plan()
+    if child_run_id is not None:
+        if active_drive_id is None:
+            _die(
+                "No active drive found. Provide DRIVE_ID, --latest, or --child-run-id",
+                code=3,
+            )
+        return active_drive_id
+
+    if not allow_active_drive_default or active_drive_id is None:
+        return None
+
+    if legacy_run_id is not None or legacy_step_id is not None:
+        return None
+
+    return active_drive_id
+
+
 def _resolve_drive_selector_or_die(
     app_runtime: Any,
     drive_id: str | None,
@@ -1797,24 +1862,13 @@ def _resolve_drive_selector_or_die(
     Raises:
         typer.Exit: On selector conflict or missing selector.
     """
-    # Exclusivity check per RFC §7.4
-    if child_run_id is not None and (drive_id is not None or latest):
-        _die("--child-run-id is exclusive with DRIVE_ID and --latest", code=2)
-    if drive_id is not None and latest:
-        _die("Specify either DRIVE_ID or --latest, not both")
-
-    resolved_drive_id = drive_id
-    if latest:
-        resolved_drive_id = _resolve_latest_drive_id(app_runtime)
-    elif drive_id is None and child_run_id is None:
-        # When no selector is provided, default to the active drive
-        resolved_drive_id = app_runtime.has_active_drive_for_plan()
-        if resolved_drive_id is None:
-            _die(
-                "No active drive found. Provide DRIVE_ID, --latest, or --child-run-id",
-                code=3,
-            )
-
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=True,
+    )
     if resolved_drive_id is None:
         _die("No drives available for --latest selector", code=2)
 

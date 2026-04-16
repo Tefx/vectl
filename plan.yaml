@@ -87617,7 +87617,7 @@ phases:
       \ remains for final gate opening"
 - id: orch_drive_post_gate_live_fix
   name: Orchestrator drive post-gate live fix
-  status: in_progress
+  status: done
   depends_on:
   - orch_drive_deep_review
   steps:
@@ -87863,7 +87863,7 @@ phases:
       gate_open_allowed: true'
   - id: orch_drive_post_gate_live_fix.gate
     name: Gate post-gate live fix phase
-    status: claimed
+    status: done
     description: 'Gate review for `orch_drive_post_gate_live_fix`.
 
 
@@ -87896,3 +87896,12 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-16T09:49:07.282619+00:00'
+    done_at: '2026-04-16T09:59:34.591645+00:00'
+    evidence: "## refs Read Confirmation\n- No refs for this step.\n\n## Gate Review\
+      \ Report\n- Reviewed step: orch_drive_post_gate_live_fix.retest-live-cli-regressions\n\
+      - All mandated commands evidenced: yes\n  - Cmd1 live smoke specific test ->\
+      \ 1 passed\n  - Cmd2 selector contract test -> 1 passed\n  - Cmd3 full suite\
+      \ with live flags -> 2927 passed, 17 skipped, 1 warning\n- All mandated commands\
+      \ green: yes\n  - Independent re-runs confirmed green and count consistency\n\
+      - Evidence consistency: pass/skip counts consistent, zero failures\n- Gate decision:\
+      \ OPEN\n\nheadline: PASS\ngate_open_allowed: true"

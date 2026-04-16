@@ -87620,3 +87620,66 @@ phases:
   status: pending
   depends_on:
   - orch_drive_deep_review
+  steps:
+  - id: orch_drive_post_gate_live_fix.fix-batched-live-cli-regressions
+    name: Fix post-gate live and CLI selector regressions
+    status: pending
+    description: 'Fix BOTH newly observed failures in one batched remediation step.
+
+
+      Failures to close:
+
+      1. Live orchestrator flow: `vectl orch status --latest --json` errors with `No
+      drives available for --latest selector` in scenario `e2e_status_latest`.
+
+      2. CLI surface contract: `test_orch_inspect_actions_requires_selector` expects
+      exit_code=1 but currently observes exit_code=0.
+
+
+      Required scope:
+
+      - Trace and correct selector resolution / latest-drive availability semantics
+      for the live orchestrator status path.
+
+      - Restore CLI selector enforcement so inspect-actions requires a selector and
+      exits non-zero when missing.
+
+      - Search for sibling selector-handling paths so the fix is systemic, not a single-call-site
+      patch.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.'
+    verification: '- Root cause for the `--latest` selector failure is corrected in
+      production code
+
+      - Root cause for missing non-zero exit on selector-required inspect-actions
+      path is corrected in production code
+
+      - Targeted sibling selector-handling paths reviewed so the regression is not
+      limited to one call site'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Fix Report
+
+      - Failure 1 root cause:
+
+      - Failure 1 changed files:
+
+      - Failure 2 root cause:
+
+      - Failure 2 changed files:
+
+      - Sibling selector-handling paths reviewed:
+
+      - Why this closes both blocker families:
+
+      '
+    agent: python-senior-tacit

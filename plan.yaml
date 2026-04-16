@@ -87615,3 +87615,8 @@ phases:
       \ mutation->continue; drive resume; drive recover; pause/unpause/stop under\
       \ parallel child runs; phase/plan auto-close\n- no blocker-class intersection\
       \ remains for final gate opening"
+- id: orch_drive_post_gate_live_fix
+  name: Orchestrator drive post-gate live fix
+  status: pending
+  depends_on:
+  - orch_drive_deep_review

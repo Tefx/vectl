@@ -87683,3 +87683,106 @@ phases:
 
       '
     agent: python-senior-tacit
+  - id: orch_drive_post_gate_live_fix.retest-live-cli-regressions
+    name: Retest live orchestrator and CLI selector regressions
+    status: pending
+    description: 'Independent retest after the batched remediation step.
+
+
+      This retest MUST run all of the following commands and treat success as GREEN
+      only if all required commands pass:
+
+      1. `RUN_LIVE_RUNNER_TESTS=1 RUN_LONG_LIVE_RUNNER_TESTS=1 uv run pytest tests/live_smoke/test_vectl_orchestrator_e2e_live.py::TestVectlOrchestratorE2ELive::test_full_orchestrator_flow_replan_resolve_and_merge
+      -v --no-header`
+
+      2. `uv run pytest tests/test_orch_cli_surface.py::test_orch_inspect_actions_requires_selector
+      -q --no-header`
+
+      3. `RUN_LIVE_RUNNER_TESTS=1 RUN_LONG_LIVE_RUNNER_TESTS=1 uv run pytest tests/
+      -q --no-header`
+
+
+      This is a post-implementation green retest. All commands above must pass before
+      the phase can close.'
+    verification: '- Run `RUN_LIVE_RUNNER_TESTS=1 RUN_LONG_LIVE_RUNNER_TESTS=1 uv
+      run pytest tests/live_smoke/test_vectl_orchestrator_e2e_live.py::TestVectlOrchestratorE2ELive::test_full_orchestrator_flow_replan_resolve_and_merge
+      -v --no-header`
+
+      - Run `uv run pytest tests/test_orch_cli_surface.py::test_orch_inspect_actions_requires_selector
+      -q --no-header`
+
+      - Run `RUN_LIVE_RUNNER_TESTS=1 RUN_LONG_LIVE_RUNNER_TESTS=1 uv run pytest tests/
+      -q --no-header`
+
+      - All three commands must finish green'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Retest Report
+
+      - step_type: test
+
+      - step_intent: retest_green
+
+      - expected_result: green
+
+
+      ### Command 1
+
+      ```bash
+
+      RUN_LIVE_RUNNER_TESTS=1 RUN_LONG_LIVE_RUNNER_TESTS=1 uv run pytest tests/live_smoke/test_vectl_orchestrator_e2e_live.py::TestVectlOrchestratorE2ELive::test_full_orchestrator_flow_replan_resolve_and_merge
+      -v --no-header
+
+      ```
+
+      Output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ### Command 2
+
+      ```bash
+
+      uv run pytest tests/test_orch_cli_surface.py::test_orch_inspect_actions_requires_selector
+      -q --no-header
+
+      ```
+
+      Output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ### Command 3
+
+      ```bash
+
+      RUN_LIVE_RUNNER_TESTS=1 RUN_LONG_LIVE_RUNNER_TESTS=1 uv run pytest tests/ -q
+      --no-header
+
+      ```
+
+      Output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+      '
+    depends_on:
+    - orch_drive_post_gate_live_fix.fix-batched-live-cli-regressions
+    agent: integration-verifier-tacit

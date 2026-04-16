@@ -87786,3 +87786,36 @@ phases:
     depends_on:
     - orch_drive_post_gate_live_fix.fix-batched-live-cli-regressions
     agent: integration-verifier-tacit
+  - id: orch_drive_post_gate_live_fix.gate
+    name: Gate post-gate live fix phase
+    status: pending
+    description: 'Gate review for `orch_drive_post_gate_live_fix`.
+
+
+      Close this phase only if the retest step is green and the required live + CLI
+      regression evidence is complete.'
+    verification: '- Retest evidence is present for all three mandated commands
+
+      - Retest result is green
+
+      - Phase remains blocked if any mandated retest command fails or evidence is
+      incomplete'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      - Reviewed step: orch_drive_post_gate_live_fix.retest-live-cli-regressions
+
+      - All mandated commands evidenced: yes/no
+
+      - All mandated commands green: yes/no
+
+      - Gate decision: OPEN/BLOCKED
+
+      '
+    depends_on:
+    - orch_drive_post_gate_live_fix.retest-live-cli-regressions
+    agent: gate-reviewer-tacit

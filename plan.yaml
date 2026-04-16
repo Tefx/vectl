@@ -87617,13 +87617,13 @@ phases:
       \ remains for final gate opening"
 - id: orch_drive_post_gate_live_fix
   name: Orchestrator drive post-gate live fix
-  status: pending
+  status: in_progress
   depends_on:
   - orch_drive_deep_review
   steps:
   - id: orch_drive_post_gate_live_fix.fix-batched-live-cli-regressions
     name: Fix post-gate live and CLI selector regressions
-    status: pending
+    status: claimed
     description: 'Fix BOTH newly observed failures in one batched remediation step.
 
 
@@ -87683,6 +87683,8 @@ phases:
 
       '
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-16T09:12:05.988971+00:00'
   - id: orch_drive_post_gate_live_fix.retest-live-cli-regressions
     name: Retest live orchestrator and CLI selector regressions
     status: pending

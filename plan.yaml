@@ -87623,7 +87623,7 @@ phases:
   steps:
   - id: orch_drive_post_gate_live_fix.fix-batched-live-cli-regressions
     name: Fix post-gate live and CLI selector regressions
-    status: claimed
+    status: done
     description: 'Fix BOTH newly observed failures in one batched remediation step.
 
 
@@ -87685,6 +87685,35 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-16T09:12:05.988971+00:00'
+    done_at: '2026-04-16T09:35:02.035834+00:00'
+    evidence: "## refs Read Confirmation\n- tools/vectl/README.md — NOT READ: file\
+      \ not found at worktree path reported by execution agent; remediation proceeded\
+      \ using failing tests and in-repo CLI selector contract tests as authoritative\
+      \ context.\n\n## Fix Report\n- Failure 1 root cause:\n  - Flat `orch` surfaces\
+      \ treated `--latest` as drive-scoped unconditionally.\n  - In live E2E scenario\
+      \ with no active drive, `orch status --latest --json` incorrectly took drive\
+      \ path and failed with `No drives available for --latest selector`.\n- Failure\
+      \ 1 changed files:\n  - src/vectl/cli.py\n  - tests/test_orch_cli_surface.py\n\
+      - Failure 2 root cause:\n  - `orch inspect actions` allowed implicit active-drive\
+      \ defaulting in selector routing family.\n  - Contract requires explicit selector;\
+      \ missing selector should stay non-zero.\n- Failure 2 changed files:\n  - src/vectl/cli.py\n\
+      \  - tests/test_orch_cli_surface.py\n- Sibling selector-handling paths reviewed:\n\
+      \  - status/events/logs/artifacts/actions/case-list/pause/unpause/stop + selector\
+      \ helper paths in cli.py\n- Why this closes both blocker families:\n  - Introduced\
+      \ shared optional-drive selector resolution so flat surfaces enter drive scope\
+      \ only when a drive selector resolves.\n  - `--latest` now chooses drive scope\
+      \ only if latest drive exists, otherwise falls back to legacy run-scoped latest\
+      \ behavior.\n  - `inspect actions` now disables active-drive implicit defaulting,\
+      \ preserving selector-required contract while still supporting explicit drive\
+      \ selectors / `--latest`.\n\nArtifact:\n- Commit hash(es): 22eafa4 (cherry-picked\
+      \ from fdaac23b257a39dcd2f4c7e9364595f274f24ec2)\n\nVerification:\n- Run: RUN_LIVE_RUNNER_TESTS=1\
+      \ RUN_LONG_LIVE_RUNNER_TESTS=1 uv run pytest tests/live_smoke/test_vectl_orchestrator_e2e_live.py::TestVectlOrchestratorE2ELive::test_full_orchestrator_flow_replan_resolve_and_merge\
+      \ -v --no-header -> 1 passed\n- Run: uv run pytest tests/test_orch_cli_surface.py::test_orch_inspect_actions_requires_selector\
+      \ -q --no-header -> 1 passed\n- Run: RUN_LIVE_RUNNER_TESTS=1 RUN_LONG_LIVE_RUNNER_TESTS=1\
+      \ uv run pytest tests/ -q --no-header -> 2927 passed, 17 skipped, 1 warning\n\
+      \nFiles changed:\n- src/vectl/cli.py\n- tests/test_orch_cli_surface.py\n\nGaps/Notes:\n\
+      - Fix intentionally constrained to CLI selector routing and direct regression\
+      \ coverage; no plan/orchestrator state mutation files touched."
   - id: orch_drive_post_gate_live_fix.retest-live-cli-regressions
     name: Retest live orchestrator and CLI selector regressions
     status: pending

@@ -90,14 +90,8 @@ def _write_vectl_yaml(root: Path, runner_cmd: str) -> Path:
         "orchestration": {
             "plan_path": "plan.yaml",
             "defaults": {"ordinary_role": "python-executor"},
-            "role_profiles": {
+            "role_profile_overrides": {
                 "python-executor": {
-                    "agent_id": "python-executor",
-                    "prompt_family": "coder",
-                    "execution_context": "linked_worktree",
-                    "mutation_policy": "worktree_changes",
-                    "session_policy": "reuse_allowed",
-                    "output_contract": "freeform_evidence",
                     "default_runner": "fast-shim",
                 },
             },

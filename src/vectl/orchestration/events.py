@@ -14,7 +14,7 @@ import hashlib
 import json
 import threading
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from fcntl import LOCK_EX, LOCK_UN, flock
 from pathlib import Path
@@ -63,7 +63,55 @@ OrchestrationEventKind = Literal[
     "operator_case_opened",
     "operator_case_resolved",
     "operator_action_requested",
+    # Drive event family (Authority: §10.4, RFC-orch-drive §16.3)
+    "drive_started",
+    "drive_status_changed",
+    "drive_barrier_entered",
+    "drive_barrier_cleared",
+    "planner_invoked",
+    "planner_applied",
+    "child_run_admitted",
+    "child_run_final",
+    "drive_final",
 ]
+
+
+DriveEventKind = Literal[
+    "drive_started",
+    "drive_status_changed",
+    "drive_barrier_entered",
+    "drive_barrier_cleared",
+    "planner_invoked",
+    "planner_applied",
+    "resolver_invoked",
+    "resolver_returned",
+    "child_run_admitted",
+    "child_run_final",
+    "drive_final",
+]
+"""Drive event kind literals.
+
+Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §10.4,
+          docs/RFC-orch-drive.md §16.3
+
+Drive-capable implementations must emit at least these event kinds.
+"""
+
+DRIVE_EVENT_KINDS: Final[frozenset[str]] = frozenset(
+    [
+        "drive_started",
+        "drive_status_changed",
+        "drive_barrier_entered",
+        "drive_barrier_cleared",
+        "planner_invoked",
+        "planner_applied",
+        "resolver_invoked",
+        "resolver_returned",
+        "child_run_admitted",
+        "child_run_final",
+        "drive_final",
+    ]
+)
 
 
 CANONICAL_EVENT_REGISTRY: Final[dict[str, EventSchema]] = {
@@ -101,6 +149,43 @@ CANONICAL_EVENT_REGISTRY: Final[dict[str, EventSchema]] = {
         optional_payload_keys=("open_case_delta",),
     ),
     "operator_action_requested": EventSchema(required_payload_keys=("case_id", "action")),
+    # Drive event family — Authority: §10.4, RFC-orch-drive §16.3
+    "drive_started": EventSchema(
+        required_payload_keys=("drive_id", "plan_path"),
+        optional_payload_keys=("agent", "max_parallelism"),
+    ),
+    "drive_status_changed": EventSchema(
+        required_payload_keys=("drive_id", "status"),
+        optional_payload_keys=("previous_status", "reason"),
+    ),
+    "drive_barrier_entered": EventSchema(
+        required_payload_keys=("drive_id", "reason"),
+        optional_payload_keys=("case_ids", "active_child_run_ids"),
+    ),
+    "drive_barrier_cleared": EventSchema(
+        required_payload_keys=("drive_id", "resolution"),
+        optional_payload_keys=("resolver_status", "planner_status"),
+    ),
+    "planner_invoked": EventSchema(
+        required_payload_keys=("drive_id", "step_id"),
+        optional_payload_keys=("planner_request_id", "affected_steps"),
+    ),
+    "planner_applied": EventSchema(
+        required_payload_keys=("drive_id", "status"),
+        optional_payload_keys=("mutations_count", "affected_steps"),
+    ),
+    "child_run_admitted": EventSchema(
+        required_payload_keys=("drive_id", "run_id", "kind"),
+        optional_payload_keys=("step_id", "case_id"),
+    ),
+    "child_run_final": EventSchema(
+        required_payload_keys=("drive_id", "run_id", "status"),
+        optional_payload_keys=("step_id", "case_id"),
+    ),
+    "drive_final": EventSchema(
+        required_payload_keys=("drive_id", "final_status"),
+        optional_payload_keys=("summary", "child_run_count"),
+    ),
 }
 
 
@@ -188,6 +273,8 @@ class OrchestrationEventEnvelope:
         seq: Monotonic append-order sequence value.
         prev_hash: Previous record entry hash (or None for first record).
         entry_hash: SHA-256 over canonical JSON of envelope without entry_hash.
+        run_id: Optional associated run identifier.
+        drive_id: Optional associated drive identifier (drive events only).
     """
 
     kind: OrchestrationEventKind
@@ -198,6 +285,8 @@ class OrchestrationEventEnvelope:
     seq: int | None = None
     prev_hash: str | None = None
     entry_hash: str | None = None
+    run_id: str | None = None
+    drive_id: str | None = None
 
     def __post_init__(self) -> None:
         payload_value: dict[str, Any] = dict(self.payload or {})
@@ -230,7 +319,7 @@ class OrchestrationEventEnvelope:
         return CANONICAL_EVENT_REGISTRY[self.kind].version
 
     def _hash_payload(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "agent": self.agent,
             "event": self.kind,
             "payload": self.payload,
@@ -240,6 +329,11 @@ class OrchestrationEventEnvelope:
             "ts": self.timestamp.isoformat(),
             "version": self.version,
         }
+        if self.run_id is not None:
+            result["run_id"] = self.run_id
+        if self.drive_id is not None:
+            result["drive_id"] = self.drive_id
+        return result
 
     def compute_entry_hash(self) -> str:
         """Compute deterministic SHA-256 over canonical event JSON payload."""
@@ -250,7 +344,7 @@ class OrchestrationEventEnvelope:
     def to_record(self) -> dict[str, Any]:
         """Convert envelope to canonical JSONL record payload."""
 
-        return {
+        record: dict[str, Any] = {
             "seq": self.seq,
             "ts": self.timestamp.isoformat(),
             "event": self.kind,
@@ -261,6 +355,11 @@ class OrchestrationEventEnvelope:
             "prev_hash": self.prev_hash,
             "entry_hash": self.entry_hash,
         }
+        if self.run_id is not None:
+            record["run_id"] = self.run_id
+        if self.drive_id is not None:
+            record["drive_id"] = self.drive_id
+        return record
 
     def to_jsonl_line(self) -> str:
         """Return canonical single-line JSONL framing for this envelope."""
@@ -305,6 +404,8 @@ class OrchestrationEventEnvelope:
             "prev_hash",
             "entry_hash",
         }
+        # Note: run_id and drive_id are optional for backward-compatible
+        # records; they are not in the required set.
         missing = sorted(required - set(record.keys()))
         if missing:
             raise EventValidationError(f"record missing required keys: {missing}")
@@ -353,6 +454,18 @@ class OrchestrationEventEnvelope:
                 f"record agent must be str|null, got {type(agent_raw).__name__}"
             )
 
+        run_id_raw = record.get("run_id")
+        if run_id_raw is not None and not isinstance(run_id_raw, str):
+            raise EventValidationError(
+                f"record run_id must be str|null, got {type(run_id_raw).__name__}"
+            )
+
+        drive_id_raw = record.get("drive_id")
+        if drive_id_raw is not None and not isinstance(drive_id_raw, str):
+            raise EventValidationError(
+                f"record drive_id must be str|null, got {type(drive_id_raw).__name__}"
+            )
+
         validate_payload(event_raw, dict(payload_raw))
 
         return cls(
@@ -364,6 +477,8 @@ class OrchestrationEventEnvelope:
             seq=seq_raw,
             prev_hash=prev_hash_raw,
             entry_hash=entry_hash_raw,
+            run_id=run_id_raw,
+            drive_id=drive_id_raw,
         )
 
     @classmethod
@@ -401,6 +516,192 @@ class EventSink(Protocol):
 
     def emit(self, envelope: OrchestrationEventEnvelope) -> None:
         """Emit one validated event envelope to sink."""
+
+
+@dataclass(frozen=True)
+class DriveEventEnvelope:
+    """Canonical drive event envelope with drive_id scoping.
+
+    Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §10.4,
+              docs/RFC-orch-drive.md §16.3
+
+    Drive event envelopes extend the canonical OrchestrationEventEnvelope
+    contract with a mandatory ``drive_id`` field and optional ``child_run_id``
+    for child-run-scoped drive events.
+
+    Minimum drive event envelope fields per §10.4:
+    - ``seq``
+    - ``prev_hash``
+    - ``entry_hash``
+    - ``timestamp``
+    - ``kind``
+    - ``drive_id``
+    - ``run_id`` (may be null for drive-level events)
+    - ``step_id`` (may be null for drive-level events)
+    - ``payload``
+
+    Attributes:
+        kind: Drive event kind from DRIVE_EVENT_KINDS.
+        timestamp: UTC-aware timestamp for the event.
+        drive_id: Owning drive identifier (required for all drive events).
+        child_run_id: Optional child run identifier for child-run-scoped events.
+        step_id: Optional associated step identifier.
+        payload: Event payload validated against drive event registry schema.
+        seq: Monotonic append-order sequence value.
+        prev_hash: Previous record entry hash (or None for first record).
+        entry_hash: SHA-256 over canonical JSON of envelope without entry_hash.
+    """
+
+    kind: DriveEventKind
+    timestamp: datetime
+    drive_id: str
+    child_run_id: str | None = None
+    step_id: str | None = None
+    payload: Mapping[str, Any] = field(default_factory=dict)
+    seq: int | None = None
+    prev_hash: str | None = None
+    entry_hash: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.drive_id:
+            raise EventValidationError("drive_id is required for drive event envelopes")
+        if self.timestamp.tzinfo is None:
+            raise EventValidationError("timestamp must be timezone-aware (UTC)")
+        object.__setattr__(self, "timestamp", self.timestamp.astimezone(timezone.utc))
+
+        # Validate payload against canonical registry (all drive events are
+        # also in the canonical registry)
+        validate_payload(self.kind, dict(self.payload))
+
+        if self.seq is not None and self.seq <= 0:
+            raise EventValidationError(f"seq must be > 0, got {self.seq}")
+        if self.prev_hash is not None and not _is_hex_sha256(self.prev_hash):
+            raise EventValidationError(
+                f"prev_hash must be lowercase 64-char SHA-256, got {self.prev_hash!r}"
+            )
+
+        computed = self._compute_entry_hash()
+        if self.entry_hash is None:
+            object.__setattr__(self, "entry_hash", computed)
+        elif self.entry_hash != computed:
+            raise EventValidationError(
+                f"entry_hash mismatch: expected {computed!r}, got {self.entry_hash!r}"
+            )
+
+    def _canonical_payload(self) -> dict[str, Any]:
+        return {
+            "child_run_id": self.child_run_id,
+            "drive_id": self.drive_id,
+            "event": self.kind,
+            "payload": self.payload,
+            "prev_hash": self.prev_hash,
+            "seq": self.seq,
+            "step_id": self.step_id,
+            "ts": self.timestamp.isoformat(),
+        }
+
+    def _compute_entry_hash(self) -> str:
+        canonical = _canonical_json(self._canonical_payload())
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def to_orchestration_envelope(self) -> OrchestrationEventEnvelope:
+        """Convert drive event envelope to a standard orchestration envelope.
+
+        Returns:
+            An ``OrchestrationEventEnvelope`` with the drive_id propagated
+            and kind validated against the canonical registry. The
+            entry_hash is recomputed because the canonical hash payload
+            differs between envelope types.
+        """
+        return OrchestrationEventEnvelope(
+            kind=cast(OrchestrationEventKind, self.kind),
+            timestamp=self.timestamp,
+            step_id=self.step_id,
+            payload=dict(self.payload),
+            seq=self.seq,
+            prev_hash=self.prev_hash,
+            entry_hash=None,
+            drive_id=self.drive_id,
+        )
+
+    def with_integrity(self, *, seq: int, prev_hash: str | None) -> DriveEventEnvelope:
+        """Return envelope with seq/hash-chain metadata recomputed.
+
+        Args:
+            seq: Assigned append sequence.
+            prev_hash: Previous entry hash in chain.
+
+        Returns:
+            New immutable envelope with deterministic entry_hash.
+        """
+        return replace(self, seq=seq, prev_hash=prev_hash, entry_hash=None)
+
+
+def build_drive_event(
+    kind: DriveEventKind,
+    drive_id: str,
+    payload: Mapping[str, Any],
+    *,
+    child_run_id: str | None = None,
+    step_id: str | None = None,
+    timestamp: datetime | None = None,
+) -> DriveEventEnvelope:
+    """Convenience constructor for drive event envelopes.
+
+    Authority: docs/RFC-orch-drive.md §16.3
+
+    Args:
+        kind: Drive event kind.
+        drive_id: Owning drive identifier.
+        payload: Event-specific data validated against the drive event schema.
+        child_run_id: Optional child run identifier for child-run events.
+        step_id: Optional associated step identifier.
+        timestamp: Optional event timestamp (defaults to now UTC).
+
+    Returns:
+        A validated ``DriveEventEnvelope`` (with seq/prev_hash to be
+        assigned at emit time).
+    """
+    return DriveEventEnvelope(
+        kind=kind,
+        timestamp=timestamp or datetime.now(timezone.utc),
+        drive_id=drive_id,
+        child_run_id=child_run_id,
+        step_id=step_id,
+        payload=payload,
+    )
+
+
+def validate_drive_event_chain(
+    envelopes: Sequence[DriveEventEnvelope],
+) -> None:
+    """Validate monotonic seq and prev_hash -> entry_hash chain for drive events.
+
+    Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §9.3
+
+    Args:
+        envelopes: Ordered sequence of drive event envelopes.
+
+    Raises:
+        EventCorruptionError: If sequence or hash chain integrity is broken.
+    """
+    expected_seq = 1
+    previous_hash: str | None = None
+    for index, envelope in enumerate(envelopes, start=1):
+        if envelope.seq is None:
+            raise EventCorruptionError(index, "missing seq")
+        if envelope.seq != expected_seq:
+            raise EventCorruptionError(
+                index,
+                f"non-monotonic seq: expected {expected_seq}, got {envelope.seq}",
+            )
+        if envelope.prev_hash != previous_hash:
+            raise EventCorruptionError(
+                index,
+                f"prev_hash mismatch: expected {previous_hash!r}, got {envelope.prev_hash!r}",
+            )
+        expected_seq += 1
+        previous_hash = envelope.entry_hash
 
 
 class JsonlEventSink:
@@ -540,11 +841,16 @@ __all__ = [
     "JsonlEventSink",
     "OrchestrationEventEnvelope",
     "OrchestrationEventKind",
+    "DriveEventEnvelope",
+    "DriveEventKind",
+    "DRIVE_EVENT_KINDS",
     "CANONICAL_EVENT_REGISTRY",
+    "build_drive_event",
     "denormalize_step_key",
     "emit",
     "load_event_jsonl",
     "normalize_step_key",
     "register_sink",
+    "validate_drive_event_chain",
     "validate_payload",
 ]

@@ -62,7 +62,8 @@ class TestToolFamilyRegistry:
         families = registry.all_families()
         assert "core" in families
         assert "orchestration" in families
-        assert len(families) == 2
+        assert "drive" in families
+        assert len(families) == 3
 
     def test_is_registered_for_known_family(self) -> None:
         """Verify is_registered() returns True for known families."""
@@ -619,7 +620,7 @@ class TestSiblingSearchVerification:
             CANONICAL_TOOL_FAMILIES,
         )
 
-        assert CANONICAL_TOOL_FAMILIES == ("core", "orchestration")
+        assert CANONICAL_TOOL_FAMILIES == ("core", "orchestration", "drive")
 
     def test_config_imports_tool_registry(self) -> None:
         """Verify config module imports from tool_registry."""

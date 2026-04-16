@@ -635,8 +635,14 @@ class DispatchCoordinator:
             2. Resolve role profile
             3. Build complete DispatchSpec
 
+        Supports both legacy `kind='dispatch'` (single-step) and expanded
+        `kind='dispatch_batch'` (multi-step) decisions. For batch decisions,
+        only the first step is processed (batch dispatch is the scheduler's
+        responsibility to iterate).
+
         Args:
-            decision: ControlDecision with kind='dispatch', step_id, and role.
+            decision: ControlDecision with kind='dispatch' or 'dispatch_batch',
+                step_ids, and role_bindings.
 
         Returns:
             Complete DispatchSpec with all fields populated from authoritative data.
@@ -645,17 +651,18 @@ class DispatchCoordinator:
             UnknownRoleError: If the resolved role ID is not in the registry.
             ValueError: If decision is not a dispatch decision.
         """
-        if decision.kind != "dispatch":
+        if decision.kind not in ("dispatch", "dispatch_batch"):
             raise ValueError(
                 f"DispatchCoordinator.build_dispatch_spec requires dispatch decision, "
                 f"got kind={decision.kind!r}"
             )
 
-        step_id = decision.step_id
-        if step_id is None:
-            raise ValueError(
-                "DispatchCoordinator.build_dispatch_spec requires step_id on dispatch decision"
-            )
+        if not decision.step_ids:
+            raise ValueError("DispatchCoordinator.build_dispatch_spec requires non-empty step_ids")
+
+        # For both dispatch (single) and dispatch_batch (multi), process first step.
+        step_id = decision.step_ids[0]
+        role_override = decision.role_bindings.get(step_id)
 
         # 1. Load authoritative step data
         step_data = self.step_adapter.load_step_data(step_id)
@@ -666,7 +673,7 @@ class DispatchCoordinator:
         #    default > registry default)
         resolved_role, role_source = self.role_registry.resolve_role(
             step_data.agent,
-            default_role_override=decision.role,
+            default_role_override=role_override,
         )
 
         # 3. Look up role profile

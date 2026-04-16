@@ -144,8 +144,8 @@ def test_evaluate_dispatches_claimable_step_with_configured_role() -> None:
     decision = control.evaluate_current()
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "core.impl"
-    assert decision.role == "python-executor"
+    assert decision.step_ids == ("core.impl",)
+    assert decision.role_bindings == {"core.impl": "python-executor"}
 
 
 def test_roster_none_claim_is_not_interpreted_as_plan_blockage() -> None:
@@ -165,8 +165,8 @@ def test_roster_none_claim_is_not_interpreted_as_plan_blockage() -> None:
     decision = control.evaluate_current()
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "core.impl"
-    assert decision.role == DEFAULT_DISPATCH_ROLE
+    assert decision.step_ids == ("core.impl",)
+    assert decision.role_bindings == {"core.impl": DEFAULT_DISPATCH_ROLE}
 
 
 def test_evaluate_ignores_roster_available_agent_order_for_dispatch_role() -> None:
@@ -184,8 +184,8 @@ def test_evaluate_ignores_roster_available_agent_order_for_dispatch_role() -> No
     decision = control.evaluate_current()
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "core.impl"
-    assert decision.role == "python-executor"
+    assert decision.step_ids == ("core.impl",)
+    assert decision.role_bindings == {"core.impl": "python-executor"}
 
 
 def test_evaluate_waits_when_execution_is_already_active() -> None:
@@ -235,7 +235,7 @@ def test_evaluate_unresolved_reasons_yield_resolve_not_dispatch_regression() -> 
     decision = control.evaluate_current()
 
     assert decision.kind == "resolve"
-    assert decision.step_id is None
+    assert decision.step_ids == ()
     assert "unresolved" in decision.reason.lower()
 
 
@@ -268,7 +268,7 @@ def test_apply_resolution_unblocked_re_evaluates_from_refreshed_state() -> None:
     )
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "core.impl"
+    assert decision.step_ids == ("core.impl",)
 
 
 def test_apply_resolution_waiting_maps_to_wait() -> None:
@@ -309,7 +309,15 @@ def test_apply_resolution_operator_required_maps_to_wait() -> None:
     assert "operator" in decision.reason.lower()
 
 
-def test_apply_resolution_halt_maps_to_done() -> None:
+def test_apply_resolution_halt_maps_to_halt() -> None:
+    """Resolver halt produces kind=halt with barrier_required=True.
+
+    Authority: RFC-orch-drive.md section 9.2.1 (halt invariant),
+    section 10.3 (terminal states), section 12.2 (resolver output contract).
+
+    halt means the barrier is terminal and no new work may be admitted.
+    The prior mapping to kind='done' was incorrect.
+    """
     control = PlanAwareControl(
         sources=ControlInputSources(
             core_adapter=_FakeCoreAdapter(_core()),
@@ -322,8 +330,9 @@ def test_apply_resolution_halt_maps_to_done() -> None:
         ResolutionReport(status="halt", summary="unsafe divergence")
     )
 
-    assert decision.kind == "done"
+    assert decision.kind == "halt"
     assert "halted" in decision.reason.lower()
+    assert decision.barrier_required is True
 
 
 def test_evaluate_current_reads_all_sources_once() -> None:

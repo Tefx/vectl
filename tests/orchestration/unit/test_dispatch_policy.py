@@ -643,8 +643,8 @@ class TestDispatchCoordinator:
         decision = ControlDecision(
             kind="dispatch",
             reason="Claimable work available",
-            step_id="core.test-step",
-            role="python-executor",
+            step_ids=("core.test-step",),
+            role_bindings={"core.test-step": "python-executor"},
         )
 
         spec = coordinator.build_dispatch_spec(decision)
@@ -681,8 +681,8 @@ class TestDispatchCoordinator:
         decision = ControlDecision(
             kind="dispatch",
             reason="Test default role",
-            step_id="core.no-agent",
-            role=None,
+            step_ids=("core.no-agent",),
+            role_bindings={},
         )
 
         spec = coordinator.build_dispatch_spec(decision)
@@ -707,8 +707,8 @@ class TestDispatchCoordinator:
         decision = ControlDecision(
             kind="dispatch",
             reason="Test step.agent role",
-            step_id="core.planner-step",
-            role="vectl-planner",
+            step_ids=("core.planner-step",),
+            role_bindings={"core.planner-step": "vectl-planner"},
         )
 
         spec = coordinator.build_dispatch_spec(decision)
@@ -747,9 +747,7 @@ class TestDispatchCoordinator:
 
         with pytest.raises(ValueError, match="step_id"):
             coordinator.build_dispatch_spec(
-                ControlDecision(
-                    kind="dispatch", reason="test", step_id=None, role="python-executor"
-                )
+                ControlDecision(kind="dispatch", reason="test", step_ids=(), role_bindings={})
             )
 
     def test_build_dispatch_spec_rejects_unknown_role(self) -> None:
@@ -768,8 +766,8 @@ class TestDispatchCoordinator:
         decision = ControlDecision(
             kind="dispatch",
             reason="Test",
-            step_id="core.bad-role",
-            role="unknown-agent",
+            step_ids=("core.bad-role",),
+            role_bindings={"core.bad-role": "unknown-agent"},
         )
 
         with pytest.raises(UnknownRoleError, match="Unknown role ID"):
@@ -847,8 +845,8 @@ class TestDispatchCoordinator:
         decision = ControlDecision(
             kind="dispatch",
             reason="Test verify_mode",
-            step_id="core.verify-step",
-            role="python-executor",
+            step_ids=("core.verify-step",),
+            role_bindings={"core.verify-step": "python-executor"},
         )
 
         spec = coordinator.build_dispatch_spec(decision)

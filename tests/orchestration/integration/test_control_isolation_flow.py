@@ -148,8 +148,8 @@ def test_dispatch_decision_from_authoritative_core_snapshot() -> None:
     decision = control.evaluate_current()
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "phase.step"
-    assert decision.role == "python-executor"
+    assert decision.step_ids == ("phase.step",)
+    assert decision.role_bindings == {"phase.step": "python-executor"}
     assert "Claimable work available" in decision.reason
 
 
@@ -203,7 +203,7 @@ def test_resolve_decision_preserves_unresolved_truth_from_core() -> None:
     decision = control.evaluate_current()
 
     assert decision.kind == "resolve"
-    assert decision.step_id is None
+    assert decision.step_ids == ()
     assert "unresolved" in decision.reason.lower()
 
 
@@ -262,7 +262,7 @@ def test_resolution_unblocked_re_evaluate_from_refreshed_state() -> None:
     )
 
     assert decision.kind == "dispatch"
-    assert decision.step_id == "phase.step"
+    assert decision.step_ids == ("phase.step",)
 
 
 def test_resolution_waiting_maps_to_wait() -> None:
@@ -305,8 +305,15 @@ def test_resolution_operator_required_maps_to_wait() -> None:
     assert "operator" in decision.reason.lower()
 
 
-def test_resolution_halt_maps_to_done() -> None:
-    """Verify resolution halt status maps to done decision."""
+def test_resolution_halt_maps_to_halt() -> None:
+    """Verify resolution halt status maps to halt decision with barrier_required.
+
+    Authority: RFC-orch-drive.md section 9.2.1 (halt invariant), section 10.3
+    (terminal states), section 12.2 (resolver output contract).
+
+    halt means the barrier is terminal and no new work may be admitted, which
+    is distinct from done (normal completion).
+    """
     control = PlanAwareControl(
         sources=ControlInputSources(
             core_adapter=_FakeCoreAdapter(_core()),
@@ -319,8 +326,9 @@ def test_resolution_halt_maps_to_done() -> None:
         ResolutionReport(status="halt", summary="unsafe divergence detected")
     )
 
-    assert decision.kind == "done"
+    assert decision.kind == "halt"
     assert "halted" in decision.reason.lower()
+    assert decision.barrier_required is True
 
 
 # === Isolation Semantics Propagation Tests ===

@@ -37,8 +37,7 @@ from vectl.orchestration.continuity_artifacts import (
     RuntimeRecoveryRecord,
 )
 
-if TYPE_CHECKING:
-    pass
+from vectl.orchestration.config import OrchestrationConfig
 
 
 # ---------------------------------------------------------------------
@@ -177,6 +176,8 @@ class LegacyContinuityMinimumError(RunStoreError):
 RunStatus = Literal["pending", "running", "success", "fail", "stall", "paused"]
 LegacyMigrationState = Literal["parallel", "preferred", "deprecated", "retired"]
 Liveness = Literal["alive", "stale", "unknown"]
+LeaseStatus = Literal["active", "released", "invalidated"]
+LeaseReleasedReason = Literal["completed", "invalidated", "superseded"]
 RetryObserver = Callable[[Path, int, Exception], None]
 
 _TERMINAL_STATUSES: frozenset[RunStatus] = frozenset({"success", "fail"})
@@ -1271,7 +1272,1116 @@ def latest_run(step_id: str, registry: RunRegistry | None = None) -> RunRecord |
     return resolved_registry.latest_for_step(step_id)
 
 
+# ---------------------------------------------------------------------
+# Drive Store — DriveRecord / ChildRunRef durable persistence
+# ---------------------------------------------------------------------
+# Authority: docs/RFC-orch-drive.md sections 8, 9
+#
+# DriveStore provides JSONL-based durable persistence for DriveRecord
+# and ChildRunRef, with active-drive lookup (ignoring terminal history),
+# child-run indexing, and projection replay for scheduler-loop inputs.
+
+from vectl.orchestration.contracts import (
+    BarrierReason,
+    ChildRunKind,
+    ChildRunRef,
+    ChildRunStatus,
+    DriveBarrier,
+    DriveConfigFrozen,
+    DriveLease,
+    DriveRecord,
+    DriveStatus,
+)
+from vectl.orchestration.driver import MaxParallelismError
+
+_DRIVE_STORE_DIR = "drives"
+_DRIVES_INDEX_FILENAME = "drives.jsonl"
+_CHILD_RUNS_INDEX_FILENAME = "child_runs.jsonl"
+_LEASES_INDEX_FILENAME = "leases.jsonl"
+_DRIVE_CONFIG_FILENAME = "drive_config.json"
+
+TERMINAL_DRIVE_STATUSES: frozenset[DriveStatus] = frozenset(
+    {"completed", "halted", "failed_unrecoverable", "stopped"}
+)
+"""Drive statuses that are terminal (no further transitions valid).
+
+Authority: docs/RFC-orch-drive.md section 8.2
+"""
+
+_ACTIVE_CHILD_RUN_STATUSES: frozenset[ChildRunStatus] = frozenset({"pending", "running"})
+"""Child run statuses that count as active for frontier/scheduling purposes.
+
+Authority: docs/RFC-orch-drive.md section 8.3
+"""
+
+
+def _deserialize_drive_barrier(payload: object) -> DriveBarrier | None:
+    """Deserialize a DriveBarrier from a raw dict payload."""
+    if not isinstance(payload, dict):
+        return None
+    reason_raw = str(payload.get("reason", "runtime_failure"))
+    # Validate barrier reason against the Literal type
+    valid_reasons: frozenset[str] = frozenset(
+        {
+            "runtime_failure",
+            "merge_conflict",
+            "review_failed",
+            "planner_needed",
+            "recovery_gate",
+            "operator_pause",
+        }
+    )
+    reason: BarrierReason = (
+        cast(BarrierReason, reason_raw)
+        if reason_raw in valid_reasons
+        else cast(BarrierReason, "runtime_failure")
+    )
+    return DriveBarrier(
+        reason=reason,
+        entered_at=_coerce_float(payload.get("entered_at")),
+        case_ids=_as_str_tuple(payload.get("case_ids")),
+        pending_resolver_run_id=(
+            None
+            if payload.get("pending_resolver_run_id") is None
+            else str(payload.get("pending_resolver_run_id"))
+        ),
+        pending_planner_run_id=(
+            None
+            if payload.get("pending_planner_run_id") is None
+            else str(payload.get("pending_planner_run_id"))
+        ),
+        active_child_run_ids_at_entry=_as_str_tuple(payload.get("active_child_run_ids_at_entry")),
+    )
+
+
+_DRIVE_STORE_DIR = "drives"
+
+
+def _deserialize_drive_record(payload: dict[str, object]) -> DriveRecord:
+    """Deserialize a DriveRecord from a raw dict payload."""
+    barrier_raw = payload.get("barrier")
+    barrier = _deserialize_drive_barrier(barrier_raw) if barrier_raw is not None else None
+
+    operator_pause_state_raw = payload.get("operator_pause_state", "active")
+    operator_pause_state: Literal["active", "paused"] = (
+        "paused" if str(operator_pause_state_raw) == "paused" else "active"
+    )
+
+    return DriveRecord(
+        drive_id=str(payload.get("drive_id", "")),
+        plan_path=str(payload.get("plan_path", "")),
+        status=cast(DriveStatus, payload.get("status", "running")),
+        started_at=_coerce_float(payload.get("started_at")),
+        updated_at=_coerce_float(payload.get("updated_at")),
+        finished_at=(
+            None
+            if payload.get("finished_at") is None
+            else _coerce_float(payload.get("finished_at"))
+        ),
+        agent=str(payload.get("agent", "")),
+        max_parallelism=_coerce_int(payload.get("max_parallelism")),
+        active_child_run_ids=_as_str_tuple(payload.get("active_child_run_ids")),
+        frontier_step_ids=_as_str_tuple(payload.get("frontier_step_ids")),
+        blocked_case_ids=_as_str_tuple(payload.get("blocked_case_ids")),
+        barrier=barrier,
+        operator_pause_state=operator_pause_state,
+        summary=str(payload.get("summary", "")),
+    )
+
+
+def _deserialize_child_run_ref(payload: dict[str, object]) -> ChildRunRef:
+    """Deserialize a ChildRunRef from a raw dict payload."""
+    return ChildRunRef(
+        run_id=str(payload.get("run_id", "")),
+        drive_id=str(payload.get("drive_id", "")),
+        kind=cast(ChildRunKind, payload.get("kind", "step")),
+        status=cast(ChildRunStatus, payload.get("status", "pending")),
+        step_id=(None if payload.get("step_id") is None else str(payload.get("step_id"))),
+        case_id=(None if payload.get("case_id") is None else str(payload.get("case_id"))),
+        planner_request_id=(
+            None
+            if payload.get("planner_request_id") is None
+            else str(payload.get("planner_request_id"))
+        ),
+        workspace=str(payload.get("workspace", "")),
+        runner=str(payload.get("runner", "")),
+        session_id=(None if payload.get("session_id") is None else str(payload.get("session_id"))),
+        artifact_root=str(payload.get("artifact_root", "")),
+    )
+
+
+def _deserialize_drive_lease(payload: dict[str, object]) -> DriveLease:
+    """Deserialize a DriveLease from a raw dict payload.
+
+    Authority: docs/RFC-orch-drive.md section 14.3
+    """
+    return DriveLease(
+        drive_id=str(payload.get("drive_id", "")),
+        step_id=str(payload.get("step_id", "")),
+        run_id=str(payload.get("run_id", "")),
+        status=cast(LeaseStatus, payload.get("status", "active")),
+        created_at=_coerce_float(payload.get("created_at")),
+        released_at=(
+            None
+            if payload.get("released_at") is None
+            else _coerce_float(payload.get("released_at"))
+        ),
+        released_reason=cast(
+            LeaseReleasedReason | None,
+            payload.get("released_reason"),
+        ),
+    )
+
+
+def _deserialize_drive_config_frozen(payload: dict[str, object]) -> DriveConfigFrozen:
+    """Deserialize a DriveConfigFrozen from a raw dict payload.
+
+    Authority: docs/RFC-orch-drive.md sections 8.1, 15.1
+    """
+    return DriveConfigFrozen(
+        drive_id=str(payload.get("drive_id", "")),
+        max_parallelism=_coerce_int(payload.get("max_parallelism")),
+        control_idle_poll_interval_ms=_coerce_int(payload.get("control_idle_poll_interval_ms")),
+        control_action_ack_timeout_seconds=_coerce_float(
+            payload.get("control_action_ack_timeout_seconds")
+        ),
+        resolver_invocation_timeout_seconds=_coerce_float(
+            payload.get("resolver_invocation_timeout_seconds")
+        ),
+        resolver_max_tool_calls_per_invocation=_coerce_int(
+            payload.get("resolver_max_tool_calls_per_invocation")
+        ),
+        frozen_at=_coerce_float(payload.get("frozen_at")),
+    )
+
+
+def _drive_sort_key(record: DriveRecord) -> tuple[float, str]:
+    """Sort key for DriveRecord: (updated_at, drive_id)."""
+    return (record.updated_at, record.drive_id)
+
+
+def _child_run_sort_key(ref: ChildRunRef) -> tuple[float, str]:
+    """Sort key for ChildRunRef by updated_at derived from run_id prefix."""
+    return (0.0, ref.run_id)
+
+
+class DriveStoreError(RuntimeError):
+    """Base class for drive store failures."""
+
+
+class DriveAdmissionConflictError(DriveStoreError):
+    """Raised when drive admission discovers a conflicting active drive.
+
+    Attributes:
+        active_drive_id: The drive_id of the conflicting active drive.
+    """
+
+    def __init__(self, message: str, *, active_drive_id: str) -> None:
+        super().__init__(message)
+        self.active_drive_id = active_drive_id
+        self.message = message
+
+
+class DriveStore:
+    """Durable persistence for DriveRecord and ChildRunRef.
+
+    Authority: docs/RFC-orch-drive.md sections 8, 9
+
+    This store provides:
+        - JSONL-based append-only persistence for DriveRecord
+        - JSONL-based append-only persistence for ChildRunRef
+        - Active-drive lookup (ignoring terminal history)
+        - Historical terminal drive retention
+        - Child-run indexing (per-drive, per-step, per-kind)
+        - Projection replay that rebuilds active_child_run_ids and
+          frontier_step_ids from child runs
+
+    The storage layout under ``store_root`` (default ``.vectl/drives/``)::
+
+        .vectl/drives/
+            drives.jsonl          # DriveRecord append-only log
+            child_runs.jsonl      # ChildRunRef append-only log
+
+    Args:
+        store_root: Root directory for drive store files.
+        max_append_retries: Maximum retries for JSONL append contention.
+        append_retry_delay_seconds: Delay between append retries.
+        append_retry_observer: Callback for observing append retries.
+    """
+
+    def __init__(
+        self,
+        store_root: Path | str = ".vectl/drives",
+        *,
+        max_append_retries: int = _DEFAULT_APPEND_RETRIES,
+        append_retry_delay_seconds: float = _DEFAULT_APPEND_RETRY_DELAY_SECONDS,
+        append_retry_observer: RetryObserver | None = None,
+    ) -> None:
+        self._store_root = Path(store_root)
+        self._drives_path = self._store_root / _DRIVES_INDEX_FILENAME
+        self._child_runs_path = self._store_root / _CHILD_RUNS_INDEX_FILENAME
+        self._leases_path = self._store_root / _LEASES_INDEX_FILENAME
+        self._max_append_retries = max_append_retries
+        self._append_retry_delay_seconds = append_retry_delay_seconds
+        self._append_retry_observer = append_retry_observer
+
+    @property
+    def store_root(self) -> Path:
+        """Return authoritative drive-store root path."""
+        return self._store_root
+
+    # -----------------------------------------------------------------
+    # DriveRecord persistence
+    # -----------------------------------------------------------------
+
+    def save_drive(self, record: DriveRecord) -> None:
+        """Persist a DriveRecord to the append-only JSONL index.
+
+        The record is normalized: if ``updated_at`` is 0 (unset), it is
+        set to the current timestamp so that latest-wins replay works
+        correctly.
+
+        Args:
+            record: The DriveRecord to persist.
+        """
+        now = _current_timestamp()
+        normalized_updated_at = record.updated_at if record.updated_at > 0.0 else now
+
+        normalized_started_at = record.started_at if record.started_at > 0.0 else now
+
+        normalized_record = DriveRecord(
+            drive_id=record.drive_id,
+            plan_path=record.plan_path,
+            status=record.status,
+            started_at=normalized_started_at,
+            updated_at=normalized_updated_at,
+            finished_at=record.finished_at,
+            agent=record.agent,
+            max_parallelism=record.max_parallelism,
+            active_child_run_ids=record.active_child_run_ids,
+            frontier_step_ids=record.frontier_step_ids,
+            blocked_case_ids=record.blocked_case_ids,
+            barrier=record.barrier,
+            operator_pause_state=record.operator_pause_state,
+            summary=record.summary,
+        )
+
+        _append_jsonl_with_retry(
+            self._drives_path,
+            asdict(normalized_record),
+            max_retries=self._max_append_retries,
+            retry_delay_seconds=self._append_retry_delay_seconds,
+            retry_observer=self._append_retry_observer,
+        )
+
+    def load_drive(self, drive_id: str) -> DriveRecord | None:
+        """Load the latest DriveRecord for a given drive_id.
+
+        Args:
+            drive_id: The drive identifier to look up.
+
+        Returns:
+            The latest DriveRecord for the drive, or None if not found.
+        """
+        latest = self._latest_drives_by_id()
+        return latest.get(drive_id)
+
+    def active_drives(self) -> tuple[DriveRecord, ...]:
+        """Return all active (non-terminal) drives, sorted by recency.
+
+        Only drives with a non-terminal status are returned. Terminal
+        drives (completed, halted, failed_unrecoverable, stopped) are
+        retained in the JSONL log for history but excluded from active
+        lookup.
+
+        Returns:
+            Tuple of active DriveRecords, sorted by updated_at descending.
+        """
+        latest = self._latest_drives_by_id()
+        active = [
+            record for record in latest.values() if record.status not in TERMINAL_DRIVE_STATUSES
+        ]
+        active.sort(key=_drive_sort_key, reverse=True)
+        return tuple(active)
+
+    def active_drive_for_plan(self, plan_path: str) -> DriveRecord | None:
+        """Return the single active drive for a plan, or None.
+
+        If multiple active drives exist for the same plan path (should
+        not happen under normal admission control), returns the most
+        recently updated one.
+
+        Args:
+            plan_path: Canonical absolute path to ``plan.yaml``.
+
+        Returns:
+            The most recent active DriveRecord for the plan, or None.
+        """
+        for record in self.active_drives():
+            if record.plan_path == plan_path:
+                return record
+        return None
+
+    def terminal_drives(self) -> tuple[DriveRecord, ...]:
+        """Return all terminal drives, sorted by finished_at descending.
+
+        Terminal drives are retained for historical inspection and
+        recovery reference.
+
+        Returns:
+            Tuple of terminal DriveRecords, sorted by recency.
+        """
+        latest = self._latest_drives_by_id()
+        terminal = [
+            record for record in latest.values() if record.status in TERMINAL_DRIVE_STATUSES
+        ]
+        terminal.sort(key=_drive_sort_key, reverse=True)
+        return tuple(terminal)
+
+    def all_drives(self) -> tuple[DriveRecord, ...]:
+        """Return all drives (active and terminal), sorted by recency.
+
+        Returns:
+            Tuple of all DriveRecords, sorted by updated_at descending.
+        """
+        latest = self._latest_drives_by_id()
+        records = list(latest.values())
+        records.sort(key=_drive_sort_key, reverse=True)
+        return tuple(records)
+
+    # -----------------------------------------------------------------
+    # ChildRunRef persistence
+    # -----------------------------------------------------------------
+
+    def save_child_run(self, ref: ChildRunRef) -> None:
+        """Persist a ChildRunRef to the append-only JSONL index.
+
+        Args:
+            ref: The ChildRunRef to persist.
+        """
+        _append_jsonl_with_retry(
+            self._child_runs_path,
+            asdict(ref),
+            max_retries=self._max_append_retries,
+            retry_delay_seconds=self._append_retry_delay_seconds,
+            retry_observer=self._append_retry_observer,
+        )
+
+    def child_runs_for_drive(self, drive_id: str) -> tuple[ChildRunRef, ...]:
+        """Return all child run refs for a given drive.
+
+        Args:
+            drive_id: The drive identifier to look up.
+
+        Returns:
+            Tuple of ChildRunRef entries for the drive, newest first.
+        """
+        latest = self._latest_child_runs_by_id()
+        refs = [ref for ref in latest.values() if ref.drive_id == drive_id]
+        refs.sort(key=_child_run_sort_key, reverse=True)
+        return tuple(refs)
+
+    def active_child_runs_for_drive(self, drive_id: str) -> tuple[ChildRunRef, ...]:
+        """Return active child run refs for a drive.
+
+        Active child runs have status in ``{"pending", "running"}``.
+
+        Args:
+            drive_id: The drive identifier to look up.
+
+        Returns:
+            Tuple of active ChildRunRef entries for the drive.
+        """
+        latest = self._latest_child_runs_by_id()
+        refs = [
+            ref
+            for ref in latest.values()
+            if ref.drive_id == drive_id and ref.status in _ACTIVE_CHILD_RUN_STATUSES
+        ]
+        refs.sort(key=_child_run_sort_key, reverse=True)
+        return tuple(refs)
+
+    def child_runs_for_step(self, drive_id: str, step_id: str) -> tuple[ChildRunRef, ...]:
+        """Return child run refs for a specific step within a drive.
+
+        Args:
+            drive_id: The drive identifier.
+            step_id: The step identifier.
+
+        Returns:
+            Tuple of ChildRunRef entries matching the drive and step.
+        """
+        latest = self._latest_child_runs_by_id()
+        refs = [
+            ref
+            for ref in latest.values()
+            if ref.drive_id == drive_id and ref.kind == "step" and ref.step_id == step_id
+        ]
+        refs.sort(key=_child_run_sort_key, reverse=True)
+        return tuple(refs)
+
+    def child_runs_by_kind(self, drive_id: str, kind: ChildRunKind) -> tuple[ChildRunRef, ...]:
+        """Return child run refs for a drive filtered by kind.
+
+        Args:
+            drive_id: The drive identifier.
+            kind: Child run kind (step, resolver, planner).
+
+        Returns:
+            Tuple of ChildRunRef entries matching the drive and kind.
+        """
+        latest = self._latest_child_runs_by_id()
+        refs = [ref for ref in latest.values() if ref.drive_id == drive_id and ref.kind == kind]
+        refs.sort(key=_child_run_sort_key, reverse=True)
+        return tuple(refs)
+
+    def child_run_by_id(self, run_id: str) -> ChildRunRef | None:
+        """Look up a child run ref by its run_id.
+
+        Args:
+            run_id: The child run identifier.
+
+        Returns:
+            The latest ChildRunRef if found, else None.
+        """
+        return self._latest_child_runs_by_id().get(run_id)
+
+    # -----------------------------------------------------------------
+    # Drive admission
+    # -----------------------------------------------------------------
+
+    def assert_can_admit_drive(self, plan_path: str) -> None:
+        """Raise if an active drive already exists for the given plan.
+
+        Authority: docs/RFC-orch-drive.md section 14.1
+
+        A drive cannot be started when an active drive already exists
+        for the same plan identity.
+
+        Args:
+            plan_path: Canonical absolute path to ``plan.yaml``.
+
+        Raises:
+            DriveAdmissionConflictError: If a conflicting active drive exists.
+        """
+        existing = self.active_drive_for_plan(plan_path)
+        if existing is not None:
+            raise DriveAdmissionConflictError(
+                f"active drive already exists for plan '{plan_path}': drive_id={existing.drive_id}",
+                active_drive_id=existing.drive_id,
+            )
+
+    # -----------------------------------------------------------------
+    # Projection replay for scheduler loop
+    # -----------------------------------------------------------------
+
+    def replay_drive_state(self, drive_id: str) -> DriveRecord:
+        """Rebuild DriveRecord from persisted child runs.
+
+        Authority: docs/RFC-orch-drive.md section 9
+
+        The scheduler loop needs authoritative ``active_child_run_ids``
+        and ``frontier_step_ids``. This method rebuilds those from the
+        persisted child-run index, producing a DriveRecord that reflects
+        the true current state.
+
+        The persisted DriveRecord is authoritative for all fields EXCEPT
+        ``active_child_run_ids`` and ``frontier_step_ids``, which are
+        always derived from the child-run index on replay.
+
+        If no persisted DriveRecord exists, raises DriveStoreError.
+
+        Args:
+            drive_id: The drive to replay state for.
+
+        Returns:
+            A DriveRecord with ``active_child_run_ids`` and
+            ``frontier_step_ids`` rebuilt from child runs.
+
+        Raises:
+            DriveStoreError: If no DriveRecord exists for the drive_id.
+        """
+        persisted = self.load_drive(drive_id)
+        if persisted is None:
+            raise DriveStoreError(f"no DriveRecord found for drive_id={drive_id!r}")
+
+        child_refs = self.child_runs_for_drive(drive_id)
+        active_ids = tuple(
+            ref.run_id for ref in child_refs if ref.status in _ACTIVE_CHILD_RUN_STATUSES
+        )
+
+        # Frontier step IDs: step child runs that have succeeded and whose
+        # dependents are not yet running/pending. For now, the frontier is
+        # derived from the persisted record; only active_child_run_ids is
+        # rebuilt from child runs.
+        # Future: frontier could be derived from plan DAG + child run outcomes.
+
+        rebuilt = DriveRecord(
+            drive_id=persisted.drive_id,
+            plan_path=persisted.plan_path,
+            status=persisted.status,
+            started_at=persisted.started_at,
+            updated_at=persisted.updated_at,
+            finished_at=persisted.finished_at,
+            agent=persisted.agent,
+            max_parallelism=persisted.max_parallelism,
+            active_child_run_ids=active_ids,
+            frontier_step_ids=persisted.frontier_step_ids,
+            blocked_case_ids=persisted.blocked_case_ids,
+            barrier=persisted.barrier,
+            operator_pause_state=persisted.operator_pause_state,
+            summary=persisted.summary,
+        )
+        return rebuilt
+
+    def replay_active_child_run_ids(self, drive_id: str) -> tuple[str, ...]:
+        """Rebuild active_child_run_ids from the child-run index.
+
+        This is a lightweight projection input for the scheduler loop:
+        instead of replaying the full drive state, callers can get just
+        the active child run IDs.
+
+        Args:
+            drive_id: The drive to project.
+
+        Returns:
+            Tuple of active child run IDs for the drive.
+        """
+        active_refs = self.active_child_runs_for_drive(drive_id)
+        return tuple(ref.run_id for ref in active_refs)
+
+    # -----------------------------------------------------------------
+    # Lease persistence (scheduler-owned lease ownership)
+    # -----------------------------------------------------------------
+    # Authority: docs/RFC-orch-drive.md section 14.3, 14.4
+    #
+    # Lease ownership is drive_id + step_id + run_id. A lease is created
+    # when a child run is admitted and released when the child run
+    # completes or when a planner mutation invalidates an unstarted lease.
+
+    def save_lease(self, lease: DriveLease) -> None:
+        """Persist a DriveLease to the append-only JSONL index.
+
+        Authority: docs/RFC-orch-drive.md section 14.3
+
+        Args:
+            lease: The DriveLease to persist.
+        """
+        _append_jsonl_with_retry(
+            self._leases_path,
+            asdict(lease),
+            max_retries=self._max_append_retries,
+            retry_delay_seconds=self._append_retry_delay_seconds,
+            retry_observer=self._append_retry_observer,
+        )
+
+    def lease_by_run_id(self, run_id: str) -> DriveLease | None:
+        """Look up the latest lease for a given run_id.
+
+        Args:
+            run_id: The child run identifier.
+
+        Returns:
+            The latest DriveLease for the run, or None if not found.
+        """
+        return self._latest_leases_by_run_id().get(run_id)
+
+    def active_leases_for_drive(self, drive_id: str) -> tuple[DriveLease, ...]:
+        """Return all active leases for a given drive.
+
+        Active leases have ``status="active"``.
+
+        Args:
+            drive_id: The drive identifier.
+
+        Returns:
+            Tuple of active DriveLease entries for the drive.
+        """
+        latest = self._latest_leases_by_run_id()
+        leases = [
+            lease
+            for lease in latest.values()
+            if lease.drive_id == drive_id and lease.status == "active"
+        ]
+        leases.sort(key=lambda lease: (lease.created_at, lease.run_id))
+        return tuple(leases)
+
+    def active_lease_for_step(self, drive_id: str, step_id: str) -> DriveLease | None:
+        """Return the active lease for a specific step within a drive, if any.
+
+        Args:
+            drive_id: The drive identifier.
+            step_id: The step identifier.
+
+        Returns:
+            The active DriveLease for the step, or None.
+        """
+        for lease in self.active_leases_for_drive(drive_id):
+            if lease.step_id == step_id:
+                return lease
+        return None
+
+    def invalidate_lease(
+        self, run_id: str, *, reason: LeaseReleasedReason = "invalidated"
+    ) -> DriveLease | None:
+        """Invalidate (release) an active lease by marking it with a terminal status.
+
+        Authority: docs/RFC-orch-drive.md section 14.4
+
+        Planner mutation may invalidate unstarted leases. If a mutation
+        supersedes a ready step that has not yet started, the lease must
+        be released before frontier reopens.
+
+        Args:
+            run_id: The child run identifier whose lease to invalidate.
+            reason: The reason for invalidation. Defaults to ``"invalidated"``.
+                Also accepts ``"superseded"`` for planner mutation cases.
+
+        Returns:
+            The released DriveLease, or None if no active lease was found.
+        """
+        existing = self.lease_by_run_id(run_id)
+        if existing is None or existing.status != "active":
+            return None
+        now = _current_timestamp()
+        released = DriveLease(
+            drive_id=existing.drive_id,
+            step_id=existing.step_id,
+            run_id=existing.run_id,
+            status="released",
+            created_at=existing.created_at,
+            released_at=now,
+            released_reason=reason,
+        )
+        self.save_lease(released)
+        return released
+
+    def invalidate_leases_for_step(
+        self, drive_id: str, step_id: str, *, reason: LeaseReleasedReason = "superseded"
+    ) -> tuple[DriveLease, ...]:
+        """Invalidate all active leases for a specific step within a drive.
+
+        Authority: docs/RFC-orch-drive.md section 14.4
+
+        Used when a planner mutation removes or replaces a step, releasing
+        any unstarted leases for that step cleanly.
+
+        Args:
+            drive_id: The drive identifier.
+            step_id: The step identifier whose leases to invalidate.
+            reason: The reason for invalidation. Defaults to ``"superseded"``.
+
+        Returns:
+            Tuple of DriveLease entries that were invalidated.
+        """
+        invalidated: list[DriveLease] = []
+        for lease in self.active_leases_for_drive(drive_id):
+            if lease.step_id == step_id:
+                released = self.invalidate_lease(lease.run_id, reason=reason)
+                if released is not None:
+                    invalidated.append(released)
+        return tuple(invalidated)
+
+    # -----------------------------------------------------------------
+    # Frozen drive config persistence
+    # -----------------------------------------------------------------
+    # Authority: docs/RFC-orch-drive.md sections 8.1, 15.1, 15.2
+    #
+    # Frozen drive config is written once on drive creation and never
+    # modified. Resume/recover must use the frozen config rather than
+    # re-reading ambient config, preventing config drift.
+
+    def save_drive_config_frozen(self, config: DriveConfigFrozen) -> None:
+        """Persist a frozen drive config, replacing any existing one.
+
+        Authority: docs/RFC-orch-drive.md sections 8.1, 15.1
+
+        Frozen config is written once at drive creation time and is
+        immutable. If called for a drive that already has a frozen config,
+        this method is a no-op (idempotent).
+
+        Args:
+            config: The DriveConfigFrozen to persist.
+        """
+        config_path = self._store_root / f"drive_{config.drive_id}_{_DRIVE_CONFIG_FILENAME}"
+        if config_path.exists():
+            # Frozen config is immutable; do not overwrite
+            return
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(
+            json.dumps(asdict(config), sort_keys=True, indent=2), encoding="utf-8"
+        )
+
+    def load_drive_config_frozen(self, drive_id: str) -> DriveConfigFrozen | None:
+        """Load the frozen drive config for a given drive.
+
+        Authority: docs/RFC-orch-drive.md sections 15.1, 15.2
+
+        Resume/recover must use the frozen config instead of re-reading
+        ambient configuration, preventing config drift between runs.
+
+        Args:
+            drive_id: The drive identifier whose frozen config to load.
+
+        Returns:
+            The DriveConfigFrozen if it exists, or None if not found.
+        """
+        config_path = self._store_root / f"drive_{drive_id}_{_DRIVE_CONFIG_FILENAME}"
+        if not config_path.exists():
+            return None
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise CorruptJSONLError(
+                f"Malformed drive config frozen payload in {config_path}: expected object"
+            )
+        return _deserialize_drive_config_frozen(cast(dict[str, object], payload))
+
+    @classmethod
+    def freeze_drive_config_from_orch_config(
+        cls,
+        drive_id: str,
+        config: OrchestrationConfig,
+    ) -> DriveConfigFrozen:
+        """Create a DriveConfigFrozen from an OrchestrationConfig at drive creation time.
+
+        Authority: docs/RFC-orch-drive.md sections 8.1, 15.1
+
+        This captures the drive-relevant config parameters at the moment
+        of drive creation, ensuring resume/recover uses the same settings
+        that were in effect when the drive was first started.
+
+        Args:
+            drive_id: The drive identifier for the frozen config.
+            config: The OrchestrationConfig to freeze parameters from.
+
+        Returns:
+            A DriveConfigFrozen populated from the orchestration config.
+        """
+        return DriveConfigFrozen(
+            drive_id=drive_id,
+            max_parallelism=4,  # Default from DriveRecord; overridden by caller
+            control_idle_poll_interval_ms=config.control.idle_poll_interval_ms,
+            control_action_ack_timeout_seconds=config.control.action_ack_timeout_seconds,
+            resolver_invocation_timeout_seconds=config.resolver.invocation_timeout_seconds,
+            resolver_max_tool_calls_per_invocation=config.resolver.max_tool_calls_per_invocation,
+            frozen_at=_current_timestamp(),
+        )
+
+    def _latest_leases_by_run_id(self) -> dict[str, DriveLease]:
+        """Load all lease entries, returning latest per run_id."""
+        if not self._leases_path.exists():
+            return {}
+        entries = _read_jsonl(self._leases_path)
+        latest: dict[str, DriveLease] = {}
+        for payload in entries:
+            lease = _deserialize_drive_lease(payload)
+            # Later entries always win (append-order wins)
+            latest[lease.run_id] = lease
+        return latest
+
+    # -----------------------------------------------------------------
+    # Internal index loading
+    # -----------------------------------------------------------------
+
+    def _latest_drives_by_id(self) -> dict[str, DriveRecord]:
+        """Load all drive records, returning latest per drive_id."""
+        entries = _read_jsonl(self._drives_path)
+        latest: dict[str, DriveRecord] = {}
+        for payload in entries:
+            record = _deserialize_drive_record(payload)
+            previous = latest.get(record.drive_id)
+            if previous is None or _drive_sort_key(record) >= _drive_sort_key(previous):
+                latest[record.drive_id] = record
+        return latest
+
+    def _latest_child_runs_by_id(self) -> dict[str, ChildRunRef]:
+        """Load all child run refs, returning latest per run_id.
+
+        Uses append-order as tiebreaker: later entries in the JSONL
+        file always win, since child run updates are appended in order.
+        """
+        if not self._child_runs_path.exists():
+            return {}
+
+        entries: list[dict[str, object]] = []
+        for line in self._child_runs_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                parsed = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise CorruptJSONLError(f"Malformed child_run JSONL record: {exc.msg}") from exc
+            if not isinstance(parsed, dict):
+                raise CorruptJSONLError("Malformed child_run JSONL record: expected object")
+            entries.append(cast(dict[str, object], parsed))
+
+        latest: dict[str, ChildRunRef] = {}
+        for payload in entries:
+            ref = _deserialize_child_run_ref(payload)
+            # Later entries always win (append-order wins)
+            latest[ref.run_id] = ref
+        return latest
+
+
+class DriveActiveRunBlockedError(RunStoreError):
+    """Raised when orch run is rejected because an active drive owns the plan.
+
+    Authority: docs/RFC-orch-drive.md section 14.1, section 7.1
+
+    When a drive is active for a plan, public single-run mutating commands
+    (orch run) must reject with a clear error including the active drive_id
+    and instructing the operator to use drive-scoped commands instead.
+
+    The required exit code for CLI callers is 2 (not found / not admitted).
+    """
+
+    def __init__(self, message: str, *, active_drive_id: str) -> None:
+        super().__init__(message)
+        self.active_drive_id = active_drive_id
+        self.message = message
+
+
+class AdmissionAuthority:
+    """Unified same-plan admission authority combining run-level and drive-level checks.
+
+    Authority: docs/RFC-orch-drive.md section 14
+
+    This class enforces the following admission rules:
+
+    1. **Drive admission** (section 14.1): At most one active drive per plan
+       identity. ``orch drive`` resolves-or-creates one active drive per plan.
+       A new drive may be created after the prior drive reaches terminal status.
+
+    2. **Run rejection under active drive** (section 7.1): When an active
+       drive exists for a plan, ``orch run`` must reject with exit code 2,
+       including the active ``drive_id`` and instructing the operator to use
+       drive-scoped commands.
+
+    3. **Child-run admission** (section 14.2): Within an active drive, child
+       runs are admitted by the scheduler using lease-addressable ownership
+       (drive_id + step_id + run_id). This is NOT checked by the admission
+       authority; it is scheduler-owned.
+
+    Attributes:
+        run_registry: The run registry for legacy run-level admission checks.
+        drive_store: The drive store for drive-level admission checks.
+    """
+
+    def __init__(
+        self,
+        run_registry: RunRegistry,
+        drive_store: DriveStore,
+    ) -> None:
+        self._run_registry = run_registry
+        self._drive_store = drive_store
+
+    @property
+    def run_registry(self) -> RunRegistry:
+        """Return the underlying run registry."""
+        return self._run_registry
+
+    @property
+    def drive_store(self) -> DriveStore:
+        """Return the underlying drive store."""
+        return self._drive_store
+
+    def can_admit_run(
+        self,
+        plan_path: str,
+        *,
+        current_run_id: str | None = None,
+    ) -> tuple[bool, str, str | None]:
+        """Check whether a standalone orch run can be admitted for the given plan.
+
+        Authority: docs/RFC-orch-drive.md section 7.1, 14.1
+
+        This method enforces two admission gates:
+            1. Active drive gate: If an active drive exists for this plan,
+               reject with the active drive_id.
+            2. Legacy run gate: If an active non-terminal run exists for this
+               plan (legacy same-plan exclusion), reject with conflict IDs.
+
+        Args:
+            plan_path: Canonical absolute path to the plan.
+            current_run_id: Optional run ID to exempt from conflict checks
+                (for resume/recover re-admission).
+
+        Returns:
+            Tuple of (allowed, reason, active_drive_id_if_blocked).
+            If allowed is True, reason is empty and drive_id is None.
+            If blocked by active drive, reason explains and drive_id is set.
+            If blocked by legacy run conflict, reason lists conflicts and
+            drive_id is None.
+        """
+        # Gate 1: Active drive blocks standalone run admission.
+        # Authority: RFC-orch-drive.md section 7.1
+        # "If an active drive exists for the same plan, public single-run
+        #  mutating commands must reject with a clear error explaining that
+        #  drive ownership is authoritative."
+        active_drive = self._drive_store.active_drive_for_plan(plan_path)
+        if active_drive is not None:
+            return (
+                False,
+                (
+                    f"active drive {active_drive.drive_id} owns plan "
+                    f"'{plan_path}'; use drive-scoped commands instead of "
+                    f"orch run"
+                ),
+                active_drive.drive_id,
+            )
+
+        # Gate 2: Legacy same-plan run exclusion.
+        # Authority: Existing RunRegistry.assert_can_admit_same_plan logic.
+        # Terminal-drive creation policy (RFC 14.1): when no active drive
+        # exists, fall back to the existing same-plan run admission check.
+        allowed, conflicts = self._run_registry.can_admit_same_plan(
+            plan_path=plan_path,
+            current_run_id=current_run_id,
+        )
+        if not allowed:
+            conflict_ids = ", ".join(record.run_id for record in conflicts)
+            return (
+                False,
+                f"conflicting active runs for plan '{plan_path}': {conflict_ids}",
+                None,
+            )
+
+        return (True, "", None)
+
+    def assert_can_admit_run(
+        self,
+        plan_path: str,
+        *,
+        current_run_id: str | None = None,
+    ) -> None:
+        """Raise if a standalone orch run cannot be admitted for the plan.
+
+        Authority: docs/RFC-orch-drive.md section 7.1, 14.1
+
+        Raises:
+            DriveActiveRunBlockedError: If an active drive blocks admission.
+            SamePlanAdmissionError: If legacy run conflicts block admission.
+        """
+        allowed, reason, active_drive_id = self.can_admit_run(
+            plan_path=plan_path,
+            current_run_id=current_run_id,
+        )
+        if allowed:
+            return
+
+        # Determine which error type to raise.
+        if active_drive_id is not None:
+            raise DriveActiveRunBlockedError(
+                reason,
+                active_drive_id=active_drive_id,
+            )
+
+        # Legacy run conflict — delegate to RunRegistry for the error.
+        # Re-run the check via RunRegistry to get the SamePlanAdmissionError
+        # with its canonical message format.
+        self._run_registry.assert_can_admit_same_plan(
+            plan_path=plan_path,
+            current_run_id=current_run_id,
+        )
+
+    def can_admit_drive(self, plan_path: str) -> tuple[bool, str, str | None]:
+        """Check whether a new drive can be created for the given plan.
+
+        Authority: docs/RFC-orch-drive.md section 14.1
+
+        A new drive may be created if:
+            - No active drive exists for the same plan identity.
+            - Terminal drives are allowed and do not block new drive creation.
+
+        Args:
+            plan_path: Canonical absolute path to the plan.
+
+        Returns:
+            Tuple of (allowed, reason, existing_drive_id_if_blocked).
+            If allowed is True, reason is empty and existing_drive_id is None.
+            If blocked, reason explains and existing_drive_id is set.
+        """
+        existing = self._drive_store.active_drive_for_plan(plan_path)
+        if existing is not None:
+            return (
+                False,
+                (
+                    f"active drive already exists for plan '{plan_path}': "
+                    f"drive_id={existing.drive_id}"
+                ),
+                existing.drive_id,
+            )
+        return (True, "", None)
+
+    def assert_can_admit_drive(self, plan_path: str) -> None:
+        """Raise if a new drive cannot be created for the plan.
+
+        Authority: docs/RFC-orch-drive.md section 14.1
+
+        Raises:
+            DriveAdmissionConflictError: If an active drive exists for this plan.
+        """
+        self._drive_store.assert_can_admit_drive(plan_path)
+
+    def resolve_or_create_drive(
+        self,
+        plan_path: str,
+        *,
+        agent: str = "",
+        max_parallelism: int = 4,
+    ) -> tuple[DriveRecord, bool]:
+        """Resolve the active drive for a plan, or create a new one.
+
+        Authority: docs/RFC-orch-drive.md section 7.2, 14.1
+
+        This method implements the "resolve-or-create" admission pattern:
+            - If an active drive already exists for the plan, return it.
+            - If no active drive exists, create a new one and return it.
+
+        Terminal drives are historical immutables and do not block new drive
+        creation (only active drives block).
+
+        Args:
+            plan_path: Canonical absolute path to ``plan.yaml``.
+            agent: Agent role that owns this drive (used only on creation).
+            max_parallelism: Maximum concurrent step child runs (1-32).
+
+        Returns:
+            Tuple of (DriveRecord, was_created).
+            was_created is True if a new drive was created, False if an
+            existing active drive was resolved.
+
+        Raises:
+            MaxParallelismError: If max_parallelism is outside [1, 32].
+        """
+        if max_parallelism < 1 or max_parallelism > 32:
+            raise MaxParallelismError(max_parallelism)
+
+        # Try to resolve an existing active drive.
+        existing = self._drive_store.active_drive_for_plan(plan_path)
+        if existing is not None:
+            return (existing, False)
+
+        # Create a new drive.
+        drive_id = f"drv_{generate_run_id()}"
+        now = _current_timestamp()
+        record = DriveRecord(
+            drive_id=drive_id,
+            plan_path=plan_path,
+            status="running",
+            started_at=now,
+            updated_at=now,
+            agent=agent,
+            max_parallelism=max_parallelism,
+            summary=f"Drive created for plan '{plan_path}' with max_parallelism={max_parallelism}",
+        )
+        self._drive_store.save_drive(record)
+        return (record, True)
+
+
 __all__ = [
+    "AdmissionAuthority",
     "RunRecord",
     "RunSummary",
     "HaltReason",
@@ -1284,6 +2394,7 @@ __all__ = [
     "CorruptJSONLError",
     "AppendConflictError",
     "SamePlanAdmissionError",
+    "DriveActiveRunBlockedError",
     "LegacyContinuityMinimumError",
     "CasesIndex",
     "RunRegistry",
@@ -1296,4 +2407,12 @@ __all__ = [
     "heartbeat_path",
     "classify_liveness",
     "latest_run",
+    # Drive store types
+    "DriveStore",
+    "DriveStoreError",
+    "DriveAdmissionConflictError",
+    "MaxParallelismError",
+    "TERMINAL_DRIVE_STATUSES",
+    "LeaseStatus",
+    "LeaseReleasedReason",
 ]

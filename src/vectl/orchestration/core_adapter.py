@@ -6,13 +6,18 @@ Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.6
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import Literal, Protocol
 
 from vectl import core
 from vectl.io import load_plan_definition, save_plan
 from vectl.models import IsolationMode, Plan, PlanError, StepStatus
-from vectl.orchestration.contracts import CoreSnapshot
+from vectl.orchestration.contracts import (
+    CoreSnapshot,
+    PlannerMutationBundle,
+    PlannerMutationItem,
+)
 from vectl.plan_path import resolve_claims_path
 
 
@@ -282,3 +287,291 @@ def _is_plan_complete(plan: Plan) -> bool:
         for phase in plan.phases
         for step in phase.steps
     )
+
+
+# ---------------------------------------------------------------------
+# Planner mutation application through vectl facade only
+# ---------------------------------------------------------------------
+# Authority: docs/RFC-orch-drive.md section 13.4
+# Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 5 (ownership matrix)
+#
+# Planner output must be applied through approved vectl facade surfaces only.
+# Direct plan.yaml edits remain forbidden. This applier enforces that
+# contract by mapping each PlannerMutationItem to its corresponding
+# vectl core function, loading/saving through the official PlanCoreAdapter.
+
+
+@dataclass(frozen=True)
+class PlannerMutationResult:
+    """Result of applying a planner mutation bundle through vectl facades.
+
+    Authority: docs/RFC-orch-drive.md section 13.5
+
+    Attributes:
+        applied_count: Number of mutations successfully applied.
+        failed_count: Number of mutations that failed to apply.
+        applied_actions: Descriptions of successfully applied mutations.
+        failed_actions: Descriptions of mutations that failed, with reasons.
+        affected_step_ids: Step IDs affected by successfully applied mutations.
+    """
+
+    applied_count: int = 0
+    failed_count: int = 0
+    applied_actions: tuple[str, ...] = ()
+    failed_actions: tuple[str, ...] = ()
+    affected_step_ids: tuple[str, ...] = ()
+
+
+class PlannerMutationApplier(Protocol):
+    """Protocol for applying planner mutation bundles through vectl facades.
+
+    Authority: docs/RFC-orch-drive.md section 13.4, 13.5
+
+    The applier translates each PlannerMutationItem into one or more
+    vectl core facade calls. It must never edit plan.yaml directly.
+    """
+
+    def apply_bundle(self, bundle: PlannerMutationBundle) -> PlannerMutationResult:
+        """Apply a planner mutation bundle through vectl facade surfaces only.
+
+        Authority: docs/RFC-orch-drive.md section 13.4
+
+        All mutations must be applied through approved vectl facade surfaces.
+        Direct plan.yaml edits remain forbidden.
+
+        Args:
+            bundle: Machine-readable planner mutation bundle to apply.
+
+        Returns:
+            PlannerMutationResult with apply/fail counts and affected steps.
+        """
+        ...
+
+
+class PlanPlannerMutationApplier:
+    """Concrete planner mutation applier using vectl core facades.
+
+    Authority: docs/RFC-orch-drive.md section 13.4, 13.5
+    Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 5 (ownership matrix)
+
+    This applier translates each PlannerMutationItem in a bundle to the
+    corresponding vectl core function call, using load/save through the
+    official plan definition I/O layer. It never edits plan.yaml directly.
+
+    Supported actions (RFC-orch-drive.md section 8.5.1):
+        - add-step: core.add_step
+        - edit-step: core.edit_step
+        - remove-step: core.remove_step
+        - move-step: core.move_step
+        - add-phase: core.add_phase
+        - edit-phase: core.edit_phase
+        - skip-step: core.skip_step (via lifecycle)
+        - complete-phase: core.complete_phase (via lifecycle)
+
+    Args:
+        plan_path: Path to the authoritative plan definition file.
+    """
+
+    def __init__(self, plan_path: Path) -> None:
+        self._plan_path = plan_path
+
+    def apply_bundle(self, bundle: PlannerMutationBundle) -> PlannerMutationResult:
+        """Apply a planner mutation bundle through vectl facade surfaces only.
+
+        Authority: docs/RFC-orch-drive.md section 13.4
+
+        Mutations are applied in order. If a mutation fails, it is recorded
+        in failed_actions but subsequent mutations are still attempted
+        (best-effort application). The calling driver decides whether to
+        transition to blocked_operator or failed_unrecoverable based on the
+        failure count and severity.
+
+        Args:
+            bundle: Machine-readable planner mutation bundle to apply.
+
+        Returns:
+            PlannerMutationResult with apply/fail counts and affected steps.
+        """
+        if bundle.status != "applyable":
+            return PlannerMutationResult(
+                failed_count=len(bundle.mutations),
+                failed_actions=tuple(
+                    f"bundle status={bundle.status}; cannot apply non-applyable bundle"
+                    for _ in bundle.mutations
+                ),
+            )
+
+        applied: list[str] = []
+        failed: list[str] = []
+        affected_steps: list[str] = []
+
+        for mutation in bundle.mutations:
+            try:
+                action_desc = self._apply_single_mutation(mutation)
+                applied.append(action_desc)
+                # Collect affected step IDs from the mutation.
+                step_id = self._extract_step_id(mutation)
+                if step_id:
+                    affected_steps.append(step_id)
+            except Exception as exc:
+                failed.append(f"action={mutation.action} reason={mutation.reason}: {exc}")
+
+        return PlannerMutationResult(
+            applied_count=len(applied),
+            failed_count=len(failed),
+            applied_actions=tuple(applied),
+            failed_actions=tuple(failed),
+            affected_step_ids=tuple(affected_steps),
+        )
+
+    def _apply_single_mutation(self, mutation: PlannerMutationItem) -> str:
+        """Apply a single mutation item through the vectl core facade.
+
+        Args:
+            mutation: The mutation item to apply.
+
+        Returns:
+            Human-readable description of the applied mutation.
+
+        Raises:
+            PlanError: If the mutation cannot be applied through core.
+            ValueError: If the mutation action is not recognized.
+        """
+        plan, file_hash = load_plan_definition(self._plan_path)
+        args = mutation.arguments
+
+        if mutation.action == "add-step":
+            phase_id = str(args.get("phase_id", ""))
+            step_id = args.get("step_id")
+            name = str(args.get("name", ""))
+            description = str(args.get("description", ""))
+            depends_on = _as_str_list(args.get("depends_on"))
+            refs = _as_str_list(args.get("refs"))
+            verification = str(args.get("verification", ""))
+            agent = args.get("agent")
+            plan, generated_id = core.add_step(
+                plan,
+                phase_id,
+                name,
+                step_id=str(step_id) if step_id is not None else None,
+                description=description,
+                depends_on=depends_on,
+                verification=verification,
+                refs=refs,
+                agent=str(agent) if agent is not None else None,
+            )
+            save_plan(plan, self._plan_path, expected_hash=file_hash)
+            return f"add-step: phase={phase_id} step={generated_id} name={name}"
+
+        if mutation.action == "edit-step":
+            step_id = str(args.get("step_id", ""))
+            changes = args.get("changes", {})
+            if not isinstance(changes, dict):
+                raise ValueError(f"edit-step changes must be dict, got {type(changes)}")
+            edit_kwargs: dict[str, object] = {}
+            if "name" in changes:
+                edit_kwargs["name"] = str(changes["name"])
+            if "description" in changes:
+                edit_kwargs["description"] = str(changes["description"])
+            if "verification" in changes:
+                edit_kwargs["verification"] = str(changes["verification"])
+            if "evidence_template" in changes:
+                edit_kwargs["evidence_template"] = str(changes["evidence_template"])
+            if "agent" in changes:
+                edit_kwargs["agent"] = (
+                    str(changes["agent"]) if changes["agent"] is not None else None
+                )
+            if "depends_on" in changes:
+                edit_kwargs["depends_on"] = list(_as_str_list(changes["depends_on"]))
+            if "refs" in changes:
+                edit_kwargs["refs"] = list(_as_str_list(changes["refs"]))
+            plan = core.edit_step(plan, step_id, **edit_kwargs)  # type: ignore[arg-type]
+            save_plan(plan, self._plan_path, expected_hash=file_hash)
+            return f"edit-step: step={step_id} fields={tuple(edit_kwargs.keys())}"
+
+        if mutation.action == "remove-step":
+            step_id = str(args.get("step_id", ""))
+            plan = core.remove_step(plan, step_id, force=True)
+            save_plan(plan, self._plan_path, expected_hash=file_hash)
+            return f"remove-step: step={step_id}"
+
+        if mutation.action == "move-step":
+            step_id = str(args.get("step_id", ""))
+            target_phase = str(args.get("target_phase", ""))
+            plan = core.move_step(plan, step_id, target_phase)
+            save_plan(plan, self._plan_path, expected_hash=file_hash)
+            return f"move-step: step={step_id} to={target_phase}"
+
+        if mutation.action == "add-phase":
+            name = str(args.get("name", ""))
+            raw_phase_id = args.get("phase_id")
+            add_phase_id: str | None = str(raw_phase_id) if raw_phase_id is not None else None
+            plan, generated_id = core.add_phase(
+                plan,
+                name,
+                phase_id=add_phase_id,
+            )
+            save_plan(plan, self._plan_path, expected_hash=file_hash)
+            return f"add-phase: phase={generated_id} name={name}"
+
+        if mutation.action == "edit-phase":
+            phase_id = str(args.get("phase_id", ""))
+            changes = args.get("changes", {})
+            if not isinstance(changes, dict):
+                raise ValueError(f"edit-phase changes must be dict, got {type(changes)}")
+            phase_kwargs: dict[str, object] = {}
+            if "name" in changes:
+                phase_kwargs["name"] = str(changes["name"])
+            if "depends_on" in changes:
+                phase_kwargs["depends_on"] = list(_as_str_list(changes["depends_on"]))
+            if "context" in changes:
+                phase_kwargs["context"] = str(changes["context"])
+            plan = core.edit_phase(plan, phase_id, **phase_kwargs)  # type: ignore[arg-type]
+            save_plan(plan, self._plan_path, expected_hash=file_hash)
+            return f"edit-phase: phase={phase_id} fields={tuple(phase_kwargs.keys())}"
+
+        if mutation.action == "skip-step":
+            step_id = str(args.get("step_id", ""))
+            reason = str(args.get("reason", ""))
+            plan = core.skip_step(plan, step_id, reason)
+            save_plan(plan, self._plan_path, expected_hash=file_hash)
+            return f"skip-step: step={step_id} reason={reason}"
+
+        if mutation.action == "complete-phase":
+            phase_id = str(args.get("phase_id", ""))
+            reason = str(args.get("reason", "planner auto-complete"))
+            plan, completed_ids = core.complete_phase(plan, phase_id, reason)
+            save_plan(plan, self._plan_path, expected_hash=file_hash)
+            return f"complete-phase: phase={phase_id} completed_steps={completed_ids}"
+
+        raise ValueError(f"Unsupported planner mutation action: {mutation.action}")
+
+    def _extract_step_id(self, mutation: PlannerMutationItem) -> str | None:
+        """Extract the primary step_id from a mutation's arguments.
+
+        Args:
+            mutation: The mutation item.
+
+        Returns:
+            The step_id if present in arguments, else None.
+        """
+        step_id = mutation.arguments.get("step_id")
+        if step_id is not None:
+            return str(step_id)
+        return None
+
+
+def _as_str_list(value: object) -> list[str]:
+    """Coerce a value to a list of strings.
+
+    Args:
+        value: Value to coerce. Accepts list, tuple, or None.
+
+    Returns:
+        List of strings.
+    """
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        return [str(item) for item in value]
+    return [str(value)]

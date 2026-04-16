@@ -14,6 +14,9 @@ import tempfile
 from pathlib import Path
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
 def _write_local_orch_fixture(root: Path) -> None:
     """Create a minimal, self-contained orchestration fixture."""
 
@@ -39,14 +42,8 @@ orchestration:
   runtime:
     default_runner: test
     artifact_root: .vectl/runs
-  role_profiles:
+  role_profile_overrides:
     python-executor:
-      agent_id: python-executor
-      prompt_family: coder
-      execution_context: linked_worktree
-      mutation_policy: worktree_changes
-      session_policy: reuse_allowed
-      output_contract: freeform_evidence
       default_runner: test
 """.strip()
         + "\n",
@@ -100,7 +97,7 @@ def test_orch_liveness_cli_entrypoint():
 
         # ACT: invoke the supported orchestration CLI against the local fixture
         result = subprocess.run(
-            ["uv", "run", "vectl", "orch", "run", "--json"],
+            ["uv", "run", "--project", str(PROJECT_ROOT), "vectl", "orch", "run", "--json"],
             capture_output=True,
             text=True,
             timeout=20,

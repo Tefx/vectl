@@ -153,7 +153,7 @@ class TestRuntimeSnapshot:
 
 
 class TestControlDecision:
-    """Test ControlDecision contract type (Section 3.4)."""
+    """Test ControlDecision contract type (Section 3.4 / RFC-orch-drive 9.2.1)."""
 
     def test_control_decision_is_dataclass(self):
         """Verify ControlDecision is a dataclass."""
@@ -163,14 +163,26 @@ class TestControlDecision:
 
     def test_control_decision_fields_match_spec(self):
         """
-        Verify ControlDecision has exactly the 4 documented fields.
+        Verify ControlDecision has the drive-aware expanded fields.
 
-        Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3.4
-        Fields: kind, reason, step_id, role
+        Authority: docs/RFC-orch-drive.md section 9.2.1
+        Fields: kind, reason, step_ids, role_bindings, case_ids,
+                planner_request, capacity_used, capacity_remaining,
+                barrier_required
         """
         from vectl.orchestration.contracts import ControlDecision
 
-        expected_fields = {"kind", "reason", "step_id", "role"}
+        expected_fields = {
+            "kind",
+            "reason",
+            "step_ids",
+            "role_bindings",
+            "case_ids",
+            "planner_request",
+            "capacity_used",
+            "capacity_remaining",
+            "barrier_required",
+        }
         actual_fields = {f.name for f in fields(ControlDecision)}
 
         assert actual_fields == expected_fields, (
@@ -181,7 +193,8 @@ class TestControlDecision:
         """
         Verify ControlDecision.kind uses correct Literal values.
 
-        Spec: Literal["dispatch", "resolve", "wait", "done"]
+        Authority: docs/RFC-orch-drive.md section 9.2.1
+        Literal: dispatch_batch, dispatch, resolve, replan, wait, done, halt
         """
         from typing import Literal, get_args, get_origin
 
@@ -192,7 +205,15 @@ class TestControlDecision:
 
         assert get_origin(kind_type) is Literal
         kind_values = set(get_args(kind_type))
-        expected_values = {"dispatch", "resolve", "wait", "done"}
+        expected_values = {
+            "dispatch_batch",
+            "dispatch",
+            "resolve",
+            "replan",
+            "wait",
+            "done",
+            "halt",
+        }
 
         assert kind_values == expected_values, (
             f"ControlDecision.kind Literal mismatch. Expected: {expected_values}, Got: {kind_values}"
@@ -200,16 +221,23 @@ class TestControlDecision:
 
     def test_control_decision_optional_fields(self):
         """
-        Verify step_id and role are optional (None default).
+        Verify all fields except kind and reason have defaults.
 
-        Spec: step_id: str | None = None, role: str | None = None
+        Authority: docs/RFC-orch-drive.md section 9.2.1
+        Only kind and reason are required; step_ids, role_bindings, etc.
+        have defaults.
         """
         from vectl.orchestration.contracts import ControlDecision
 
         # Test instantiation with minimal fields
         decision = ControlDecision(kind="done", reason="test")
-        assert decision.step_id is None
-        assert decision.role is None
+        assert decision.step_ids == ()
+        assert decision.role_bindings == {}
+        assert decision.case_ids == ()
+        assert decision.planner_request is None
+        assert decision.capacity_used == 0
+        assert decision.capacity_remaining == 0
+        assert decision.barrier_required is False
 
 
 class TestWorkLease:
@@ -517,7 +545,7 @@ class TestResolutionCase:
 
 
 class TestResolutionReport:
-    """Test ResolutionReport contract type (Section 3.9)."""
+    """Test ResolutionReport contract type (Section 3.9 / RFC-orch-drive 12.2)."""
 
     def test_resolution_report_is_dataclass(self):
         """Verify ResolutionReport is a dataclass."""
@@ -527,14 +555,21 @@ class TestResolutionReport:
 
     def test_resolution_report_fields_match_spec(self):
         """
-        Verify ResolutionReport has exactly the 4 documented fields.
+        Verify ResolutionReport has the documented fields.
 
-        Spec: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3.9
-        Fields: status, summary, evidence_refs, operator_message
+        Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 3.9
+        Authority: docs/RFC-orch-drive.md section 12.2
+        Fields: status, summary, evidence_refs, operator_message, planner_request
         """
         from vectl.orchestration.contracts import ResolutionReport
 
-        expected_fields = {"status", "summary", "evidence_refs", "operator_message"}
+        expected_fields = {
+            "status",
+            "summary",
+            "evidence_refs",
+            "operator_message",
+            "planner_request",
+        }
         actual_fields = {f.name for f in fields(ResolutionReport)}
 
         assert actual_fields == expected_fields, (
@@ -568,6 +603,13 @@ class TestResolutionReport:
 
         # Frozen dataclasses have __dataclass_fields__
         assert hasattr(ResolutionReport, "__dataclass_fields__")
+
+    def test_resolution_report_planner_request_optional(self):
+        """Verify planner_request defaults to None (backward-compatible addition)."""
+        from vectl.orchestration.contracts import ResolutionReport
+
+        report = ResolutionReport(status="unblocked", summary="test")
+        assert report.planner_request is None
 
 
 class TestIsolationModeContract:

@@ -85,14 +85,8 @@ def _write_vectl_yaml(root: Path, runner_cmd: str, runner_name: str = "fail-shim
         "orchestration": {
             "plan_path": "plan.yaml",
             "defaults": {"ordinary_role": "python-executor"},
-            "role_profiles": {
+            "role_profile_overrides": {
                 "python-executor": {
-                    "agent_id": "python-executor",
-                    "prompt_family": "coder",
-                    "execution_context": "linked_worktree",
-                    "mutation_policy": "worktree_changes",
-                    "session_policy": "reuse_allowed",
-                    "output_contract": "freeform_evidence",
                     "default_runner": runner_name,
                 },
             },
@@ -741,8 +735,8 @@ if __name__ == "__main__":
         print("  [wiring]           - Command registered but not connected")
         print("  [case-creation]    - Runner fault does not produce case")
         print("  [case-persistence] - Case not durable across recovery")
-        print("  [notification]      - Notification status transitions not wired")
-        print("  [artifact-schema]   - Case artifacts don't match §9.3.4 schema")
+        print("  [notification]     - Notification status transitions not wired")
+        print("  [artifact-schema]  - Case artifacts don't match §9.3.4 schema")
         print("  [crash]            - CLI crashed on edge-case input")
         print(
             "\nDownstream green owner: "

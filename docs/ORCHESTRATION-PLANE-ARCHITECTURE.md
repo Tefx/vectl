@@ -6,7 +6,7 @@
 **Status:** Target architecture  
 **Authority:** `docs/ADR-orchestration-role-profile-config-and-resolver-cleanup.md`, `docs/ADR-orchestration-role-agent-prompt-separation.md`, `docs/ORCHESTRATION-PLANE-LIVE-AUTHORITY-CONTRACT-LOCK.md`  
 **Scope:** Full target design, not an implementation slice  
-**Related docs:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`, `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`, `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`
+**Related docs:** `docs/ORCHESTRATION-PLANE-INTERFACES.md`, `docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`, `docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md`, `docs/RFC-orch-drive.md`
 
 ---
 
@@ -45,6 +45,31 @@ orchestration plane
 
 The orchestration plane is complete only when all four of its internal
 components cooperate. None of them individually substitutes for the whole plane.
+
+---
+
+### 2.2 Drive session model (Implemented)
+
+The orchestration surface now provides a durable **drive session** for full
+plan execution via `vectl orch drive`. A drive session is **not** a fifth top-level
+architecture component. It is the session-level coordination record that composes
+the four actual components:
+
+- `control` evaluates the next scheduler decision via `PlanAwareControl.evaluate()`
+- `roster` provides reusable resource facts via `RosterSnapshot`
+- `runtime` executes and reconciles child runs via `ConcreteDriveDriver`
+- `resolver` handles blocked or unresolved cases via `ResolutionCase` -> `ResolutionReport`
+
+The drive session owns orchestration-session state such as active child runs,
+frontier, barrier state, and aggregate observability. It does not replace
+component ownership boundaries.
+
+Drive implementation:
+- Drive record: `DriveRecord` in `src/vectl/orchestration/contracts.py`
+- Drive store: `DriveStore` in `src/vectl/orchestration/run_store.py`
+- Drive driver: `ConcreteDriveDriver` in `src/vectl/orchestration/driver.py`
+- CLI commands: `vectl orch drive`, `vectl orch drive-status`, `vectl orch drive-runs`,
+  `vectl orch drive-resume`, `vectl orch drive-recover`
 
 ---
 
@@ -230,51 +255,55 @@ always-on agentic surface.
 
 ## 6. Interaction Model
 
-## 6.1 Normal Flow
-
+## 6.1 Normal Flow (Implemented)
 ```text
-core state
+core state + drive session state
   -> control reads core + orchestration-plane state
-  -> control determines claimable/dispatchable work
+  -> control determines claimable frontier and dispatchable work batch
   -> control asks roster for compatible reusable resources
-  -> if needed, runtime prepares execution environment
-  -> work is dispatched
-  -> completion updates core and orchestration-plane state
+  -> runtime prepares execution environments and starts child runs
+  -> child runs reconcile/merge/complete through authoritative surfaces
+  -> control reevaluates until the drive reaches a terminal state
 ```
 
-Key property: normal flow should not require `resolver`.
+Key properties:
 
----
+- normal flow does not require `resolver`
+- normal flow may dispatch in parallel up to the drive's capacity (default 4, max 32)
+- the drive session is the durable loop owner, but `control` remains the
+  plan-aware decision authority
+- implementation: `ConcreteDriveDriver.run_drive_loop()`
 
-## 6.2 Blocked / Unresolved Flow
-
+## 6.2 Blocked / Unresolved Flow (Implemented)
 ```text
-core state + orchestration-plane state
+core state + drive session state
   -> control determines normal flow is not closed
-  -> control invokes resolver
-  -> resolver investigates using allowed tools
-  -> resolver returns control decisions/actions
-  -> control applies those decisions using roster/runtime/core surfaces
+  -> drive enters a barrier and stops new frontier admission
+  -> active child runs stabilize to a terminal set
+  -> control invokes resolver or planner as required
+  -> resolver/planner return bounded machine-readable outcomes
+  -> control applies those outcomes using roster/runtime/core/facade surfaces
+  -> drive either resumes normal scheduling, blocks for operator action, or halts
 ```
 
-Key property: `resolver` is a reasoning role inside the orchestration plane, not
-the whole plane itself.
+Key properties:
 
----
-
+- `resolver` is a reasoning role inside the orchestration plane, not the whole plane itself
+- planner is an authoritative mutation producer inside the orchestration loop, but final mutation still flows through vectl facade
+- barrier semantics prevent plan mutation and fresh dispatch from racing each other
+- implementation: `ConcreteDriveDriver._handle_resolve_decision()`, `_handle_replan_decision()`
 ## 7. Authority and Ownership Matrix
-
 | Concern | Owner |
 |--------|-------|
 | Plan graph, lifecycle, claims, authoritative state | `vectl core` |
 | Role references on plan-side work items | authoritative plan data |
 | Ordinary role-profile definitions | orchestration configuration |
-| Plan-aware orchestration flow | `control` |
+| Plan-aware orchestration flow and scheduler decisions | `control` |
+| Drive session state (frontier, barrier, active child runs, aggregate progress) | orchestration composition layer built from the four plane components |
 | Reusable agent/session resource registry | `roster` |
 | Mechanical worktree/runner/environment chores | `runtime` |
 | Complex blocker investigation and unblock reasoning | `resolver` |
-
----
+| Authoritative plan mutation from planner output | vectl facade over `vectl core` |
 
 ## 8. Task Semantics
 

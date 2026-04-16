@@ -6,13 +6,25 @@ Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3-5
 """
 
 from vectl.orchestration.contracts import (
+    BarrierReason,
+    ChildRunKind,
+    ChildRunRef,
+    ChildRunStatus,
     ControlDecision,
     CoreSnapshot,
     DispatchSpec,
+    DriveBarrier,
+    DriveRecord,
+    DriveStatus,
     ExecutionRequest,
     ExecutionResult,
     IsolationMode,
     OpenCodeLaunchConfig,
+    PlannerBundleStatus,
+    PlannerMutationAction,
+    PlannerMutationBundle,
+    PlannerMutationItem,
+    PlannerRequest,
     PromptArtifactPaths,
     PromptBundle,
     PromptRegistry,
@@ -50,6 +62,7 @@ from vectl.orchestration.dispatch_policy import (
 )
 from vectl.orchestration.interfaces import (
     Control,
+    PlannerAdapter,
     Resolver,
     Roster,
     Runtime,
@@ -99,10 +112,24 @@ __all__ = [
     "ResolutionCaseSource",
     "ResolutionReport",
     "WorktreeBinding",
+    # Drive scheduling types (contracts.py)
+    "BarrierReason",
+    "ChildRunKind",
+    "ChildRunRef",
+    "ChildRunStatus",
+    "DriveBarrier",
+    "DriveRecord",
+    "DriveStatus",
+    "PlannerBundleStatus",
+    "PlannerMutationAction",
+    "PlannerMutationBundle",
+    "PlannerMutationItem",
+    "PlannerRequest",
     # Core authority bridge contract (core_adapter.py)
     "CoreAdapter",
     # Component interfaces (interfaces.py)
     "Control",
+    "PlannerAdapter",
     "Roster",
     "Runtime",
     "Resolver",

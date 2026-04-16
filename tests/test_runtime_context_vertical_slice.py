@@ -70,4 +70,4 @@ def test_plan_aware_control_evaluates_dispatch_from_current_sources() -> None:
 
     decision = control.evaluate_current()
     assert decision.kind == "dispatch"
-    assert decision.step_id == "phase.step"
+    assert decision.step_ids == ("phase.step",)

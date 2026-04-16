@@ -87,6 +87,7 @@ from vectl.models import (
     StepStatus,
     format_step_selector,
 )
+from vectl.orch_app import ControlResult
 from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.plan_path import (
     is_linked_worktree,
@@ -657,6 +658,19 @@ def _build_orchestration_runtime_app_or_die(plan: Path | None) -> Any:
         _orch_internal_error(exc)
 
 
+def _enrich_drive_scope_result(result: ControlResult, drive_id: str) -> dict[str, Any]:
+    """Enrich a ControlResult with drive-scoped discrimination metadata.
+
+    Authority: docs/RFC-orch-drive.md §7.4 — flat surfaces must report
+    ``scope_kind: "drive"`` and a drive identifier to allow operators to
+    verify that ``--latest`` resolved to drive scope, not single-run scope.
+    """
+    payload: dict[str, Any] = asdict(result)
+    payload["scope_kind"] = "drive"
+    payload["drive_id"] = drive_id
+    return payload
+
+
 def _json_ready(value: Any) -> Any:
     """Convert CLI payload into JSON-serializable structure."""
 
@@ -746,6 +760,15 @@ def orch_run(
     """Start or resume an orchestration run.
 
     Contract authority: orch_app.py::OrchestrationApp.run()
+
+    Authority: docs/RFC-orch-drive.md section 7.1
+      - orch run must fail with exit code 2 if an active drive exists for
+        the same plan
+      - error text must include the active drive_id
+      - error text must instruct the operator to use drive-scoped commands
+
+    Selector safety authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §6
+      - exit 2 = not found / validation boundary for active-drive rejection
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
@@ -766,6 +789,11 @@ def orch_run(
         _orch_internal_error(exc)
         return
     if not result.success:
+        # Authority: RFC-orch-drive.md section 7.1
+        # "orch run must fail with exit code 2 if an active drive exists"
+        message = result.message.lower()
+        if "active drive exists" in message or "drive_id=" in message:
+            _die(result.message, code=2)
         _orch_die_on_failure(result.message)
     _emit_orch_payload(result, mode)
 
@@ -1004,23 +1032,58 @@ def orch_migration_advance_state(
 @orch_inspect_app.command("status")
 @orch_app.command("status")
 def orch_inspect_status(
-    run_id: str | None = OrchRunArgument,
+    run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     step_id: str | None = typer.Option(None, "--step", help="Step ID to inspect."),
     watch: bool = OrchWatchOption,
     json_flag: bool = OrchJsonOption,
     output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
+    drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
+    child_run_id: str | None = typer.Option(
+        None,
+        "--child-run-id",
+        help="Child-run drill-down selector (exclusive with DRIVE_ID and --latest).",
+    ),
 ) -> None:
     """Inspect current orchestration status.
 
     Contract authority: orch_app.py::OrchestrationApp.inspect_status()
     Selector safety authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §7.2, §6
+
+    Drive-scoped authority: docs/RFC-orch-drive.md §7.3, §7.4
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+
+    # Drive-scoped path: when drive_id or child_run_id is provided, or --latest
+    # selects a drive, or active drive exists as default, use drive inspection.
+    # Authority: docs/RFC-orch-drive.md §7.3, §7.4 — "--latest resolves to
+    # active drive scope, not single-run scope, when a drive exists."
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
+        _validate_child_run_scope_or_die(app_runtime, resolved_drive_id, child_run_id)
+        payload = app_runtime.inspect_drive_status(
+            drive_id=resolved_drive_id, child_run_id=child_run_id
+        )
+        _emit_orch_payload(payload, mode)
+        if watch:
+            payload = app_runtime.inspect_drive_status(
+                drive_id=resolved_drive_id, child_run_id=child_run_id
+            )
+            _emit_orch_payload(payload, mode)
+        return
+
+    # Legacy run-scoped path
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if latest and resolved_run is None:
         _die("No runs available for --latest selector", code=2)
@@ -1036,7 +1099,7 @@ def orch_inspect_status(
 @orch_inspect_app.command("events")
 @orch_app.command("events")
 def orch_inspect_events(
-    run_id: str | None = OrchRunArgument,
+    run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
     follow: bool = OrchFollowOption,
@@ -1045,15 +1108,47 @@ def orch_inspect_events(
     output: OrchOutputMode = OrchOutputOption,
     limit: int = typer.Option(100, "--limit", "-n", help="Maximum events to show."),
     plan: Path | None = OrchPlanOption,
+    drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
+    child_run_id: str | None = typer.Option(
+        None,
+        "--child-run-id",
+        help="Child-run drill-down selector (exclusive with DRIVE_ID and --latest).",
+    ),
 ) -> None:
     """Inspect orchestration events.
 
     Contract authority: orch_app.py::OrchestrationApp.inspect_events()
+    Drive-scoped authority: docs/RFC-orch-drive.md §7.3, §7.4
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=jsonl_flag)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+
+    # Drive-scoped path: --latest resolves to active drive scope.
+    # Authority: docs/RFC-orch-drive.md §7.3, §7.4
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
+        _validate_child_run_scope_or_die(app_runtime, resolved_drive_id, child_run_id)
+        payload = app_runtime.inspect_drive_events(
+            drive_id=resolved_drive_id, child_run_id=child_run_id, limit=limit
+        )
+        _emit_orch_payload(payload.data, mode)
+        if follow:
+            payload = app_runtime.inspect_drive_events(
+                drive_id=resolved_drive_id, child_run_id=child_run_id, limit=limit
+            )
+            _emit_orch_payload(payload.data, mode)
+        return
+
+    # Legacy run-scoped path
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if resolved_run is not None and step_id is None:
         step_id = _step_id_for_run(app_runtime, resolved_run)
@@ -1075,15 +1170,49 @@ def orch_inspect_logs(
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID."),
     step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
     plan: Path | None = OrchPlanOption,
+    drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
+    child_run_id: str | None = typer.Option(
+        None,
+        "--child-run-id",
+        help="Child-run drill-down selector (exclusive with DRIVE_ID and --latest).",
+    ),
 ) -> None:
     """Inspect run logs.
 
     Contract authority: orch_app.py::OrchestrationApp.inspect_logs()
+    Drive-scoped authority: docs/RFC-orch-drive.md §7.3, §7.4
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+
+    # Drive-scoped path: --latest resolves to active drive scope.
+    # Authority: docs/RFC-orch-drive.md §7.3, §7.4
     if run_id is not None and latest:
         _die("Specify either --run or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+        legacy_step_id=step_id,
+    )
+    if resolved_drive_id is not None:
+        _validate_child_run_scope_or_die(app_runtime, resolved_drive_id, child_run_id)
+        payload = app_runtime.inspect_drive_logs(
+            drive_id=resolved_drive_id, child_run_id=child_run_id
+        )
+        rows = payload.data[-tail:] if tail >= 0 else payload.data
+        _emit_orch_payload(rows, mode)
+        if follow:
+            rows = app_runtime.inspect_drive_logs(
+                drive_id=resolved_drive_id, child_run_id=child_run_id
+            ).data[-tail:]
+            _emit_orch_payload(rows, mode)
+        return
+
+    # Legacy run-scoped path
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     payload = app_runtime.inspect_logs(run_id=resolved_run, step_id=step_id)
     rows = payload.data[-tail:] if tail >= 0 else payload.data
@@ -1096,22 +1225,52 @@ def orch_inspect_logs(
 @orch_inspect_app.command("artifacts")
 @orch_app.command("artifacts")
 def orch_inspect_artifacts(
-    run_id: str | None = OrchRunArgument,
+    run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     kind: str | None = typer.Option(None, "--kind", help="Optional artifact kind filter token."),
     json_flag: bool = OrchJsonOption,
     output: OrchOutputMode = OrchOutputOption,
     step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
     plan: Path | None = OrchPlanOption,
+    drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
+    child_run_id: str | None = typer.Option(
+        None,
+        "--child-run-id",
+        help="Child-run drill-down selector (exclusive with DRIVE_ID and --latest).",
+    ),
 ) -> None:
     """Inspect derived artifacts from runs.
 
     Contract authority: orch_app.py::OrchestrationApp.inspect_artifacts()
+    Drive-scoped authority: docs/RFC-orch-drive.md §7.3, §7.4
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+
+    # Drive-scoped path: --latest resolves to active drive scope.
+    # Authority: docs/RFC-orch-drive.md §7.3, §7.4
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
+        _validate_child_run_scope_or_die(app_runtime, resolved_drive_id, child_run_id)
+        payload = app_runtime.inspect_drive_artifacts(
+            drive_id=resolved_drive_id, child_run_id=child_run_id
+        )
+        rows = payload.data
+        if kind is not None:
+            rows = tuple(row for row in rows if f"kind={kind}" in row or kind in row)
+        _emit_orch_payload(rows, mode)
+        return
+
+    # Legacy run-scoped path
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if resolved_run is not None and step_id is None:
         step_id = _step_id_for_run(app_runtime, resolved_run)
@@ -1131,15 +1290,45 @@ def orch_inspect_actions(
     output: OrchOutputMode = OrchOutputOption,
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID."),
     plan: Path | None = OrchPlanOption,
+    drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
+    child_run_id: str | None = typer.Option(
+        None,
+        "--child-run-id",
+        help="Child-run drill-down selector (exclusive with DRIVE_ID and --latest).",
+    ),
 ) -> None:
     """Inspect actions taken during a run.
 
     Contract authority: orch_app.py::OrchestrationApp.inspect_actions()
+    Drive-scoped authority: docs/RFC-orch-drive.md §7.3, §7.4
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+
+    # Drive-scoped path: --latest resolves to active drive scope.
+    # Authority: docs/RFC-orch-drive.md §7.3, §7.4
     if run_id is not None and latest:
         _die("Specify either --run or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=False,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
+        _validate_child_run_scope_or_die(app_runtime, resolved_drive_id, child_run_id)
+        payload = app_runtime.inspect_drive_actions(
+            drive_id=resolved_drive_id, child_run_id=child_run_id
+        )
+        rows = payload.data
+        if status is not None:
+            rows = tuple(row for row in rows if f"status={status}" in row)
+        _emit_orch_payload(rows, mode)
+        return
+
+    # Legacy run-scoped path
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if resolved_run is None:
         _die("Run selector required for action inspection: use --run or --latest")
@@ -1156,7 +1345,7 @@ def orch_inspect_actions(
 @orch_case_app.command("list")
 @orch_app.command("case-list")
 def orch_case_list(
-    run_id: str | None = OrchRunArgument,
+    run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     watch: bool = OrchWatchOption,
     json_flag: bool = OrchJsonOption,
@@ -1168,15 +1357,48 @@ def orch_case_list(
         help="Filter by status: open, resolved, halt.",
     ),
     plan: Path | None = OrchPlanOption,
+    drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
 ) -> None:
     """List cases (blocked/unresolved situations).
 
     Contract authority: orch_app.py::OrchestrationApp.case_list()
+    Drive-scoped authority: docs/RFC-orch-drive.md §7.3
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+
+    # Drive-scoped path: when drive selector is provided or active drive exists
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
+        # Use drive status to get blocked case IDs
+        drive_status = app_runtime.drive_status(drive_id=resolved_drive_id)
+        if drive_status.blocked_case_ids:
+            allowed_statuses = {"open", "resolved", "halt"}
+            if status is not None and status not in allowed_statuses:
+                _die("Invalid --status value. Expected one of: open, resolved, halt")
+            _emit_orch_payload(
+                tuple(f"case_id={cid} status=open" for cid in drive_status.blocked_case_ids),
+                mode,
+            )
+        else:
+            _emit_orch_payload((), mode)
+        if watch:
+            drive_status = app_runtime.drive_status(drive_id=resolved_drive_id)
+            _emit_orch_payload(
+                tuple(f"case_id={cid} status=open" for cid in drive_status.blocked_case_ids),
+                mode,
+            )
+        return
+
+    # Legacy path
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     del resolved_run
     allowed_statuses = {"open", "resolved", "halt"}
@@ -1226,6 +1448,7 @@ def orch_case_respond(
     json_flag: bool = OrchJsonOption,
     output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
+    drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
 ) -> None:
     """Respond to a case (operator input to resolver).
 
@@ -1256,22 +1479,48 @@ def orch_case_respond(
 @orch_control_app.command("pause")
 @orch_app.command("pause")
 def orch_control_pause(
-    run_id: str | None = OrchRunArgument,
+    run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     reason: str | None = typer.Option(None, "--reason", help="Optional pause reason."),
     json_flag: bool = OrchJsonOption,
     output: OrchOutputMode = OrchOutputOption,
     step_id: str | None = typer.Option(None, "--step", help="Specific step to pause."),
     plan: Path | None = OrchPlanOption,
+    drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
 ) -> None:
     """Pause orchestration (stop dispatching new work).
 
     Contract authority: orch_app.py::OrchestrationApp.control_pause()
+    Drive-scoped authority: docs/RFC-orch-drive.md §7.3
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+
+    # Drive-scoped path: when drive selector is provided, --latest resolves to
+    # active drive, or active drive exists as default (no explicit run/step).
+    # Authority: docs/RFC-orch-drive.md §7.3, §7.4
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+        legacy_step_id=step_id,
+    )
+    if resolved_drive_id is not None:
+        try:
+            result = app_runtime.control_drive_pause(drive_id=resolved_drive_id, reason=reason)
+        except Exception as exc:
+            _orch_internal_error(exc)
+            return
+        if not result.success:
+            _orch_die_on_failure(result.message)
+        _emit_orch_payload(_enrich_drive_scope_result(result, resolved_drive_id), mode)
+        return
+
+    # Legacy run-scoped path
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if step_id is None and resolved_run is not None:
         step_id = _step_id_for_run(app_runtime, resolved_run)
@@ -1288,22 +1537,48 @@ def orch_control_pause(
 @orch_control_app.command("unpause")
 @orch_app.command("unpause")
 def orch_control_unpause(
-    run_id: str | None = OrchRunArgument,
+    run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     reason: str | None = typer.Option(None, "--reason", help="Optional unpause reason."),
     json_flag: bool = OrchJsonOption,
     output: OrchOutputMode = OrchOutputOption,
     step_id: str | None = typer.Option(None, "--step", help="Specific step to unpause."),
     plan: Path | None = OrchPlanOption,
+    drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
 ) -> None:
     """Unpause orchestration (resume dispatching).
 
     Contract authority: orch_app.py::OrchestrationApp.control_unpause()
+    Drive-scoped authority: docs/RFC-orch-drive.md §7.3
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+
+    # Drive-scoped path: when drive selector is provided, --latest resolves to
+    # active drive, or active drive exists as default (no explicit run/step).
+    # Authority: docs/RFC-orch-drive.md §7.3, §7.4
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+        legacy_step_id=step_id,
+    )
+    if resolved_drive_id is not None:
+        try:
+            result = app_runtime.control_drive_unpause(drive_id=resolved_drive_id, reason=reason)
+        except Exception as exc:
+            _orch_internal_error(exc)
+            return
+        if not result.success:
+            _orch_die_on_failure(result.message)
+        _emit_orch_payload(_enrich_drive_scope_result(result, resolved_drive_id), mode)
+        return
+
+    # Legacy run-scoped path
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if step_id is None and resolved_run is not None:
         step_id = _step_id_for_run(app_runtime, resolved_run)
@@ -1320,22 +1595,57 @@ def orch_control_unpause(
 @orch_control_app.command("stop")
 @orch_app.command("stop")
 def orch_control_stop(
-    run_id: str | None = OrchRunArgument,
+    run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     reason: str | None = typer.Option(None, "--reason", "-r", help="Reason for stopping."),
-    force: bool = typer.Option(False, "--force", help="Immediate stop request."),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Immediate stop: cancel active step child runs (RFC §7.3.1).",
+    ),
     json_flag: bool = OrchJsonOption,
     output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
+    drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
 ) -> None:
     """Stop orchestration entirely.
 
     Contract authority: orch_app.py::OrchestrationApp.control_stop()
+
+    With --force, requests immediate stop semantics per RFC §7.3.1:
+    cancel active step child runs, preserve artifacts, allow resolver/planner
+    child runs to complete.
+
+    Drive-scoped authority: docs/RFC-orch-drive.md §7.3, §7.3.1
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+
+    # Drive-scoped path: --latest resolves to active drive scope.
+    # Authority: docs/RFC-orch-drive.md §7.3, §7.3.1, §7.4
     if run_id is not None and latest:
         _die("Specify either RUN_ID or --latest, not both")
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        allow_active_drive_default=True,
+        legacy_run_id=run_id,
+    )
+    if resolved_drive_id is not None:
+        try:
+            result = app_runtime.control_drive_stop(
+                drive_id=resolved_drive_id, reason=reason, force=force
+            )
+        except Exception as exc:
+            _orch_internal_error(exc)
+            return
+        if not result.success:
+            _orch_die_on_failure(result.message)
+        _emit_orch_payload(_enrich_drive_scope_result(result, resolved_drive_id), mode)
+        return
+
+    # Legacy run-scoped path
     resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
     if resolved_run is None and latest:
         _die("No runs available for --latest selector", code=2)
@@ -1419,6 +1729,370 @@ def orch_config_tools(
         out.print(_esc(payload.show_output))
         return
     _emit_orch_payload(payload, mode)
+
+
+# ---------------------------------------------------------------------------
+# vectl orch drive: drive-scoped orchestration commands
+# Authority: docs/RFC-orch-drive.md sections 7.2, 7.3
+# ---------------------------------------------------------------------------
+
+
+OrchDriveIdArgument = typer.Argument(
+    None,
+    help="Drive identifier (omit to use --latest).",
+)
+OrchMaxParallelismOption = typer.Option(
+    4,
+    "--max-parallelism",
+    help="Maximum concurrent step child runs (1-32, default 4).",
+)
+OrchDryRunDriveOption = typer.Option(
+    False, "--dry-run", help="Compute result without applying changes."
+)
+OrchChildRunIdOption = typer.Option(
+    None,
+    "--child-run-id",
+    help="Child-run selector for drill-down (exclusive with DRIVE_ID and --latest).",
+)
+OrchDriveForceOption = typer.Option(
+    False,
+    "--force",
+    help="Request immediate stop (cancel active step child runs).",
+)
+
+
+def _resolve_latest_drive_id(app_runtime: Any) -> str | None:
+    """Resolve the latest drive ID from the orchestration app boundary.
+
+    Authority: docs/RFC-orch-drive.md section 7.5
+
+    Returns:
+        The latest drive_id, or None if no drives exist.
+    """
+    return app_runtime.resolve_latest_drive_id()
+
+
+def _resolve_optional_drive_scope(
+    app_runtime: Any,
+    *,
+    drive_id: str | None,
+    latest: bool,
+    child_run_id: str | None = None,
+    allow_active_drive_default: bool,
+    legacy_run_id: str | None = None,
+    legacy_step_id: str | None = None,
+) -> str | None:
+    """Resolve drive scope only when a drive selector is actually available.
+
+    Authority: docs/RFC-orch-drive.md sections 7.3, 7.4
+
+    ``--latest`` routes to drive scope only when a drive exists. Otherwise the
+    flat CLI surface falls back to the legacy run-scoped ``--latest`` behavior.
+
+    Args:
+        app_runtime: The orchestration app runtime.
+        drive_id: Explicit drive selector.
+        latest: Whether ``--latest`` was provided.
+        child_run_id: Optional child-run selector.
+        allow_active_drive_default: Whether missing selectors may default to
+            the active drive for the plan.
+        legacy_run_id: Legacy run selector for conflict/default checks.
+        legacy_step_id: Legacy step selector for conflict/default checks.
+
+    Returns:
+        The resolved drive identifier when drive scope applies, else ``None``.
+
+    Raises:
+        typer.Exit: On selector conflicts or invalid child-run defaults.
+    """
+    if child_run_id is not None and (drive_id is not None or latest):
+        _die("--child-run-id is exclusive with DRIVE_ID and --latest", code=2)
+    if drive_id is not None and latest:
+        _die("Specify either DRIVE_ID or --latest, not both")
+
+    if drive_id is not None:
+        return drive_id
+
+    if latest:
+        return _resolve_latest_drive_id(app_runtime)
+
+    active_drive_id = app_runtime.has_active_drive_for_plan()
+    if child_run_id is not None:
+        if active_drive_id is None:
+            _die(
+                "No active drive found. Provide DRIVE_ID, --latest, or --child-run-id",
+                code=3,
+            )
+        return active_drive_id
+
+    if not allow_active_drive_default or active_drive_id is None:
+        return None
+
+    if legacy_run_id is not None or legacy_step_id is not None:
+        return None
+
+    return active_drive_id
+
+
+def _resolve_drive_selector_or_die(
+    app_runtime: Any,
+    drive_id: str | None,
+    latest: bool,
+    child_run_id: str | None = None,
+) -> str:
+    """Resolve a drive selector and validate selector exclusivity.
+
+    Authority: docs/RFC-orch-drive.md sections 7.3, 7.4
+    Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md section 7.7
+
+    Selector composition rules (per RFC §7.4):
+    - --child-run-id is exclusive with positional DRIVE_ID and --latest
+    - When an active drive exists, inspection/control defaults target the drive
+    - --latest selects the most recently updated drive for the plan
+
+    Args:
+        app_runtime: The orchestration app runtime.
+        drive_id: Explicit drive ID, or None.
+        latest: Whether --latest was specified.
+        child_run_id: Optional child-run selector for drill-down.
+
+    Returns:
+        The resolved drive_id string.
+
+    Raises:
+        typer.Exit: On selector conflict or missing selector.
+    """
+    resolved_drive_id = _resolve_optional_drive_scope(
+        app_runtime,
+        drive_id=drive_id,
+        latest=latest,
+        child_run_id=child_run_id,
+        allow_active_drive_default=True,
+    )
+    if resolved_drive_id is None:
+        _die("No drives available for --latest selector", code=2)
+
+    return resolved_drive_id
+
+
+def _validate_child_run_scope_or_die(
+    app_runtime: Any,
+    drive_id: str,
+    child_run_id: str | None,
+) -> None:
+    """Validate that a child run belongs to the specified drive.
+
+    Authority: docs/RFC-orch-drive.md section 7.4
+
+    Per RFC: "a child-run selector that does not belong to the selected
+    drive must fail with exit code 2."
+
+    Args:
+        app_runtime: The orchestration app runtime.
+        drive_id: The drive to validate against.
+        child_run_id: The child run to validate, or None (no-op).
+    """
+    if child_run_id is None:
+        return
+    from vectl.orchestration.inspection_queries import ChildRunScopeError
+
+    try:
+        store = app_runtime._drive_store()
+        from vectl.orchestration.inspection_queries import validate_child_run_in_drive
+
+        validate_child_run_in_drive(drive_id, child_run_id, drive_store=store)
+    except ChildRunScopeError as exc:
+        _die(str(exc), code=2)
+
+
+@orch_app.command("drive")
+def orch_drive(
+    agent: str | None = OrchAgentOption,
+    max_parallelism: int = OrchMaxParallelismOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Start or resolve a full-plan orchestration drive.
+
+    Authority: docs/RFC-orch-drive.md section 7.2
+
+    If an active drive already exists for the same plan, this command fails
+    with exit code 2 and reports the active drive_id.
+
+    Contract authority: orch_app.py::OrchestrationApp.start_drive()
+    """
+    from vectl.orchestration.driver import DriveAdmissionError, MaxParallelismError
+
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    if max_parallelism < 1 or max_parallelism > 32:
+        _die(
+            f"max-parallelism must be between 1 and 32, got {max_parallelism}",
+            code=2,
+        )
+    try:
+        result = app_runtime.start_drive(
+            agent=agent or "",
+            max_parallelism=max_parallelism,
+        )
+    except DriveAdmissionError as exc:
+        # Authority: RFC-orch-drive.md section 7.1
+        # "exit code: 2" + "error text must include the active drive_id"
+        _die(
+            f"Active drive already exists for this plan (drive_id={exc.active_drive_id}). "
+            f"Use drive-scoped commands instead: "
+            f"'vectl orch drive-status {exc.active_drive_id}'",
+            code=2,
+        )
+        return
+    except MaxParallelismError as exc:
+        _die(str(exc), code=2)
+        return
+    except Exception as exc:
+        _orch_internal_error(exc)
+        return
+    _emit_orch_payload(result, mode)
+
+
+@orch_app.command("drive-status")
+def orch_drive_status(
+    drive_id: str | None = OrchDriveIdArgument,
+    latest: bool = OrchLatestOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Show current drive status.
+
+    Authority: docs/RFC-orch-drive.md section 7.2
+
+    Contract authority: orch_app.py::OrchestrationApp.drive_status()
+    """
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    if drive_id is not None and latest:
+        _die("Specify either DRIVE_ID or --latest, not both")
+    if drive_id is None and not latest:
+        _die("Drive status requires explicit selector: provide DRIVE_ID or --latest", code=3)
+    resolved_drive_id = drive_id
+    if latest:
+        resolved_drive_id = _resolve_latest_drive_id(app_runtime)
+    if resolved_drive_id is None:
+        _die("No drives available for --latest selector", code=2)
+    try:
+        result = app_runtime.drive_status(drive_id=resolved_drive_id)
+    except Exception as exc:
+        _orch_internal_error(exc)
+        return
+    if result.summary.startswith("drive ") and "not found" in result.summary:
+        _die(f"Drive not found: {resolved_drive_id}", code=2)
+    _emit_orch_payload(result, mode)
+
+
+@orch_app.command("drive-runs")
+def orch_drive_runs(
+    drive_id: str | None = OrchDriveIdArgument,
+    latest: bool = OrchLatestOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """List child runs belonging to a drive.
+
+    Authority: docs/RFC-orch-drive.md section 7.2
+
+    Contract authority: orch_app.py::OrchestrationApp.drive_runs()
+    """
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    if drive_id is not None and latest:
+        _die("Specify either DRIVE_ID or --latest, not both")
+    if drive_id is None and not latest:
+        _die("Drive runs requires explicit selector: provide DRIVE_ID or --latest", code=3)
+    resolved_drive_id = drive_id
+    if latest:
+        resolved_drive_id = _resolve_latest_drive_id(app_runtime)
+    if resolved_drive_id is None:
+        _die("No drives available for --latest selector", code=2)
+    try:
+        runs = app_runtime.drive_runs(drive_id=resolved_drive_id)
+    except Exception as exc:
+        _orch_internal_error(exc)
+        return
+    if not runs:
+        _emit_orch_payload([], mode)
+        return
+    _emit_orch_payload(runs, mode)
+
+
+@orch_app.command("drive-resume")
+def orch_drive_resume(
+    drive_id: str | None = OrchDriveIdArgument,
+    latest: bool = OrchLatestOption,
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Resume an interrupted drive session.
+
+    Authority: docs/RFC-orch-drive.md section 7.2
+
+    Contract authority: orch_app.py::OrchestrationApp.resume_drive()
+    """
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    if drive_id is not None and latest:
+        _die("Specify either DRIVE_ID or --latest, not both")
+    if drive_id is None and not latest:
+        _die("Drive resume requires explicit selector: provide DRIVE_ID or --latest", code=3)
+    resolved_drive_id = drive_id
+    if latest:
+        resolved_drive_id = _resolve_latest_drive_id(app_runtime)
+    if resolved_drive_id is None:
+        _die("No drives available for --latest selector", code=2)
+    try:
+        result = app_runtime.resume_drive(drive_id=resolved_drive_id)
+    except Exception as exc:
+        _orch_internal_error(exc)
+        return
+    _emit_orch_payload(result, mode)
+
+
+@orch_app.command("drive-recover")
+def orch_drive_recover(
+    drive_id: str | None = OrchDriveIdArgument,
+    latest: bool = OrchLatestOption,
+    dry_run: bool = OrchDryRunDriveOption,
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
+    json_flag: bool = OrchJsonOption,
+    output: OrchOutputMode = OrchOutputOption,
+    plan: Path | None = OrchPlanOption,
+) -> None:
+    """Recover a drive from interrupted state.
+
+    Authority: docs/RFC-orch-drive.md section 7.2
+
+    Contract authority: orch_app.py::OrchestrationApp.recover_drive()
+    """
+    del yes
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    if drive_id is not None and latest:
+        _die("Specify either DRIVE_ID or --latest, not both")
+    if drive_id is None and not latest:
+        _die("Drive recover requires explicit selector: provide DRIVE_ID or --latest", code=3)
+    resolved_drive_id = drive_id
+    if latest:
+        resolved_drive_id = _resolve_latest_drive_id(app_runtime)
+    if resolved_drive_id is None:
+        _die("No drives available for --latest selector", code=2)
+    try:
+        result = app_runtime.recover_drive(drive_id=resolved_drive_id, dry_run=dry_run)
+    except Exception as exc:
+        _orch_internal_error(exc)
+        return
+    _emit_orch_payload(result, mode)
 
 
 @app.command()

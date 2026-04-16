@@ -42,6 +42,8 @@ import yaml
 
 from tests.expected_red import expected_red_module
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 pytestmark = expected_red_module(
     owner="cli_blackbox_active_control_recovery.define_active_control_recovery_tests",
     rationale="Non-dry-run recovery reaching terminal closure is intentionally red until "
@@ -184,13 +186,23 @@ def _init_git_repo(root: Path) -> None:
 
 def _run_vectl(args: list[str], cwd: Path, timeout: int = 30) -> subprocess.CompletedProcess[str]:
     """Run vectl CLI."""
-    return subprocess.run(
-        ["uv", "run", "vectl"] + args,
+    result = subprocess.run(
+        ["uv", "run", "--project", str(PROJECT_ROOT), "vectl"] + args,
         cwd=str(cwd),
         capture_output=True,
         text=True,
         timeout=timeout,
     )
+    combined = f"{result.stdout}\n{result.stderr}".lower()
+    if (
+        "failed to spawn: `vectl`" in combined
+        or "no such file or directory (os error 2)" in combined
+    ):
+        raise AssertionError(
+            "CLI spawn regression: `uv run vectl` must be launched with the repo project "
+            "when tests execute from an isolated tempdir cwd"
+        )
+    return result
 
 
 # ---------------------------------------------------------------------------

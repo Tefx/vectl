@@ -2,6 +2,7 @@
 Component interface Protocols for the orchestration plane.
 
 Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4
+Authority: docs/RFC-orch-drive.md sections 12, 13 (planner/resolver integration)
 """
 
 from __future__ import annotations
@@ -13,6 +14,8 @@ from vectl.orchestration.contracts import (
     CoreSnapshot,
     ExecutionRequest,
     ExecutionResult,
+    PlannerMutationBundle,
+    PlannerRequest,
     ResolutionCase,
     ResolutionReport,
     RosterSnapshot,
@@ -360,4 +363,45 @@ class LifecycleMutationPort(Protocol):
         reconcile_disposition: Literal["merged", "noop"],
     ) -> None:
         """Complete a step only after reconcile closed as ``merged`` or ``noop``."""
+        ...
+
+
+class PlannerAdapter(Protocol):
+    """Approved planner facade boundary for drive scheduling.
+
+    Authority: docs/RFC-orch-drive.md sections 13, 13.4
+
+    The planner adapter defines the contract for invoking a planner child
+    run and consuming its machine-readable mutation output.
+
+    Does Not Own:
+        - plan mutation semantics beyond the approved vectl facade surface
+        - scheduling or barrier policy
+        - resolver reasoning
+
+    Contract Locks:
+        - All mutations must be applied through approved vectl facade only
+        - Direct ``plan.yaml`` edits remain forbidden
+    """
+
+    def invoke(self, request: PlannerRequest) -> PlannerMutationBundle:
+        """Invoke the planner with a mutation request.
+
+        Args:
+            request: Machine-readable planner request from resolver.
+
+        Returns:
+            PlannerMutationBundle with structured mutation output.
+        """
+        ...
+
+    def apply(self, bundle: PlannerMutationBundle) -> None:
+        """Apply a validated planner mutation bundle through the vectl facade.
+
+        Args:
+            bundle: A bundle with status ``applyable`` to apply.
+
+        Raises:
+            ValueError: If bundle status is not ``applyable``.
+        """
         ...

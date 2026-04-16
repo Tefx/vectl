@@ -551,6 +551,66 @@ List canonical tool registry for allowlist authoring.
 
 ### 7.6 Migration Family
 
+### 7.7 Drive Lifecycle Family
+
+#### `vectl orch drive`
+
+Start or continue full-plan orchestration for the selected plan.
+
+**Flags:**
+- `--agent ROLE`: Default dispatch role for ordinary step work
+- `--max-parallelism N`: Parallel frontier limit (default 4, min 1, max 32)
+- `--json`: Output drive result as JSON
+- `--output MODE`: Output mode (human, json, jsonl)
+- `--plan PATH`: Path to the plan/config target
+
+**Behavior:**
+1. Resolve or create the active drive for the plan
+2. Freeze drive creation parameters on first creation
+3. Enter the drive loop until terminal status or operator boundary
+
+**Exit codes:** 0, 1, 2, 3, 4, 5
+
+#### `vectl orch drive-status [DRIVE_ID|--latest]`
+
+Show drive aggregate status including frontier, active child runs, barrier, and summary.
+
+#### `vectl orch drive-runs [DRIVE_ID|--latest]`
+
+List child runs belonging to one drive.
+
+#### `vectl orch drive-resume [DRIVE_ID|--latest]`
+
+Resume an interrupted active drive using frozen drive parameters.
+
+#### `vectl orch drive-recover [DRIVE_ID|--latest]`
+
+Recover drive state from durable drive and child-run artifacts.
+
+#### Drive-scoped selector rules
+
+- when an active drive exists, inspection and control defaults target the drive
+- `--child-run-id <RUN_ID>` is exclusive with positional `DRIVE_ID` and `--latest`
+- a child-run selector that does not belong to the selected drive must fail with exit code `2`
+- `orch run` must fail with exit code `2` if an active drive exists for the same plan
+
+#### Drive control commands
+
+```bash
+vectl orch pause [DRIVE_ID|--latest] [--reason TEXT]
+vectl orch unpause [DRIVE_ID|--latest]
+vectl orch stop [DRIVE_ID|--latest] [--reason TEXT] [--force]
+```
+
+`stop --force` semantics:
+- Request cancellation of all active **step** child runs through the runner cancellation surface
+- Preserve child-run artifacts even when cancellation is requested
+- Do NOT abruptly kill resolver or planner child runs; allow them to reach terminal report
+- If runner does not support cancellation, classify affected child run as `stall` and transition via normal barrier path
+- Once all active child runs are terminal or classified, transition drive to `stopped`
+
+---
+
 #### `vectl orch migration validate-cutover`
 
 Validate orchestration-plane cutover readiness.
@@ -717,6 +777,27 @@ For ordinary roles these may coincide. For resolver defaults they intentionally
 permit one shared resolver family with two distinct concrete agent prompts:
 `blocked-case-coordinator` and `blocked-case-coordinator-tacit`.
 
+### 8.4.1 Drive Configuration Extension
+
+The config schema is extended with a drive section:
+
+```yaml
+orchestration:
+  drive:
+    max_parallelism: 4
+    collect_poll_interval_ms: 250
+    resolver_timeout_seconds: 300
+    planner_timeout_seconds: 300
+```
+
+Validation:
+- `drive.max_parallelism` must be between 1 and 32 inclusive
+- `drive.collect_poll_interval_ms` must be > 0
+- `drive.resolver_timeout_seconds` must be > 0
+- `drive.planner_timeout_seconds` must be > 0
+
+Drive creation parameters are frozen into the drive record on first `orch drive`
+creation and reused by drive resume/recover.
 ### 8.5 Validation Rules
 
 Configuration is validated against these rules:
@@ -978,6 +1059,54 @@ See §9.2 for projection replay semantics.
 
 ---
 
+### 10.4 Drive Event Family
+
+Drive-capable implementations must emit at least these event kinds:
+
+- `drive_started`
+- `drive_status_changed`
+- `drive_barrier_entered`
+- `drive_barrier_cleared`
+- `planner_invoked`
+- `planner_applied`
+- `resolver_invoked`
+- `resolver_returned`
+- `child_run_admitted`
+- `child_run_final`
+- `drive_final`
+
+Minimum drive event envelope:
+
+```json
+{
+  "seq": 42,
+  "prev_hash": "sha256:...",
+  "entry_hash": "sha256:...",
+  "timestamp": "2026-04-14T12:00:00Z",
+  "kind": "drive_status_changed",
+  "drive_id": "drv_01K...",
+  "run_id": null,
+  "step_id": null,
+  "payload": {}
+}
+```
+
+Child-run-scoped events must include `child_run_id`:
+
+```json
+{
+  "seq": 43,
+  "prev_hash": "sha256:...",
+  "entry_hash": "sha256:...",
+  "timestamp": "2026-04-14T12:00:01Z",
+  "kind": "child_run_admitted",
+  "drive_id": "drv_01K...",
+  "run_id": "run_01A...",
+  "step_id": "core.verify",
+  "payload": {"step_id": "core.verify", "kind": "step"}
+}
+```
+
 ## 11. Implementation Notes
 
 ### 11.1 Config Loading Implementation
@@ -995,6 +1124,23 @@ Events are emitted via the `EventSink` protocol defined in `events.py`.
 ### 11.4 Tool Registry Implementation
 
 The `tool_registry.py` module implements §8.4.
+
+### 11.5 Drive Implementation
+
+Drive commands are implemented in `src/vectl/cli.py` with delegation to:
+
+- `src/vectl/orch_app.py::OrchestrationApp` - Application facade
+- `src/vectl/orchestration/driver.py::ConcreteDriveDriver` - Drive loop implementation
+- `src/vectl/orchestration/run_store.py::DriveStore` - Drive persistence
+- `src/vectl/orchestration/control.py::PlanAwareControl` - Control decisions
+- `src/vectl/orchestration/events.py` - Drive event emission
+
+Drive commands available:
+- `vectl orch drive` - `orch_app.start_drive()`
+- `vectl orch drive-status` - `orch_app.drive_status()`
+- `vectl orch drive-runs` - `orch_app.drive_runs()`
+- `vectl orch drive-resume` - `orch_app.resume_drive()`
+- `vectl orch drive-recover` - `orch_app.recover_drive()`
 
 ---
 

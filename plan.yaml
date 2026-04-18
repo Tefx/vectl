@@ -87968,7 +87968,6 @@ phases:
     verification: uv run pytest tests/ -x --tb=short
     refs:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
-    - src/vectl/plan_helpers.py
     - src/vectl/cli.py
     - src/vectl/mcp_server.py
   - id: arch-demolition-wave-1.dem-003-extract-duplicate-step-id-formatting-owner

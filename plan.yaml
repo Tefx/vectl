@@ -88044,6 +88044,48 @@ phases:
     imports, known CoreAdapter fakes are updated, and verification commands pass.
   depends_on:
   - arch-demolition-wave-2
+  steps:
+  - id: arch-demolition-wave-3.dem-008-and-dem-011-collapse-inspection-query-delegation-stack
+    name: DEM-008 and DEM-011 collapse inspection query delegation stack
+    status: pending
+    description: Resolve DEM-008 and DEM-011 by deleting RunInspectionBoundary, RunRegistryInspectionView,
+      RunsQuery, CasesQuery, RunsQueryImpl, and CasesQueryImpl; keep stable read DTOs
+      in src/vectl/orchestration/inspection_queries.py as the canonical DTO home;
+      and rewrite query_runs() and query_cases() to operate directly on RunRegistry
+      without wrapper-only indirection.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/inspection_queries.py
+    - src/vectl/orchestration/run_store.py
+    - src/vectl/orch_app.py
+  - id: arch-demolition-wave-3.dem-009-relocate-step-data-and-collapse-adapter-indirection
+    name: DEM-009 relocate step data and collapse adapter indirection
+    status: pending
+    description: Resolve DEM-009 by creating src/vectl/orchestration/step_data.py
+      as the leaf owner of StepData, deleting CoreStepDataAdapter and the StepDataAdapter
+      protocol, extending CoreAdapter with load_step_data_for_dispatch(step_id), switching
+      DispatchCoordinator to use core_adapter directly, and updating all known _FakeCoreAdapter
+      test doubles to implement the surviving seam without introducing reverse imports.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/step_data.py
+    - src/vectl/orchestration/core_adapter.py
+    - src/vectl/orchestration/dispatch_policy.py
+    - tests/orchestration/
+  - id: arch-demolition-wave-3.dem-010-replace-tool-family-registry-shell-with-module-helpers
+    name: DEM-010 replace tool-family registry shell with module helpers
+    status: pending
+    description: Resolve DEM-010 by deleting the ToolFamilyRegistry OO wrapper in
+      src/vectl/orchestration/tool_registry.py, replacing it with module-level helpers/constants
+      over canonical metadata, and updating resolver_gateway authorization to call
+      those helpers directly.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/tool_registry.py
+    - src/vectl/orchestration/resolver_gateway.py
 - id: arch-demolition-wave-4
   name: Architectural Demolition — Wave 4 Unify Orchestration Authority Surfaces
   status: locked

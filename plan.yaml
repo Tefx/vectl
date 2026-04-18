@@ -87927,3 +87927,11 @@ phases:
     debt, and verification commands pass.
   depends_on:
   - arch-demolition-wave-1
+- id: arch-demolition-wave-3
+  name: Architectural Demolition — Wave 3 Flatten Wrappers & Inspection Query Stack
+  status: locked
+  gate: Wave 3 complete when DEM-008..DEM-011 are resolved, inspection queries call
+    RunRegistry directly, StepData lives in orchestration/step_data.py without reverse
+    imports, known CoreAdapter fakes are updated, and verification commands pass.
+  depends_on:
+  - arch-demolition-wave-2

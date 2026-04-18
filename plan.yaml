@@ -87943,3 +87943,12 @@ phases:
     to surviving seams, and verification commands pass.
   depends_on:
   - arch-demolition-wave-3
+- id: arch-demolition-wave-5
+  name: Architectural Demolition — Wave 5 Give Review Flow a Real Implementation
+  status: locked
+  gate: Wave 5 complete when DEM-014 lands atomically on the post-rename DriveDriver
+    state, DefaultReviewGate is the real implementation entry point, review invocation
+    is wired between terminal execution and authoritative completion, and verification
+    commands pass.
+  depends_on:
+  - arch-demolition-wave-4

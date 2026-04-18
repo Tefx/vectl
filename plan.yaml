@@ -87923,6 +87923,18 @@ phases:
     verification: uv run pytest tests/ -x --tb=short
     evidence_template: Name the focused shell-surface tests added or tightened and
       paste the full-suite result used to lock Wave 0.
+  - id: arch-demolition-w0.orchestration-characterization
+    name: Pin orchestration/read-path characterization coverage
+    status: pending
+    description: 'Add or tighten characterization coverage for Wave 0 orchestration
+      behaviors: inspection query outputs consumed by orch_app and drive/review behavior
+      around post-execution decision paths. No later demolition step may delete this
+      coverage without equivalent or stronger replacement.'
+    verification: uv run pytest tests/ -x --tb=short
+    evidence_template: Name the focused orchestration suites that pin inspection-query
+      and post-execution review behavior, plus the full-suite result.
+    depends_on:
+    - arch-demolition-w0.shell-characterization
 - id: arch-demolition-wave-1
   name: Architectural Demolition — Wave 1 Deduplicate Direct Copies
   status: locked

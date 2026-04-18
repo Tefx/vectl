@@ -88143,6 +88143,33 @@ phases:
     commands pass.
   depends_on:
   - arch-demolition-wave-4
+  steps:
+  - id: arch-demolition-wave-5.dem-014-implement-defaultreviewgate-concretely
+    name: DEM-014 implement DefaultReviewGate concretely
+    status: pending
+    description: Resolve the first half of DEM-014 by adding a concrete DefaultReviewGate
+      in src/vectl/orchestration/review_gate.py that implements evaluate(step_id,
+      execution_result, artifact_refs=()) -> ReviewGateResult and owns post-execution
+      review normalization, including malformed-output handling that degrades to needs_fix
+      or operator_required rather than silent pass.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/review_gate.py
+  - id: arch-demolition-wave-5.dem-014-wire-review-gate-into-drivedriver-and-remove-protocol-only-seam
+    name: DEM-014 wire review gate into DriveDriver and remove protocol-only seam
+    status: pending
+    description: Complete DEM-014 atomically by wiring DefaultReviewGate into DriveDriver.__init__
+      as the default review_gate, adding a named post-execution review helper in the
+      driver, routing terminal execution facts through that helper before authoritative
+      completion, removing the protocol-only ReviewGate seam only after tests cover
+      the concrete path, and deleting any temporary ConcreteDriveDriver compatibility
+      alias by the end of the wave.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/driver.py
+    - src/vectl/orchestration/review_gate.py
 - id: arch-demolition-wave-6
   name: Architectural Demolition — Wave 6 Simplify Duplicate-Step-ID Domain Model
   status: locked

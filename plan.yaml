@@ -88178,6 +88178,22 @@ phases:
     commands pass.
   depends_on:
   - arch-demolition-wave-5
+  steps:
+  - id: arch-demolition-wave-6.dem-017-collapse-duplicate-step-id-leaf-wrappers-without-breaking-outputs
+    name: DEM-017 collapse duplicate-step-id leaf wrappers without breaking outputs
+    status: pending
+    description: Resolve DEM-017 by preserving top-level duplicate-step-id report/result
+      objects while removing or fully inlining tiny nested wrappers such as DuplicateStepIdPhaseRef,
+      DuplicateStepIdResolutionPath, and DuplicateStepIdRetryEvidence; prefer shared
+      serialization helpers over repeated hand-built mapping logic; and lock CLI/MCP
+      structured output stability with snapshot or golden-file coverage unless an
+      intentional format change is explicitly documented.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/models.py
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
 - id: arch-demolition-wave-7
   name: Architectural Demolition — Wave 7 Re-cut Large Files by Real Behavior Only
   status: locked

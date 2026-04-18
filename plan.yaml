@@ -87960,3 +87960,12 @@ phases:
     commands pass.
   depends_on:
   - arch-demolition-wave-5
+- id: arch-demolition-wave-7
+  name: Architectural Demolition — Wave 7 Re-cut Large Files by Real Behavior Only
+  status: locked
+  gate: Wave 7 complete when DEM-018 and DEM-019 land using only the approved module
+    split map, file-size ceilings are met, config/contracts ownership docstrings are
+    frozen, repo-wide readiness commands pass, and any deferred expected-red is explicitly
+    governed in evidence.
+  depends_on:
+  - arch-demolition-wave-6

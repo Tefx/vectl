@@ -87979,7 +87979,6 @@ phases:
     verification: uv run pytest tests/ -x --tb=short
     refs:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
-    - src/vectl/duplicate_step_id_format.py
     - src/vectl/cli.py
     - src/vectl/mcp_server.py
   - id: arch-demolition-wave-1.dem-004-keep-claim-metadata-lifecycle-owned

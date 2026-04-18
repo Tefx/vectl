@@ -88094,6 +88094,46 @@ phases:
     to surviving seams, and verification commands pass.
   depends_on:
   - arch-demolition-wave-3
+  steps:
+  - id: arch-demolition-wave-4.dem-005-and-dem-006-deduplicate-control-and-resolver-contracts
+    name: DEM-005 and DEM-006 deduplicate control and resolver contracts
+    status: pending
+    description: Resolve DEM-005 and DEM-006 by keeping the canonical Control and
+      Resolver contract definitions in src/vectl/orchestration/interfaces.py, deleting
+      the duplicate protocol definitions from control.py and resolver.py, and preserving
+      PlanAwareControl and BoundResolver import paths and call sites unchanged.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/interfaces.py
+    - src/vectl/orchestration/control.py
+    - src/vectl/orchestration/resolver.py
+  - id: arch-demolition-wave-4.dem-007-converge-on-coreadapter-as-the-only-mutation-authority-seam
+    name: DEM-007 converge on CoreAdapter as the only mutation authority seam
+    status: pending
+    description: Resolve DEM-007 by removing LifecycleMutationPort, migrating contract-lock
+      coverage to the surviving CoreAdapter public boundary, and proving the CoreAdapter
+      seam still works cleanly after Wave 3 removed inspection-query protocol layers.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/interfaces.py
+    - src/vectl/orchestration/core_adapter.py
+    - tests/orchestration/
+  - id: arch-demolition-wave-4.dem-016-retire-public-role-and-prompt-registry-protocols
+    name: DEM-016 retire public role and prompt registry protocols
+    status: pending
+    description: Resolve DEM-016 by removing public RoleProfileRegistry and PromptRegistry
+      protocols from contracts.py, treating ConfigRoleProfileRegistry and ConfigPromptRegistry
+      as the concrete in-repo authority surfaces, and updating surviving type annotations,
+      constructors, and tests to validate concrete or duck-typed behavior rather than
+      protocol existence.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/contracts.py
+    - src/vectl/orchestration/config.py
+    - src/vectl/orchestration/dispatch_policy.py
 - id: arch-demolition-wave-5
   name: Architectural Demolition — Wave 5 Give Review Flow a Real Implementation
   status: locked

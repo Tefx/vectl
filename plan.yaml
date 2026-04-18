@@ -87956,7 +87956,6 @@ phases:
     verification: uv run pytest tests/ -x --tb=short
     refs:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
-    - src/vectl/agents_md.py
     - src/vectl/cli.py
     - src/vectl/core.py
     - src/vectl/mcp_server.py

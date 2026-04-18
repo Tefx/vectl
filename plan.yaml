@@ -87952,3 +87952,11 @@ phases:
     commands pass.
   depends_on:
   - arch-demolition-wave-4
+- id: arch-demolition-wave-6
+  name: Architectural Demolition — Wave 6 Simplify Duplicate-Step-ID Domain Model
+  status: locked
+  gate: Wave 6 complete when DEM-017 reduces duplicate-step-id nested leaf wrappers
+    by at least three without destabilizing CLI/MCP structured outputs, and verification
+    commands pass.
+  depends_on:
+  - arch-demolition-wave-5

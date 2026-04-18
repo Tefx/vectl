@@ -88067,7 +88067,6 @@ phases:
     verification: uv run pytest tests/ -x --tb=short
     refs:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
-    - src/vectl/orchestration/step_data.py
     - src/vectl/orchestration/core_adapter.py
     - src/vectl/orchestration/dispatch_policy.py
     - tests/orchestration/

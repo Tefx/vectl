@@ -87943,6 +87943,59 @@ phases:
     import graph stays acyclic, and verification commands pass.
   depends_on:
   - arch-demolition-wave-0
+  steps:
+  - id: arch-demolition-wave-1.dem-001-canonicalize-agents-md-ownership
+    name: DEM-001 canonicalize agents-md ownership
+    status: pending
+    description: Resolve DEM-001 by creating src/vectl/agents_md.py as the one production
+      owner of AgentsTarget, AGENTS_MD_* snippet constants, detect_agents_target(),
+      and upsert_agents_md(); convert cli.py, core.py, MCP/init flows, and any shell
+      call sites into thin wrappers over the shared module; keep only a temporary
+      documented deprecated core.py re-export if compatibility requires it for one
+      wave cycle.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/agents_md.py
+    - src/vectl/cli.py
+    - src/vectl/core.py
+    - src/vectl/mcp_server.py
+  - id: arch-demolition-wave-1.dem-002-extract-shared-next-step-helper
+    name: DEM-002 extract shared next-step helper
+    status: pending
+    description: Resolve DEM-002 by extracting get_next_steps_with_phase() into src/vectl/plan_helpers.py
+      as the canonical shared plan-query helper and updating both CLI and MCP to import
+      the shared implementation instead of carrying local copies.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/plan_helpers.py
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+  - id: arch-demolition-wave-1.dem-003-extract-duplicate-step-id-formatting-owner
+    name: DEM-003 extract duplicate-step-id formatting owner
+    status: pending
+    description: Resolve DEM-003 by extracting duplicate-step-id diagnostic and recommendation
+      formatting into src/vectl/duplicate_step_id_format.py and updating CLI and MCP
+      to consume the shared formatter boundary.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/duplicate_step_id_format.py
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+  - id: arch-demolition-wave-1.dem-004-keep-claim-metadata-lifecycle-owned
+    name: DEM-004 keep claim metadata lifecycle-owned
+    status: pending
+    description: Resolve DEM-004 by keeping shared claim/affinity/conflict metadata
+      lifecycle-owned in src/vectl/lifecycle.py and making mcp_server.py consume that
+      domain metadata via a thin transport envelope instead of redefining parallel
+      MCP-only models.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/lifecycle.py
+    - src/vectl/mcp_server.py
 - id: arch-demolition-wave-2
   name: Architectural Demolition — Wave 2 Delete Dead Exported Surfaces
   status: locked

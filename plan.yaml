@@ -88004,6 +88004,38 @@ phases:
     debt, and verification commands pass.
   depends_on:
   - arch-demolition-wave-1
+  steps:
+  - id: arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports
+    name: DEM-012 remove dead control-channel DTO exports
+    status: pending
+    description: Resolve DEM-012 by deleting InspectView and CaseView from src/vectl/orchestration/control_channel.py,
+      removing any __all__ exports or production imports that keep them alive, and
+      preserving only tests that still verify surviving boundaries.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/control_channel.py
+  - id: arch-demolition-wave-2.dem-013-delete-speculative-continuity-artifact-seams
+    name: DEM-013 delete speculative continuity artifact seams
+    status: pending
+    description: Resolve DEM-013 by deleting ArtifactReader and ArtifactWriter from
+      src/vectl/orchestration/continuity_artifacts.py and removing exports, imports,
+      and tests tied only to the dead speculative persistence seams.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/continuity_artifacts.py
+  - id: arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell
+    name: DEM-015 rename concrete drive driver and retire protocol shell
+    status: pending
+    description: Resolve DEM-015 by deleting the DriveDriver protocol in src/vectl/orchestration/driver.py,
+      renaming ConcreteDriveDriver to DriveDriver, migrating imports, and retaining
+      a documented deprecated ConcreteDriveDriver alias for one wave cycle only, scheduled
+      for removal no later than the end of Wave 5.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/driver.py
 - id: arch-demolition-wave-3
   name: Architectural Demolition — Wave 3 Flatten Wrappers & Inspection Query Stack
   status: locked

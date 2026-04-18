@@ -87911,6 +87911,18 @@ phases:
   gate: Wave 0 complete when characterization coverage pins all touched behaviors
     and `uv run pytest tests/ -x --tb=short` passes with focused touched-surface tests
     named in evidence.
+  steps:
+  - id: arch-demolition-w0.shell-characterization
+    name: Pin shell-surface characterization coverage
+    status: pending
+    description: 'Add or tighten characterization coverage for Wave 0 shell behaviors:
+      agents-md detect/upsert behavior, get_next_steps_with_phase ordering/filtering,
+      duplicate-step-id diagnostic rendering, and vectl_claim conflict/affinity shaping
+      across CLI and MCP. This is the safety rail required before DEM-001..DEM-004
+      demolition begins.'
+    verification: uv run pytest tests/ -x --tb=short
+    evidence_template: Name the focused shell-surface tests added or tightened and
+      paste the full-suite result used to lock Wave 0.
 - id: arch-demolition-wave-1
   name: Architectural Demolition — Wave 1 Deduplicate Direct Copies
   status: locked

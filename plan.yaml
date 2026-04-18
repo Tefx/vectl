@@ -88203,3 +88203,59 @@ phases:
     governed in evidence.
   depends_on:
   - arch-demolition-wave-6
+  steps:
+  - id: arch-demolition-wave-7.dem-018-split-cli-core-and-mcp-surfaces-by-real-behavior
+    name: DEM-018 split CLI, core, and MCP surfaces by real behavior
+    status: pending
+    description: 'Resolve the first shell/core/MCP part of DEM-018 by re-cutting cli.py,
+      core.py, and mcp_server.py only into the approved concrete behavior modules:
+      cli_agents_md.py, cli_plan.py, cli_render.py, cli_orchestration.py, core_plan_queries.py,
+      core_plan_mutations.py, core_duplicate_step_id.py, mcp_core_tools.py, mcp_project_tools.py,
+      and mcp_render_tools.py. No new Protocol-only, abstract-only, or __init__-only
+      re-export modules may be introduced.'
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/cli.py
+    - src/vectl/core.py
+    - src/vectl/mcp_server.py
+  - id: arch-demolition-wave-7.dem-018-split-orchestration-app-run-store-and-driver-by-real-behavior
+    name: DEM-018 split orchestration app, run store, and driver by real behavior
+    status: pending
+    description: Resolve the orchestration part of DEM-018 by re-cutting orch_app.py
+      into orch_app_wiring.py, orch_app_read_surfaces.py, and orch_app_drive_ops.py;
+      splitting run_store.py into run_store_persistence.py and run_store_queries.py;
+      splitting driver.py into driver_start_loop.py and driver_recovery.py; and mirroring
+      the source split in tests using test_<module_basename>.py unless an existing
+      package-level suite is explicitly documented as the owner.
+    verification: uv run pytest tests/ -x --tb=short
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orch_app.py
+    - src/vectl/orchestration/run_store.py
+    - src/vectl/orchestration/driver.py
+    - tests/
+  - id: arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate
+    name: DEM-019 freeze config/contracts ownership and close with repo-wide readiness
+      gate
+    status: pending
+    description: 'Resolve DEM-019 and finish Wave 7 by adding explicit owns: sections
+      to the module docstrings in src/vectl/orchestration/config.py and contracts.py
+      with no overlapping model ownership, enforcing the Wave 7 file-size ceilings,
+      proving user-facing behavior is unchanged, and running the final repo-wide readiness
+      gate before declaring demolition complete. If any repo-wide clean pass is deferred,
+      evidence must name why it is non-blocking, who owns it, the tracking reference,
+      expected resolution date, and the lifecycle/disposition that keeps it from being
+      mistaken for an ungoverned regression.'
+    verification: uv run pytest tests/ -x --tb=short && uv run vectl --help && uv
+      run python -c "import vectl; print('Import OK')"
+    refs:
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - src/vectl/orchestration/config.py
+    - src/vectl/orchestration/contracts.py
+    - src/vectl/cli.py
+    - src/vectl/core.py
+    - src/vectl/mcp_server.py
+    - src/vectl/orch_app.py
+    - src/vectl/orchestration/run_store.py
+    - src/vectl/orchestration/driver.py

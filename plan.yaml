@@ -87905,3 +87905,9 @@ phases:
       \ green: yes\n  - Independent re-runs confirmed green and count consistency\n\
       - Evidence consistency: pass/skip counts consistent, zero failures\n- Gate decision:\
       \ OPEN\n\nheadline: PASS\ngate_open_allowed: true"
+- id: arch-demolition-wave-0
+  name: Architectural Demolition — Wave 0 Characterization & Safety Rails
+  status: pending
+  gate: Wave 0 complete when characterization coverage pins all touched behaviors
+    and `uv run pytest tests/ -x --tb=short` passes with focused touched-surface tests
+    named in evidence.

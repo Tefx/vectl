@@ -88254,6 +88254,7 @@ phases:
     - src/vectl/orchestration/interfaces.py
     - src/vectl/orchestration/control.py
     - src/vectl/orchestration/resolver.py
+    agent: python-refactor-master-tacit
   - id: arch-demolition-wave-4.dem-007-converge-on-coreadapter-as-the-only-mutation-authority-seam
     name: DEM-007 converge on CoreAdapter as the only mutation authority seam
     status: pending

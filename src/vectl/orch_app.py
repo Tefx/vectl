@@ -2080,6 +2080,7 @@ class OrchestrationApp:
             drive_store=self._drive_store(),
             core_adapter=self._core_adapter,
             control=self._control,
+            resolver=self._resolver,
             run_registry=self._run_registry(config=self._effective_orchestration_config()),
             control_channel=self._control_channel(),
             child_run_launcher=self._launch_drive_step_child_run,

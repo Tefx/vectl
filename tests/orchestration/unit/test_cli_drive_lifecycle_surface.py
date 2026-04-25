@@ -125,6 +125,13 @@ class TestDriveStartSurface:
         result2 = app2.start_drive(agent="test-agent", max_parallelism=32)
         assert result2.status == "running"
 
+    def test_drive_driver_wires_app_resolver(self, tmp_path: Path) -> None:
+        """App-built drive drivers carry the configured resolver into loop passes."""
+        app = _build_app(tmp_path)
+        driver = app._drive_driver()
+
+        assert driver._resolver is app._resolver
+
 
 # ------------------------------------------------------------------
 # drive_status surface

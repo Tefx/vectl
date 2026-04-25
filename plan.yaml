@@ -88231,6 +88231,7 @@ phases:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/orchestration/tool_registry.py
     - src/vectl/orchestration/resolver_gateway.py
+    agent: python-executor
 - id: arch-demolition-wave-4
   name: Architectural Demolition — Wave 4 Unify Orchestration Authority Surfaces
   status: locked

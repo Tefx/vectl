@@ -825,6 +825,58 @@ def test_resolve_case_invokes_configured_default_resolver_role(
     assert "resolver_role_id=blocked-case-coordinator" in cast(tuple[str, ...], seen["work_refs"])
 
 
+def test_resolve_case_parses_opencode_stdout_wrapped_resolution_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Resolver accepts JSON report payload wrapped in OpenCode success summary."""
+    app = _build_app(tmp_path)
+
+    report_payload = {
+        "status": "unblocked",
+        "summary": "resolved through opencode stdout",
+        "evidence_refs": ["resolver://stdout-json"],
+        "operator_message": None,
+    }
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-stdout")
+    monkeypatch.setattr(
+        app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-stdout",
+    )
+    monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-stdout")
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-stdout",
+            status="success",
+            output_summary=(
+                "OpenCode completed successfully (exit 0); stdout="
+                f"{json.dumps(report_payload)}"
+            ),
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-stdout",
+            case_source="runtime_failure",
+            reason="Blocked steps require resolution: core.ready",
+            summary="repair the blocked step",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+        )
+    )
+
+    assert report.status == "unblocked"
+    assert report.summary.endswith("resolved through opencode stdout")
+    assert "resolver://stdout-json" in report.evidence_refs
+
+
 def test_resolve_case_supports_explicit_tacit_resolver_config_selection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

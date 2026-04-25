@@ -96,8 +96,10 @@ class TestPromptArtifactPathsContract:
             run_id="run-123",
             workspace=Path("/ws"),
         )
-        assert paths.prompt_bundle_path.endswith(f"{_RUNS_INPUT_DIR}/{_PROMPT_BUNDLE_FILENAME}"), (
-            f"prompt_bundle_path={paths.prompt_bundle_path} does not end with {_RUNS_INPUT_DIR}/{_PROMPT_BUNDLE_FILENAME}"
+        expected_suffix = f"{_RUNS_INPUT_DIR}/{_PROMPT_BUNDLE_FILENAME}"
+        assert paths.prompt_bundle_path.endswith(expected_suffix), (
+            f"prompt_bundle_path={paths.prompt_bundle_path} "
+            f"does not end with {expected_suffix}"
         )
 
     def test_authority_runner_prompt_under_input_dir(self) -> None:
@@ -110,8 +112,10 @@ class TestPromptArtifactPathsContract:
             run_id="run-123",
             workspace=Path("/ws"),
         )
-        assert paths.runner_prompt_path.endswith(f"{_RUNS_INPUT_DIR}/{_RUNNER_PROMPT_FILENAME}"), (
-            f"runner_prompt_path={paths.runner_prompt_path} does not end with {_RUNS_INPUT_DIR}/{_RUNNER_PROMPT_FILENAME}"
+        expected_suffix = f"{_RUNS_INPUT_DIR}/{_RUNNER_PROMPT_FILENAME}"
+        assert paths.runner_prompt_path.endswith(expected_suffix), (
+            f"runner_prompt_path={paths.runner_prompt_path} "
+            f"does not end with {expected_suffix}"
         )
 
     def test_workspace_prompt_under_orch_dir(self) -> None:
@@ -126,7 +130,8 @@ class TestPromptArtifactPathsContract:
         )
         expected_suffix = f"{_WORKSPACE_ORCH_DIR}/{_RUNNER_PROMPT_FILENAME}"
         assert paths.workspace_prompt_path.endswith(expected_suffix), (
-            f"workspace_prompt_path={paths.workspace_prompt_path} does not end with {expected_suffix}"
+            f"workspace_prompt_path={paths.workspace_prompt_path} "
+            f"does not end with {expected_suffix}"
         )
 
     def test_workspace_prompt_relative_is_frozen_constant(self) -> None:
@@ -675,6 +680,42 @@ class TestPromptMaterializationContract:
         assert "agent-1" in content
         assert "System instructions here." in content
         assert "Do the thing." in content
+
+    def test_resolution_report_output_contract_renders_json_prompt(
+        self, tmp_path: Path
+    ) -> None:
+        """Resolution-report runs must ask the runner for JSON, not generic YAML."""
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        paths = resolve_prompt_artifact_paths(
+            artifact_root=artifact_root,
+            run_id="resolver-run-1",
+            workspace=workspace,
+        )
+        bundle = PromptBundle(
+            system_prompt="Produce a ResolutionReport.",
+            task_prompt="Resolve the blocked case.",
+            messages=(),
+        )
+
+        materialize_prompt_artifacts(
+            bundle=bundle,
+            artifact_paths=paths,
+            role_id="blocked-case-coordinator",
+            agent_id="blocked-case-coordinator",
+            runner="opencode",
+            output_contract="resolution_report",
+        )
+
+        prompt_content = Path(paths.runner_prompt_path).read_text(encoding="utf-8")
+        bundle_payload = json.loads(Path(paths.prompt_bundle_path).read_text(encoding="utf-8"))
+        assert bundle_payload["output_contract"] == "resolution_report"
+        assert "Return ONLY one JSON object" in prompt_content
+        assert '"status": "unblocked|waiting|operator_required|halt"' in prompt_content
+        assert "Return YAML exactly" not in prompt_content
 
     def test_materialize_creates_workspace_copy(self, tmp_path: Path) -> None:
         """materialize must create workspace-copy .vectl/orch/runner_prompt.md."""

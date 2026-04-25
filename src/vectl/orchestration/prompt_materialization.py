@@ -165,6 +165,7 @@ def materialize_prompt_artifacts(
     role_id: str,
     agent_id: str,
     runner: str,
+    output_contract: str = "freeform_evidence",
 ) -> None:
     """Write the authoritative prompt artifacts to disk.
 
@@ -195,6 +196,7 @@ def materialize_prompt_artifacts(
         "role_id": role_id,
         "agent_id": agent_id,
         "runner": runner,
+        "output_contract": output_contract,
         "system_prompt": bundle.system_prompt,
         "task_prompt": bundle.task_prompt,
         "messages": [dict(m) for m in bundle.messages],
@@ -209,6 +211,7 @@ def materialize_prompt_artifacts(
         role_id=role_id,
         agent_id=agent_id,
         bundle=bundle,
+        output_contract=output_contract,
     )
     authority_prompt_path.write_text(runner_prompt_content)
 
@@ -223,6 +226,7 @@ def _render_runner_prompt_md(
     role_id: str,
     agent_id: str,
     bundle: PromptBundle,
+    output_contract: str = "freeform_evidence",
 ) -> str:
     """Render the flattened runner-consumable Markdown prompt.
 
@@ -280,13 +284,7 @@ def _render_runner_prompt_md(
     # 5. Output contract
     parts.append("## Output Contract")
     parts.append("")
-    parts.append("Return YAML exactly:")
-    parts.append("```yaml")
-    parts.append('status: "SUCCESS|FAIL"')
-    parts.append("evidence: |")
-    parts.append("  <filled evidence with files changed and verification outputs>")
-    parts.append('error: "<if FAIL, raw error; else empty>"')
-    parts.append("```")
+    parts.extend(_output_contract_lines(output_contract))
     parts.append("")
 
     # 6. Execution rules
@@ -298,6 +296,33 @@ def _render_runner_prompt_md(
     parts.append("")
 
     return "\n".join(parts)
+
+
+def _output_contract_lines(output_contract: str) -> list[str]:
+    """Return runner-visible output contract instructions."""
+
+    if output_contract == "resolution_report":
+        return [
+            "Return ONLY one JSON object. Do not include Markdown, prose, or code fences.",
+            "Schema:",
+            "{",
+            '  "status": "unblocked|waiting|operator_required|halt",',
+            '  "summary": "non-empty human-readable summary",',
+            '  "evidence_refs": ["evidence reference strings"],',
+            '  "operator_message": null',
+            "}",
+            "Use status=operator_required when automatic closure is unsafe or unverifiable.",
+        ]
+
+    return [
+        "Return YAML exactly:",
+        "```yaml",
+        'status: "SUCCESS|FAIL"',
+        "evidence: |",
+        "  <filled evidence with files changed and verification outputs>",
+        'error: "<if FAIL, raw error; else empty>"',
+        "```",
+    ]
 
 
 # ---------------------------------------------------------------------

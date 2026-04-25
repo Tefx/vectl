@@ -1243,6 +1243,7 @@ class OrchestrationApp:
             role_id=dispatch_spec.role_id,
             agent_id=dispatch_spec.role_id,
             runner=dispatch_spec.runner,
+            output_contract=dispatch_spec.output_contract,
         )
 
         # Update the request with validated prompt artifact paths.
@@ -1332,6 +1333,7 @@ class OrchestrationApp:
             role_id=dispatch_spec.role_id,
             agent_id=dispatch_spec.role_id,
             runner=dispatch_spec.runner,
+            output_contract=dispatch_spec.output_contract,
         )
 
         request = ExecutionRequest(
@@ -5191,6 +5193,47 @@ class OrchestrationApp:
 # ---------------------------------------------------------------------
 
 
+def _extract_json_object_from_text(text: str) -> dict[str, object] | None:
+    """Extract the first JSON object from runner text, if present."""
+
+    decoder = json.JSONDecoder()
+    for index, char in enumerate(text):
+        if char != "{":
+            continue
+        try:
+            payload, _end = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return cast(dict[str, object], payload)
+    return None
+
+
+def _extract_resolution_report_payload(output_summary: str) -> dict[str, object] | None:
+    """Extract a ResolutionReport payload from runtime output summary text.
+
+    OpenCodeRunner wraps successful stdout as a human summary, e.g.
+    ``OpenCode completed successfully (exit 0); stdout={...}``. Resolver
+    parsing must consume that wrapper while still accepting pure JSON from
+    non-OpenCode test runners.
+    """
+
+    stripped = output_summary.strip()
+    candidates = [stripped]
+    stdout_marker = "; stdout="
+    if stdout_marker in stripped:
+        candidates.append(stripped.rsplit(stdout_marker, 1)[1].strip())
+
+    for candidate in candidates:
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError:
+            payload = _extract_json_object_from_text(candidate)
+        if isinstance(payload, dict):
+            return cast(dict[str, object], payload)
+    return None
+
+
 def build_orchestration_app(
     config: AppConfig,
 ) -> OrchestrationApp:
@@ -5307,6 +5350,7 @@ def build_orchestration_app(
                     role_id=dispatch_spec.role_id,
                     agent_id=dispatch_spec.role_id,
                     runner=dispatch_spec.runner,
+                    output_contract=dispatch_spec.output_contract,
                 )
                 request = ExecutionRequest(
                     step_id=resolver_step_id,
@@ -5381,9 +5425,8 @@ def build_orchestration_app(
                     or "Review resolver runtime failure and retry.",
                 }
 
-            try:
-                payload = json.loads(result.output_summary)
-            except json.JSONDecodeError:
+            payload = _extract_resolution_report_payload(result.output_summary)
+            if payload is None:
                 return {
                     "status": "operator_required",
                     "summary": (

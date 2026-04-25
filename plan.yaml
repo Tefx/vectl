@@ -88218,6 +88218,7 @@ phases:
     - src/vectl/orchestration/core_adapter.py
     - src/vectl/orchestration/dispatch_policy.py
     - tests/orchestration/
+    agent: python-refactor-master-tacit
   - id: arch-demolition-wave-3.dem-010-replace-tool-family-registry-shell-with-module-helpers
     name: DEM-010 replace tool-family registry shell with module helpers
     status: pending

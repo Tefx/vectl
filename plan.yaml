@@ -88267,6 +88267,7 @@ phases:
     - src/vectl/orchestration/interfaces.py
     - src/vectl/orchestration/core_adapter.py
     - tests/orchestration/
+    agent: python-senior-tacit
   - id: arch-demolition-wave-4.dem-016-retire-public-role-and-prompt-registry-protocols
     name: DEM-016 retire public role and prompt registry protocols
     status: pending

@@ -88203,6 +88203,7 @@ phases:
     - src/vectl/orchestration/inspection_queries.py
     - src/vectl/orchestration/run_store.py
     - src/vectl/orch_app.py
+    agent: python-refactor-master-tacit
   - id: arch-demolition-wave-3.dem-009-relocate-step-data-and-collapse-adapter-indirection
     name: DEM-009 relocate step data and collapse adapter indirection
     status: pending

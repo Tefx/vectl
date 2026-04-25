@@ -87907,7 +87907,7 @@ phases:
       \ OPEN\n\nheadline: PASS\ngate_open_allowed: true"
 - id: arch-demolition-wave-0
   name: Architectural Demolition — Wave 0 Characterization & Safety Rails
-  status: in_progress
+  status: done
   gate: Wave 0 complete when characterization coverage pins all touched behaviors
     and `uv run pytest tests/ -x --tb=short` passes with focused touched-surface tests
     named in evidence.
@@ -87950,7 +87950,7 @@ phases:
       - uv run pytest tests/ -x --tb=short -> 2908 passed, 40 skipped in 169.84s'
   - id: arch-demolition-w0.orchestration-characterization
     name: Pin orchestration/read-path characterization coverage
-    status: claimed
+    status: done
     description: 'Add or tighten characterization coverage for Wave 0 orchestration
       behaviors: inspection query outputs consumed by orch_app and drive/review behavior
       around post-execution decision paths. No later demolition step may delete this
@@ -87962,9 +87962,63 @@ phases:
     - arch-demolition-w0.shell-characterization
     claimed_by: project-guide
     claimed_at: '2026-04-25T07:53:49.762432+00:00'
+    done_at: '2026-04-25T08:18:31.273040+00:00'
+    evidence: 'Implemented orch-specific characterization and fixes:
+
+      - tests/test_orch_cli_surface.py: pinned `vectl orch drive` entering run_drive_loop
+      after start; pinned `orch case-list --latest` drive blocked-case behavior and
+      status filtering.
+
+      - tests/orchestration/unit/test_cli_drive_lifecycle_surface.py: pinned DriveStatusResult.blocked_case_ids
+      propagation from durable DriveRecord.
+
+      - tests/orchestration/unit/test_config_roundtrip_and_isolation.py: pinned legacy
+      frozen config snapshots with built-in role_profiles loading during recovery.
+
+      - tests/orchestration/test_opencode_drive_acceptance_matrix.py: pinned dispatch_batch
+      launching and persisting child-run refs, not only summarizing.
+
+
+      Code changes:
+
+      - Added blocked_case_ids to DriveStatusResult and OrchestrationApp.drive_status
+      output.
+
+      - Normalized pre-RFC frozen snapshots in load_frozen_snapshot by translating
+      built-in role_profiles into role_profile_overrides.
+
+      - Fixed drive-scoped case-list status filtering.
+
+      - Made `vectl orch drive` run the first drive loop after start.
+
+      - Wired ConcreteDriveDriver to an optional child_run_launcher and production
+      OrchestrationApp child-run launch path using runtime.prepare_child_run/start_child_run.
+
+
+      Runtime checks:
+
+      - uv run vectl orch case-list --latest --json -> [] (no AttributeError)
+
+      - uv run vectl orch recover 01KNYVFC7FQ1KYFS6HEFWTX461 --dry-run --json -> success=true,
+      fresh_start_required dry-run report (legacy snapshot loaded)
+
+      - uv run vectl orch drive-status --latest --json -> includes blocked_case_ids=[]
+
+
+      Verification:
+
+      - uv run pytest tests/test_orch_cli_surface.py tests/orchestration/unit/test_cli_drive_lifecycle_surface.py
+      tests/orchestration/unit/test_config_roundtrip_and_isolation.py tests/orchestration/test_opencode_drive_acceptance_matrix.py::TestParallelReadyFrontierDispatch::test_dispatch_batch_launches_and_persists_child_run_refs
+      -q -> 55 passed
+
+      - uv run pytest tests/orchestration/test_opencode_drive_acceptance_matrix.py
+      tests/orchestration/unit/test_drive_recovery_semantics.py tests/orchestration/unit/test_drive_control_consumption.py
+      -q -> 85 passed, 6 skipped
+
+      - uv run pytest tests/ -x --tb=short -> 2914 passed, 40 skipped in 185.95s'
 - id: arch-demolition-wave-1
   name: Architectural Demolition — Wave 1 Deduplicate Direct Copies
-  status: locked
+  status: pending
   gate: Wave 1 complete when DEM-001..DEM-004 are resolved, shared ownership is canonicalized
     in agents_md.py / plan_helpers.py / duplicate_step_id_format.py / lifecycle.py,
     import graph stays acyclic, and verification commands pass.

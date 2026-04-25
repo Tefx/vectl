@@ -88179,6 +88179,7 @@ phases:
     refs:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/orchestration/driver.py
+    agent: python-senior-tacit
 - id: arch-demolition-wave-3
   name: Architectural Demolition — Wave 3 Flatten Wrappers & Inspection Query Stack
   status: locked

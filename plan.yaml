@@ -88167,6 +88167,7 @@ phases:
     refs:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/orchestration/continuity_artifacts.py
+    agent: python-executor
   - id: arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell
     name: DEM-015 rename concrete drive driver and retire protocol shell
     status: pending

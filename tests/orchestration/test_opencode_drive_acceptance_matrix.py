@@ -18,6 +18,7 @@ Step: orch_drive_live_acceptance.real-opencode-acceptance-matrix
 from __future__ import annotations
 
 import importlib
+import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -239,6 +240,32 @@ def _linear_plan() -> dict[str, Any]:
     }
 
 
+def _single_step_supervisor_plan() -> dict[str, Any]:
+    return {
+        "version": 1,
+        "project": "opencode-drive-supervisor-live",
+        "phases": [
+            {
+                "id": "core",
+                "name": "Core",
+                "steps": [
+                    {
+                        "id": "core.supervisor",
+                        "name": "Supervisor",
+                        "agent": "python-executor",
+                        "status": "pending",
+                        "description": (
+                            "Create supervisor.txt containing exactly the text "
+                            "supervisor-ok followed by a newline. Do not modify plan.yaml."
+                        ),
+                        "verification": "supervisor.txt exists and contains supervisor-ok.",
+                    }
+                ],
+            }
+        ],
+    }
+
+
 def _multi_phase_plan() -> dict[str, Any]:
     return {
         "version": 1,
@@ -369,7 +396,7 @@ class TestMatrixFixtureCompleteness:
         assert reloaded == payload
 
     def test_coverage_includes_all_rfc_required_classes(self) -> None:
-        """RFC section 19.3 lists 13 required acceptance classes. Verify the matrix covers them all."""
+        """RFC section 19.3 coverage includes all required acceptance classes."""
         scenarios = load_drive_acceptance_matrix()
         all_coverage: set[str] = set()
         for scenario in scenarios:
@@ -1181,6 +1208,62 @@ class TestLiveOpenCodeDriveMatrix:
             "replanning",
             "recovering",
         }
+
+    def test_foreground_drive_supervisor_jsonl_monitors_real_child_to_completion(
+        self, tmp_path: Path
+    ) -> None:
+        """Foreground drive supervises, streams JSONL progress, and completes real child work."""
+        harness = OpenCodeDriveHarness(tmp_path, env=default_orchestrator_env())
+        harness.preflight()
+        harness.write_plan(_single_step_supervisor_plan())
+        harness.write_orchestration_config(max_parallelism=1)
+        harness.init_git_repo()
+
+        result = harness.run_vectl(
+            [
+                "orch",
+                "drive",
+                "--max-parallelism",
+                "1",
+                "--poll-interval",
+                "0.2",
+                "--status-interval",
+                "1",
+                "--jsonl",
+            ],
+            timeout=1200,
+            scenario="foreground_drive_supervisor_jsonl_live",
+        )
+        result.assert_success("foreground supervisor JSONL live drive failed")
+
+        events = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+        event_types = [event["type"] for event in events]
+
+        assert "drive_started" in event_types
+        assert "status_snapshot" in event_types
+        assert "child_dispatched" in event_types
+        assert "child_completed" in event_types
+        assert "step_completed" in event_types
+        assert event_types[-1] == "drive_terminal"
+        assert events[-1]["status"] == "completed"
+
+        drive_id = events[0]["drive_id"]
+        status = harness.run_vectl(
+            ["orch", "drive-status", drive_id, "--json"],
+            timeout=60,
+            scenario="foreground_drive_supervisor_status_check",
+        )
+        status.assert_success("foreground supervisor drive-status failed")
+        status_payload = json.loads(status.stdout)
+        assert status_payload["status"] == "completed"
+        assert status_payload["active_child_run_ids"] == []
+
+        plan_payload = harness.load_plan()
+        step = plan_payload["phases"][0]["steps"][0]
+        assert step["status"] == "done"
+
+        created = tmp_path / "supervisor.txt"
+        assert created.read_text(encoding="utf-8") == "supervisor-ok\n"
 
     def test_drive_resume_uses_real_app_surface(self, tmp_path: Path) -> None:
         """RFC §19.3 #10: Drive resume restores real state."""

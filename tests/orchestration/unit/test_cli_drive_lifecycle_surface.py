@@ -14,12 +14,9 @@ These tests verify:
 
 from __future__ import annotations
 
-import json
 import subprocess
-import time
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -32,7 +29,7 @@ from vectl.orch_app import (
 from vectl.orchestration.config import OrchestrationConfig
 from vectl.orchestration.contracts import (
     ChildRunRef,
-    DriveRecord,
+    DriveBarrier,
 )
 from vectl.orchestration.driver import (
     DriveAdmissionError,
@@ -40,8 +37,6 @@ from vectl.orchestration.driver import (
     DriveStatusResult,
     MaxParallelismError,
 )
-from vectl.orchestration.run_store import DriveStore
-
 
 # ------------------------------------------------------------------
 # Fixtures
@@ -173,6 +168,23 @@ class TestDriveStatusSurface:
         result = app.drive_status(drive_id=started.drive_id)
 
         assert result.blocked_case_ids == ("case-a", "case-b")
+
+    def test_foreground_does_not_exit_before_resolver_for_resolving_case(
+        self, tmp_path: Path
+    ) -> None:
+        """Foreground supervision attempts resolver before treating resolving as terminal."""
+        app = _build_app(tmp_path)
+        status = DriveStatusResult(
+            drive_id="drv_resolving",
+            status="resolving",
+            blocked_case_ids=("case-runtime-001",),
+            barrier=DriveBarrier(
+                reason="runtime_failure",
+                case_ids=("case-runtime-001",),
+            ),
+        )
+
+        assert app._foreground_drive_should_exit(status) is False
 
 
 # ------------------------------------------------------------------

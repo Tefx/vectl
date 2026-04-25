@@ -538,6 +538,15 @@ class OrchOutputMode(str, enum.Enum):
     JSONL = "jsonl"
 
 
+class DriveProgressMode(str, enum.Enum):
+    """Foreground drive progress rendering mode."""
+
+    AUTO = "auto"
+    PLAIN = "plain"
+    RICH = "rich"
+    NONE = "none"
+
+
 class OrchMigrationState(str, enum.Enum):
     """CLI enum for legacy migration-state advancement."""
 
@@ -720,6 +729,154 @@ def _emit_orch_payload(value: Any, mode: OrchOutputMode) -> None:
         return
 
     out.print(_esc(str(payload)))
+
+
+def _format_duration(seconds: float | int | None) -> str:
+    """Format seconds as compact HH:MM:SS/MM:SS text for CLI progress."""
+
+    if seconds is None:
+        return "--:--"
+    total = max(0, int(float(seconds)))
+    hours, remainder = divmod(total, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
+
+def _drive_event_time(event: dict[str, Any]) -> str:
+    timestamp = event.get("timestamp")
+    if isinstance(timestamp, (int, float)):
+        return time.strftime("%H:%M:%S", time.localtime(timestamp))
+    return time.strftime("%H:%M:%S")
+
+
+def _drive_progress_label(progress: DriveProgressMode) -> DriveProgressMode:
+    if progress is DriveProgressMode.AUTO:
+        return DriveProgressMode.RICH if out.is_terminal else DriveProgressMode.PLAIN
+    return progress
+
+
+def _emit_drive_status_snapshot(event: dict[str, Any], *, rich_mode: bool) -> None:
+    status = str(event.get("status", "unknown")).upper()
+    drive_id = str(event.get("drive_id", ""))
+    elapsed = _format_duration(cast(float | int | None, event.get("elapsed_seconds")))
+    done = event.get("done_steps", 0)
+    total = event.get("total_steps", 0)
+    running = event.get("running_count", 0)
+    capacity = event.get("max_parallelism", "?")
+    ready = event.get("ready_count", 0)
+    blocked = event.get("blocked_count", 0)
+    cases = event.get("case_count", 0)
+    summary = str(event.get("summary", ""))
+    header = f"Drive {drive_id}  {status}  {elapsed}"
+    row = (
+        f"Plan: {done}/{total} complete | Running: {running}/{capacity} | "
+        f"Queue: {ready} ready | Blocked: {blocked} | Cases: {cases}"
+    )
+    if rich_mode:
+        style = "green" if status == "COMPLETED" else "yellow" if cases else "cyan"
+        out.print(Panel(f"{row}\n[dim]{_esc(summary)}[/]", title=_esc(header), border_style=style))
+    else:
+        out.print(header)
+        out.print(row)
+        if summary:
+            out.print(f"summary={_esc(summary)}")
+
+
+def _format_drive_progress_event(event: dict[str, Any], *, verbose: bool) -> str | None:
+    event_type = str(event.get("type", ""))
+    ts = _drive_event_time(event)
+    step_id = str(event.get("step_id", ""))
+    run_id = str(event.get("run_id", ""))
+
+    if event_type == "drive_started":
+        return (
+            f"Starting drive {event.get('drive_id')}  mode=foreground  "
+            f"max_parallelism={event.get('max_parallelism')}  "
+            f"poll={event.get('poll_interval_seconds')}s  "
+            f"progress={event.get('progress_mode', 'auto')}"
+        )
+    if event_type == "child_dispatched":
+        detail = f" workspace={event.get('workspace')}" if verbose else ""
+        return (
+            f"{ts}  dispatched  {step_id} -> {event.get('agent')} {run_id}{detail}"
+        )
+    if event_type == "child_running":
+        elapsed = _format_duration(cast(float | int | None, event.get("elapsed_seconds")))
+        idle = _format_duration(cast(float | int | None, event.get("idle_seconds")))
+        ws = event.get("workspace_changes", 0)
+        workspace = f" workspace={event.get('workspace')}" if verbose else ""
+        return (
+            f"{ts}  still running  {step_id}  "
+            f"elapsed={elapsed} idle={idle} ws={ws} files{workspace}"
+        )
+    if event_type == "child_completed":
+        summary = str(event.get("summary", ""))
+        if summary and not verbose:
+            summary = summary[:160]
+        return f"{ts}  completed   child {run_id} status={event.get('status')} {summary}".rstrip()
+    if event_type == "step_completed":
+        return f"{ts}  step done   {step_id}"
+    if event_type == "case_opened":
+        return (
+            f"{ts}  case opened {event.get('case_id')}  from {step_id}  "
+            f"reason={event.get('reason')}"
+        )
+    if event_type == "drive_blocked":
+        return (
+            f"BLOCKED  case resolution required\n"
+            f"Case(s): {', '.join(cast(list[str], event.get('case_ids', [])))}\n"
+            f"Reason: {event.get('summary')}\n"
+            f"Next:\n  vectl orch case-list --latest\n  vectl orch drive-status --latest"
+        )
+    if event_type == "drive_terminal":
+        status = str(event.get("status", "unknown")).upper()
+        summary = str(event.get("summary", ""))
+        if status == "COMPLETED":
+            return f"COMPLETED  all reachable work finished\nSummary: {summary}"
+        if status == "STOPPED":
+            return f"STOPPED  external stop requested\nSummary: {summary}"
+        return f"{status}  drive finished\nSummary: {summary}"
+    return None
+
+
+def _build_drive_progress_callback(
+    *,
+    mode: OrchOutputMode,
+    progress: DriveProgressMode,
+    quiet: bool,
+    verbose: bool,
+) -> Any | None:
+    """Return an orch drive progress callback for human/jsonl modes."""
+
+    resolved_progress = _drive_progress_label(progress)
+    if mode == OrchOutputMode.JSON:
+        return None
+
+    if mode == OrchOutputMode.JSONL:
+        def _jsonl(event: dict[str, Any]) -> None:
+            typer.echo(json.dumps(_json_ready(event), sort_keys=True))
+
+        return _jsonl
+
+    if quiet or resolved_progress is DriveProgressMode.NONE:
+        return None
+
+    rich_mode = resolved_progress is DriveProgressMode.RICH
+
+    def _human(event: dict[str, Any]) -> None:
+        if event.get("type") == "status_snapshot":
+            _emit_drive_status_snapshot(event, rich_mode=rich_mode)
+            return
+        line = _format_drive_progress_event(event, verbose=verbose)
+        if line:
+            if rich_mode and str(event.get("type", "")).startswith("drive_"):
+                out.print(line)
+            else:
+                out.print(_esc(line))
+
+    return _human
 
 
 def _resolve_latest_run_id(app_runtime: Any) -> str | None:
@@ -1920,6 +2077,28 @@ def orch_drive(
         "--poll-interval",
         help="Seconds between child-run polls in foreground mode.",
     ),
+    status_interval_seconds: float = typer.Option(
+        30.0,
+        "--status-interval",
+        help="Seconds between quiet-period progress summaries in foreground mode.",
+    ),
+    progress: DriveProgressMode = typer.Option(
+        DriveProgressMode.AUTO,
+        "--progress",
+        help="Foreground progress renderer: auto|plain|rich|none.",
+        case_sensitive=False,
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        help="Suppress foreground progress; print only the final result in human mode.",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        help="Include extra child-run and workspace detail in progress output.",
+    ),
+    jsonl_flag: bool = OrchJsonlOption,
     json_flag: bool = OrchJsonOption,
     output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
@@ -1928,35 +2107,31 @@ def orch_drive(
 
     Authority: docs/RFC-orch-drive.md section 7.2
 
-    If an active drive already exists for the same plan, this command fails
-    with exit code 2 and reports the active drive_id.
+    If an active drive already exists for the same plan, this command attaches
+    to that drive instead of starting a duplicate.  This keeps foreground
+    supervision/resolver recovery moving after a previous invocation stopped at
+    a drive barrier.
 
     Contract authority: orch_app.py::OrchestrationApp.start_drive()
     """
     from vectl.orchestration.driver import DriveAdmissionError, MaxParallelismError
 
-    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
+    mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=jsonl_flag)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if max_parallelism < 1 or max_parallelism > 32:
         _die(
             f"max-parallelism must be between 1 and 32, got {max_parallelism}",
             code=2,
         )
+    drive_id: str
     try:
         result = app_runtime.start_drive(
             agent=agent or "",
             max_parallelism=max_parallelism,
         )
+        drive_id = result.drive_id
     except DriveAdmissionError as exc:
-        # Authority: RFC-orch-drive.md section 7.1
-        # "exit code: 2" + "error text must include the active drive_id"
-        _die(
-            f"Active drive already exists for this plan (drive_id={exc.active_drive_id}). "
-            f"Use drive-scoped commands instead: "
-            f"'vectl orch drive-status {exc.active_drive_id}'",
-            code=2,
-        )
-        return
+        drive_id = exc.active_drive_id
     except MaxParallelismError as exc:
         _die(str(exc), code=2)
         return
@@ -1965,19 +2140,33 @@ def orch_drive(
         return
     try:
         if once:
-            loop_result = app_runtime.run_drive_loop(result.drive_id)
+            loop_result = app_runtime.run_drive_loop(drive_id)
         else:
-            if mode == OrchOutputMode.HUMAN:
-                out.print(
-                    f"drive_id={_esc(result.drive_id)} status=foreground "
-                    f"max_parallelism={max_parallelism}"
-                )
+            progress_callback = _build_drive_progress_callback(
+                mode=mode,
+                progress=progress,
+                quiet=quiet,
+                verbose=verbose,
+            )
             loop_result = app_runtime.run_drive_foreground(
-                result.drive_id,
+                drive_id,
                 poll_interval_seconds=poll_interval_seconds,
+                status_interval_seconds=status_interval_seconds,
+                progress_callback=progress_callback,
+                progress_mode=progress.value,
+                verbose=verbose,
             )
     except Exception as exc:
         _orch_internal_error(exc)
+        return
+    if mode == OrchOutputMode.JSONL and not once:
+        return
+    if (
+        mode == OrchOutputMode.HUMAN
+        and not once
+        and not quiet
+        and progress is not DriveProgressMode.NONE
+    ):
         return
     _emit_orch_payload(loop_result, mode)
 

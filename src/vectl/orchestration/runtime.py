@@ -1646,6 +1646,12 @@ def _perform_reconcile(
             artifact_refs=tuple(artifact_refs),
         )
 
+    _commit_workspace_changes(
+        workspace_path=workspace_path,
+        paths=effective_paths,
+        execution_id=execution_id,
+    )
+
     workspace_head = _git_stdout(["rev-parse", "HEAD"], cwd=workspace_path)
     merge_result = _run_git(
         ["merge", "--no-ff", "--no-edit", workspace_head],
@@ -1764,8 +1770,50 @@ def _validate_integration_context(repo_root: Path) -> None:
 def _list_changed_paths(*, workspace_path: Path, base_ref: str) -> tuple[str, ...]:
     """List paths changed in workspace relative to its integration base."""
 
-    diff_output = _git_stdout(["diff", "--name-only", base_ref, "HEAD"], cwd=workspace_path)
-    return tuple(line.strip() for line in diff_output.splitlines() if line.strip())
+    committed_output = _git_stdout(["diff", "--name-only", base_ref, "HEAD"], cwd=workspace_path)
+    working_output = _git_stdout(["diff", "--name-only", "HEAD"], cwd=workspace_path)
+    untracked_output = _git_stdout(
+        ["ls-files", "--others", "--exclude-standard"], cwd=workspace_path
+    )
+    paths: list[str] = []
+    for output in (committed_output, working_output, untracked_output):
+        for line in output.splitlines():
+            path = line.strip()
+            if path and path not in paths:
+                paths.append(path)
+    return tuple(paths)
+
+
+def _commit_workspace_changes(
+    *,
+    workspace_path: Path,
+    paths: tuple[str, ...],
+    execution_id: str,
+) -> None:
+    """Commit uncommitted workspace changes before integration merge.
+
+    Runner tools commonly leave file edits as worktree changes rather than
+    creating commits.  Reconcile merges the workspace HEAD into the integration
+    context, so those edits must first become a workspace commit.  Already
+    committed workspace changes are left untouched.
+    """
+
+    if not paths:
+        return
+    _git_stdout(["add", "--", *paths], cwd=workspace_path)
+    staged = _run_git(["diff", "--cached", "--quiet"], cwd=workspace_path)
+    if staged.returncode == 0:
+        return
+    if staged.returncode not in (0, 1):
+        detail = staged.stderr.strip() or staged.stdout.strip() or "unknown git diff failure"
+        raise ReconcileError(f"Reconcile aborted: failed to inspect staged changes: {detail}")
+    commit = _run_git(
+        ["commit", "-m", f"vectl child run {execution_id}"],
+        cwd=workspace_path,
+    )
+    if commit.returncode != 0:
+        detail = commit.stderr.strip() or commit.stdout.strip() or "unknown git commit failure"
+        raise ReconcileError(f"Reconcile aborted: failed to commit workspace changes: {detail}")
 
 
 def _protected_paths_from_changes(changed_paths: tuple[str, ...]) -> tuple[str, ...]:

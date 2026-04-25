@@ -25,11 +25,12 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import subprocess
 import time
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Callable, Literal, cast
 
 from vectl.orchestration.config import (
     OrchestrationConfig,
@@ -150,6 +151,8 @@ from vectl.orchestration.resolver_gateway import (
     ResolverToolMediation,
     authorize_and_invoke,
 )
+from vectl.io import load_plan_definition
+from vectl.models import StepStatus
 from vectl.orchestration.run_store import (
     CorruptJSONLError,
     DriveStore,
@@ -363,8 +366,9 @@ class ConfigResult:
         show_output: Output from config show operation.
         validation_passed: True if config validation passed.
         tools: Tuple of registered tool family identifiers.
-        role_profile_provenance: Per-field provenance for role profiles
-            (populated when ``effective=True``). Maps ``role_id -> {field_name -> RoleFieldProvenance}``.
+        role_profile_provenance: Per-field provenance for role profiles.
+            When ``effective=True``, maps
+            ``role_id -> {field_name -> RoleFieldProvenance}``.
     """
 
     show_output: str = ""
@@ -2132,6 +2136,10 @@ class OrchestrationApp:
         drive_id: str,
         *,
         poll_interval_seconds: float = 2.0,
+        status_interval_seconds: float = 30.0,
+        progress_callback: Callable[[dict[str, Any]], None] | None = None,
+        progress_mode: str = "auto",
+        verbose: bool = False,
     ) -> DriveLoopResult:
         """Run a drive as a foreground supervisor until it stops or blocks.
 
@@ -2142,34 +2150,99 @@ class OrchestrationApp:
         operator/blocking state.
         """
 
+        start_time = time.time()
+        known_child_run_ids: set[str] = set()
+        last_snapshot_at = 0.0
+        last_child_heartbeat_at: dict[str, float] = {}
+        last_workspace_change_count: dict[str, int] = {}
+
+        initial_status = self.drive_status(drive_id=drive_id)
+        self._emit_drive_progress_event(
+            progress_callback,
+            "drive_started",
+            drive_id=drive_id,
+            status=initial_status.status,
+            max_parallelism=self._drive_max_parallelism(drive_id),
+            poll_interval_seconds=poll_interval_seconds,
+            status_interval_seconds=status_interval_seconds,
+            progress_mode=progress_mode,
+        )
+
         last_result = self.run_drive_loop(drive_id)
         while True:
             status = self.drive_status(drive_id=drive_id)
+            now = time.time()
+            snapshot_due = (
+                last_snapshot_at == 0.0
+                or now - last_snapshot_at >= max(1.0, status_interval_seconds)
+            )
+            if snapshot_due:
+                self._emit_drive_progress_event(
+                    progress_callback,
+                    "status_snapshot",
+                    **self._drive_progress_snapshot(
+                        status=status,
+                        started_at=start_time,
+                    ),
+                )
+                last_snapshot_at = now
+
+            self._emit_new_child_dispatch_events(
+                progress_callback=progress_callback,
+                drive_id=drive_id,
+                known_child_run_ids=known_child_run_ids,
+            )
+
             if self._foreground_drive_should_exit(status):
-                return self._drive_status_to_loop_result(status)
+                final_result = self._drive_status_to_loop_result(status)
+                self._emit_terminal_drive_progress(
+                    progress_callback=progress_callback,
+                    result=final_result,
+                    started_at=start_time,
+                )
+                return final_result
 
             if status.active_child_run_ids:
                 collected = self._collect_drive_child_runs(
+                    progress_callback=progress_callback,
                     drive_id=drive_id,
                     child_run_ids=status.active_child_run_ids,
                 )
                 if collected:
                     continue
+                self._emit_child_running_progress(
+                    progress_callback=progress_callback,
+                    child_run_ids=status.active_child_run_ids,
+                    started_at=start_time,
+                    last_child_heartbeat_at=last_child_heartbeat_at,
+                    last_workspace_change_count=last_workspace_change_count,
+                    status_interval_seconds=status_interval_seconds,
+                    verbose=verbose,
+                )
                 time.sleep(max(0.1, poll_interval_seconds))
                 last_result = self.run_drive_loop(drive_id)
                 if self._foreground_loop_result_should_exit(last_result):
+                    self._emit_terminal_drive_progress(
+                        progress_callback=progress_callback,
+                        result=last_result,
+                        started_at=start_time,
+                    )
                     return last_result
                 continue
 
             last_result = self.run_drive_loop(drive_id)
             if self._foreground_loop_result_should_exit(last_result):
+                self._emit_terminal_drive_progress(
+                    progress_callback=progress_callback,
+                    result=last_result,
+                    started_at=start_time,
+                )
                 return last_result
 
     @staticmethod
     def _foreground_drive_should_exit(status: DriveStatusResult) -> bool:
         return status.status in {
             "paused",
-            "resolving",
             "replanning",
             "blocked_operator",
             "completed",
@@ -2202,9 +2275,170 @@ class OrchestrationApp:
             summary=status.summary,
         )
 
+    @staticmethod
+    def _emit_drive_progress_event(
+        progress_callback: Callable[[dict[str, Any]], None] | None,
+        event_type: str,
+        **payload: Any,
+    ) -> None:
+        if progress_callback is None:
+            return
+        event = {"type": event_type, "timestamp": time.time(), **payload}
+        progress_callback(event)
+
+    def _drive_max_parallelism(self, drive_id: str) -> int:
+        record = self._drive_store().replay_drive_state(drive_id)
+        if record is None:
+            return 0
+        return record.max_parallelism
+
+    def _drive_progress_snapshot(
+        self,
+        *,
+        status: DriveStatusResult,
+        started_at: float,
+    ) -> dict[str, Any]:
+        total_steps = 0
+        done_steps = 0
+        try:
+            plan, _ = load_plan_definition(self._config.plan_path)
+            for phase in plan.phases:
+                for step in phase.steps:
+                    total_steps += 1
+                    if step.status in (StepStatus.DONE, StepStatus.SKIPPED):
+                        done_steps += 1
+        except Exception:
+            total_steps = 0
+            done_steps = 0
+
+        return {
+            "drive_id": status.drive_id,
+            "status": status.status,
+            "elapsed_seconds": time.time() - started_at,
+            "total_steps": total_steps,
+            "done_steps": done_steps,
+            "running_count": len(status.active_child_run_ids),
+            "max_parallelism": self._drive_max_parallelism(status.drive_id),
+            "ready_count": len(status.frontier_step_ids),
+            "blocked_count": len(status.blocked_case_ids),
+            "case_count": len(status.blocked_case_ids),
+            "active_child_run_ids": status.active_child_run_ids,
+            "frontier_step_ids": status.frontier_step_ids,
+            "blocked_case_ids": status.blocked_case_ids,
+            "summary": status.summary,
+        }
+
+    def _emit_new_child_dispatch_events(
+        self,
+        *,
+        progress_callback: Callable[[dict[str, Any]], None] | None,
+        drive_id: str,
+        known_child_run_ids: set[str],
+    ) -> None:
+        for child in self.drive_runs(drive_id=drive_id):
+            if child.run_id in known_child_run_ids:
+                continue
+            known_child_run_ids.add(child.run_id)
+            context = self._drive_child_run_contexts.get(child.run_id)
+            self._emit_drive_progress_event(
+                progress_callback,
+                "child_dispatched",
+                drive_id=drive_id,
+                run_id=child.run_id,
+                step_id=child.step_id,
+                status=child.status,
+                runner=child.runner,
+                agent=(context.role_id if context is not None else child.runner),
+                workspace=child.workspace,
+                session_id=child.session_id,
+            )
+
+    def _emit_terminal_drive_progress(
+        self,
+        *,
+        progress_callback: Callable[[dict[str, Any]], None] | None,
+        result: DriveLoopResult,
+        started_at: float,
+    ) -> None:
+        event_type = "drive_terminal"
+        blocked_statuses = {"resolving", "replanning", "blocked_operator"}
+        if result.barrier is not None or result.status in blocked_statuses:
+            event_type = "drive_blocked"
+        self._emit_drive_progress_event(
+            progress_callback,
+            event_type,
+            drive_id=result.drive_id,
+            status=result.status,
+            elapsed_seconds=time.time() - started_at,
+            active_child_run_ids=result.active_child_run_ids,
+            case_ids=(result.barrier.case_ids if result.barrier is not None else ()),
+            summary=result.summary,
+        )
+
+    def _emit_child_running_progress(
+        self,
+        *,
+        progress_callback: Callable[[dict[str, Any]], None] | None,
+        child_run_ids: tuple[str, ...],
+        started_at: float,
+        last_child_heartbeat_at: dict[str, float],
+        last_workspace_change_count: dict[str, int],
+        status_interval_seconds: float,
+        verbose: bool,
+    ) -> None:
+        now = time.time()
+        interval = max(1.0, status_interval_seconds)
+        for child_run_id in child_run_ids:
+            child = self._drive_store().child_run_by_id(child_run_id)
+            if child is None:
+                continue
+            workspace_changes = self._workspace_change_count(child.artifact_root)
+            last_at = last_child_heartbeat_at.get(child_run_id, 0.0)
+            last_changes = last_workspace_change_count.get(child_run_id)
+            if last_at and now - last_at < interval and workspace_changes == last_changes:
+                continue
+            last_child_heartbeat_at[child_run_id] = now
+            last_workspace_change_count[child_run_id] = workspace_changes
+            self._emit_drive_progress_event(
+                progress_callback,
+                "child_running",
+                drive_id=child.drive_id,
+                run_id=child.run_id,
+                step_id=child.step_id,
+                status=child.status,
+                runner=child.runner,
+                workspace=child.workspace,
+                workspace_changes=workspace_changes,
+                elapsed_seconds=now - started_at,
+                idle_seconds=now - last_at if last_at else 0.0,
+                verbose=verbose,
+            )
+
+    @staticmethod
+    def _workspace_change_count(path_text: str) -> int:
+        if not path_text:
+            return 0
+        workspace_path = Path(path_text)
+        if not workspace_path.exists():
+            return 0
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(workspace_path), "status", "--short"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+        except Exception:
+            return 0
+        if result.returncode != 0:
+            return 0
+        return len([line for line in result.stdout.splitlines() if line.strip()])
+
     def _collect_drive_child_runs(
         self,
         *,
+        progress_callback: Callable[[dict[str, Any]], None] | None,
         drive_id: str,
         child_run_ids: tuple[str, ...],
     ) -> int:
@@ -2223,7 +2457,17 @@ class OrchestrationApp:
                     updated_ref = replace(persisted_ref, status=status)
             if updated_ref is not None:
                 store.save_child_run(updated_ref)
+            self._emit_drive_progress_event(
+                progress_callback,
+                "child_completed",
+                drive_id=drive_id,
+                run_id=child_run_id,
+                step_id=execution_result.step_id,
+                status=execution_result.status,
+                summary=execution_result.output_summary,
+            )
             self._finalize_drive_child_run(
+                progress_callback=progress_callback,
                 drive_id=drive_id,
                 child_run_id=child_run_id,
                 execution_result=execution_result,
@@ -2240,6 +2484,7 @@ class OrchestrationApp:
     def _finalize_drive_child_run(
         self,
         *,
+        progress_callback: Callable[[dict[str, Any]], None] | None,
         drive_id: str,
         child_run_id: str,
         execution_result: ExecutionResult,
@@ -2254,6 +2499,16 @@ class OrchestrationApp:
                 reason="drive child finalization context missing",
                 summary=execution_result.output_summary,
                 blocked_step_ids=(execution_result.step_id,),
+            )
+            self._emit_drive_progress_event(
+                progress_callback,
+                "case_opened",
+                drive_id=drive_id,
+                run_id=child_run_id,
+                step_id=execution_result.step_id,
+                case_id=resolution_case.case_id,
+                reason=resolution_case.reason,
+                summary=execution_result.output_summary,
             )
             self._record_drive_child_failure(
                 drive_id=drive_id,
@@ -2313,12 +2568,29 @@ class OrchestrationApp:
             payload={"run_id": child_run_id, "final_status": final_status},
         )
         if resolution_case is None:
+            self._emit_drive_progress_event(
+                progress_callback,
+                "step_completed",
+                drive_id=drive_id,
+                run_id=child_run_id,
+                step_id=context.step_id,
+            )
             self._record_drive_child_success(
                 drive_id=drive_id,
                 child_run_id=child_run_id,
                 step_id=context.step_id,
             )
         else:
+            self._emit_drive_progress_event(
+                progress_callback,
+                "case_opened",
+                drive_id=drive_id,
+                run_id=child_run_id,
+                step_id=context.step_id,
+                case_id=resolution_case.case_id,
+                reason=resolution_case.reason,
+                summary=output_summary,
+            )
             self._record_drive_child_failure(
                 drive_id=drive_id,
                 child_run_id=child_run_id,
@@ -2347,6 +2619,15 @@ class OrchestrationApp:
                 summary=f"child run {child_run_id} completed step {step_id}",
             )
         )
+        child_ref = store.child_run_by_id(child_run_id)
+        if child_ref is not None and child_ref.workspace:
+            try:
+                self._runtime.cleanup_child_run(child_ref.workspace, force=False)
+            except Exception as exc:
+                self._append_log(
+                    f"drive_id={drive_id} run_id={child_run_id} "
+                    f"workspace_cleanup_skipped reason={exc}"
+                )
 
     def _record_drive_child_failure(
         self,
@@ -4779,9 +5060,8 @@ class OrchestrationApp:
             role_profile_provenance = build_role_profile_provenance(config)
             for role_id, fields in role_profile_provenance.items():
                 for field_name, prov in fields.items():
-                    role_profile_lines.append(
-                        f"role_profiles.{role_id}.{field_name} = {prov.value} (source={prov.source})"
-                    )
+                    key = f"role_profiles.{role_id}.{field_name}"
+                    role_profile_lines.append(f"{key} = {prov.value} (source={prov.source})")
 
         if effective:
             show_output = (

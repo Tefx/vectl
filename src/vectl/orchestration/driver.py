@@ -17,8 +17,9 @@ from __future__ import annotations
 
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Callable, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from vectl.orchestration.contracts import (
     BarrierReason,
@@ -560,6 +561,25 @@ def _barrier_reason_for_case_source(source: ResolutionCaseSource) -> BarrierReas
     return mapping.get(source, "runtime_failure")
 
 
+def _resolver_should_handle_active_barrier(record: DriveRecord) -> bool:
+    """Return whether a persisted drive barrier should invoke resolver now.
+
+    Foreground drive supervision may enter ``resolving`` after a child run
+    creates a runtime/reconcile case.  That persisted barrier must not be a
+    terminal operator boundary by itself: when a resolver is wired, the next
+    loop pass should attempt resolver handling before giving up to the user.
+    """
+
+    barrier = record.barrier
+    if barrier is None:
+        return False
+    if not record.blocked_case_ids:
+        return False
+    if barrier.pending_resolver_run_id is not None:
+        return False
+    return barrier.reason in {"runtime_failure", "merge_conflict", "review_failed"}
+
+
 def _apply_resolution_report_to_drive(
     record: DriveRecord,
     barrier: DriveBarrier,
@@ -1031,6 +1051,21 @@ class ConcreteDriveDriver:
         roster_snap = self._control.sources.roster.snapshot()
         runtime_snap = self._control.sources.runtime.snapshot()
 
+        if _resolver_should_handle_active_barrier(record) and self._resolver is not None:
+            decision = ControlDecision(
+                kind="resolve",
+                reason=f"Open cases require resolution: {', '.join(open_case_ids)}",
+                case_ids=open_case_ids,
+            )
+            return self._handle_resolve_decision(
+                drive_id=drive_id,
+                record=record,
+                core=core,
+                roster=roster_snap,
+                runtime=runtime_snap,
+                decision=decision,
+            )
+
         decision = self._control.evaluate(
             core=core,
             roster=roster_snap,
@@ -1287,6 +1322,8 @@ class ConcreteDriveDriver:
             barrier=resolved_barrier,
             summary=summary,
         )
+        if resolved_barrier is None:
+            updated = replace(updated, blocked_case_ids=())
         self._drive_store.save_drive(updated)
 
         return DriveLoopResult(

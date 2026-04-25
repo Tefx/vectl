@@ -88322,6 +88322,7 @@ phases:
     - src/vectl/orchestration/review_gate.py
     depends_on:
     - arch-demolition-wave-5.dem-014-implement-defaultreviewgate-concretely
+    agent: python-senior-tacit
 - id: arch-demolition-wave-6
   name: Architectural Demolition — Wave 6 Simplify Duplicate-Step-ID Domain Model
   status: locked

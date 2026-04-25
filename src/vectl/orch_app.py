@@ -5231,10 +5231,12 @@ def build_orchestration_app(
             *,
             runtime: Runtime,
             dispatch_coordinator: DispatchCoordinator,
+            artifact_root: Path,
             timeout_seconds: float,
         ) -> None:
             self._runtime = runtime
             self._dispatch_coordinator = dispatch_coordinator
+            self._artifact_root = artifact_root
             self._timeout_seconds = timeout_seconds
 
         def invoke(self, case: object, *, role_id: str) -> dict[str, object]:
@@ -5258,17 +5260,22 @@ def build_orchestration_app(
                     ),
                 }
 
+            case_id = case.case_id or f"case-{generate_run_id()}"
             dispatch_spec = self._dispatch_coordinator.build_resolution_subtask_spec(
-                case_id=case.case_id or f"case-{generate_run_id()}",
+                case_id=case_id,
                 role_id=role_id,
                 description=self._case_description(case),
                 refs=case.artifact_refs,
             )
+            resolver_step_id = dispatch_spec.step_id or dispatch_spec.source_id
+            resolver_run_id = f"resolver-{generate_run_id()}"
+            prompt_bundle = self._dispatch_coordinator.render_prompt_bundle(dispatch_spec)
             request = ExecutionRequest(
-                step_id=dispatch_spec.step_id or dispatch_spec.source_id,
+                step_id=resolver_step_id,
                 role=dispatch_spec.role_id,
                 runner=dispatch_spec.runner,
                 work_refs=(
+                    f"run_id={resolver_run_id}",
                     f"resolver_case_id={case.case_id}",
                     f"resolver_case_source={case.case_source}",
                     f"resolver_role_id={dispatch_spec.role_id}",
@@ -5283,11 +5290,36 @@ def build_orchestration_app(
                 runner_prompt_path="",
                 request_mode="start",
                 session_policy="reuse_forbidden",
-                session_id=f"resolver-{generate_run_id()}",
+                session_id=resolver_run_id,
             )
 
             try:
                 workspace = self._runtime.prepare(request)
+                worktree_path = self._runtime.workspace_worktree_path(workspace)
+                artifact_paths = resolve_prompt_artifact_paths(
+                    artifact_root=self._artifact_root,
+                    run_id=resolver_run_id,
+                    workspace=worktree_path,
+                )
+                materialize_prompt_artifacts(
+                    bundle=prompt_bundle,
+                    artifact_paths=artifact_paths,
+                    role_id=dispatch_spec.role_id,
+                    agent_id=dispatch_spec.role_id,
+                    runner=dispatch_spec.runner,
+                )
+                request = ExecutionRequest(
+                    step_id=resolver_step_id,
+                    role=dispatch_spec.role_id,
+                    runner=dispatch_spec.runner,
+                    work_refs=request.work_refs,
+                    agent_id=dispatch_spec.role_id,
+                    prompt_bundle_path=artifact_paths.prompt_bundle_path,
+                    runner_prompt_path=artifact_paths.runner_prompt_path,
+                    request_mode="start",
+                    session_policy="reuse_forbidden",
+                    session_id=resolver_run_id,
+                )
                 execution_id = self._runtime.start(request=request, workspace=workspace)
             except Exception as exc:
                 return {
@@ -5486,11 +5518,15 @@ def build_orchestration_app(
         agent=config.default_agent,
         dispatch_role=config.default_agent,
     )
+    resolver_artifact_root = (
+        config.run_store_root or resolved_orchestration_config.runtime.artifact_root
+    )
     resolver = BoundResolver(
         invocation=GatewayEnforcedResolverInvocation(
             delegate=DefaultRoleResolverInvocation(
                 runtime=runtime,
                 dispatch_coordinator=dispatch_coordinator,
+                artifact_root=resolver_artifact_root,
                 timeout_seconds=resolved_orchestration_config.resolver.invocation_timeout_seconds,
             ),
             mediation_source=CaseRuntimeToolMediationSource(

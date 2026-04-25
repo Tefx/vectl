@@ -161,6 +161,8 @@ class _JsonSuccessRunner:
         self._payload = payload
         self.launched = 0
         self._handles: set[str] = set()
+        self.launch_requests: list[Any] = []
+        self.launch_workspaces: list[Path] = []
 
     def capabilities(self) -> RunnerCapabilities:
         return RunnerCapabilities(
@@ -172,6 +174,8 @@ class _JsonSuccessRunner:
 
     def launch(self, request, workspace: Path) -> RunnerLaunchResult:
         self.launched += 1
+        self.launch_requests.append(request)
+        self.launch_workspaces.append(workspace)
         run_id = f"resolver-test-{self.launched}"
         self._handles.add(run_id)
         return RunnerLaunchResult(
@@ -496,6 +500,15 @@ def test_resolve_case_reaches_runtime_runner_through_gateway(
 
     assert report.status == "unblocked"
     assert runner.launched == 1
+    launch_request = runner.launch_requests[0]
+    launch_workspace = runner.launch_workspaces[0]
+    workspace_prompt = launch_workspace / ".vectl" / "orch" / "runner_prompt.md"
+    assert launch_request.prompt_bundle_path
+    assert launch_request.runner_prompt_path
+    assert Path(launch_request.prompt_bundle_path).exists()
+    assert Path(launch_request.runner_prompt_path).exists()
+    assert workspace_prompt.exists()
+    assert workspace_prompt.read_text(encoding="utf-8").strip()
     assert "resolver://runtime-runner" in report.evidence_refs
     assert any(ref.startswith("resolver_gateway_invocation=") for ref in report.evidence_refs)
 
@@ -760,6 +773,11 @@ def test_resolve_case_invokes_configured_default_resolver_role(
     monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-1")
     monkeypatch.setattr(
         app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-1",
+    )
+    monkeypatch.setattr(
+        app._runtime,
         "start",
         lambda *, request, workspace: (
             seen.update(
@@ -829,6 +847,11 @@ def test_resolve_case_supports_explicit_tacit_resolver_config_selection(
     monkeypatch.setattr(
         app._runtime, "prepare", lambda request: seen_roles.append(request.role) or "ws-1"
     )
+    monkeypatch.setattr(
+        app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-1",
+    )
     monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-tacit")
     monkeypatch.setattr(
         app._runtime,
@@ -874,6 +897,11 @@ def test_route_resolution_case_refreshes_state_after_real_resolver_invocation(
 
     monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
     monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-refresh")
+    monkeypatch.setattr(
+        app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-refresh",
+    )
     monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-refresh")
     monkeypatch.setattr(
         app._runtime,

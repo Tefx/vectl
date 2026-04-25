@@ -88027,7 +88027,7 @@ phases:
   steps:
   - id: arch-demolition-wave-1.dem-001-canonicalize-agents-md-ownership
     name: DEM-001 canonicalize agents-md ownership
-    status: pending
+    status: done
     description: Resolve DEM-001 by creating src/vectl/agents_md.py as the one production
       owner of AgentsTarget, AGENTS_MD_* snippet constants, detect_agents_target(),
       and upsert_agents_md(); convert cli.py, core.py, MCP/init flows, and any shell
@@ -88040,6 +88040,18 @@ phases:
     - src/vectl/cli.py
     - src/vectl/core.py
     - src/vectl/mcp_server.py
+    claimed_by: python-executor
+    claimed_at: '2026-04-25T14:25:47.265094+00:00'
+    done_at: '2026-04-25T16:40:50.773358+00:00'
+    evidence: 'Canonicalized AGENTS.md ownership into src/vectl/agents_md.py; CLI
+      and MCP now import shared AgentsTarget/upsert_agents_md; core retains backward-compatible
+      re-exports. Verification: uv run pytest tests/test_cli.py tests/test_mcp.py
+      tests/orchestration/unit/test_orch_app.py tests/orchestration/unit/test_opencode_runner.py
+      -q => 536 passed; uv run python -m compileall -q src/vectl/agents_md.py src/vectl/cli.py
+      src/vectl/core.py src/vectl/mcp_server.py src/vectl/orch_app.py src/vectl/orchestration/runners.py
+      => passed; uv run ruff check src/vectl/agents_md.py src/vectl/cli.py src/vectl/core.py
+      src/vectl/orch_app.py src/vectl/orchestration/runners.py tests/orchestration/unit/test_orch_app.py
+      tests/orchestration/unit/test_opencode_runner.py --select E501 => passed.'
   - id: arch-demolition-wave-1.dem-002-extract-shared-next-step-helper
     name: DEM-002 extract shared next-step helper
     status: pending

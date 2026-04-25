@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Callable, Protocol
 
 from vectl.orchestration.contracts import (
@@ -845,6 +845,7 @@ class ConcreteDriveDriver:
         run_registry: RunRegistry | None = None,
         control_channel: FilesystemControlChannel | None = None,
         child_run_launcher: Callable[[str, str, str], ChildRunRef] | None = None,
+        child_run_canceller: Callable[[str], bool] | None = None,
         max_parallelism: int = 4,
     ) -> None:
         self._drive_store = drive_store
@@ -856,6 +857,7 @@ class ConcreteDriveDriver:
         self._run_registry = run_registry
         self._control_channel = control_channel
         self._child_run_launcher = child_run_launcher
+        self._child_run_canceller = child_run_canceller
         self._max_parallelism = max(1, min(32, max_parallelism))
 
     # ------------------------------------------------------------------
@@ -1425,6 +1427,18 @@ class ConcreteDriveDriver:
                 # Authority: RFC-orch-drive.md section 7.3.1
                 # Stop is terminal — no further transitions valid after this.
                 force = "force=true" in request.payload
+                cancelled_child_ids: list[str] = []
+                if force:
+                    for child_run_id in record.active_child_run_ids:
+                        if self._child_run_canceller is not None:
+                            self._child_run_canceller(child_run_id)
+                        child_ref = self._drive_store.child_run_by_id(child_run_id)
+                        if child_ref is not None and child_ref.status in ("pending", "running"):
+                            self._drive_store.save_child_run(
+                                replace(child_ref, status="cancelled")
+                            )
+                        cancelled_child_ids.append(child_run_id)
+
                 new_status: DriveStatus = "stopped"
                 try:
                     validate_drive_transition(record.status, new_status)
@@ -1443,7 +1457,9 @@ class ConcreteDriveDriver:
                     finished_at=finished_at,
                     agent=record.agent,
                     max_parallelism=record.max_parallelism,
-                    active_child_run_ids=record.active_child_run_ids,
+                    active_child_run_ids=(
+                        () if force else record.active_child_run_ids
+                    ),
                     frontier_step_ids=record.frontier_step_ids,
                     blocked_case_ids=record.blocked_case_ids,
                     barrier=record.barrier,
@@ -1452,6 +1468,11 @@ class ConcreteDriveDriver:
                         f"operator stop consumed"
                         f"{' (force)' if force else ''}: "
                         f"transition {record.status} → {new_status}"
+                        + (
+                            f"; cancelled_child_runs={tuple(cancelled_child_ids)}"
+                            if cancelled_child_ids
+                            else ""
+                        )
                     ),
                 )
                 self._drive_store.save_drive(updated)

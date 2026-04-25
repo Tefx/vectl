@@ -224,6 +224,14 @@ class _FakeOrchApp:
         self.drive_loop_id = drive_id
         return _DriveLoopResult(drive_id=drive_id)
 
+    def run_drive_foreground(
+        self, drive_id: str, *, poll_interval_seconds: float = 2.0
+    ) -> _DriveLoopResult:
+        self.calls.append("run_drive_foreground")
+        self.drive_loop_id = drive_id
+        self.poll_interval_seconds = poll_interval_seconds
+        return _DriveLoopResult(drive_id=drive_id, summary="foreground complete")
+
     def inspect_drive_status(
         self, *, drive_id: str, child_run_id: str | None = None
     ) -> _InspectResult:
@@ -384,16 +392,29 @@ def test_orch_commands_delegate_through_orch_app_boundary(monkeypatch) -> None:
 
 
 def test_orch_drive_runs_first_loop_after_start(monkeypatch) -> None:
-    """`vectl orch drive` must enter the drive loop, not only create DriveRecord."""
+    """`vectl orch drive --once` enters one drive loop, not only create DriveRecord."""
+    fake = _FakeOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--once", "--json"])
+
+    assert result.exit_code == 0
+    assert fake.calls == ["start_drive", "run_drive_loop"]
+    assert fake.drive_loop_id == "drv-start"
+    assert "looped" in result.output
+
+
+def test_orch_drive_defaults_to_foreground_supervisor(monkeypatch) -> None:
+    """`vectl orch drive` supervises foreground execution by default."""
     fake = _FakeOrchApp()
     monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
 
     result = runner.invoke(app, ["orch", "drive", "--json"])
 
     assert result.exit_code == 0
-    assert fake.calls == ["start_drive", "run_drive_loop"]
+    assert fake.calls == ["start_drive", "run_drive_foreground"]
     assert fake.drive_loop_id == "drv-start"
-    assert "looped" in result.output
+    assert "foreground complete" in result.output
 
 
 def test_orch_case_list_latest_reads_drive_blocked_cases_without_attribute_error(

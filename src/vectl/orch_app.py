@@ -54,6 +54,7 @@ from vectl.orchestration.contracts import (
     ChildRunRef,
     CoreSnapshot,
     DispatchSpec,
+    DriveBarrier,
     DriveRecord,
     ExecutionRequest,
     ExecutionResult,
@@ -410,6 +411,16 @@ class SnapshotBundle:
 
 
 @dataclass(frozen=True)
+class DriveChildRunContext:
+    """In-process metadata needed to collect and finalize a drive child run."""
+
+    step_id: str
+    role_id: str
+    dispatch_spec: DispatchSpec
+    run_root: Path
+
+
+@dataclass(frozen=True)
 class CaseRuntimeToolMediationSource:
     """Derive gateway mediation from live resolution-case inputs.
 
@@ -653,6 +664,7 @@ class OrchestrationApp:
             prompt_registry=self._prompt_registry,
             step_adapter=CoreStepDataAdapter(cast("PlanCoreAdapter", core_adapter)),
         )
+        self._drive_child_run_contexts: dict[str, DriveChildRunContext] = {}
 
     def refresh_snapshots(self, *, agent: str | None = None) -> SnapshotBundle:
         """Refresh orchestration snapshots in the required evaluation order."""
@@ -1994,6 +2006,12 @@ class OrchestrationApp:
                 ),
             )
         )
+        self._drive_child_run_contexts[child_ref.run_id] = DriveChildRunContext(
+            step_id=step_id,
+            role_id=role_id,
+            dispatch_spec=dispatch_spec,
+            run_root=run_root,
+        )
 
         self._emit_event(
             kind="run_started",
@@ -2021,6 +2039,27 @@ class OrchestrationApp:
         )
         return child_ref
 
+    def _cancel_drive_child_run(self, child_run_id: str) -> bool:
+        """Best-effort cancellation for a drive child run owned by this process."""
+
+        terminated = self._runtime.terminate_execution(child_run_id)
+        context = self._drive_child_run_contexts.get(child_run_id)
+        if context is not None:
+            registry = self._run_registry(config=self._effective_orchestration_config())
+            registry.save(
+                RunRecord(
+                    run_id=child_run_id,
+                    step_id=context.step_id,
+                    plan_path=str(self._config.plan_path),
+                    agent=context.role_id,
+                    status="fail",
+                    artifact_root=str(context.run_root),
+                    finished_at=time.time(),
+                    output_summary="drive child cancelled by force stop",
+                )
+            )
+        return terminated
+
     def _drive_driver(self) -> ConcreteDriveDriver:
         """Return a ConcreteDriveDriver wired with the app's components.
 
@@ -2037,8 +2076,10 @@ class OrchestrationApp:
             drive_store=self._drive_store(),
             core_adapter=self._core_adapter,
             control=self._control,
+            run_registry=self._run_registry(config=self._effective_orchestration_config()),
             control_channel=self._control_channel(),
             child_run_launcher=self._launch_drive_step_child_run,
+            child_run_canceller=self._cancel_drive_child_run,
             max_parallelism=4,
         )
 
@@ -2085,6 +2126,264 @@ class OrchestrationApp:
             DriveLoopResult capturing the terminal or paused state.
         """
         return self._drive_driver().run_drive_loop(drive_id)
+
+    def run_drive_foreground(
+        self,
+        drive_id: str,
+        *,
+        poll_interval_seconds: float = 2.0,
+    ) -> DriveLoopResult:
+        """Run a drive as a foreground supervisor until it stops or blocks.
+
+        The one-shot drive loop only admits work.  The foreground supervisor
+        keeps the runtime process alive so runner handles remain collectable,
+        consumes drive control requests, finalizes terminal child runs, and
+        re-enters the scheduling loop until the drive reaches a terminal or
+        operator/blocking state.
+        """
+
+        last_result = self.run_drive_loop(drive_id)
+        while True:
+            status = self.drive_status(drive_id=drive_id)
+            if self._foreground_drive_should_exit(status):
+                return self._drive_status_to_loop_result(status)
+
+            if status.active_child_run_ids:
+                collected = self._collect_drive_child_runs(
+                    drive_id=drive_id,
+                    child_run_ids=status.active_child_run_ids,
+                )
+                if collected:
+                    continue
+                time.sleep(max(0.1, poll_interval_seconds))
+                last_result = self.run_drive_loop(drive_id)
+                if self._foreground_loop_result_should_exit(last_result):
+                    return last_result
+                continue
+
+            last_result = self.run_drive_loop(drive_id)
+            if self._foreground_loop_result_should_exit(last_result):
+                return last_result
+
+    @staticmethod
+    def _foreground_drive_should_exit(status: DriveStatusResult) -> bool:
+        return status.status in {
+            "paused",
+            "resolving",
+            "replanning",
+            "blocked_operator",
+            "completed",
+            "halted",
+            "failed_unrecoverable",
+            "stopped",
+        }
+
+    @staticmethod
+    def _foreground_loop_result_should_exit(result: DriveLoopResult) -> bool:
+        return result.status in {
+            "paused",
+            "resolving",
+            "replanning",
+            "blocked_operator",
+            "completed",
+            "halted",
+            "failed_unrecoverable",
+            "stopped",
+        } or result.barrier is not None
+
+    @staticmethod
+    def _drive_status_to_loop_result(status: DriveStatusResult) -> DriveLoopResult:
+        return DriveLoopResult(
+            drive_id=status.drive_id,
+            status=status.status,
+            completed_steps=(),
+            active_child_run_ids=status.active_child_run_ids,
+            barrier=status.barrier,
+            summary=status.summary,
+        )
+
+    def _collect_drive_child_runs(
+        self,
+        *,
+        drive_id: str,
+        child_run_ids: tuple[str, ...],
+    ) -> int:
+        """Poll active child runs and finalize any terminal child."""
+
+        store = self._drive_store()
+        collected = 0
+        for child_run_id in child_run_ids:
+            execution_result, updated_ref = self._runtime.collect_child_run(child_run_id)
+            if execution_result is None:
+                continue
+            if updated_ref is None:
+                persisted_ref = store.child_run_by_id(child_run_id)
+                if persisted_ref is not None:
+                    status = self._child_status_from_execution(execution_result.status)
+                    updated_ref = replace(persisted_ref, status=status)
+            if updated_ref is not None:
+                store.save_child_run(updated_ref)
+            self._finalize_drive_child_run(
+                drive_id=drive_id,
+                child_run_id=child_run_id,
+                execution_result=execution_result,
+            )
+            collected += 1
+        return collected
+
+    @staticmethod
+    def _child_status_from_execution(status: str) -> str:
+        if status in {"success", "fail", "stall", "transport_error"}:
+            return status
+        return "fail"
+
+    def _finalize_drive_child_run(
+        self,
+        *,
+        drive_id: str,
+        child_run_id: str,
+        execution_result: ExecutionResult,
+    ) -> None:
+        """Route one terminal child result through reconcile and drive state."""
+
+        context = self._drive_child_run_contexts.get(child_run_id)
+        if context is None:
+            resolution_case = ResolutionCase(
+                case_id=f"case-{generate_run_id()}",
+                case_source="runtime_failure",
+                reason="drive child finalization context missing",
+                summary=execution_result.output_summary,
+                blocked_step_ids=(execution_result.step_id,),
+            )
+            self._record_drive_child_failure(
+                drive_id=drive_id,
+                child_run_id=child_run_id,
+                resolution_case=resolution_case,
+                output_summary=execution_result.output_summary,
+            )
+            return
+
+        try:
+            resolution_case = self.route_terminal_execution(
+                step_id=context.step_id,
+                execution_id=child_run_id,
+                dispatch_spec=context.dispatch_spec,
+                execution_result=execution_result,
+            )
+        except Exception as exc:
+            snapshots = self.refresh_snapshots(agent=context.role_id)
+            resolution_case = ResolutionCase(
+                case_id=f"case-{generate_run_id()}",
+                case_source="runtime_failure",
+                reason=f"drive child finalization failed: {exc}",
+                summary=execution_result.output_summary,
+                core=snapshots.core,
+                roster=snapshots.roster,
+                runtime=snapshots.runtime,
+                blocked_step_ids=(context.step_id,),
+            )
+
+        registry = self._run_registry(config=self._effective_orchestration_config())
+        final_status: Literal["success", "fail", "stall"]
+        if resolution_case is None:
+            final_status = "success"
+            output_summary = execution_result.output_summary
+        else:
+            final_status = "fail"
+            output_summary = (
+                f"Resolution case created: {resolution_case.reason} "
+                f"(case_id={resolution_case.case_id})"
+            )
+        registry.save(
+            RunRecord(
+                run_id=child_run_id,
+                step_id=context.step_id,
+                plan_path=str(self._config.plan_path),
+                agent=context.role_id,
+                status=final_status,
+                artifact_root=str(context.run_root),
+                finished_at=time.time(),
+                output_summary=output_summary,
+            )
+        )
+        self._emit_event(
+            kind="run_final",
+            step_id=context.step_id,
+            agent=context.role_id,
+            payload={"run_id": child_run_id, "final_status": final_status},
+        )
+        if resolution_case is None:
+            self._record_drive_child_success(
+                drive_id=drive_id,
+                child_run_id=child_run_id,
+                step_id=context.step_id,
+            )
+        else:
+            self._record_drive_child_failure(
+                drive_id=drive_id,
+                child_run_id=child_run_id,
+                resolution_case=resolution_case,
+                output_summary=output_summary,
+            )
+        self._drive_child_run_contexts.pop(child_run_id, None)
+
+    def _record_drive_child_success(
+        self,
+        *,
+        drive_id: str,
+        child_run_id: str,
+        step_id: str,
+    ) -> None:
+        store = self._drive_store()
+        record = store.replay_drive_state(drive_id)
+        if record is None:
+            return
+        active_ids = tuple(rid for rid in record.active_child_run_ids if rid != child_run_id)
+        store.save_drive(
+            replace(
+                record,
+                updated_at=time.time(),
+                active_child_run_ids=active_ids,
+                summary=f"child run {child_run_id} completed step {step_id}",
+            )
+        )
+
+    def _record_drive_child_failure(
+        self,
+        *,
+        drive_id: str,
+        child_run_id: str,
+        resolution_case: ResolutionCase,
+        output_summary: str,
+    ) -> None:
+        store = self._drive_store()
+        record = store.replay_drive_state(drive_id)
+        if record is None:
+            return
+        active_ids = tuple(rid for rid in record.active_child_run_ids if rid != child_run_id)
+        blocked_case_ids = tuple(
+            dict.fromkeys((*record.blocked_case_ids, resolution_case.case_id))
+        )
+        barrier = DriveBarrier(
+            reason="runtime_failure",
+            entered_at=time.time(),
+            case_ids=(resolution_case.case_id,),
+            active_child_run_ids_at_entry=active_ids,
+        )
+        store.save_drive(
+            replace(
+                record,
+                status="resolving",
+                updated_at=time.time(),
+                active_child_run_ids=active_ids,
+                blocked_case_ids=blocked_case_ids,
+                barrier=barrier,
+                summary=(
+                    f"child run {child_run_id} requires resolution: "
+                    f"{resolution_case.reason}; {output_summary}"
+                ),
+            )
+        )
 
     def resume_drive(self, drive_id: str) -> DriveResumeResult:
         """Resume an interrupted drive session.

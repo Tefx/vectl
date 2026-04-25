@@ -304,6 +304,35 @@ class TestDriveControlConsumption:
         assert "operator stop consumed" in result.summary
         assert app.has_active_drive_for_plan() is None
 
+    def test_force_stop_cancels_persisted_active_child_refs(self, tmp_path: Path) -> None:
+        """drive.stop --force clears active child ids and marks child ref cancelled."""
+        app = _build_app(tmp_path)
+        started = app.start_drive(agent="test-agent", max_parallelism=4)
+        store = app._drive_store()
+        child = ChildRunRef(
+            run_id="exec-child-1",
+            drive_id=started.drive_id,
+            kind="step",
+            step_id="core.ready",
+            status="running",
+            workspace="ws-core.ready",
+            runner="opencode",
+            artifact_root="runs/exec-child-1",
+        )
+        store.save_child_run(child)
+        current = store.replay_drive_state(started.drive_id)
+        assert current is not None
+        store.save_drive(replace(current, active_child_run_ids=(child.run_id,)))
+
+        app.control_drive_stop(drive_id=started.drive_id, reason="test stop", force=True)
+        result = app.run_drive_loop(started.drive_id)
+
+        assert result.status == "stopped"
+        assert result.active_child_run_ids == ()
+        persisted_child = store.child_run_by_id(child.run_id)
+        assert persisted_child is not None
+        assert persisted_child.status == "cancelled"
+
 
 # ------------------------------------------------------------------
 # resume_drive surface

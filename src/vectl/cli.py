@@ -1910,6 +1910,16 @@ def _validate_child_run_scope_or_die(
 def orch_drive(
     agent: str | None = OrchAgentOption,
     max_parallelism: int = OrchMaxParallelismOption,
+    once: bool = typer.Option(
+        False,
+        "--once",
+        help="Run one scheduling loop pass and exit instead of supervising in foreground.",
+    ),
+    poll_interval_seconds: float = typer.Option(
+        2.0,
+        "--poll-interval",
+        help="Seconds between child-run polls in foreground mode.",
+    ),
     json_flag: bool = OrchJsonOption,
     output: OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
@@ -1954,7 +1964,18 @@ def orch_drive(
         _orch_internal_error(exc)
         return
     try:
-        loop_result = app_runtime.run_drive_loop(result.drive_id)
+        if once:
+            loop_result = app_runtime.run_drive_loop(result.drive_id)
+        else:
+            if mode == OrchOutputMode.HUMAN:
+                out.print(
+                    f"drive_id={_esc(result.drive_id)} status=foreground "
+                    f"max_parallelism={max_parallelism}"
+                )
+            loop_result = app_runtime.run_drive_foreground(
+                result.drive_id,
+                poll_interval_seconds=poll_interval_seconds,
+            )
     except Exception as exc:
         _orch_internal_error(exc)
         return

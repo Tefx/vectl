@@ -877,6 +877,67 @@ def test_resolve_case_parses_opencode_stdout_wrapped_resolution_report(
     assert "resolver://stdout-json" in report.evidence_refs
 
 
+def test_resolve_case_ignores_opencode_protocol_envelope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Resolver must not treat OpenCode event JSON as the ResolutionReport."""
+    app = _build_app(tmp_path)
+    report_payload = {
+        "status": "operator_required",
+        "summary": "automatic repair unsafe",
+        "evidence_refs": ["resolver://protocol-event"],
+        "operator_message": "Review manually.",
+    }
+    opencode_event = {
+        "type": "part",
+        "sessionID": "ses_123",
+        "timestamp": "2026-04-26T00:00:00Z",
+        "part": {
+            "type": "text",
+            "text": json.dumps(report_payload),
+        },
+    }
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-event")
+    monkeypatch.setattr(
+        app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-event",
+    )
+    monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-event")
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-event",
+            status="success",
+            output_summary=(
+                "OpenCode completed successfully (exit 0); stdout="
+                f"{json.dumps(opencode_event)}"
+            ),
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-event",
+            case_source="runtime_failure",
+            reason="Blocked steps require resolution: core.ready",
+            summary="repair the blocked step",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+        )
+    )
+
+    assert report.status == "operator_required"
+    assert report.summary.endswith("automatic repair unsafe")
+    assert "resolver://protocol-event" in report.evidence_refs
+    assert report.operator_message == "Review manually."
+
+
 def test_resolve_case_supports_explicit_tacit_resolver_config_selection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

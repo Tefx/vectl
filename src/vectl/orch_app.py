@@ -5193,19 +5193,47 @@ class OrchestrationApp:
 # ---------------------------------------------------------------------
 
 
-def _extract_json_object_from_text(text: str) -> dict[str, object] | None:
-    """Extract the first JSON object from runner text, if present."""
+def _iter_json_values_from_text(text: str):
+    """Yield JSON values embedded in runner text."""
 
     decoder = json.JSONDecoder()
-    for index, char in enumerate(text):
-        if char != "{":
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char not in "[{":
+            index += 1
             continue
         try:
-            payload, _end = decoder.raw_decode(text[index:])
+            payload, end = decoder.raw_decode(text[index:])
         except json.JSONDecodeError:
+            index += 1
             continue
-        if isinstance(payload, dict):
-            return cast(dict[str, object], payload)
+        yield payload
+        index += max(end, 1)
+
+
+def _find_resolution_report_payload(value: object) -> dict[str, object] | None:
+    """Find a ResolutionReport-shaped payload inside nested runner values."""
+
+    if isinstance(value, dict):
+        if isinstance(value.get("status"), str) and isinstance(value.get("summary"), str):
+            return cast(dict[str, object], value)
+        for nested in value.values():
+            found = _find_resolution_report_payload(nested)
+            if found is not None:
+                return found
+        return None
+    if isinstance(value, list | tuple):
+        for nested in value:
+            found = _find_resolution_report_payload(nested)
+            if found is not None:
+                return found
+        return None
+    if isinstance(value, str):
+        for nested in _iter_json_values_from_text(value):
+            found = _find_resolution_report_payload(nested)
+            if found is not None:
+                return found
     return None
 
 
@@ -5225,12 +5253,10 @@ def _extract_resolution_report_payload(output_summary: str) -> dict[str, object]
         candidates.append(stripped.rsplit(stdout_marker, 1)[1].strip())
 
     for candidate in candidates:
-        try:
-            payload = json.loads(candidate)
-        except json.JSONDecodeError:
-            payload = _extract_json_object_from_text(candidate)
-        if isinstance(payload, dict):
-            return cast(dict[str, object], payload)
+        for payload in _iter_json_values_from_text(candidate):
+            found = _find_resolution_report_payload(payload)
+            if found is not None:
+                return found
     return None
 
 

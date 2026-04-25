@@ -87950,7 +87950,7 @@ phases:
       - uv run pytest tests/ -x --tb=short -> 2908 passed, 40 skipped in 169.84s'
   - id: arch-demolition-w0.orchestration-characterization
     name: Pin orchestration/read-path characterization coverage
-    status: pending
+    status: claimed
     description: 'Add or tighten characterization coverage for Wave 0 orchestration
       behaviors: inspection query outputs consumed by orch_app and drive/review behavior
       around post-execution decision paths. No later demolition step may delete this
@@ -87960,6 +87960,8 @@ phases:
       and post-execution review behavior, plus the full-suite result.
     depends_on:
     - arch-demolition-w0.shell-characterization
+    claimed_by: project-guide
+    claimed_at: '2026-04-25T07:53:49.762432+00:00'
 - id: arch-demolition-wave-1
   name: Architectural Demolition — Wave 1 Deduplicate Direct Copies
   status: locked

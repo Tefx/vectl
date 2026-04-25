@@ -273,6 +273,39 @@ class TestActiveDriveRejection:
 
 
 # ------------------------------------------------------------------
+# drive control consumption
+# ------------------------------------------------------------------
+
+
+class TestDriveControlConsumption:
+    """Test app-level drive control wiring into the drive loop."""
+
+    def test_run_drive_loop_consumes_queued_stop_before_dispatch(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Queued drive.stop is applied before any child dispatch occurs."""
+        app = _build_app(tmp_path)
+        started = app.start_drive(agent="test-agent", max_parallelism=4)
+
+        def _fail_child_launch(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("drive.stop was not consumed before dispatch")
+
+        monkeypatch.setattr(app, "_launch_drive_step_child_run", _fail_child_launch)
+        stop = app.control_drive_stop(
+            drive_id=started.drive_id,
+            reason="test stop",
+            force=True,
+        )
+
+        result = app.run_drive_loop(started.drive_id)
+
+        assert stop.success is True
+        assert result.status == "stopped"
+        assert "operator stop consumed" in result.summary
+        assert app.has_active_drive_for_plan() is None
+
+
+# ------------------------------------------------------------------
 # resume_drive surface
 # ------------------------------------------------------------------
 

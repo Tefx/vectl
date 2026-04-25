@@ -1999,13 +1999,13 @@ class OrchestrationApp:
             kind="run_started",
             step_id=step_id,
             agent=role_id,
-            payload={"run_id": child_ref.run_id, "drive_id": drive_id},
+            payload={"run_id": child_ref.run_id, "plan_path": str(self._config.plan_path)},
         )
         self._emit_event(
             kind="run_status_changed",
             step_id=step_id,
             agent=role_id,
-            payload={"run_id": child_ref.run_id, "drive_id": drive_id, "status": "running"},
+            payload={"run_id": child_ref.run_id, "status": "running"},
         )
         self._append_log(
             " ".join(
@@ -2037,6 +2037,7 @@ class OrchestrationApp:
             drive_store=self._drive_store(),
             core_adapter=self._core_adapter,
             control=self._control,
+            control_channel=self._control_channel(),
             child_run_launcher=self._launch_drive_step_child_run,
             max_parallelism=4,
         )

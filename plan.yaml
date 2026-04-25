@@ -88156,6 +88156,7 @@ phases:
     refs:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/orchestration/control_channel.py
+    agent: python-executor
   - id: arch-demolition-wave-2.dem-013-delete-speculative-continuity-artifact-seams
     name: DEM-013 delete speculative continuity artifact seams
     status: pending

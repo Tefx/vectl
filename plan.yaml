@@ -87914,7 +87914,7 @@ phases:
   steps:
   - id: arch-demolition-w0.shell-characterization
     name: Pin shell-surface characterization coverage
-    status: claimed
+    status: done
     description: 'Add or tighten characterization coverage for Wave 0 shell behaviors:
       agents-md detect/upsert behavior, get_next_steps_with_phase ordering/filtering,
       duplicate-step-id diagnostic rendering, and vectl_claim conflict/affinity shaping
@@ -87925,6 +87925,29 @@ phases:
       paste the full-suite result used to lock Wave 0.
     claimed_by: project-guide
     claimed_at: '2026-04-25T07:48:26.124432+00:00'
+    done_at: '2026-04-25T07:53:41.301611+00:00'
+    evidence: 'Implemented Wave 0 shell-surface characterization coverage in tests/test_arch_demolition_wave0_characterization.py:
+
+      - test_wave0_agents_md_preserves_legacy_header_and_appends_single_managed_block
+
+      - test_wave0_cli_and_mcp_next_step_ordering_filtering_match
+
+      - test_wave0_duplicate_step_id_diagnostics_are_stable_on_cli_status
+
+      - test_wave0_claim_conflict_shape_matches_cli_and_mcp
+
+
+      Version-control prerequisite: staged docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+      with git add so the demolition plan is tracked in the index (not committed;
+      no commit was requested).
+
+
+      Verification:
+
+      - uv run pytest tests/test_arch_demolition_wave0_characterization.py -q -> 4
+      passed in 0.84s
+
+      - uv run pytest tests/ -x --tb=short -> 2908 passed, 40 skipped in 169.84s'
   - id: arch-demolition-w0.orchestration-characterization
     name: Pin orchestration/read-path characterization coverage
     status: pending

@@ -87907,14 +87907,14 @@ phases:
       \ OPEN\n\nheadline: PASS\ngate_open_allowed: true"
 - id: arch-demolition-wave-0
   name: Architectural Demolition — Wave 0 Characterization & Safety Rails
-  status: pending
+  status: in_progress
   gate: Wave 0 complete when characterization coverage pins all touched behaviors
     and `uv run pytest tests/ -x --tb=short` passes with focused touched-surface tests
     named in evidence.
   steps:
   - id: arch-demolition-w0.shell-characterization
     name: Pin shell-surface characterization coverage
-    status: pending
+    status: claimed
     description: 'Add or tighten characterization coverage for Wave 0 shell behaviors:
       agents-md detect/upsert behavior, get_next_steps_with_phase ordering/filtering,
       duplicate-step-id diagnostic rendering, and vectl_claim conflict/affinity shaping
@@ -87923,6 +87923,8 @@ phases:
     verification: uv run pytest tests/ -x --tb=short
     evidence_template: Name the focused shell-surface tests added or tightened and
       paste the full-suite result used to lock Wave 0.
+    claimed_by: project-guide
+    claimed_at: '2026-04-25T07:48:26.124432+00:00'
   - id: arch-demolition-w0.orchestration-characterization
     name: Pin orchestration/read-path characterization coverage
     status: pending

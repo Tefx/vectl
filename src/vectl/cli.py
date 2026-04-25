@@ -1379,23 +1379,24 @@ def orch_case_list(
     )
     if resolved_drive_id is not None:
         # Use drive status to get blocked case IDs
+        allowed_statuses = {"open", "resolved", "halt"}
+        if status is not None and status not in allowed_statuses:
+            _die("Invalid --status value. Expected one of: open, resolved, halt")
         drive_status = app_runtime.drive_status(drive_id=resolved_drive_id)
-        if drive_status.blocked_case_ids:
-            allowed_statuses = {"open", "resolved", "halt"}
-            if status is not None and status not in allowed_statuses:
-                _die("Invalid --status value. Expected one of: open, resolved, halt")
-            _emit_orch_payload(
-                tuple(f"case_id={cid} status=open" for cid in drive_status.blocked_case_ids),
-                mode,
-            )
-        else:
-            _emit_orch_payload((), mode)
+        rows = (
+            tuple(f"case_id={cid} status=open" for cid in drive_status.blocked_case_ids)
+            if status in (None, "open")
+            else ()
+        )
+        _emit_orch_payload(rows, mode)
         if watch:
             drive_status = app_runtime.drive_status(drive_id=resolved_drive_id)
-            _emit_orch_payload(
-                tuple(f"case_id={cid} status=open" for cid in drive_status.blocked_case_ids),
-                mode,
+            rows = (
+                tuple(f"case_id={cid} status=open" for cid in drive_status.blocked_case_ids)
+                if status in (None, "open")
+                else ()
             )
+            _emit_orch_payload(rows, mode)
         return
 
     # Legacy path
@@ -1952,7 +1953,12 @@ def orch_drive(
     except Exception as exc:
         _orch_internal_error(exc)
         return
-    _emit_orch_payload(result, mode)
+    try:
+        loop_result = app_runtime.run_drive_loop(result.drive_id)
+    except Exception as exc:
+        _orch_internal_error(exc)
+        return
+    _emit_orch_payload(loop_result, mode)
 
 
 @orch_app.command("drive-status")

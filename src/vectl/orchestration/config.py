@@ -1037,7 +1037,85 @@ def load_frozen_snapshot(snapshot_path: Path) -> OrchestrationConfig:
         return OrchestrationConfig()
     if not isinstance(payload, dict):
         raise ValueError(f"invalid frozen config snapshot payload: {snapshot_path}")
+    payload = _normalize_legacy_frozen_snapshot_payload(payload)
     return _dict_to_config(payload)
+
+
+def _normalize_legacy_frozen_snapshot_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Normalize pre-RFC frozen snapshots into current role-profile shape.
+
+    Older ``config.snapshot.yaml`` files serialized the full effective registry
+    under ``orchestration.role_profiles``, including built-in role IDs. Current
+    config admission correctly rejects that shape for live config files because
+    built-in changes must be represented as ``role_profile_overrides``. Frozen
+    run snapshots are historical recovery artifacts, so recovery must tolerate
+    the old shape by translating only built-in entries into override deltas.
+    """
+
+    orch = payload.get("orchestration")
+    if not isinstance(orch, dict):
+        return payload
+    raw_profiles = orch.get("role_profiles")
+    if not isinstance(raw_profiles, dict):
+        return payload
+
+    builtin_defaults = {profile.role_id: profile for profile in default_role_profiles()}
+    builtin_legacy_profiles = {
+        str(role_id): raw_profile
+        for role_id, raw_profile in raw_profiles.items()
+        if str(role_id) in builtin_defaults
+    }
+    if not builtin_legacy_profiles:
+        return payload
+
+    normalized_payload = dict(payload)
+    normalized_orch = dict(orch)
+    normalized_payload["orchestration"] = normalized_orch
+
+    custom_profiles = {
+        role_id: raw_profile
+        for role_id, raw_profile in raw_profiles.items()
+        if str(role_id) not in builtin_defaults
+    }
+    if custom_profiles:
+        normalized_orch["role_profiles"] = custom_profiles
+    else:
+        normalized_orch.pop("role_profiles", None)
+
+    raw_existing_overrides = normalized_orch.get("role_profile_overrides", {})
+    existing_overrides = raw_existing_overrides if isinstance(raw_existing_overrides, dict) else {}
+    normalized_overrides: dict[str, dict[str, str]] = {
+        str(role_id): {
+            str(field_name): str(field_value)
+            for field_name, field_value in fields.items()
+        }
+        for role_id, fields in existing_overrides.items()
+        if isinstance(fields, dict)
+    }
+
+    for role_id, raw_profile in builtin_legacy_profiles.items():
+        if not isinstance(raw_profile, dict):
+            continue
+        default_profile = builtin_defaults[role_id]
+        delta: dict[str, str] = {}
+        for field_name in _ALLOWED_OVERRIDE_FIELDS:
+            if field_name not in raw_profile:
+                continue
+            raw_value = str(raw_profile[field_name])
+            if raw_value != str(getattr(default_profile, field_name)):
+                delta[field_name] = raw_value
+        if delta:
+            normalized_overrides[role_id] = {
+                **delta,
+                **normalized_overrides.get(role_id, {}),
+            }
+
+    if normalized_overrides:
+        normalized_orch["role_profile_overrides"] = normalized_overrides
+    else:
+        normalized_orch.pop("role_profile_overrides", None)
+
+    return normalized_payload
 
 
 def _serialize_tool_allowlist(

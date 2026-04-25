@@ -177,6 +177,7 @@ def _make_driver(
     tmp_path: Path,
     core: CoreSnapshot | None = None,
     max_parallelism: int = 4,
+    child_run_launcher: Any | None = None,
 ) -> ConcreteDriveDriver:
     store = DriveStore(store_root=tmp_path)
     control = _make_control(core)
@@ -184,6 +185,7 @@ def _make_driver(
         drive_store=store,
         core_adapter=control.sources.core_adapter,
         control=control,
+        child_run_launcher=child_run_launcher,
         max_parallelism=max_parallelism,
     )
 
@@ -552,6 +554,42 @@ class TestParallelReadyFrontierDispatch:
         assert result.drive_id == start.drive_id
         # Both steps must appear in the dispatch batch
         assert "core.left" in result.summary or "core.right" in result.summary
+
+    def test_dispatch_batch_launches_and_persists_child_run_refs(self, tmp_path: Path) -> None:
+        """Drive loop dispatch must create durable child-run refs, not only summarize."""
+        launched: list[tuple[str, str, str]] = []
+
+        def _launcher(drive_id: str, step_id: str, role_id: str) -> ChildRunRef:
+            launched.append((drive_id, step_id, role_id))
+            return ChildRunRef(
+                run_id=f"run-{step_id}",
+                drive_id=drive_id,
+                kind="step",
+                step_id=step_id,
+                status="running",
+                workspace=f"ws-{step_id}",
+                runner="opencode",
+                artifact_root=f"runs/run-{step_id}",
+            )
+
+        core = _core(claimable=("core.left", "core.right"))
+        driver = _make_driver(
+            tmp_path,
+            core=core,
+            max_parallelism=4,
+            child_run_launcher=_launcher,
+        )
+        start = driver.start_drive(plan_path="/repo/parallel.yaml")
+
+        result = driver.run_drive_loop(start.drive_id)
+
+        assert result.active_child_run_ids == ("run-core.left", "run-core.right")
+        assert launched == [
+            (start.drive_id, "core.left", "python-executor"),
+            (start.drive_id, "core.right", "python-executor"),
+        ]
+        persisted = driver._drive_store.child_runs_for_drive(start.drive_id)
+        assert {ref.run_id for ref in persisted} == {"run-core.left", "run-core.right"}
 
 
 class TestBoundedParallelismEnforcement:

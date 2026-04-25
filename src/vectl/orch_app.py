@@ -51,6 +51,7 @@ from vectl.orchestration.continuity_artifacts import (
 )
 from vectl.orchestration.contracts import (
     ControlDecision,
+    ChildRunRef,
     CoreSnapshot,
     DispatchSpec,
     DriveRecord,
@@ -1244,6 +1245,99 @@ class OrchestrationApp:
         execution_id = self._runtime.start(request=request, workspace=workspace_id)
         return workspace_id, execution_id
 
+    def _start_runtime_child_execution(
+        self,
+        *,
+        drive_id: str,
+        run_id: str,
+        step_id: str,
+        dispatch_spec: DispatchSpec,
+        mode: Literal["start", "resume", "recover"],
+    ) -> ChildRunRef:
+        """Start a drive-scoped step child run through the real runtime."""
+
+        prompt_bundle = self._render_validated_prompt_bundle(dispatch_spec)
+
+        blocked, block_reason = self._is_dispatch_blocked_by_gate()
+        if blocked:
+            raise DispatchBlockedError(
+                f"_start_runtime_child_execution: dispatch blocked for step {step_id}: "
+                f"{block_reason}"
+            )
+
+        if dispatch_spec.source_kind == "step":
+            authoritative_isolation = self._core_adapter.step_isolation(step_id)
+            isolation_ref = f"isolation={authoritative_isolation.value}"
+        else:
+            isolation_ref = "isolation=default"
+        request_mode = _dispatch_request_mode(mode=mode, dispatch_spec=dispatch_spec)
+        session_id: str | None = run_id
+        if dispatch_spec.session_mode == "reuse":
+            session_id = dispatch_spec.reuse_token
+        session_policy: SessionPolicy = (
+            "reuse_allowed" if dispatch_spec.session_mode == "reuse" else "reuse_forbidden"
+        )
+        prompt_bundle_ref = self._prompt_bundle_work_ref(prompt_bundle)
+
+        request = ExecutionRequest(
+            step_id=step_id,
+            role=dispatch_spec.role_id,
+            runner=dispatch_spec.runner,
+            work_refs=(
+                f"run_id={run_id}",
+                f"drive_id={drive_id}",
+                f"mode={request_mode}",
+                isolation_ref,
+                f"execution_context={dispatch_spec.execution_context}",
+                f"mutation_policy={dispatch_spec.mutation_policy}",
+                f"output_contract={dispatch_spec.output_contract}",
+                f"source_kind={dispatch_spec.source_kind}",
+                prompt_bundle_ref,
+            ),
+            agent_id=dispatch_spec.role_id,
+            prompt_bundle_path="",
+            runner_prompt_path="",
+            request_mode=request_mode,
+            session_policy=session_policy,
+            session_id=session_id,
+        )
+
+        workspace_id = self._runtime.prepare_child_run(request, drive_id=drive_id, kind="step")
+        worktree_path = self._runtime.workspace_worktree_path(workspace_id)
+        artifact_root = self._artifact_root_for_run(run_id)
+        artifact_paths = resolve_prompt_artifact_paths(
+            artifact_root=artifact_root,
+            run_id=run_id,
+            workspace=worktree_path,
+        )
+        materialize_prompt_artifacts(
+            bundle=prompt_bundle,
+            artifact_paths=artifact_paths,
+            role_id=dispatch_spec.role_id,
+            agent_id=dispatch_spec.role_id,
+            runner=dispatch_spec.runner,
+        )
+
+        request = ExecutionRequest(
+            step_id=step_id,
+            role=dispatch_spec.role_id,
+            runner=dispatch_spec.runner,
+            work_refs=request.work_refs,
+            agent_id=dispatch_spec.role_id,
+            prompt_bundle_path=artifact_paths.prompt_bundle_path,
+            runner_prompt_path=artifact_paths.runner_prompt_path,
+            request_mode=request_mode,
+            session_policy=session_policy,
+            session_id=session_id,
+        )
+        return self._runtime.start_child_run(
+            request,
+            workspace_id,
+            drive_id=drive_id,
+            kind="step",
+            step_id=step_id,
+        )
+
     def _render_validated_prompt_bundle(self, dispatch_spec: DispatchSpec) -> PromptBundle:
         """Render prompt bundle from dispatch coordinator with authority validation.
 
@@ -1834,6 +1928,99 @@ class OrchestrationApp:
         root = self._config.run_store_root or config.runtime.artifact_root
         return DriveStore(store_root=Path(root) / "drives")
 
+    def _launch_drive_step_child_run(
+        self,
+        drive_id: str,
+        step_id: str,
+        role_id: str,
+    ) -> ChildRunRef:
+        """Launch one drive-owned step child run and persist run-level state."""
+
+        resolved_config = self._effective_orchestration_config()
+        registry = self._run_registry(config=resolved_config)
+        run_id = generate_run_id()
+        run_root = registry.run_artifact_root(run_id)
+        frozen_snapshot = freeze_config(resolved_config, run_dir=run_root)
+        self._write_continuity_bootstrap(
+            run_id=run_id,
+            step_id=step_id,
+            frozen_config=frozen_snapshot.config,
+            run_root=run_root,
+            runner=frozen_snapshot.config.runtime.default_runner,
+        )
+        allowlist_text = self._allowlist_text(frozen_snapshot.config.resolver.tool_allowlist)
+
+        try:
+            self._core_adapter.claim_step(step_id, role_id, flow="normal")
+            dispatch_spec = self.build_dispatch_spec(step_id=step_id, role_hint=role_id)
+            child_ref = self._start_runtime_child_execution(
+                drive_id=drive_id,
+                run_id=run_id,
+                step_id=step_id,
+                dispatch_spec=dispatch_spec,
+                mode="start",
+            )
+        except Exception as exc:
+            now_ts = time.time()
+            registry.save(
+                RunRecord(
+                    run_id=run_id,
+                    step_id=step_id,
+                    plan_path=str(self._config.plan_path),
+                    agent=role_id,
+                    status="fail",
+                    artifact_root=str(run_root),
+                    finished_at=now_ts,
+                    output_summary=(
+                        "drive child runtime start failed after durable admission: "
+                        f"{exc}"
+                    ),
+                )
+            )
+            raise
+
+        registry.save(
+            RunRecord(
+                run_id=child_ref.run_id,
+                step_id=step_id,
+                plan_path=str(self._config.plan_path),
+                agent=role_id,
+                status="running",
+                artifact_root=str(run_root),
+                output_summary=(
+                    "drive child initialized with frozen snapshot "
+                    f"drive_id={drive_id} runner={frozen_snapshot.config.runtime.default_runner} "
+                    f"allowlist={allowlist_text} workspace={child_ref.workspace}"
+                ),
+            )
+        )
+
+        self._emit_event(
+            kind="run_started",
+            step_id=step_id,
+            agent=role_id,
+            payload={"run_id": child_ref.run_id, "drive_id": drive_id},
+        )
+        self._emit_event(
+            kind="run_status_changed",
+            step_id=step_id,
+            agent=role_id,
+            payload={"run_id": child_ref.run_id, "drive_id": drive_id, "status": "running"},
+        )
+        self._append_log(
+            " ".join(
+                (
+                    f"drive_id={drive_id}",
+                    f"run_id={child_ref.run_id}",
+                    f"step_id={step_id}",
+                    "status=running",
+                    f"agent={role_id}",
+                    f"workspace={child_ref.workspace}",
+                )
+            )
+        )
+        return child_ref
+
     def _drive_driver(self) -> ConcreteDriveDriver:
         """Return a ConcreteDriveDriver wired with the app's components.
 
@@ -1850,6 +2037,7 @@ class OrchestrationApp:
             drive_store=self._drive_store(),
             core_adapter=self._core_adapter,
             control=self._control,
+            child_run_launcher=self._launch_drive_step_child_run,
             max_parallelism=4,
         )
 
@@ -1957,6 +2145,7 @@ class OrchestrationApp:
             status=record.status,
             active_child_run_ids=record.active_child_run_ids,
             frontier_step_ids=record.frontier_step_ids,
+            blocked_case_ids=record.blocked_case_ids,
             barrier=record.barrier,
             summary=record.summary,
         )

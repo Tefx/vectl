@@ -252,6 +252,48 @@ class TestConfigRoundTripSymmetry:
         assert "custom-1" in by_id
         assert by_id["custom-1"].default_runner == "opencode"
 
+    def test_legacy_frozen_snapshot_with_builtin_role_profiles_loads(
+        self, tmp_path: Path
+    ) -> None:
+        """Pre-RFC snapshots stored built-ins under role_profiles; recovery must load them."""
+        snapshot_path = tmp_path / "config.snapshot.yaml"
+        snapshot_path.write_text(
+            yaml.dump(
+                {
+                    "orchestration": {
+                        "plan_path": "plan.yaml",
+                        "role_profiles": {
+                            "python-executor": {
+                                "agent_id": "python-executor",
+                                "prompt_family": "coder",
+                                "execution_context": "linked_worktree",
+                                "mutation_policy": "worktree_changes",
+                                "session_policy": "reuse_allowed",
+                                "output_contract": "freeform_evidence",
+                                "default_runner": "opencode",
+                            },
+                            "custom-reviewer": {
+                                "agent_id": "custom-reviewer",
+                                "prompt_family": "reviewer",
+                                "execution_context": "main_worktree",
+                                "mutation_policy": "read_only",
+                                "session_policy": "reuse_allowed",
+                                "output_contract": "structured_review_result",
+                                "default_runner": "opencode",
+                            },
+                        },
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        config = load_frozen_snapshot(snapshot_path)
+
+        by_id = {p.role_id: p for p in config.role_profiles}
+        assert by_id["python-executor"].default_runner == "opencode"
+        assert by_id["custom-reviewer"].default_runner == "opencode"
+
     def test_deep_update_config_roundtrip(self) -> None:
         """_deep_update_config (which uses _config_to_dict/_dict_to_config) round-trips."""
         from vectl.orchestration.config import _deep_update_config

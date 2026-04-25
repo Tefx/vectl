@@ -36,6 +36,31 @@ class _Result:
 
 
 @dataclass(frozen=True)
+class _DriveStartResult:
+    drive_id: str
+    status: str = "running"
+    frontier_step_ids: tuple[str, ...] = ("s1",)
+    summary: str = "started"
+
+
+@dataclass(frozen=True)
+class _DriveLoopResult:
+    drive_id: str
+    status: str = "running"
+    summary: str = "looped"
+
+
+@dataclass(frozen=True)
+class _DriveStatusResult:
+    drive_id: str
+    status: str = "running"
+    active_child_run_ids: tuple[str, ...] = ()
+    frontier_step_ids: tuple[str, ...] = ()
+    blocked_case_ids: tuple[str, ...] = ()
+    summary: str = "drive status"
+
+
+@dataclass(frozen=True)
 class _InspectResult:
     view_type: str
     data: tuple[str, ...]
@@ -72,6 +97,7 @@ class _FakeOrchApp:
         self.stop_force: bool = False
         self.stop_run_id: str | None = None
         self.config_show_effective: bool = False
+        self.drive_loop_id: str | None = None
 
     def run(self, *, step_id: str | None, agent: str | None) -> _Result:
         self.calls.append("run")
@@ -188,6 +214,16 @@ class _FakeOrchApp:
         """Return None (no active drive) for fake app."""
         return None
 
+    def start_drive(self, *, agent: str = "", max_parallelism: int = 4) -> _DriveStartResult:
+        self.calls.append("start_drive")
+        del agent, max_parallelism
+        return _DriveStartResult(drive_id="drv-start")
+
+    def run_drive_loop(self, drive_id: str) -> _DriveLoopResult:
+        self.calls.append("run_drive_loop")
+        self.drive_loop_id = drive_id
+        return _DriveLoopResult(drive_id=drive_id)
+
     def inspect_drive_status(
         self, *, drive_id: str, child_run_id: str | None = None
     ) -> _InspectResult:
@@ -244,8 +280,7 @@ class _FakeOrchApp:
 
     def drive_status(self, *, drive_id: str):
         self.calls.append("drive_status")
-        del drive_id
-        return _Result(success=True, message="drive status")
+        return _DriveStatusResult(drive_id=drive_id)
 
     def resolve_latest_drive_id(self) -> str | None:
         return None
@@ -260,6 +295,15 @@ class _FakeDriveAwareOrchApp(_FakeOrchApp):
 
     def resolve_latest_drive_id(self) -> str | None:
         return "drv-latest"
+
+
+class _FakeBlockedCaseDriveApp(_FakeDriveAwareOrchApp):
+    def drive_status(self, *, drive_id: str):
+        self.calls.append("drive_status")
+        return _DriveStatusResult(
+            drive_id=drive_id,
+            blocked_case_ids=("case-a", "case-b"),
+        )
 
 
 def test_orch_command_registration_matrix() -> None:
@@ -337,6 +381,49 @@ def test_orch_commands_delegate_through_orch_app_boundary(monkeypatch) -> None:
     assert "config_tools" in fake.calls
     assert "cutover_validate" in fake.calls
     assert "migration_advance_state" in fake.calls
+
+
+def test_orch_drive_runs_first_loop_after_start(monkeypatch) -> None:
+    """`vectl orch drive` must enter the drive loop, not only create DriveRecord."""
+    fake = _FakeOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--json"])
+
+    assert result.exit_code == 0
+    assert fake.calls == ["start_drive", "run_drive_loop"]
+    assert fake.drive_loop_id == "drv-start"
+    assert "looped" in result.output
+
+
+def test_orch_case_list_latest_reads_drive_blocked_cases_without_attribute_error(
+    monkeypatch,
+) -> None:
+    """Drive-scoped case-list consumes DriveStatusResult.blocked_case_ids."""
+    fake = _FakeBlockedCaseDriveApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "case-list", "--latest", "--json"])
+
+    assert result.exit_code == 0
+    assert "case-a" in result.output
+    assert "case-b" in result.output
+    assert fake.calls == ["drive_status"]
+
+
+def test_orch_case_list_latest_status_filter_respects_open_only_drive_cases(
+    monkeypatch,
+) -> None:
+    """Drive status exposes open blocked cases; non-open filters return no rows."""
+    fake = _FakeBlockedCaseDriveApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(
+        app, ["orch", "case-list", "--latest", "--status", "resolved", "--json"]
+    )
+
+    assert result.exit_code == 0
+    assert result.output.strip() == "[]"
 
 
 def test_orch_output_mode_conflict_is_rejected() -> None:

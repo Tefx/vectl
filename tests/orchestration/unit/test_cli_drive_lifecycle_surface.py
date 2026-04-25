@@ -161,6 +161,19 @@ class TestDriveStatusSurface:
         result = app.drive_status(drive_id=started.drive_id)
         assert result.frontier_step_ids == ("core.ready",)
 
+    def test_drive_status_includes_blocked_case_ids(self, tmp_path: Path) -> None:
+        """drive_status preserves blocked_case_ids from the durable DriveRecord."""
+        app = _build_app(tmp_path)
+        started = app.start_drive(agent="test-agent", max_parallelism=4)
+        store = app._drive_store()
+        current = store.replay_drive_state(started.drive_id)
+        assert current is not None
+        store.save_drive(replace(current, blocked_case_ids=("case-a", "case-b")))
+
+        result = app.drive_status(drive_id=started.drive_id)
+
+        assert result.blocked_case_ids == ("case-a", "case-b")
+
 
 # ------------------------------------------------------------------
 # drive_runs surface

@@ -88113,7 +88113,7 @@ phases:
       \ / Out of Scope\n\n- None. DEM-002 is fully resolved.\n"
   - id: arch-demolition-wave-1.dem-003-extract-duplicate-step-id-formatting-owner
     name: DEM-003 extract duplicate-step-id formatting owner
-    status: pending
+    status: claimed
     description: Resolve DEM-003 by extracting duplicate-step-id diagnostic and recommendation
       formatting into src/vectl/duplicate_step_id_format.py and updating CLI and MCP
       to consume the shared formatter boundary.
@@ -88122,6 +88122,8 @@ phases:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/cli.py
     - src/vectl/mcp_server.py
+    claimed_by: python-executor
+    claimed_at: '2026-04-25T18:33:58.111939+00:00'
   - id: arch-demolition-wave-1.dem-004-keep-claim-metadata-lifecycle-owned
     name: DEM-004 keep claim metadata lifecycle-owned
     status: pending
@@ -88134,6 +88136,7 @@ phases:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/lifecycle.py
     - src/vectl/mcp_server.py
+    agent: python-senior-tacit
 - id: arch-demolition-wave-2
   name: Architectural Demolition — Wave 2 Delete Dead Exported Surfaces
   status: locked

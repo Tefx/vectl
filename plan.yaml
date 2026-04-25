@@ -88390,6 +88390,7 @@ phases:
     - src/vectl/orchestration/run_store.py
     - src/vectl/orchestration/driver.py
     - tests/
+    agent: python-refactor-master-tacit
   - id: arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate
     name: DEM-019 freeze config/contracts ownership and close with repo-wide readiness
       gate

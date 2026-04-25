@@ -88305,6 +88305,7 @@ phases:
     refs:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/orchestration/review_gate.py
+    agent: python-senior-tacit
   - id: arch-demolition-wave-5.dem-014-wire-review-gate-into-drivedriver-and-remove-protocol-only-seam
     name: DEM-014 wire review gate into DriveDriver and remove protocol-only seam
     status: pending

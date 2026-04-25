@@ -88373,6 +88373,7 @@ phases:
     - src/vectl/cli.py
     - src/vectl/core.py
     - src/vectl/mcp_server.py
+    agent: python-refactor-master-tacit
   - id: arch-demolition-wave-7.dem-018-split-orchestration-app-run-store-and-driver-by-real-behavior
     name: DEM-018 split orchestration app, run store, and driver by real behavior
     status: pending

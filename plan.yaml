@@ -88054,7 +88054,7 @@ phases:
       tests/orchestration/unit/test_opencode_runner.py --select E501 => passed.'
   - id: arch-demolition-wave-1.dem-002-extract-shared-next-step-helper
     name: DEM-002 extract shared next-step helper
-    status: pending
+    status: done
     description: Resolve DEM-002 by extracting get_next_steps_with_phase() into src/vectl/plan_helpers.py
       as the canonical shared plan-query helper and updating both CLI and MCP to import
       the shared implementation instead of carrying local copies.
@@ -88063,6 +88063,54 @@ phases:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/cli.py
     - src/vectl/mcp_server.py
+    claimed_by: python-executor
+    claimed_at: '2026-04-25T18:13:41.748478+00:00'
+    done_at: '2026-04-25T18:32:04.312874+00:00'
+    evidence: "## Context Read\n\n- Read `src/vectl/cli.py` (4933 lines) — contained\
+      \ local `_get_next_steps_with_phase` at lines 201-242, used at lines 2799 and\
+      \ 3278.\n- Read `src/vectl/mcp_server.py` (2177 lines) — contained local `_get_next_steps_with_phase`\
+      \ at lines 284-327, used at lines 353 and 811.\n- Sibling test: `tests/test_arch_demolition_wave0_characterization.py`\
+      \ — imports both local copies for ordering/filtering parity assertions.\n- Read\
+      \ `docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md` — DEM-002 requires extracting\
+      \ `get_next_steps_with_phase()` into `src/vectl/plan_helpers.py` and updating\
+      \ both CLI and MCP to import the shared helper.\n\n## Changes Made\n\n| File\
+      \ | Action |\n|------|--------|\n| `src/vectl/plan_helpers.py` | **Created**\
+      \ — canonical `get_next_steps_with_phase(plan, agent)` shared helper with implementation\
+      \ moved from cli.py/mcp_server.py. Imports `Plan`, `Phase`, `Step`, `StepStatus`\
+      \ from `vectl.models` and `_get_active_phase_ids` from `vectl.semantics`. |\n\
+      | `src/vectl/cli.py` | **Removed** local `_get_next_steps_with_phase` definition\
+      \ (42 lines deleted). Added `from vectl.plan_helpers import get_next_steps_with_phase`.\
+      \ Updated two call sites (lines 2756 and 3236) to use the shared name. Cleaned\
+      \ up now-unused imports (`Phase`, `Step`, `_get_active_phase_ids`). |\n| `src/vectl/mcp_server.py`\
+      \ | **Removed** local `_get_next_steps_with_phase` definition (44 lines deleted).\
+      \ Added `from vectl.plan_helpers import get_next_steps_with_phase`. Updated\
+      \ two call sites (lines 309 and 767) to use the shared name. Cleaned up now-unused\
+      \ import (`Phase`). |\n| `tests/test_arch_demolition_wave0_characterization.py`\
+      \ | **Updated** imports to use `from vectl.plan_helpers import get_next_steps_with_phase`\
+      \ for both CLI and MCP aliasing, preserving the existing parity assertion. |\n\
+      \n## Verification Results\n\n1. **Full test suite:** `uv run pytest tests/ -x\
+      \ --tb=short`  \n   Result: **1713 passed, 26 skipped, 1 failed**  \n   The\
+      \ single failure (`test_wave0_claim_conflict_shape_matches_cli_and_mcp`) is\
+      \ **pre-existing**: confirmed by stashing changes, running the same test on\
+      \ unmodified code, and observing identical failure. It is unrelated to DEM-002.\n\
+      \n2. **Focused surface tests:**  \n   - `uv run pytest tests/test_cli.py tests/test_mcp.py\
+      \ -q --tb=short` → **414 passed**.  \n   - `uv run pytest tests/test_arch_demolition_wave0_characterization.py\
+      \ -q --tb=short` → **3 passed, 1 failed (pre-existing)**.\n\n3. **CLI executability:**\
+      \ `uv run vectl --help` → exits 0, all commands listed.\n\n4. **Lint:** `uv\
+      \ run ruff check src/vectl/plan_helpers.py src/vectl/cli.py src/vectl/mcp_server.py\
+      \ tests/test_arch_demolition_wave0_characterization.py`  \n   Result: No new\
+      \ lint errors introduced by this change; pre-existing errors (import sort, B008\
+      \ in DriveProgressMode default, line-too-long in mcp_server description strings)\
+      \ were already present before this PR.\n\n## Sibling Search\n\n- Searched for\
+      \ other copies of `_get_next_steps_with_phase`/`get_next_steps_with_phase` across\
+      \ the repo using `grep` → only references remaining are the canonical shared\
+      \ import in `plan_helpers.py`, plus clean usages in `cli.py` and `mcp_server.py`.\
+      \ No additional local copies found.\n\n## Contract Check\n\n- The canonical\
+      \ function signature, docstring, and sort/affinity logic were preserved verbatim\
+      \ from the two identical local copies.\n- Import graph check: `plan_helpers.py`\
+      \ depends on `vectl.models` and `vectl.semantics`; `cli.py` and `mcp_server.py`\
+      \ now both depend on `vectl.plan_helpers`. No cycle introduced.\n\n## Not Done\
+      \ / Out of Scope\n\n- None. DEM-002 is fully resolved.\n"
   - id: arch-demolition-wave-1.dem-003-extract-duplicate-step-id-formatting-owner
     name: DEM-003 extract duplicate-step-id formatting owner
     status: pending

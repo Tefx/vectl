@@ -173,6 +173,51 @@ class TestBeginReconcileChildRunMainPath:
         assert recovery_state is not None
         assert recovery_state.status == "merged"
 
+    def test_child_run_uncommitted_workspace_changes_are_merged(
+        self, temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Uncommitted child workspace edits are committed before reconcile.
+
+        Live runners write files in their worktree and may exit successfully
+        without creating a git commit.  Reconcile must still merge those edits
+        back into the integration context instead of reporting success from the
+        unchanged workspace HEAD.
+        """
+        base_dir = temp_git_repo / ".vectl" / "workspaces"
+        runtime = Runtime(workspace_root=base_dir)
+        base_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.chdir(temp_git_repo)
+
+        request = _request(step_id="step-uncommitted")
+        workspace = runtime.prepare_child_run(request, drive_id="drv_01", kind="step")
+        execution_id = runtime.start(request=request, workspace=workspace)
+
+        state = runtime._active_workspaces[workspace]
+        worktree_path = Path(state.binding.worktree_path)
+        (worktree_path / "uncommitted_file.txt").write_text(
+            "Hello from an uncommitted worktree edit\n"
+        )
+        state.execution_state.status = "success"
+
+        result, recovery_state = runtime.begin_reconcile_child_run(execution_id)
+
+        assert result is not None
+        assert result.status == "merged"
+        assert recovery_state is not None
+        assert recovery_state.status == "merged"
+        assert (temp_git_repo / "uncommitted_file.txt").read_text() == (
+            "Hello from an uncommitted worktree edit\n"
+        )
+
+        workspace_head_message = subprocess.run(
+            ["git", "log", "-1", "--format=%s"],
+            cwd=worktree_path,
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.strip()
+        assert workspace_head_message == f"vectl child run {execution_id}"
+
     def test_child_run_reconcile_returns_child_run_ref_via_separate_query(
         self, temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

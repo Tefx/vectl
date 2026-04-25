@@ -393,7 +393,7 @@ class TestCallerOwnedState:
             decide_mod.resolve_plan_path = original
 
         assert isinstance(output, DecideOutput)
-        assert "next_state" in output.model_fields
+        assert "next_state" in type(output).model_fields
 
     def test_next_state_is_full_replacement_not_merge(self, tmp_path: Path) -> None:
         """next_state is full replacement object, not a merge patch.

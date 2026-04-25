@@ -161,6 +161,8 @@ class _JsonSuccessRunner:
         self._payload = payload
         self.launched = 0
         self._handles: set[str] = set()
+        self.launch_requests: list[Any] = []
+        self.launch_workspaces: list[Path] = []
 
     def capabilities(self) -> RunnerCapabilities:
         return RunnerCapabilities(
@@ -172,6 +174,8 @@ class _JsonSuccessRunner:
 
     def launch(self, request, workspace: Path) -> RunnerLaunchResult:
         self.launched += 1
+        self.launch_requests.append(request)
+        self.launch_workspaces.append(workspace)
         run_id = f"resolver-test-{self.launched}"
         self._handles.add(run_id)
         return RunnerLaunchResult(
@@ -496,6 +500,15 @@ def test_resolve_case_reaches_runtime_runner_through_gateway(
 
     assert report.status == "unblocked"
     assert runner.launched == 1
+    launch_request = runner.launch_requests[0]
+    launch_workspace = runner.launch_workspaces[0]
+    workspace_prompt = launch_workspace / ".vectl" / "orch" / "runner_prompt.md"
+    assert launch_request.prompt_bundle_path
+    assert launch_request.runner_prompt_path
+    assert Path(launch_request.prompt_bundle_path).exists()
+    assert Path(launch_request.runner_prompt_path).exists()
+    assert workspace_prompt.exists()
+    assert workspace_prompt.read_text(encoding="utf-8").strip()
     assert "resolver://runtime-runner" in report.evidence_refs
     assert any(ref.startswith("resolver_gateway_invocation=") for ref in report.evidence_refs)
 
@@ -760,6 +773,11 @@ def test_resolve_case_invokes_configured_default_resolver_role(
     monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-1")
     monkeypatch.setattr(
         app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-1",
+    )
+    monkeypatch.setattr(
+        app._runtime,
         "start",
         lambda *, request, workspace: (
             seen.update(
@@ -807,6 +825,119 @@ def test_resolve_case_invokes_configured_default_resolver_role(
     assert "resolver_role_id=blocked-case-coordinator" in cast(tuple[str, ...], seen["work_refs"])
 
 
+def test_resolve_case_parses_opencode_stdout_wrapped_resolution_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Resolver accepts JSON report payload wrapped in OpenCode success summary."""
+    app = _build_app(tmp_path)
+
+    report_payload = {
+        "status": "unblocked",
+        "summary": "resolved through opencode stdout",
+        "evidence_refs": ["resolver://stdout-json"],
+        "operator_message": None,
+    }
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-stdout")
+    monkeypatch.setattr(
+        app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-stdout",
+    )
+    monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-stdout")
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-stdout",
+            status="success",
+            output_summary=(
+                "OpenCode completed successfully (exit 0); stdout="
+                f"{json.dumps(report_payload)}"
+            ),
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-stdout",
+            case_source="runtime_failure",
+            reason="Blocked steps require resolution: core.ready",
+            summary="repair the blocked step",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+        )
+    )
+
+    assert report.status == "unblocked"
+    assert report.summary.endswith("resolved through opencode stdout")
+    assert "resolver://stdout-json" in report.evidence_refs
+
+
+def test_resolve_case_ignores_opencode_protocol_envelope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Resolver must not treat OpenCode event JSON as the ResolutionReport."""
+    app = _build_app(tmp_path)
+    report_payload = {
+        "status": "operator_required",
+        "summary": "automatic repair unsafe",
+        "evidence_refs": ["resolver://protocol-event"],
+        "operator_message": "Review manually.",
+    }
+    opencode_event = {
+        "type": "part",
+        "sessionID": "ses_123",
+        "timestamp": "2026-04-26T00:00:00Z",
+        "part": {
+            "type": "text",
+            "text": json.dumps(report_payload),
+        },
+    }
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-event")
+    monkeypatch.setattr(
+        app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-event",
+    )
+    monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-event")
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-event",
+            status="success",
+            output_summary=(
+                "OpenCode completed successfully (exit 0); stdout="
+                f"{json.dumps(opencode_event)}"
+            ),
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-event",
+            case_source="runtime_failure",
+            reason="Blocked steps require resolution: core.ready",
+            summary="repair the blocked step",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+        )
+    )
+
+    assert report.status == "operator_required"
+    assert report.summary.endswith("automatic repair unsafe")
+    assert "resolver://protocol-event" in report.evidence_refs
+    assert report.operator_message == "Review manually."
+
+
 def test_resolve_case_supports_explicit_tacit_resolver_config_selection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -828,6 +959,11 @@ def test_resolve_case_supports_explicit_tacit_resolver_config_selection(
     monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
     monkeypatch.setattr(
         app._runtime, "prepare", lambda request: seen_roles.append(request.role) or "ws-1"
+    )
+    monkeypatch.setattr(
+        app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-1",
     )
     monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-tacit")
     monkeypatch.setattr(
@@ -874,6 +1010,11 @@ def test_route_resolution_case_refreshes_state_after_real_resolver_invocation(
 
     monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
     monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-refresh")
+    monkeypatch.setattr(
+        app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-refresh",
+    )
     monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-refresh")
     monkeypatch.setattr(
         app._runtime,

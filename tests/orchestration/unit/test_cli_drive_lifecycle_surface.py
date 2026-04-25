@@ -14,12 +14,9 @@ These tests verify:
 
 from __future__ import annotations
 
-import json
 import subprocess
-import time
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -32,7 +29,7 @@ from vectl.orch_app import (
 from vectl.orchestration.config import OrchestrationConfig
 from vectl.orchestration.contracts import (
     ChildRunRef,
-    DriveRecord,
+    DriveBarrier,
 )
 from vectl.orchestration.driver import (
     DriveAdmissionError,
@@ -40,8 +37,6 @@ from vectl.orchestration.driver import (
     DriveStatusResult,
     MaxParallelismError,
 )
-from vectl.orchestration.run_store import DriveStore
-
 
 # ------------------------------------------------------------------
 # Fixtures
@@ -130,6 +125,13 @@ class TestDriveStartSurface:
         result2 = app2.start_drive(agent="test-agent", max_parallelism=32)
         assert result2.status == "running"
 
+    def test_drive_driver_wires_app_resolver(self, tmp_path: Path) -> None:
+        """App-built drive drivers carry the configured resolver into loop passes."""
+        app = _build_app(tmp_path)
+        driver = app._drive_driver()
+
+        assert driver._resolver is app._resolver
+
 
 # ------------------------------------------------------------------
 # drive_status surface
@@ -160,6 +162,36 @@ class TestDriveStatusSurface:
         started = app.start_drive(agent="test-agent", max_parallelism=4)
         result = app.drive_status(drive_id=started.drive_id)
         assert result.frontier_step_ids == ("core.ready",)
+
+    def test_drive_status_includes_blocked_case_ids(self, tmp_path: Path) -> None:
+        """drive_status preserves blocked_case_ids from the durable DriveRecord."""
+        app = _build_app(tmp_path)
+        started = app.start_drive(agent="test-agent", max_parallelism=4)
+        store = app._drive_store()
+        current = store.replay_drive_state(started.drive_id)
+        assert current is not None
+        store.save_drive(replace(current, blocked_case_ids=("case-a", "case-b")))
+
+        result = app.drive_status(drive_id=started.drive_id)
+
+        assert result.blocked_case_ids == ("case-a", "case-b")
+
+    def test_foreground_does_not_exit_before_resolver_for_resolving_case(
+        self, tmp_path: Path
+    ) -> None:
+        """Foreground supervision attempts resolver before treating resolving as terminal."""
+        app = _build_app(tmp_path)
+        status = DriveStatusResult(
+            drive_id="drv_resolving",
+            status="resolving",
+            blocked_case_ids=("case-runtime-001",),
+            barrier=DriveBarrier(
+                reason="runtime_failure",
+                case_ids=("case-runtime-001",),
+            ),
+        )
+
+        assert app._foreground_drive_should_exit(status) is False
 
 
 # ------------------------------------------------------------------
@@ -257,6 +289,68 @@ class TestActiveDriveRejection:
         """No rejection occurs when no active drive for the plan."""
         app = _build_app(tmp_path)
         assert app.has_active_drive_for_plan() is None
+
+
+# ------------------------------------------------------------------
+# drive control consumption
+# ------------------------------------------------------------------
+
+
+class TestDriveControlConsumption:
+    """Test app-level drive control wiring into the drive loop."""
+
+    def test_run_drive_loop_consumes_queued_stop_before_dispatch(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Queued drive.stop is applied before any child dispatch occurs."""
+        app = _build_app(tmp_path)
+        started = app.start_drive(agent="test-agent", max_parallelism=4)
+
+        def _fail_child_launch(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("drive.stop was not consumed before dispatch")
+
+        monkeypatch.setattr(app, "_launch_drive_step_child_run", _fail_child_launch)
+        stop = app.control_drive_stop(
+            drive_id=started.drive_id,
+            reason="test stop",
+            force=True,
+        )
+
+        result = app.run_drive_loop(started.drive_id)
+
+        assert stop.success is True
+        assert result.status == "stopped"
+        assert "operator stop consumed" in result.summary
+        assert app.has_active_drive_for_plan() is None
+
+    def test_force_stop_cancels_persisted_active_child_refs(self, tmp_path: Path) -> None:
+        """drive.stop --force clears active child ids and marks child ref cancelled."""
+        app = _build_app(tmp_path)
+        started = app.start_drive(agent="test-agent", max_parallelism=4)
+        store = app._drive_store()
+        child = ChildRunRef(
+            run_id="exec-child-1",
+            drive_id=started.drive_id,
+            kind="step",
+            step_id="core.ready",
+            status="running",
+            workspace="ws-core.ready",
+            runner="opencode",
+            artifact_root="runs/exec-child-1",
+        )
+        store.save_child_run(child)
+        current = store.replay_drive_state(started.drive_id)
+        assert current is not None
+        store.save_drive(replace(current, active_child_run_ids=(child.run_id,)))
+
+        app.control_drive_stop(drive_id=started.drive_id, reason="test stop", force=True)
+        result = app.run_drive_loop(started.drive_id)
+
+        assert result.status == "stopped"
+        assert result.active_child_run_ids == ()
+        persisted_child = store.child_run_by_id(child.run_id)
+        assert persisted_child is not None
+        assert persisted_child.status == "cancelled"
 
 
 # ------------------------------------------------------------------

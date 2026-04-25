@@ -5,6 +5,7 @@ Authority: docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md sections 8-10
 
 from __future__ import annotations
 
+import json
 import subprocess
 import uuid
 from dataclasses import dataclass, field
@@ -23,6 +24,9 @@ from vectl.orchestration.prompt_materialization import (
     build_runner_handoff_env,
     resolve_prompt_artifact_paths,
 )
+
+
+_OPENCODE_STDOUT_SUMMARY_LIMIT = 5000
 
 
 @dataclass(frozen=True)
@@ -246,6 +250,53 @@ class OpenCodeContinueForbiddenError(OpenCodeRunnerError):
                 "use --session <session_id> for deterministic session continuation"
             ),
         )
+
+
+def _iter_json_values_from_text(text: str):
+    """Yield JSON values embedded in runner stdout."""
+
+    decoder = json.JSONDecoder()
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char not in "[{":
+            index += 1
+            continue
+        try:
+            value, end = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            index += 1
+            continue
+        yield value
+        index += max(end, 1)
+
+
+def _append_opencode_text_parts(value: object, sink: list[str]) -> None:
+    """Collect text payloads from OpenCode JSON event envelopes."""
+
+    if isinstance(value, dict):
+        for key in ("text", "content"):
+            item = value.get(key)
+            if isinstance(item, str) and item.strip():
+                sink.append(item.strip())
+        for key in ("part", "parts", "message", "messages", "data"):
+            if key in value:
+                _append_opencode_text_parts(value[key], sink)
+        return
+    if isinstance(value, list | tuple):
+        for item in value:
+            _append_opencode_text_parts(item, sink)
+
+
+def _summarize_opencode_stdout(stdout: str) -> str:
+    """Return runner-visible text from OpenCode JSON stdout when possible."""
+
+    text_parts: list[str] = []
+    for value in _iter_json_values_from_text(stdout):
+        _append_opencode_text_parts(value, text_parts)
+    if text_parts:
+        return "\n".join(text_parts).strip()
+    return stdout.strip()
 
 
 @dataclass
@@ -714,7 +765,11 @@ class OpenCodeRunner:
         if stderr and status != "success":
             summary = f"{summary}; stderr={stderr.strip()[:500]}"
         elif stdout and status == "success":
-            summary = f"{summary}; stdout={stdout.strip()[:500]}"
+            stdout_summary = _summarize_opencode_stdout(stdout)
+            summary = (
+                f"{summary}; "
+                f"stdout={stdout_summary[:_OPENCODE_STDOUT_SUMMARY_LIMIT]}"
+            )
 
         return RunnerPollResult(
             status=status,

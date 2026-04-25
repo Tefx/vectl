@@ -15,6 +15,7 @@ from typer.testing import CliRunner
 
 import vectl.cli as cli
 from vectl.cli import app
+from vectl.orchestration.driver import DriveAdmissionError
 
 runner = CliRunner()
 
@@ -33,6 +34,31 @@ class _Result:
     message: str = "ok"
     run_id: str | None = None
     step_id: str | None = None
+
+
+@dataclass(frozen=True)
+class _DriveStartResult:
+    drive_id: str
+    status: str = "running"
+    frontier_step_ids: tuple[str, ...] = ("s1",)
+    summary: str = "started"
+
+
+@dataclass(frozen=True)
+class _DriveLoopResult:
+    drive_id: str
+    status: str = "running"
+    summary: str = "looped"
+
+
+@dataclass(frozen=True)
+class _DriveStatusResult:
+    drive_id: str
+    status: str = "running"
+    active_child_run_ids: tuple[str, ...] = ()
+    frontier_step_ids: tuple[str, ...] = ()
+    blocked_case_ids: tuple[str, ...] = ()
+    summary: str = "drive status"
 
 
 @dataclass(frozen=True)
@@ -72,6 +98,7 @@ class _FakeOrchApp:
         self.stop_force: bool = False
         self.stop_run_id: str | None = None
         self.config_show_effective: bool = False
+        self.drive_loop_id: str | None = None
 
     def run(self, *, step_id: str | None, agent: str | None) -> _Result:
         self.calls.append("run")
@@ -188,6 +215,55 @@ class _FakeOrchApp:
         """Return None (no active drive) for fake app."""
         return None
 
+    def start_drive(self, *, agent: str = "", max_parallelism: int = 4) -> _DriveStartResult:
+        self.calls.append("start_drive")
+        del agent, max_parallelism
+        return _DriveStartResult(drive_id="drv-start")
+
+    def run_drive_loop(self, drive_id: str) -> _DriveLoopResult:
+        self.calls.append("run_drive_loop")
+        self.drive_loop_id = drive_id
+        return _DriveLoopResult(drive_id=drive_id)
+
+    def run_drive_foreground(
+        self,
+        drive_id: str,
+        *,
+        poll_interval_seconds: float = 2.0,
+        status_interval_seconds: float = 30.0,
+        progress_callback=None,
+        progress_mode: str = "auto",
+        verbose: bool = False,
+    ) -> _DriveLoopResult:
+        self.calls.append("run_drive_foreground")
+        self.drive_loop_id = drive_id
+        self.poll_interval_seconds = poll_interval_seconds
+        self.status_interval_seconds = status_interval_seconds
+        self.progress_mode = progress_mode
+        self.verbose = verbose
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "type": "drive_started",
+                    "timestamp": 1.0,
+                    "drive_id": drive_id,
+                    "max_parallelism": 1,
+                    "poll_interval_seconds": poll_interval_seconds,
+                    "status_interval_seconds": status_interval_seconds,
+                    "progress_mode": progress_mode,
+                }
+            )
+            progress_callback(
+                {
+                    "type": "drive_terminal",
+                    "timestamp": 2.0,
+                    "drive_id": drive_id,
+                    "status": "completed",
+                    "summary": "foreground complete",
+                }
+            )
+        return _DriveLoopResult(drive_id=drive_id, summary="foreground complete")
+
     def inspect_drive_status(
         self, *, drive_id: str, child_run_id: str | None = None
     ) -> _InspectResult:
@@ -244,8 +320,7 @@ class _FakeOrchApp:
 
     def drive_status(self, *, drive_id: str):
         self.calls.append("drive_status")
-        del drive_id
-        return _Result(success=True, message="drive status")
+        return _DriveStatusResult(drive_id=drive_id)
 
     def resolve_latest_drive_id(self) -> str | None:
         return None
@@ -254,12 +329,28 @@ class _FakeOrchApp:
         return None
 
 
+class _FakeActiveDriveOrchApp(_FakeOrchApp):
+    def start_drive(self, *, agent: str = "", max_parallelism: int = 4) -> _DriveStartResult:
+        self.calls.append("start_drive")
+        del agent, max_parallelism
+        raise DriveAdmissionError("active drive exists", active_drive_id="drv-active")
+
+
 class _FakeDriveAwareOrchApp(_FakeOrchApp):
     def has_active_drive_for_plan(self) -> str | None:
         return "drv-active"
 
     def resolve_latest_drive_id(self) -> str | None:
         return "drv-latest"
+
+
+class _FakeBlockedCaseDriveApp(_FakeDriveAwareOrchApp):
+    def drive_status(self, *, drive_id: str):
+        self.calls.append("drive_status")
+        return _DriveStatusResult(
+            drive_id=drive_id,
+            blocked_case_ids=("case-a", "case-b"),
+        )
 
 
 def test_orch_command_registration_matrix() -> None:
@@ -337,6 +428,127 @@ def test_orch_commands_delegate_through_orch_app_boundary(monkeypatch) -> None:
     assert "config_tools" in fake.calls
     assert "cutover_validate" in fake.calls
     assert "migration_advance_state" in fake.calls
+
+
+def test_orch_drive_runs_first_loop_after_start(monkeypatch) -> None:
+    """`vectl orch drive --once` enters one drive loop, not only create DriveRecord."""
+    fake = _FakeOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--once", "--json"])
+
+    assert result.exit_code == 0
+    assert fake.calls == ["start_drive", "run_drive_loop"]
+    assert fake.drive_loop_id == "drv-start"
+    assert "looped" in result.output
+
+
+def test_orch_drive_defaults_to_foreground_supervisor(monkeypatch) -> None:
+    """`vectl orch drive` supervises foreground execution by default."""
+    fake = _FakeOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--json"])
+
+    assert result.exit_code == 0
+    assert fake.calls == ["start_drive", "run_drive_foreground"]
+    assert fake.drive_loop_id == "drv-start"
+    assert "foreground complete" in result.output
+
+
+def test_orch_drive_attaches_to_active_drive_for_foreground_supervision(monkeypatch) -> None:
+    """`vectl orch drive` resumes supervision when a same-plan drive is active."""
+    fake = _FakeActiveDriveOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--json"])
+
+    assert result.exit_code == 0
+    assert fake.calls == ["start_drive", "run_drive_foreground"]
+    assert fake.drive_loop_id == "drv-active"
+    assert "foreground complete" in result.output
+
+
+def test_orch_drive_once_runs_loop_for_active_drive(monkeypatch) -> None:
+    """`vectl orch drive --once` advances an active drive instead of failing."""
+    fake = _FakeActiveDriveOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--once", "--json"])
+
+    assert result.exit_code == 0
+    assert fake.calls == ["start_drive", "run_drive_loop"]
+    assert fake.drive_loop_id == "drv-active"
+    assert "looped" in result.output
+
+
+def test_orch_drive_human_mode_emits_progress_events(monkeypatch) -> None:
+    """Human foreground mode prints sparse progress events instead of raw JSON."""
+    fake = _FakeOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--progress", "plain"])
+
+    assert result.exit_code == 0
+    assert "Starting drive drv-start" in result.output
+    assert "COMPLETED" in result.output
+    assert fake.progress_mode == "plain"
+
+
+def test_orch_drive_quiet_human_mode_prints_final_result_only(monkeypatch) -> None:
+    """--quiet suppresses foreground progress in human mode."""
+    fake = _FakeOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--quiet"])
+
+    assert result.exit_code == 0
+    assert "Starting drive" not in result.output
+    assert "drive_id=drv-start" in result.output
+
+
+def test_orch_drive_jsonl_emits_progress_event_stream(monkeypatch) -> None:
+    """--jsonl streams progress events rather than a final compact object."""
+    fake = _FakeOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--jsonl"])
+
+    assert result.exit_code == 0
+    lines = [line for line in result.output.splitlines() if line.strip()]
+    payloads = [cli.json.loads(line) for line in lines]
+    assert [payload["type"] for payload in payloads] == ["drive_started", "drive_terminal"]
+    assert payloads[-1]["status"] == "completed"
+
+
+def test_orch_case_list_latest_reads_drive_blocked_cases_without_attribute_error(
+    monkeypatch,
+) -> None:
+    """Drive-scoped case-list consumes DriveStatusResult.blocked_case_ids."""
+    fake = _FakeBlockedCaseDriveApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "case-list", "--latest", "--json"])
+
+    assert result.exit_code == 0
+    assert "case-a" in result.output
+    assert "case-b" in result.output
+    assert fake.calls == ["drive_status"]
+
+
+def test_orch_case_list_latest_status_filter_respects_open_only_drive_cases(
+    monkeypatch,
+) -> None:
+    """Drive status exposes open blocked cases; non-open filters return no rows."""
+    fake = _FakeBlockedCaseDriveApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(
+        app, ["orch", "case-list", "--latest", "--status", "resolved", "--json"]
+    )
+
+    assert result.exit_code == 0
+    assert result.output.strip() == "[]"
 
 
 def test_orch_output_mode_conflict_is_rejected() -> None:

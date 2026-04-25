@@ -15,10 +15,8 @@ Verification requirements:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
-
-import pytest
 
 from vectl.models import IsolationMode
 from vectl.orchestration.contracts import (
@@ -34,10 +32,8 @@ from vectl.orchestration.contracts import (
     RuntimeSnapshot,
 )
 from vectl.orchestration.control import ControlInputSources, PlanAwareControl
-from vectl.orchestration.core_adapter import CoreAdapter
 from vectl.orchestration.driver import (
     ConcreteDriveDriver,
-    TERMINAL_DRIVE_STATUSES,
     _apply_resolution_report_to_drive,
     _barrier_reason_for_case_source,
     _infer_case_source,
@@ -45,7 +41,6 @@ from vectl.orchestration.driver import (
 )
 from vectl.orchestration.resolver import BoundResolver
 from vectl.orchestration.run_store import DriveStore
-
 
 # ------------------------------------------------------------------
 # Test helpers
@@ -306,6 +301,59 @@ class TestBarrierEntryCreatesResolutionCase:
         loop_result = driver.run_drive_loop(drive_id)
         assert loop_result.drive_id == drive_id
 
+    def test_existing_runtime_failure_barrier_invokes_resolver(self, tmp_path: Path) -> None:
+        """A persisted resolving barrier is resolver work, not an immediate stop."""
+        resolver_invocation = _FakeResolverInvocation(
+            payload_log=[],
+            return_status="unblocked",
+            return_summary="Recovered persisted reconcile failure",
+        )
+        resolver = BoundResolver(
+            invocation=resolver_invocation,
+            default_role_id="blocked-case-coordinator",
+        )
+
+        core_adapter = _FakeCoreAdapter(_core(claimable=("phase.next",)))
+        control = PlanAwareControl(
+            sources=ControlInputSources(
+                core_adapter=core_adapter,
+                roster=_FakeRosterSource(_roster()),
+                runtime=_FakeRuntimeSource(_runtime()),
+            ),
+        )
+        store = DriveStore(store_root=tmp_path)
+        driver = ConcreteDriveDriver(
+            drive_store=store,
+            core_adapter=core_adapter,
+            control=control,
+            resolver=resolver,
+        )
+        started = driver.start_drive(plan_path="/repo/plan.yaml")
+        record = store.replay_drive_state(started.drive_id)
+        assert record is not None
+        barrier = DriveBarrier(
+            reason="runtime_failure",
+            case_ids=("case-runtime-001",),
+            active_child_run_ids_at_entry=(),
+        )
+        store.save_drive(
+            replace(
+                record,
+                status="resolving",
+                barrier=barrier,
+                blocked_case_ids=("case-runtime-001",),
+            )
+        )
+
+        loop_result = driver.run_drive_loop(started.drive_id)
+        resolved = store.replay_drive_state(started.drive_id)
+
+        assert len(resolver_invocation.payload_log) == 1
+        assert loop_result.status == "running"
+        assert loop_result.barrier is None
+        assert resolved is not None
+        assert resolved.blocked_case_ids == ()
+
 
 # ------------------------------------------------------------------
 # Test: Resolver invocation payloads
@@ -365,8 +413,6 @@ class TestResolverInvocationPayloads:
 
     def test_resolver_receives_drive_context_in_case(self, tmp_path: Path) -> None:
         """ResolutionCase includes the drive record for drive-aware resolver context."""
-        cases_received: list[ResolutionCase] = []
-
         @dataclass
         class _CapturingInvocation:
             """Invocation double that captures the full ResolutionCase."""
@@ -485,7 +531,7 @@ class TestPostResolutionStateRefresh:
         # the core snapshot should now show claimable work.
         core_adapter.snapshot_value = cleared_core
 
-        loop_result = driver.run_drive_loop(start_result.drive_id)
+        driver.run_drive_loop(start_result.drive_id)
 
         # Key invariant: core_adapter.snapshot must have been called
         # more than once — once for initial evaluate, and again for
@@ -509,8 +555,6 @@ class TestPostResolutionStateRefresh:
         )
 
         blocked_core = _core(blocked=("phase.step",))
-        cleared_core = _core(claimable=("phase.step",))
-
         core_adapter = _FakeCoreAdapter(blocked_core)
 
         control = PlanAwareControl(
@@ -568,8 +612,6 @@ class TestResolverContinuationSemantics:
         )
 
         blocked_core = _core(blocked=("phase.step",))
-        cleared_core = _core(claimable=("phase.step",))
-
         core_adapter = _FakeCoreAdapter(blocked_core)
 
         control = PlanAwareControl(

@@ -17,11 +17,13 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Protocol
 
 from vectl.orchestration.contracts import (
     BarrierReason,
+    ChildRunRef,
     ControlDecision,
     CoreSnapshot,
     DriveBarrier,
@@ -154,6 +156,7 @@ class DriveStatusResult:
             Always ``"drive"`` for drive-level status results.
         active_child_run_ids: Currently active child runs.
         frontier_step_ids: Current claimable frontier.
+        blocked_case_ids: Open case identifiers blocking scheduling.
         barrier: Current barrier, if active.
         summary: Human-readable aggregate progress description.
     """
@@ -163,6 +166,7 @@ class DriveStatusResult:
     scope_kind: str = "drive"
     active_child_run_ids: tuple[str, ...] = ()
     frontier_step_ids: tuple[str, ...] = ()
+    blocked_case_ids: tuple[str, ...] = ()
     barrier: DriveBarrier | None = None
     summary: str = ""
 
@@ -557,6 +561,25 @@ def _barrier_reason_for_case_source(source: ResolutionCaseSource) -> BarrierReas
     return mapping.get(source, "runtime_failure")
 
 
+def _resolver_should_handle_active_barrier(record: DriveRecord) -> bool:
+    """Return whether a persisted drive barrier should invoke resolver now.
+
+    Foreground drive supervision may enter ``resolving`` after a child run
+    creates a runtime/reconcile case.  That persisted barrier must not be a
+    terminal operator boundary by itself: when a resolver is wired, the next
+    loop pass should attempt resolver handling before giving up to the user.
+    """
+
+    barrier = record.barrier
+    if barrier is None:
+        return False
+    if not record.blocked_case_ids:
+        return False
+    if barrier.pending_resolver_run_id is not None:
+        return False
+    return barrier.reason in {"runtime_failure", "merge_conflict", "review_failed"}
+
+
 def _apply_resolution_report_to_drive(
     record: DriveRecord,
     barrier: DriveBarrier,
@@ -841,6 +864,8 @@ class ConcreteDriveDriver:
         planner_mutation_applier: PlannerMutationApplier | None = None,
         run_registry: RunRegistry | None = None,
         control_channel: FilesystemControlChannel | None = None,
+        child_run_launcher: Callable[[str, str, str], ChildRunRef] | None = None,
+        child_run_canceller: Callable[[str], bool] | None = None,
         max_parallelism: int = 4,
     ) -> None:
         self._drive_store = drive_store
@@ -851,6 +876,8 @@ class ConcreteDriveDriver:
         self._planner_mutation_applier = planner_mutation_applier
         self._run_registry = run_registry
         self._control_channel = control_channel
+        self._child_run_launcher = child_run_launcher
+        self._child_run_canceller = child_run_canceller
         self._max_parallelism = max(1, min(32, max_parallelism))
 
     # ------------------------------------------------------------------
@@ -1024,6 +1051,21 @@ class ConcreteDriveDriver:
         roster_snap = self._control.sources.roster.snapshot()
         runtime_snap = self._control.sources.runtime.snapshot()
 
+        if _resolver_should_handle_active_barrier(record) and self._resolver is not None:
+            decision = ControlDecision(
+                kind="resolve",
+                reason=f"Open cases require resolution: {', '.join(open_case_ids)}",
+                case_ids=open_case_ids,
+            )
+            return self._handle_resolve_decision(
+                drive_id=drive_id,
+                record=record,
+                core=core,
+                roster=roster_snap,
+                runtime=runtime_snap,
+                decision=decision,
+            )
+
         decision = self._control.evaluate(
             core=core,
             roster=roster_snap,
@@ -1060,20 +1102,28 @@ class ConcreteDriveDriver:
             )
 
         # Persist updated drive state reflecting the decision.
-        now = time.time()
         completed_steps: tuple[str, ...] = ()
         new_status = record.status
         barrier = record.barrier
         summary = f"loop pass: decision={decision.kind}"
+        launched_refs: tuple[ChildRunRef, ...] = ()
 
         if decision.kind == "dispatch_batch":
+            launched_refs = self._launch_child_runs_for_decision(record, decision)
             summary = (
                 f"dispatch_batch: steps={decision.step_ids} "
                 f"capacity_used={decision.capacity_used} "
                 f"capacity_remaining={decision.capacity_remaining}"
             )
+            if launched_refs:
+                child_ids = tuple(ref.run_id for ref in launched_refs)
+                summary += f" child_runs={child_ids}"
         elif decision.kind == "dispatch":
+            launched_refs = self._launch_child_runs_for_decision(record, decision)
             summary = f"dispatch: step={decision.step_ids}"
+            if launched_refs:
+                child_ids = tuple(ref.run_id for ref in launched_refs)
+                summary += f" child_runs={child_ids}"
         elif decision.kind == "done":
             new_status = "completed"
             summary = "all phases closed; drive complete"
@@ -1096,16 +1146,60 @@ class ConcreteDriveDriver:
             barrier=barrier,
             summary=summary,
         )
+        if launched_refs:
+            active_child_run_ids = tuple(
+                dict.fromkeys(
+                    (*record.active_child_run_ids, *(ref.run_id for ref in launched_refs))
+                )
+            )
+            updated = DriveRecord(
+                drive_id=updated.drive_id,
+                plan_path=updated.plan_path,
+                status=updated.status,
+                started_at=updated.started_at,
+                updated_at=updated.updated_at,
+                finished_at=updated.finished_at,
+                agent=updated.agent,
+                max_parallelism=updated.max_parallelism,
+                active_child_run_ids=active_child_run_ids,
+                frontier_step_ids=updated.frontier_step_ids,
+                blocked_case_ids=updated.blocked_case_ids,
+                barrier=updated.barrier,
+                operator_pause_state=updated.operator_pause_state,
+                summary=updated.summary,
+            )
         self._drive_store.save_drive(updated)
 
         return DriveLoopResult(
             drive_id=drive_id,
             status=new_status,
             completed_steps=completed_steps,
-            active_child_run_ids=record.active_child_run_ids,
+            active_child_run_ids=updated.active_child_run_ids,
             barrier=barrier,
             summary=summary,
         )
+
+    def _launch_child_runs_for_decision(
+        self,
+        record: DriveRecord,
+        decision: ControlDecision,
+    ) -> tuple[ChildRunRef, ...]:
+        """Launch and persist child runs for dispatch decisions when wired.
+
+        Structural tests can instantiate the driver without a launcher; in that
+        mode dispatch decisions are still reflected in the summary but no
+        external runner is started. Production app wiring supplies the launcher.
+        """
+
+        if self._child_run_launcher is None:
+            return ()
+        launched: list[ChildRunRef] = []
+        for step_id in decision.step_ids:
+            role_id = decision.role_bindings.get(step_id, record.agent or "default")
+            ref = self._child_run_launcher(record.drive_id, step_id, role_id)
+            self._drive_store.save_child_run(ref)
+            launched.append(ref)
+        return tuple(launched)
 
     # ------------------------------------------------------------------
     # Resolver-loop integration
@@ -1228,6 +1322,8 @@ class ConcreteDriveDriver:
             barrier=resolved_barrier,
             summary=summary,
         )
+        if resolved_barrier is None:
+            updated = replace(updated, blocked_case_ids=())
         self._drive_store.save_drive(updated)
 
         return DriveLoopResult(
@@ -1368,6 +1464,18 @@ class ConcreteDriveDriver:
                 # Authority: RFC-orch-drive.md section 7.3.1
                 # Stop is terminal — no further transitions valid after this.
                 force = "force=true" in request.payload
+                cancelled_child_ids: list[str] = []
+                if force:
+                    for child_run_id in record.active_child_run_ids:
+                        if self._child_run_canceller is not None:
+                            self._child_run_canceller(child_run_id)
+                        child_ref = self._drive_store.child_run_by_id(child_run_id)
+                        if child_ref is not None and child_ref.status in ("pending", "running"):
+                            self._drive_store.save_child_run(
+                                replace(child_ref, status="cancelled")
+                            )
+                        cancelled_child_ids.append(child_run_id)
+
                 new_status: DriveStatus = "stopped"
                 try:
                     validate_drive_transition(record.status, new_status)
@@ -1386,7 +1494,9 @@ class ConcreteDriveDriver:
                     finished_at=finished_at,
                     agent=record.agent,
                     max_parallelism=record.max_parallelism,
-                    active_child_run_ids=record.active_child_run_ids,
+                    active_child_run_ids=(
+                        () if force else record.active_child_run_ids
+                    ),
                     frontier_step_ids=record.frontier_step_ids,
                     blocked_case_ids=record.blocked_case_ids,
                     barrier=record.barrier,
@@ -1395,6 +1505,11 @@ class ConcreteDriveDriver:
                         f"operator stop consumed"
                         f"{' (force)' if force else ''}: "
                         f"transition {record.status} → {new_status}"
+                        + (
+                            f"; cancelled_child_runs={tuple(cancelled_child_ids)}"
+                            if cancelled_child_ids
+                            else ""
+                        )
                     ),
                 )
                 self._drive_store.save_drive(updated)

@@ -18,6 +18,7 @@ Intent: runner_level_tests
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -730,6 +731,38 @@ class TestOpenCodeRunnerPoll:
             "exit 0" in poll_result.output_summary
             or "completed successfully" in poll_result.output_summary
         )
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_summarizes_opencode_json_event_text(
+        self, mock_popen: MagicMock
+    ) -> None:
+        """poll() extracts assistant text from OpenCode JSON event stdout."""
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        event = {
+            "type": "part",
+            "sessionID": "ses_123",
+            "timestamp": "2026-04-26T00:00:00Z",
+            "part": {
+                "type": "text",
+                "text": '{"status":"unblocked","summary":"ok"}',
+            },
+        }
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = json.dumps(event)
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        assert poll_result.status == "success"
+        assert 'stdout={"status":"unblocked","summary":"ok"}' in (
+            poll_result.output_summary
+        )
+        assert "sessionID" not in poll_result.output_summary
 
     @patch("vectl.orchestration.runners.subprocess.Popen")
     def test_poll_returns_fail_on_nonzero_exit(self, mock_popen: MagicMock) -> None:

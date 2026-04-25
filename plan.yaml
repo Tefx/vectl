@@ -88282,6 +88282,7 @@ phases:
     - src/vectl/orchestration/contracts.py
     - src/vectl/orchestration/config.py
     - src/vectl/orchestration/dispatch_policy.py
+    agent: python-refactor-master-tacit
 - id: arch-demolition-wave-5
   name: Architectural Demolition — Wave 5 Give Review Flow a Real Implementation
   status: locked

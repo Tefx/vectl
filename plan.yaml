@@ -88305,7 +88305,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-3.dem-010-replace-tool-family-registry-shell-with-module-helpers
     name: DEM-010 replace tool-family registry shell with module helpers
-    status: rejected
+    status: claimed
     description: Resolve DEM-010 by deleting the ToolFamilyRegistry OO wrapper in
       src/vectl/orchestration/tool_registry.py, replacing it with module-level helpers/constants
       over canonical metadata, and updating resolver_gateway authorization to call
@@ -88316,8 +88316,8 @@ phases:
     - src/vectl/orchestration/tool_registry.py
     - src/vectl/orchestration/resolver_gateway.py
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T05:53:37.057929+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T12:06:23.504642+00:00'
     done_at: '2026-04-26T06:07:49.429041+00:00'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'

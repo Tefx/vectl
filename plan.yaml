@@ -89422,3 +89422,98 @@ phases:
     depends_on:
     - post_review_remediation.implement-completed-step-failure-evidence-guard
     agent: integration-verifier-tacit
+  - id: post_review_remediation.gate
+    name: Gate post-review non-invar remediation
+    status: pending
+    description: 'Final independent gate for post-review non-invar remediation.
+
+
+      Scope:
+
+      - Verify driver agent-selection deep-review findings are remediated or authoritatively
+      closed.
+
+      - Verify OpenCode runner final-gate historical CLI blockers are regated green
+      or have explicit non-intersection proof.
+
+      - Verify CLI black-box finalization runtime non-closure is regated green.
+
+      - Verify the completed-step failure evidence guard prevents new unclosed failed
+      gate/test/review evidence from silently remaining `done`.
+
+      - Explicitly exclude repo-wide invar/static-debt families (`shell_result`, `file_size`,
+      `shell_complexity_debt`) from this phase decision; those require a separate
+      remediation lane.
+
+
+      Gate should BLOCK if any non-invar blocker-class issue remains open or if evidence
+      lacks refs read confirmation / command output.'
+    verification: '- Review all phase step evidence.
+
+      - Confirm every non-invar blocker from the system review is PROVEN closed or
+      explicitly non-intersecting.
+
+      - Confirm invar/static debt is excluded with a separate-owner note rather than
+      silently passed.
+
+      - Produce OPEN/BLOCK gate decision.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - docs/DRIVER-AGENT-SELECTION.md — key passage or "NOT READ: <reason>"
+
+      - docs/RFC-opencode-orchestration-runner.md — key passage or "NOT READ: <reason>"
+
+      - README.md — key passage or "NOT READ: <reason>"
+
+      - docs/ORCHESTRATION-CLI-QUICKSTART.md — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      **Reviewer**: gate-reviewer-tacit
+
+      **Phase**: post_review_remediation
+
+
+      ## Step Evidence Matrix
+
+      | Step ID | Status | Evidence quality | Concerns |
+
+      |---|---|---|---|
+
+
+      ## Closure Register
+
+      - Driver agent-selection SHOULD_FIX: PROVEN | BLOCKED
+
+      - OpenCode final-gate CLI blocker: PROVEN | BLOCKED
+
+      - CLI black-box runtime non-closure: PROVEN | BLOCKED
+
+      - Completed-step failure evidence guard: PROVEN | BLOCKED
+
+      - Repo-wide invar/static debt: EXCLUDED_TO_SEPARATE_LANE
+
+
+      ## Issues Identified
+
+      | Severity | Description | Related Step | Blocking? |
+
+      |---|---|---|---|
+
+
+      ## Gate Decision
+
+      - [ ] OPEN
+
+      - [ ] BLOCKED
+
+      '
+    depends_on:
+    - post_review_remediation.reverify-driver-agent-selection-deep-review
+    - post_review_remediation.reverify-opencode-runner-final-gate
+    - post_review_remediation.reverify-cli-blackbox-finalization
+    - post_review_remediation.reverify-completed-step-failure-evidence-guard
+    agent: gate-reviewer-tacit

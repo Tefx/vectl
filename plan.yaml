@@ -88277,7 +88277,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-3.dem-009-relocate-step-data-and-collapse-adapter-indirection
     name: DEM-009 relocate step data and collapse adapter indirection
-    status: rejected
+    status: claimed
     description: Resolve DEM-009 by creating src/vectl/orchestration/step_data.py
       as the leaf owner of StepData, deleting CoreStepDataAdapter and the StepDataAdapter
       protocol, extending CoreAdapter with load_step_data_for_dispatch(step_id), switching
@@ -88290,8 +88290,8 @@ phases:
     - src/vectl/orchestration/dispatch_policy.py
     - tests/orchestration/
     agent: python-refactor-master-tacit
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T05:38:42.599799+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T12:06:16.342915+00:00'
     done_at: '2026-04-26T05:53:28.200290+00:00'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'

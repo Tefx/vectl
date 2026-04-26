@@ -88395,7 +88395,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-4.dem-016-retire-public-role-and-prompt-registry-protocols
     name: DEM-016 retire public role and prompt registry protocols
-    status: rejected
+    status: claimed
     description: Resolve DEM-016 by removing public RoleProfileRegistry and PromptRegistry
       protocols from contracts.py, treating ConfigRoleProfileRegistry and ConfigPromptRegistry
       as the concrete in-repo authority surfaces, and updating surviving type annotations,
@@ -88408,8 +88408,8 @@ phases:
     - src/vectl/orchestration/config.py
     - src/vectl/orchestration/dispatch_policy.py
     agent: python-refactor-master-tacit
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T08:13:41.038309+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T12:06:38.080277+00:00'
     done_at: '2026-04-26T08:25:15.706761+00:00'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'

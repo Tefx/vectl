@@ -90057,7 +90057,7 @@ phases:
       step. Repo-wide invar/static debt remained out of scope.'
   - id: post_review_remediation.gate
     name: Gate post-review non-invar remediation
-    status: pending
+    status: claimed
     description: 'Final independent gate for post-review non-invar remediation.
 
 
@@ -90151,6 +90151,8 @@ phases:
     - post_review_remediation.reverify-completed-step-failure-evidence-guard
     - post_review_remediation.backfill-missing-gate-evidence
     agent: gate-reviewer-tacit
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T18:18:24.033545+00:00'
   - id: post_review_remediation.implement-drive-autonomy-safe-recovery-and-actions
     name: Implement drive autonomy safe recovery and action guidance
     status: done

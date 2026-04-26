@@ -88658,3 +88658,123 @@ phases:
     cleanup from uvx invar-tools guard --all.
   depends_on:
   - arch-demolition-wave-7
+  steps:
+  - id: post_review_remediation.fix-driver-agent-selection-deep-review
+    name: Fix driver agent-selection deep-review findings
+    status: pending
+    description: 'Fix the non-invar SHOULD_FIX findings from `driver-agent-selection-deep-review.gate`.
+
+
+      Scope:
+
+      - `src/vectl/driver/loop.py`: planner dispatch must consume the explicit planner
+      runner authority (`config.planner.runner`) instead of routing planner agents
+      through generic `agent_routing` when the contract says planner runner owns selection.
+
+      - `src/vectl/driver/loop.py`: implement or reconcile the spec-mandated conditional
+      external-agent behavior: pass `--agent <planner.external_agent_name>` only when
+      the selected runner supports agent selection, and do not inject bundled planner
+      prompt content for external-agent mode when the spec forbids it.
+
+      - `src/vectl/driver/judge.py`: remove or narrow `_load_runner_settings_from_driver_yaml`
+      so runtime judge paths consume validated `DriverConfig`/`JudgeConfig` authority
+      rather than re-reading YAML split truth. If a fallback remains, it must be explicitly
+      documented with a real runtime consumer and a non-divergence proof.
+
+
+      Expected-red / repro requirement:
+
+      1. Before product-code edits, create or run a focused regression that exposes
+      at least one of the historical defects: planner runner ownership drift, missing
+      conditional external-agent flag handling, bundled prompt leakage in external-agent
+      mode, or judge YAML re-read split truth.
+
+      2. Capture the failing output in evidence.
+
+      3. Then complete the fix and prove the same checks go green.
+
+
+      Out of scope:
+
+      - Do NOT remediate repo-wide `uvx invar-tools guard --all` shell_result/file_size/shell_complexity_debt
+      findings in this step.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      deliverable must remove the actual split-truth/runner-ownership behavior or
+      prove it is already absent with current tests and source evidence.'
+    verification: '- Targeted regression proves planner runner authority and external-agent
+      prompt/flag semantics.
+
+      - Grep `config\.route_agent\(planner|_load_runner_settings_from_driver_yaml|supports_agent_selection`
+      and explain every match.
+
+      - Run `uv run pytest -q tests/test_driver_config.py tests/test_driver_judge.py
+      tests/test_driver_loop_hardening.py`.
+
+      - Do not require `uvx invar-tools guard --all` for this non-invar remediation
+      step.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - docs/DRIVER-AGENT-SELECTION.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/driver/loop.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/driver/judge.py — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red / Repro Proof
+
+      - Failing command before fix:
+
+      ```
+
+      <paste command>
+
+      ```
+
+      - Failing output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ## Fix Evidence
+
+      - Files changed:
+
+      - Ownership decisions:
+
+      - Grep results for drift patterns:
+
+      ```
+
+      <paste grep output>
+
+      ```
+
+
+      ## Green Verification
+
+      ```
+
+      <paste targeted pytest output>
+
+      ```
+
+
+      ## Invar Exclusion
+
+      Confirm repo-wide invar/static-debt remediation was not attempted here.'
+    refs:
+    - docs/DRIVER-AGENT-SELECTION.md
+    - src/vectl/driver/loop.py
+    - src/vectl/driver/judge.py
+    agent: python-senior-tacit

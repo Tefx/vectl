@@ -89248,7 +89248,7 @@ phases:
     agent: integration-verifier-tacit
   - id: post_review_remediation.implement-completed-step-failure-evidence-guard
     name: Implement completed-step failure evidence guard
-    status: pending
+    status: claimed
     description: "Add a non-invar guard that prevents completed review/gate/test/verification\
       \ evidence from hiding unclosed failure states.\n\nProblem to fix:\n- System\
       \ review found completed steps whose evidence contained `FAIL`, `NEEDS_REVISION`,\
@@ -89338,6 +89338,8 @@ phases:
 
       Confirm repo-wide invar/static-debt remediation was not attempted here.'
     agent: python-senior-tacit
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T14:39:43.221061+00:00'
   - id: post_review_remediation.reverify-completed-step-failure-evidence-guard
     name: Reverify completed-step failure evidence guard
     status: pending

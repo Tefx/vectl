@@ -88163,7 +88163,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-2
   name: Architectural Demolition — Wave 2 Delete Dead Exported Surfaces
-  status: in_progress
+  status: done
   gate: Wave 2 complete when DEM-012, DEM-013, and DEM-015 dead exported surfaces
     are removed, the temporary ConcreteDriveDriver alias is documented as one-wave-only
     debt, and verification commands pass.
@@ -88215,7 +88215,7 @@ phases:
       pattern="ArtifactReader|ArtifactWriter"  path="/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-013-delete-speculative-continuity-artifact-seams"'
   - id: arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell
     name: DEM-015 rename concrete drive driver and retire protocol shell
-    status: claimed
+    status: done
     description: Resolve DEM-015 by deleting the DriveDriver protocol in src/vectl/orchestration/driver.py,
       renaming ConcreteDriveDriver to DriveDriver, migrating imports, and retaining
       a documented deprecated ConcreteDriveDriver alias for one wave cycle only, scheduled
@@ -88227,7 +88227,10 @@ phases:
     agent: python-senior-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T12:06:02.164627+00:00'
-    done_at: '2026-04-26T05:24:16.015514+00:00'
+    done_at: '2026-04-26T12:06:04.523519+00:00'
+    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
+      0); stdout=<opencode JSON event stream omitted from plan evidence> [historical_evidence_cleanup=raw_opencode_event_stream_removed;
+      implementation_status=unchanged]'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'
     rejection_history:

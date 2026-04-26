@@ -7,6 +7,7 @@ transition operations.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,6 +27,49 @@ from vectl.models import (
 _logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class AffinityWarningMetadata:
+    """Lifecycle-owned affinity warning details for claim consumers.
+
+    Source: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md DEM-004
+    requires claim/affinity/conflict metadata to be owned by this module while
+    CLI and MCP only wrap or render it.
+    """
+
+    step_agent: str
+    claiming_agent: str
+    affinity: str
+    message: str
+
+
+@dataclass(frozen=True)
+class AffinityOverrideMetadata:
+    """Lifecycle-owned affinity override details for claim consumers.
+
+    Source: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md DEM-004
+    requires shared claim metadata to remain lifecycle-owned.
+    """
+
+    overridden_agent: str
+    override_by: str
+    message: str
+
+
+@dataclass(frozen=True)
+class ClaimConflictMetadata:
+    """Lifecycle-owned structured details for an existing claim conflict.
+
+    Source: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md DEM-004
+    requires conflict metadata to be shared from lifecycle rather than
+    redefined by MCP-only models.
+    """
+
+    step_id: str
+    branch: str
+    claimant: str
+    claimed_at: str
+
+
 class ClaimResult:
     """Result of a claim operation with affinity metadata.
 
@@ -39,16 +83,22 @@ class ClaimResult:
         affinity_warning: bool = False,
         warning_message: str | None = None,
         affinity_override: bool = False,
+        affinity_warning_metadata: AffinityWarningMetadata | None = None,
+        affinity_override_metadata: AffinityOverrideMetadata | None = None,
     ) -> None:
         self.affinity_warning = affinity_warning
         self.warning_message = warning_message
         self.affinity_override = affinity_override
+        self.affinity_warning_metadata = affinity_warning_metadata
+        self.affinity_override_metadata = affinity_override_metadata
 
     def __repr__(self) -> str:
         return (
             f"ClaimResult(affinity_warning={self.affinity_warning}, "
             f"warning_message={self.warning_message!r}, "
-            f"affinity_override={self.affinity_override})"
+            f"affinity_override={self.affinity_override}, "
+            f"affinity_warning_metadata={self.affinity_warning_metadata!r}, "
+            f"affinity_override_metadata={self.affinity_override_metadata!r})"
         )
 
 
@@ -69,6 +119,12 @@ class ClaimConflictError(PlanError):
         self.branch = branch
         self.claimant = claimant
         self.claimed_at = claimed_at
+        self.metadata = ClaimConflictMetadata(
+            step_id=step_id,
+            branch=branch,
+            claimant=claimant,
+            claimed_at=claimed_at,
+        )
         super().__init__(
             f"Step '{step_id}' is already claimed on branch '{branch}' "
             f"by '{claimant}' (claimed at {claimed_at})"
@@ -152,6 +208,12 @@ def claim_step(
                 f"but is being claimed by '{agent_name}'. "
                 "Proceeding (affinity: suggested)"
             )
+            result.affinity_warning_metadata = AffinityWarningMetadata(
+                step_agent=step.agent,
+                claiming_agent=agent_name,
+                affinity=effective_affinity.value,
+                message=result.warning_message,
+            )
         elif effective_affinity == AffinityMode.EXCLUSIVE:
             if force:
                 step.affinity_override = True
@@ -161,6 +223,11 @@ def claim_step(
                 result.warning_message = (
                     f"Affinity override: step '{step_id}' has exclusive affinity for "
                     f"'{step.agent}'. Overridden by --force. Audit trail recorded."
+                )
+                result.affinity_override_metadata = AffinityOverrideMetadata(
+                    overridden_agent=step.agent,
+                    override_by=agent_name,
+                    message=result.warning_message,
                 )
             else:
                 raise AffinityError(step_id, step.agent, agent_name)

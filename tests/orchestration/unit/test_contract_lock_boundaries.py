@@ -15,7 +15,7 @@ from vectl.orchestration.contracts import (
     RuntimeSnapshot,
 )
 from vectl.orchestration.core_adapter import CoreAdapter
-from vectl.orchestration.interfaces import LifecycleMutationPort, RunnerBackend, RuntimeLifecycle
+from vectl.orchestration.interfaces import RunnerBackend, RuntimeLifecycle
 from vectl.orchestration.runtime import Runtime
 
 
@@ -101,11 +101,18 @@ def test_runtime_surface_preserves_backend_lifecycle_split() -> None:
     assert issubclass(Runtime, RuntimeLifecycle)
 
 
-def test_lifecycle_mutation_port_matches_locked_mutation_rules() -> None:
-    claim_signature = inspect.signature(LifecycleMutationPort.claim_step)
-    complete_signature = inspect.signature(LifecycleMutationPort.complete_step)
-    claim_hints = get_type_hints(LifecycleMutationPort.claim_step)
-    complete_hints = get_type_hints(LifecycleMutationPort.complete_step)
+def test_core_adapter_is_the_only_contract_locked_mutation_boundary() -> None:
+    deleted_port_name = "Lifecycle" + "MutationPort"
+
+    assert not hasattr(
+        __import__("vectl.orchestration.interfaces", fromlist=[deleted_port_name]),
+        deleted_port_name,
+    )
+
+    claim_signature = inspect.signature(CoreAdapter.claim_step)
+    complete_signature = inspect.signature(CoreAdapter.complete_step)
+    claim_hints = get_type_hints(CoreAdapter.claim_step)
+    complete_hints = get_type_hints(CoreAdapter.complete_step)
 
     assert claim_signature.parameters["flow"].default == "normal"
     assert get_args(claim_hints["flow"]) == ("normal",)

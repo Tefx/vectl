@@ -89605,7 +89605,7 @@ phases:
       this step intentionally does not run or require `uvx invar-tools guard --all`.'
   - id: post_review_remediation.reverify-completed-step-failure-evidence-guard
     name: Reverify completed-step failure evidence guard
-    status: pending
+    status: claimed
     description: 'Independent verification for the completed-step failure evidence
       guard.
 
@@ -89687,6 +89687,8 @@ phases:
     depends_on:
     - post_review_remediation.implement-completed-step-failure-evidence-guard
     agent: integration-verifier-tacit
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T14:52:45.133873+00:00'
   - id: post_review_remediation.gate
     name: Gate post-review non-invar remediation
     status: pending

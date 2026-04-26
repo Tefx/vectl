@@ -13,6 +13,7 @@ from typing import Protocol
 
 from vectl.orchestration.config import DEFAULT_RESOLVER_ROLE_ID
 from vectl.orchestration.contracts import ResolutionCase, ResolutionReport
+from vectl.orchestration.interfaces import Resolver
 from vectl.orchestration.resolution_reports import parse_resolution_report_payload
 
 
@@ -38,29 +39,6 @@ class ResolverInvocationSurface(Protocol):
 
         Returns:
             Machine-readable payload parsable into ResolutionReport.
-        """
-        ...
-
-
-class Resolver(Protocol):
-    """Resolver contract pinned to ResolutionCase -> ResolutionReport.
-
-    Authority:
-        docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.4
-        docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md sections 3.2 and 5.1
-
-    The exported ``ResolverAuthorityContract`` type is normative for this seam.
-    Implementors must preserve that boundary rather than reinterpret it locally.
-    """
-
-    def resolve(self, case: ResolutionCase) -> ResolutionReport:
-        """Resolve a blocked/unresolved case into bounded report.
-
-        Args:
-            case: The blocked/unresolved case snapshot from control.
-
-        Returns:
-            Bounded machine-readable resolution report.
         """
         ...
 

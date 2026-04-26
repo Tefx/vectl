@@ -11,6 +11,36 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final, Protocol
 
+from vectl.orchestration._control_decisions import (
+    blocked_steps_case_id as _blocked_steps_case_id,
+)
+from vectl.orchestration._control_decisions import (
+    count_active_step_runs as _count_active_step_runs,
+)
+from vectl.orchestration._control_decisions import (
+    deterministic_frontier_order as _deterministic_frontier_order,
+)
+from vectl.orchestration._control_decisions import (
+    format_unresolved_reason as _format_unresolved_reason,
+)
+from vectl.orchestration._control_decisions import (
+    has_active_work as _has_active_work,
+)
+from vectl.orchestration._control_decisions import (
+    has_plan_complete_conflict as _has_plan_complete_conflict,
+)
+from vectl.orchestration._control_decisions import (
+    is_runtime_idle as _is_runtime_idle,
+)
+from vectl.orchestration._control_decisions import (
+    plan_conflict_case_id as _plan_conflict_case_id,
+)
+from vectl.orchestration._control_decisions import (
+    synthetic_resolve_case_id as _synthetic_resolve_case_id,
+)
+from vectl.orchestration._control_decisions import (
+    validate_decision_invariants,
+)
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
@@ -22,7 +52,7 @@ from vectl.orchestration.contracts import (
     RuntimeSnapshot,
 )
 from vectl.orchestration.core_adapter import CoreAdapter
-from vectl.orchestration.run_store import AdmissionAuthority, DriveActiveRunBlockedError
+from vectl.orchestration.interfaces import Control
 
 
 class SamePlanRunRejectedError(Exception):
@@ -106,160 +136,6 @@ class ControlInputSources:
     core_adapter: CoreAdapter
     roster: RosterSnapshotSource
     runtime: RuntimeSnapshotSource
-
-
-class Control(Protocol):
-    """Plan-aware orchestration flow contract.
-
-    Authority:
-        docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.1
-        docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.2
-        docs/RFC-orch-drive.md section 9
-
-    Public surface exposes evaluate, apply_resolution, and apply_planner_result.
-    The drive-aware signatures accept optional ``drive`` and ``barrier``
-    parameters for full drive scheduling integration.
-    """
-
-    def evaluate(
-        self,
-        core: CoreSnapshot,
-        roster: RosterSnapshot,
-        runtime: RuntimeSnapshot,
-        drive: DriveRecord | None = None,
-        barrier: DriveBarrier | None = None,
-        open_case_ids: tuple[str, ...] = (),
-        recovery_gate_blocked: bool = False,
-    ) -> ControlDecision:
-        """Evaluate authoritative/component snapshots into one control decision.
-
-        The drive-aware signature allows the control component to factor
-        in drive state, barrier state, open cases, and recovery gate
-        status when computing its decision.
-
-        Args:
-            core: Authoritative core snapshot produced through ``CoreAdapter``.
-            roster: Current roster component snapshot.
-            runtime: Current runtime component snapshot.
-            drive: Current drive record, if a drive session is active.
-            barrier: Current barrier state, if the drive is in barrier mode.
-            open_case_ids: Open resolution case identifiers.
-            recovery_gate_blocked: Whether the recovery gate is currently
-                blocking dispatch.
-
-        Returns:
-            Next orchestration-plane control decision.
-        """
-        ...
-
-    def apply_resolution(
-        self,
-        report: ResolutionReport,
-        core: CoreSnapshot,
-        roster: RosterSnapshot,
-        runtime: RuntimeSnapshot,
-        drive: DriveRecord | None = None,
-        barrier: DriveBarrier | None = None,
-    ) -> ControlDecision:
-        """Apply resolver report and return a follow-up control decision.
-
-        Authority: docs/RFC-orch-drive.md section 12.3
-        Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.1
-
-        Args:
-            report: Resolver output for a previously unresolved case.
-            core: Refreshed authoritative core snapshot.
-            roster: Refreshed roster component snapshot.
-            runtime: Refreshed runtime component snapshot.
-            drive: Current drive record, if a drive session is active.
-            barrier: Current barrier state, if the drive is in barrier mode.
-
-        Returns:
-            Follow-up control decision after applying resolver outcome.
-        """
-        ...
-
-    def apply_planner_result(
-        self,
-        bundle: PlannerMutationBundle,
-        core: CoreSnapshot,
-        roster: RosterSnapshot,
-        runtime: RuntimeSnapshot,
-        drive: DriveRecord | None = None,
-        barrier: DriveBarrier | None = None,
-    ) -> ControlDecision:
-        """Apply planner mutation bundle and return a follow-up control decision.
-
-        Authority: docs/RFC-orch-drive.md section 13.5
-        Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.1
-
-        Continuation rules (RFC-orch-drive.md section 13.5):
-            - ``applyable``: attempt facade apply; on success return to
-              ``kind='dispatch_batch'`` or ``kind='wait'``
-            - ``operator_required``: transition drive to ``blocked_operator``
-            - ``halt``: transition drive to ``halted``
-
-        Facade apply disposition rule:
-            - ordinary facade apply failure enters ``blocked_operator``
-            - only corruption-level or invariant-breaking apply failure
-              may enter ``failed_unrecoverable``
-
-        Args:
-            bundle: Machine-readable planner output contract.
-            core: Refreshed authoritative core snapshot.
-            roster: Refreshed roster component snapshot.
-            runtime: Refreshed runtime component snapshot.
-            drive: Current drive record, if a drive session is active.
-            barrier: Current barrier state, if the drive is in barrier mode.
-
-        Returns:
-            Follow-up control decision after applying planner outcome.
-        """
-        ...
-
-
-def _deterministic_frontier_order(step_ids: tuple[str, ...]) -> tuple[str, ...]:
-    """Order claimable frontier steps deterministically.
-
-    Authority: docs/RFC-orch-drive.md section 9.4
-
-    Deterministic frontier ordering rules:
-        1. Authoritative claimable frontier only
-        2. Stable phase-local ordering by ``step_id``
-        3. Truncated by available capacity (done by caller)
-
-    This function implements rule 2: sort by step_id to ensure stable
-    phase-local ordering regardless of plan insertion order.
-
-    Args:
-        step_ids: Claimable step IDs from authoritative core snapshot.
-
-    Returns:
-        Step IDs sorted by stable phase-local ordering.
-    """
-    return tuple(sorted(step_ids))
-
-
-def _count_active_step_runs(drive: DriveRecord) -> int:
-    """Count active step child runs in a drive (excluding resolver/planner).
-
-    Authority: docs/RFC-orch-drive.md section 10.2
-
-    Resolver and planner child runs are excluded from capacity accounting;
-    they are barrier work, not ordinary plan work.
-
-    Note: DriveRecord.active_child_run_ids is a flat tuple of run IDs.
-    Since we lack per-run kind information at the ControlDecision level,
-    we conservatively count all active child runs. The driver loop must
-    refine this with ChildRunRef.kind when admitting.
-
-    Args:
-        drive: Current drive record.
-
-    Returns:
-        Number of active child runs considered for step capacity.
-    """
-    return len(drive.active_child_run_ids)
 
 
 @dataclass(frozen=True)
@@ -628,151 +504,6 @@ class PlanAwareControl:
             reason=f"Planner halted: {bundle.summary}",
             barrier_required=True,
         )
-
-
-def _synthetic_resolve_case_id(core: CoreSnapshot) -> str:
-    """Generate a synthetic case identifier from unresolved core state.
-
-    Decision invariant (RFC-orch-drive.md section 9.2.1) requires resolve
-    decisions to have non-empty ``case_ids``. When control detects unresolved
-    state without an externally-provided case ID, it synthesizes one from
-    the unresolved reasons hash.
-
-    Args:
-        core: Authoritative core snapshot with unresolved reasons.
-
-    Returns:
-        A deterministic synthetic case identifier.
-    """
-    return f"unresolved:{','.join(core.unresolved_reasons)}"
-
-
-def _plan_conflict_case_id(core: CoreSnapshot) -> str:
-    """Generate a synthetic case identifier for plan-complete conflicts.
-
-    Args:
-        core: Authoritative core snapshot with conflicting plan_complete flag.
-
-    Returns:
-        A deterministic synthetic case identifier.
-    """
-    return "plan_complete_conflict"
-
-
-def _blocked_steps_case_id(core: CoreSnapshot) -> str:
-    """Generate a synthetic case identifier for blocked steps.
-
-    Args:
-        core: Authoritative core snapshot with blocked steps.
-
-    Returns:
-        A deterministic synthetic case identifier.
-    """
-    return f"blocked:{','.join(core.blocked_step_ids)}"
-
-
-def _is_runtime_idle(runtime: RuntimeSnapshot) -> bool:
-    """Return whether runtime reports no active or stalled work."""
-
-    return not (
-        runtime.active_workspaces or runtime.active_executions or runtime.stalled_executions
-    )
-
-
-def _has_active_work(core: CoreSnapshot, runtime: RuntimeSnapshot) -> bool:
-    """Return whether authoritative/runtime state shows active execution."""
-
-    return bool(
-        core.in_progress_step_ids
-        or runtime.active_workspaces
-        or runtime.active_executions
-        or runtime.stalled_executions
-    )
-
-
-def _has_plan_complete_conflict(core: CoreSnapshot) -> bool:
-    """Return True when plan-complete flag conflicts with remaining work surfaces."""
-
-    if not core.plan_complete:
-        return False
-    return bool(core.claimable_step_ids or core.in_progress_step_ids or core.blocked_step_ids)
-
-
-def _format_unresolved_reason(core: CoreSnapshot) -> str | None:
-    """Build unresolved-state explanation for ``kind='resolve'`` decisions."""
-
-    if not core.unresolved_reasons:
-        return None
-
-    if len(core.unresolved_reasons) == 1:
-        return f"Unresolved authoritative state: {core.unresolved_reasons[0]}"
-
-    joined = "; ".join(core.unresolved_reasons)
-    return f"Unresolved authoritative state: {joined}"
-
-
-def validate_decision_invariants(decision: ControlDecision) -> list[str]:
-    """Validate ControlDecision invariants per RFC-orch-drive.md section 9.2.1.
-
-    This function checks that every decision kind respects its declared
-    invariants. It is intended for use in driver loop and test assertions.
-
-    Invariants:
-        - ``dispatch_batch``: ``step_ids`` non-empty, ``role_bindings`` covers
-          every ``step_id``
-        - ``dispatch``: ``step_ids`` non-empty (transitional alias)
-        - ``resolve``: ``case_ids`` non-empty
-        - ``replan``: ``planner_request`` present
-        - ``wait``: ``step_ids`` and ``case_ids`` empty
-        - ``done``: ``step_ids`` empty, ``case_ids`` empty, ``capacity_used`` == 0
-        - ``halt``: ``barrier_required`` True
-
-    Args:
-        decision: The ControlDecision to validate.
-
-    Returns:
-        List of invariant violation descriptions. Empty list means all pass.
-    """
-    violations: list[str] = []
-
-    if decision.kind in ("dispatch_batch", "dispatch"):
-        if not decision.step_ids:
-            violations.append(f"{decision.kind}: step_ids must be non-empty, got ()")
-        for sid in decision.step_ids:
-            if sid not in decision.role_bindings:
-                violations.append(
-                    f"{decision.kind}: role_bindings missing binding for step_id={sid!r}"
-                )
-        if decision.kind == "dispatch_batch" and decision.capacity_used <= 0:
-            violations.append(
-                f"dispatch_batch: capacity_used must be positive, got {decision.capacity_used}"
-            )
-
-    elif decision.kind == "resolve":
-        if not decision.case_ids:
-            violations.append("resolve: case_ids must be non-empty, got ()")
-
-    elif decision.kind == "replan":
-        if decision.planner_request is None:
-            violations.append("replan: planner_request must be present, got None")
-
-    elif decision.kind == "wait":
-        if decision.step_ids:
-            violations.append(f"wait: step_ids must be empty, got {decision.step_ids}")
-        if decision.case_ids:
-            violations.append(f"wait: case_ids must be empty, got {decision.case_ids}")
-
-    elif decision.kind == "done":
-        if decision.step_ids:
-            violations.append(f"done: step_ids must be empty, got {decision.step_ids}")
-        if decision.case_ids:
-            violations.append(f"done: case_ids must be empty, got {decision.case_ids}")
-
-    elif decision.kind == "halt":
-        if not decision.barrier_required:
-            violations.append("halt: barrier_required must be True, got False")
-
-    return violations
 
 
 @dataclass(frozen=True)

@@ -45,7 +45,7 @@ from vectl.orchestration.control_channel import (
 )
 from vectl.orchestration.core_adapter import CoreAdapter
 from vectl.orchestration.driver import (
-    ConcreteDriveDriver,
+    DriveDriver,
     DriveLoopResult,
     TERMINAL_DRIVE_STATUSES,
 )
@@ -158,11 +158,11 @@ def _make_driver(
     core: CoreSnapshot | None = None,
     control_channel: FilesystemControlChannel | None = None,
     max_parallelism: int = 4,
-) -> ConcreteDriveDriver:
-    """Create a ConcreteDriveDriver with optional control channel."""
+) -> DriveDriver:
+    """Create a DriveDriver with optional control channel."""
     store = DriveStore(store_root=tmp_path / "drives")
     control = _make_control(core)
-    return ConcreteDriveDriver(
+    return DriveDriver(
         drive_store=store,
         core_adapter=control.sources.core_adapter,
         control=control,

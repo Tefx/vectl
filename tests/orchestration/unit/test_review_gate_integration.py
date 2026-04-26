@@ -36,7 +36,7 @@ from vectl.orchestration.contracts import (
     RuntimeSnapshot,
 )
 from vectl.orchestration.driver import (
-    ConcreteDriveDriver,
+    DriveDriver,
     validate_drive_transition,
 )
 from vectl.orchestration.review_gate import ReviewGateResult
@@ -364,7 +364,7 @@ class TestReviewOutcomeWithDriverIntegration:
         control: MagicMock | None = None,
         resolver: MagicMock | None = None,
         review_gate: MagicMock | None = None,
-    ) -> ConcreteDriveDriver:
+    ) -> DriveDriver:
         if store is None:
             store = MagicMock()
         if core_adapter is None:
@@ -377,7 +377,7 @@ class TestReviewOutcomeWithDriverIntegration:
         control.sources.runtime.snapshot.return_value = _make_runtime()
         store.replay_drive_state.return_value = _make_drive()
 
-        return ConcreteDriveDriver(
+        return DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -406,7 +406,7 @@ class TestReviewOutcomeWithDriverIntegration:
             barrier_required=True,
         )
 
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -444,7 +444,7 @@ class TestReviewOutcomeWithDriverIntegration:
             case_ids=("case_review_02",),
         )
 
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -474,7 +474,7 @@ class TestReviewOutcomeWithDriverIntegration:
             reason="operator_required: human review needed",
         )
 
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -506,7 +506,7 @@ class TestReviewOutcomeWithDriverIntegration:
             capacity_remaining=3,
         )
 
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,

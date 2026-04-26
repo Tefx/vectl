@@ -92,8 +92,8 @@ from vectl.orchestration.dispatch_policy import (
     normalize_review_result,
 )
 from vectl.orchestration.driver import (
-    ConcreteDriveDriver,
     DriveAdmissionError,
+    DriveDriver,
     DriveLoopResult,
     DriveRecoverResult,
     DriveResumeResult,
@@ -2066,8 +2066,8 @@ class OrchestrationApp:
             )
         return terminated
 
-    def _drive_driver(self) -> ConcreteDriveDriver:
-        """Return a ConcreteDriveDriver wired with the app's components.
+    def _drive_driver(self) -> DriveDriver:
+        """Return a DriveDriver wired with the app's components.
 
         Authority: docs/RFC-orch-drive.md sections 7, 10, 14, 15
 
@@ -2078,7 +2078,7 @@ class OrchestrationApp:
 
         if not isinstance(self._control, PlanAwareControl):
             raise TypeError(f"drive requires PlanAwareControl; got {type(self._control).__name__}")
-        return ConcreteDriveDriver(
+        return DriveDriver(
             drive_store=self._drive_store(),
             core_adapter=self._core_adapter,
             control=self._control,

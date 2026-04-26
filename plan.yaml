@@ -89400,7 +89400,7 @@ phases:
       0); stdout=OpenCode emitted JSON event stream without final text'
   - id: post_review_remediation.reverify-cli-blackbox-finalization
     name: Reverify CLI black-box finalization
-    status: claimed
+    status: done
     description: 'Independent reverify for the historical `cli_blackbox_finalization.full-plan-check`
       failure after runtime non-closure remediation.
 
@@ -89482,6 +89482,105 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T18:03:44.297611+00:00'
+    done_at: '2026-04-26T18:08:33.150545+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - README.md — Continuity Recovery documents `vectl orch recover [RUN_ID|--latest]`,
+      explicit `--latest` failure when no run exists, and the no-silent-deletion invariant.
+
+      - docs/ORCHESTRATION-CLI-QUICKSTART.md — Sections 5-6 document `vectl orch recover
+      --dry-run --json` diagnostics, hardened no-silent-deletion/explicit-selector
+      recovery, and prune `--dry-run --json` / `--force` behavior.
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md — Sections 7.1-7.4
+      cover run/resume/recover/runs/prune, inspect/status/events/logs/artifacts/actions,
+      case list/show/respond, control pause/unpause/stop, config show/validate/tools;
+      section 7.2 covers selector safety; section 6 covers exit codes; section 7.7
+      covers drive family.
+
+      - tests/repro/test_orch_cli_recovery_red.py — Black-box matrix verifies run
+      lifecycle, inspect, case, control, config, help, and prune command families
+      are registered and do not return wiring-gap messages.
+
+      - tests/repro/test_orch_liveness.py — `test_orch_liveness_cli_entrypoint` creates
+      a temp git fixture, runs `vectl orch run --json`, and asserts success output
+      includes `core.ready` without runtime wiring failure.
+
+
+      ## Verification Report
+
+      **Commands executed**:
+
+      ```sh
+
+      uv run pytest tests/repro/test_orch_cli_recovery_red.py tests/repro/test_orch_liveness.py
+      -v --tb=short
+
+      uv run vectl orch runs
+
+      uv run vectl orch config-show
+
+      uv run vectl orch recover --latest --dry-run --json
+
+      uv run vectl orch recover
+
+      uv run vectl orch resume
+
+      uv run vectl orch prune --dry-run --json
+
+      uv run vectl orch prune --older-than 9999 --dry-run --json
+
+      uv run vectl orch --help
+
+      uv run vectl orch status --latest
+
+      uv run vectl orch pause
+
+      uv run vectl orch stop
+
+      uv run vectl orch resume --latest --dry-run --json
+
+      grep/ripgrep check for `runtime non-closure: fail` residuals in outputs/source
+      context
+
+      ```
+
+      **Actual output**:
+
+      ```text
+
+      21 passed in 6.89s.
+
+      CLI smoke showed documented selector safety: recover/resume without selector
+      exit 3; recover --latest --dry-run --json returns a blocking_divergence recovery
+      error, not runtime non-closure; resume --latest --dry-run --json exits 0; prune
+      --dry-run --json exits 0 with dry-run-only success message. orch --help lists
+      documented command families including run/resume/recover/runs/prune/status/events/logs/artifacts/actions/case/control/config/drive.
+
+      `runtime non-closure: fail` appears only as source contract/classification literals
+      (orch_app.py, cli_orchestration.py, core_plan_queries.py), not in actual CLI/test
+      output.
+
+      ```
+
+
+      ## Gate Decision Basis
+
+      - runtime non-closure: PROVEN_CLOSED — black-box/liveness tests passed and CLI
+      smoke did not produce `runtime non-closure: fail`.
+
+      - selector/recovery/case/prune docs alignment: PROVEN — explicit selector failures,
+      dry-run recovery/prune behavior, case/control/config registration, and no-silent-deletion
+      behavior align with docs.
+
+      - blocking-now: none
+
+
+      ## Decision
+
+      - [x] OPEN
+
+      - [ ] BLOCKED'
   - id: post_review_remediation.implement-completed-step-failure-evidence-guard
     name: Implement completed-step failure evidence guard
     status: done

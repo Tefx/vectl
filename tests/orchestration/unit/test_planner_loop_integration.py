@@ -40,7 +40,7 @@ from vectl.orchestration.core_adapter import (
     PlanPlannerMutationApplier,
 )
 from vectl.orchestration.driver import (
-    ConcreteDriveDriver,
+    DriveDriver,
     _apply_planner_bundle_to_drive,
     _construct_bundle_from_request,
     _update_drive_record,
@@ -116,6 +116,12 @@ class _FakeCoreAdapter:
     def complete_step(self, step_id: str, evidence: str, *, reconcile_disposition: str) -> None:
         raise NotImplementedError(f"test double: complete_step({step_id})")
 
+
+    def load_step_data_for_dispatch(self, step_id: str):
+        raise NotImplementedError(
+            f"test double does not implement load_step_data_for_dispatch: step_id={step_id}"
+        )
+
     def defer_step(self, step_id: str) -> None:
         raise NotImplementedError(f"test double: defer_step({step_id})")
 
@@ -169,8 +175,8 @@ def _make_driver(
     runtime: RuntimeSnapshot | None = None,
     planner_applier: _FakePlannerMutationApplier | None = None,
     max_parallelism: int = 4,
-) -> tuple[ConcreteDriveDriver, _FakeCoreAdapter, _FakePlannerMutationApplier | None]:
-    """Create a ConcreteDriveDriver with fake planner mutation applier wired in."""
+) -> tuple[DriveDriver, _FakeCoreAdapter, _FakePlannerMutationApplier | None]:
+    """Create a DriveDriver with fake planner mutation applier wired in."""
     core_adapter = _FakeCoreAdapter(core or _core())
     control = PlanAwareControl(
         sources=ControlInputSources(
@@ -183,7 +189,7 @@ def _make_driver(
 
     # Wire in planner mutation applier if provided
     applier = planner_applier
-    driver = ConcreteDriveDriver(
+    driver = DriveDriver(
         drive_store=store,
         core_adapter=core_adapter,
         control=control,
@@ -669,7 +675,7 @@ class TestStaleLeaseInvalidation:
             ),
         )
 
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -696,7 +702,7 @@ class TestStaleLeaseInvalidation:
             ),
         )
 
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,

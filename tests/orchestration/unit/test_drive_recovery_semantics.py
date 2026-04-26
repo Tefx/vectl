@@ -37,7 +37,7 @@ from vectl.orchestration.contracts import (
 from vectl.orchestration.control import ControlInputSources, PlanAwareControl
 from vectl.orchestration.core_adapter import CoreAdapter
 from vectl.orchestration.driver import (
-    ConcreteDriveDriver,
+    DriveDriver,
     DriveAdmissionError,
     DriveRecoverResult,
     DriveResumeResult,
@@ -116,6 +116,12 @@ class _FakeCoreAdapter:
     def complete_step(self, step_id: str, evidence: str, *, reconcile_disposition: str) -> None:
         raise NotImplementedError(f"test double: complete_step not implemented: {step_id}")
 
+
+    def load_step_data_for_dispatch(self, step_id: str):
+        raise NotImplementedError(
+            f"test double does not implement load_step_data_for_dispatch: step_id={step_id}"
+        )
+
     def defer_step(self, step_id: str) -> None:
         raise NotImplementedError(f"test double: defer_step not implemented: {step_id}")
 
@@ -152,10 +158,10 @@ def _make_driver(
     tmp_path: Path,
     core: CoreSnapshot | None = None,
     max_parallelism: int = 4,
-) -> ConcreteDriveDriver:
+) -> DriveDriver:
     store = DriveStore(store_root=tmp_path)
     control = _make_control(core)
-    return ConcreteDriveDriver(
+    return DriveDriver(
         drive_store=store,
         core_adapter=control.sources.core_adapter,
         control=control,
@@ -163,7 +169,7 @@ def _make_driver(
     )
 
 
-def _start_drive(driver: ConcreteDriveDriver, plan_path: str = "/repo/plan.yaml") -> str:
+def _start_drive(driver: DriveDriver, plan_path: str = "/repo/plan.yaml") -> str:
     """Start a drive and return its ID."""
     result = driver.start_drive(plan_path=plan_path, agent="test-agent")
     return result.drive_id
@@ -619,7 +625,7 @@ class TestRecoverTerminalArtifact:
         )
 
         # Re-create driver with the run registry injected.
-        driver_with_registry = ConcreteDriveDriver(
+        driver_with_registry = DriveDriver(
             drive_store=store,
             core_adapter=driver._core_adapter,
             control=driver._control,

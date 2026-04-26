@@ -28,8 +28,11 @@ from vectl.orchestration.config import (
     write_frozen_snapshot,
 )
 from vectl.orchestration.tool_registry import (
-    ToolFamilyRegistry,
+    all_families,
     canonical_tool_families,
+    get_tool_family,
+    is_registered,
+    is_valid_tool,
     validate_allowlist,
     validate_tool_allowlist,
     validate_tool_allowlist_entry,
@@ -41,25 +44,22 @@ from vectl.orchestration.tool_registry import (
 
 
 class TestToolFamilyRegistry:
-    """Tests for ToolFamilyRegistry implementation."""
+    """Tests for module-level tool registry helpers."""
 
     def test_get_returns_metadata_for_known_family(self) -> None:
-        """Verify get() returns ToolFamily metadata for known families."""
-        registry = ToolFamilyRegistry()
-        metadata = registry.get("core")
+        """Verify get_tool_family() returns ToolFamily metadata for known families."""
+        metadata = get_tool_family("core")
         assert metadata is not None
         assert metadata.family == "core"
         assert "status" in metadata.allowed_operations
 
     def test_get_returns_none_for_unknown_family(self) -> None:
-        """Verify get() returns None for unknown families."""
-        registry = ToolFamilyRegistry()
-        assert registry.get("unknown_family") is None
+        """Verify get_tool_family() returns None for unknown families."""
+        assert get_tool_family("unknown_family") is None
 
     def test_all_families_returns_canonical_families(self) -> None:
         """Verify all_families() returns all canonical families."""
-        registry = ToolFamilyRegistry()
-        families = registry.all_families()
+        families = all_families()
         assert "core" in families
         assert "orchestration" in families
         assert "drive" in families
@@ -67,28 +67,24 @@ class TestToolFamilyRegistry:
 
     def test_is_registered_for_known_family(self) -> None:
         """Verify is_registered() returns True for known families."""
-        registry = ToolFamilyRegistry()
-        assert registry.is_registered("core") is True
-        assert registry.is_registered("orchestration") is True
+        assert is_registered("core") is True
+        assert is_registered("orchestration") is True
 
     def test_is_registered_for_unknown_family(self) -> None:
         """Verify is_registered() returns False for unknown families."""
-        registry = ToolFamilyRegistry()
-        assert registry.is_registered("unknown_family") is False
+        assert is_registered("unknown_family") is False
 
     def test_is_valid_tool_for_valid_tool(self) -> None:
         """Verify is_valid_tool() returns True for valid tool/family combos."""
-        registry = ToolFamilyRegistry()
-        assert registry.is_valid_tool("status", "core") is True
-        assert registry.is_valid_tool("claim", "core") is True
-        assert registry.is_valid_tool("read_events", "orchestration") is True
+        assert is_valid_tool("status", "core") is True
+        assert is_valid_tool("claim", "core") is True
+        assert is_valid_tool("read_events", "orchestration") is True
 
     def test_is_valid_tool_for_invalid_tool(self) -> None:
         """Verify is_valid_tool() returns False for invalid tool/family combos."""
-        registry = ToolFamilyRegistry()
-        assert registry.is_valid_tool("invalid_tool", "core") is False
-        assert registry.is_valid_tool("status", "orchestration") is False  # wrong family
-        assert registry.is_valid_tool("read_events", "core") is False  # wrong family
+        assert is_valid_tool("invalid_tool", "core") is False
+        assert is_valid_tool("status", "orchestration") is False  # wrong family
+        assert is_valid_tool("read_events", "core") is False  # wrong family
 
 
 class TestCanonicalToolFamilies:

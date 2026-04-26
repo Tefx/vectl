@@ -108,6 +108,12 @@ class _FakeCoreAdapter:
             f"test double does not implement complete_step: step_id={step_id}, evidence={evidence}"
         )
 
+
+    def load_step_data_for_dispatch(self, step_id: str):
+        raise NotImplementedError(
+            f"test double does not implement load_step_data_for_dispatch: step_id={step_id}"
+        )
+
     def defer_step(self, step_id: str) -> None:
         raise NotImplementedError(f"test double does not implement defer_step: step_id={step_id}")
 

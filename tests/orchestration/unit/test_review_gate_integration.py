@@ -23,23 +23,30 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from vectl.orchestration.continuity_artifacts import (
+    ReconcileRecoveryState,
+    RuntimeRecoveryRecord,
+)
 from vectl.orchestration.contracts import (
     BarrierReason,
+    ChildRunRef,
     ControlDecision,
     CoreSnapshot,
     DriveBarrier,
     DriveRecord,
     DriveStatus,
+    ExecutionResult,
     PlannerRequest,
     ReviewOutcome,
     RosterSnapshot,
     RuntimeSnapshot,
 )
 from vectl.orchestration.driver import (
-    ConcreteDriveDriver,
+    DriveDriver,
     validate_drive_transition,
 )
-from vectl.orchestration.review_gate import ReviewGateResult
+from vectl.orchestration.review_gate import DefaultReviewGate, ReviewGateResult
+from vectl.orchestration.run_store import RunRecord
 
 # ---------------------------------------------------------------------
 # Fixtures: helpers for building minimal test state
@@ -313,6 +320,93 @@ class TestReviewGateConstructor:
         assert result.planner_request is None
 
 
+class TestDefaultReviewGate:
+    """Verify concrete review normalization behavior.
+
+    Authority: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md Wave 5,
+    required changes 1-4.
+    """
+
+    def test_json_review_output_passes(self) -> None:
+        """Structured JSON review output normalizes to ReviewGateResult."""
+        gate = DefaultReviewGate()
+        result = gate.evaluate(
+            step_id="step.a",
+            execution_result=ExecutionResult(
+                step_id="step.a",
+                status="success",
+                output_summary=(
+                    '{"review_outcome":"pass","summary":"review passed",'
+                    '"evidence_refs":["artifact://review"]}'
+                ),
+            ),
+            artifact_refs=("artifact://run",),
+        )
+
+        assert result.status == "pass"
+        assert result.summary == "review passed"
+        assert result.evidence_refs == ("artifact://run", "artifact://review")
+
+    def test_malformed_output_degrades_to_needs_fix(self) -> None:
+        """Malformed review output never silently becomes pass."""
+        gate = DefaultReviewGate()
+        result = gate.evaluate(
+            step_id="step.a",
+            execution_result=ExecutionResult(
+                step_id="step.a",
+                status="success",
+                output_summary="not structured review output",
+            ),
+        )
+
+        assert result.status == "needs_fix"
+        assert "not parseable" in result.summary
+
+    def test_fenced_yaml_review_output_passes(self) -> None:
+        """Structured YAML review output normalizes to ReviewGateResult."""
+        gate = DefaultReviewGate()
+        result = gate.evaluate(
+            step_id="step.a",
+            execution_result=ExecutionResult(
+                step_id="step.a",
+                status="success",
+                output_summary=(
+                    "```yaml\n"
+                    "review_outcome: pass\n"
+                    "summary: review passed from yaml\n"
+                    "evidence_refs:\n"
+                    "  - artifact://yaml-review\n"
+                    "```"
+                ),
+            ),
+        )
+
+        assert result.status == "pass"
+        assert result.summary == "review passed from yaml"
+        assert result.evidence_refs == ("artifact://yaml-review",)
+
+    def test_needs_replan_adds_planner_request(self) -> None:
+        """needs_replan creates bounded planner request context."""
+        gate = DefaultReviewGate()
+        result = gate.evaluate(
+            step_id="step.a",
+            execution_result=ExecutionResult(
+                step_id="step.a",
+                status="success",
+                output_summary=(
+                    '{"review_outcome":"needs_replan","summary":"missing prerequisite",'
+                    '"planner_request":{"reason":"add prerequisite",'
+                    '"affected_steps":["step.a","step.pre"]}}'
+                ),
+            ),
+        )
+
+        assert result.status == "needs_replan"
+        assert result.planner_request is not None
+        assert result.planner_request.reason == "add prerequisite"
+        assert result.planner_request.affected_steps == ("step.a", "step.pre")
+
+
 class TestReviewOutcomeBarrierRecovery:
     """Test that barrier recovery after review outcomes follows RFC rules.
 
@@ -364,7 +458,8 @@ class TestReviewOutcomeWithDriverIntegration:
         control: MagicMock | None = None,
         resolver: MagicMock | None = None,
         review_gate: MagicMock | None = None,
-    ) -> ConcreteDriveDriver:
+        run_registry: MagicMock | None = None,
+    ) -> DriveDriver:
         if store is None:
             store = MagicMock()
         if core_adapter is None:
@@ -377,12 +472,91 @@ class TestReviewOutcomeWithDriverIntegration:
         control.sources.runtime.snapshot.return_value = _make_runtime()
         store.replay_drive_state.return_value = _make_drive()
 
-        return ConcreteDriveDriver(
+        return DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
             resolver=resolver,
             review_gate=review_gate,
+            run_registry=run_registry,
+        )
+
+    def test_default_review_gate_reviews_terminal_child_before_control(self) -> None:
+        """Concrete default gate handles terminal execution before control.
+
+        Authority: ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md Wave 5
+        required changes 5-7. ``DriveDriver`` must default to
+        ``DefaultReviewGate`` and route terminal execution facts through the
+        named post-execution review hook before authoritative completion flow.
+        """
+        store = MagicMock()
+        core_adapter = MagicMock()
+        control = MagicMock()
+        run_registry = MagicMock()
+        child_run = ChildRunRef(
+            run_id="run_review_pass",
+            drive_id="drv_test",
+            kind="step",
+            status="success",
+            step_id="step.reviewed",
+            artifact_root="artifacts/run_review_pass",
+        )
+
+        store.replay_drive_state.return_value = _make_drive(
+            active_child_run_ids=(child_run.run_id,)
+        )
+        store.child_run_by_id.return_value = child_run
+        core_adapter.snapshot.return_value = _make_core()
+        control.sources.roster.snapshot.return_value = _make_roster()
+        control.sources.runtime.snapshot.return_value = _make_runtime()
+        run_registry.by_id.return_value = RunRecord(
+            run_id=child_run.run_id,
+            step_id="step.reviewed",
+            status="success",
+            artifact_root="artifacts/run_review_pass",
+            runtime_state=RuntimeRecoveryRecord(
+                workspace_id="ws_review_pass",
+                step_id="step.reviewed",
+                worktree_path="/tmp/ws_review_pass",
+                scratch_branch="scratch/review-pass",
+                target_ref="main",
+                target_head_at_prepare="HEAD",
+                reconcile_state=ReconcileRecoveryState(
+                    execution_id=child_run.run_id,
+                    workspace_id="ws_review_pass",
+                    status="noop",
+                ),
+            ),
+            output_summary=(
+                '{"review_outcome":"pass","summary":"review accepted",'
+                '"evidence_refs":["review.json"]}'
+            ),
+        )
+
+        driver = DriveDriver(
+            drive_store=store,
+            core_adapter=core_adapter,
+            control=control,
+            run_registry=run_registry,
+        )
+
+        result = driver.run_drive_loop("drv_test")
+
+        assert result.completed_steps == ("step.reviewed",)
+        assert result.active_child_run_ids == ()
+        assert result.barrier is None
+        core_adapter.complete_step.assert_called_once_with(
+            "step.reviewed",
+            evidence=(
+                "post-execution review passed: review accepted; "
+                "evidence_refs=('artifacts/run_review_pass', 'review.json')"
+            ),
+            reconcile_disposition="noop",
+        )
+        control.evaluate.assert_not_called()
+        saved_drive = store.save_drive.call_args.args[0]
+        assert saved_drive.summary.startswith(
+            "post-execution review passed and step completed"
         )
 
     def test_control_resolve_from_review_triggers_barrier(self) -> None:
@@ -406,7 +580,7 @@ class TestReviewOutcomeWithDriverIntegration:
             barrier_required=True,
         )
 
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -444,7 +618,7 @@ class TestReviewOutcomeWithDriverIntegration:
             case_ids=("case_review_02",),
         )
 
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -474,7 +648,7 @@ class TestReviewOutcomeWithDriverIntegration:
             reason="operator_required: human review needed",
         )
 
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -506,7 +680,7 @@ class TestReviewOutcomeWithDriverIntegration:
             capacity_remaining=3,
         )
 
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,

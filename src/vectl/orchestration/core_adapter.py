@@ -18,6 +18,7 @@ from vectl.orchestration.contracts import (
     PlannerMutationBundle,
     PlannerMutationItem,
 )
+from vectl.orchestration.step_data import StepData
 from vectl.plan_path import resolve_claims_path
 
 
@@ -75,6 +76,10 @@ class CoreAdapter(Protocol):
 
     def defer_step(self, step_id: str) -> None:
         """Execute defer through official core defer surface."""
+        ...
+
+    def load_step_data_for_dispatch(self, step_id: str) -> StepData | None:
+        """Load authoritative step data for dispatch construction."""
         ...
 
 
@@ -239,7 +244,7 @@ class PlanCoreAdapter:
     # Step data loading (dispatch boundary)
     # ---------------------------------------------------------------------
 
-    def load_step_data_for_dispatch(self, step_id: str):
+    def load_step_data_for_dispatch(self, step_id: str) -> StepData | None:
         """Load step data for dispatch coordination through the official core seam.
 
         This is the stable public boundary for the dispatch coordinator's
@@ -254,9 +259,6 @@ class PlanCoreAdapter:
         Returns:
             StepData if found, else None.
         """
-        # Late import to avoid circular dependency with dispatch_policy.py
-        from vectl.orchestration.dispatch_policy import StepData
-
         plan, _ = load_plan_definition(self._plan_path)
         found = plan.find_step(step_id)
         if found is None:

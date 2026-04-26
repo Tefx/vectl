@@ -11,10 +11,31 @@ Authority: docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
 Authority: docs/ADR-worktree-support.md section "Core Design"
 Authority: docs/DRIVER-ARCHITECTURE.md section 4 (completion authority)
 Authority: docs/RFC-orch-drive.md sections 8, 9, 12, 13 (drive scheduling types)
+
+owns:
+    RequestMode, SessionPolicy, RecoveredVia, IsolationDefault, CleanupPolicy,
+    StaleArtifactPolicy, ReplaySafety, ControlChannelKind, ControlAckMode,
+    OutputMode, LogFormat, MutationPolicy, ControlAction, ControlPlane,
+    ControlDecisionKind, DispatchRoleSource, DispatchSourceKind,
+    PlannerMutationAction, PlannerBundleStatus, DriveStatus, ChildRunStatus,
+    ChildRunKind, BarrierReason, ResolverAuthorityContract, DispatchSpec,
+    RoleProfile, PromptBundle, StructuredReviewResult, CoreSnapshot,
+    RosterSnapshot, RuntimeSnapshot, WorktreeBinding, AgentExecutionState,
+    ReconcileResult, PlannerRequest, PlannerMutationItem,
+    PlannerMutationBundle, DriveBarrier, ChildRunRef, DriveRecord, DriveLease,
+    DriveConfigFrozen, ControlDecision, WorkLease, ExecutionRequest,
+    ExecutionResult, RecoveryContinuity, RecoveryAttempt, ResolutionCase,
+    ResolutionReport, PromptArtifactPaths, RunnerHandoffEnv,
+    OpenCodeLaunchConfig.
+
+Does not own YAML/env/input configuration models such as OrchestrationConfig,
+DriveConfig, RuntimeConfig, ResolverConfig, or ResolverToolAllowlist; those
+remain config-owned and should freeze into these contract models rather than
+redefining parallel runtime state here.
 """
 
 from dataclasses import dataclass, field
-from typing import Literal, Protocol, TypeAlias
+from typing import Literal, TypeAlias
 
 from vectl.models import IsolationMode
 
@@ -77,7 +98,6 @@ __all__ = [
     "PlannerRequest",
     "PromptArtifactPaths",
     "PromptBundle",
-    "PromptRegistry",
     "ReconcileDisposition",
     "ReconcileResult",
     "RecoveryAttempt",
@@ -94,7 +114,6 @@ __all__ = [
     "ReviewOutcome",
     "RoleOutputContract",
     "RoleProfile",
-    "RoleProfileRegistry",
     "SessionMode",
     "StructuredReviewResult",
     "WorktreeBinding",
@@ -318,14 +337,6 @@ class RoleProfile:
     default_runner: str
 
 
-class RoleProfileRegistry(Protocol):
-    """Configuration-backed lookup for open-ended role IDs."""
-
-    def get(self, role_id: str) -> RoleProfile: ...
-
-    def has_role(self, role_id: str) -> bool: ...
-
-
 @dataclass(frozen=True)
 class PromptBundle:
     """Rendered prompt material for a dispatch spec.
@@ -336,14 +347,6 @@ class PromptBundle:
     system_prompt: str
     task_prompt: str
     messages: tuple[dict[str, str], ...]
-
-
-class PromptRegistry(Protocol):
-    """Central prompt rendering boundary for role-aware dispatch."""
-
-    def render(self, spec: DispatchSpec) -> PromptBundle: ...
-
-    def has_role(self, role_id: str) -> bool: ...
 
 
 @dataclass(frozen=True)
@@ -1189,9 +1192,10 @@ class RunnerHandoffEnv:
         }
 
 
-_OPENCODE_BOOTSTRAP_MESSAGE_START: Literal[
-    "Read the attached runner prompt file, execute the requested task in the current workspace, and then exit."
-] = "Read the attached runner prompt file, execute the requested task in the current workspace, and then exit."
+_OPENCODE_BOOTSTRAP_MESSAGE_START = (
+    "Read the attached runner prompt file, execute the requested task in the "
+    "current workspace, and then exit."
+)
 """Frozen one-shot bootstrap message for OpenCode start mode.
 
 Authority: docs/RFC-opencode-orchestration-runner.md section 9.2

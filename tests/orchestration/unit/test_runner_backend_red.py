@@ -27,14 +27,15 @@ expected_failures / exposed_gaps:
         - test_resolver_invocation_failure_produces_operator_message (path from report→user not wired)
     approved-facade/main-worktree gap:
         - test_resolver_gateway_invoke_respects_resolver_authority_contract (no worktree-site check)
-        - test_lifecycle_mutation_port_enforces_normal_flow_only_claim (PlanCoreAdapter enforces; other adapters may not)
+        - test_core_adapter_enforces_normal_flow_only_claim
+          (PlanCoreAdapter enforces the surviving mutation seam)
 """
 
 from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 import pytest
 
@@ -54,11 +55,7 @@ from vectl.orchestration.contracts import (
     RosterSnapshot,
     RuntimeSnapshot,
 )
-from vectl.orchestration.interfaces import (
-    LifecycleMutationPort,
-    RunnerBackend,
-    RuntimeLifecycle,
-)
+from vectl.orchestration.interfaces import RunnerBackend, RuntimeLifecycle
 from vectl.orchestration.resolver import BoundResolver
 from vectl.orchestration.resolver_gateway import (
     AuthorizationError,
@@ -245,15 +242,15 @@ def test_runtime_lifecycle_cleanup_preserves_reconcile_disposition(
 # ---------------------------------------------------------------------
 # GAP 3: Complete blocked until reconcile is merged|noop
 # ---------------------------------------------------------------------
-# LifecycleMutationPort.complete_step requires reconcile_disposition,
-# but the actual path from runner completion → reconcile → lifecycle
-# completion is not yet wired.
+# CoreAdapter.complete_step requires reconcile_disposition at the surviving
+# mutation authority seam, but the actual path from runner completion →
+# reconcile → lifecycle completion is not yet wired.
 
 
 def test_complete_step_requires_explicit_reconcile_disposition(
     temp_git_repo_with_workspace: Path,
 ) -> None:
-    """LifecycleMutationPort.complete_step must receive reconcile_disposition.
+    """CoreAdapter.complete_step must receive reconcile_disposition.
 
     UNCLAIMED-STEP ERROR TYPE (delivered): When complete_step is called on
     a step that hasn't been claimed, PlanError is raised with message:
@@ -531,24 +528,23 @@ def test_resolver_gateway_invoke_respects_resolver_authority_contract(
         blocked_gateway.invoke(case, allowed_tool_families=("orchestration",))
 
 
-def test_lifecycle_mutation_port_enforces_normal_flow_only_claim(
+def test_core_adapter_enforces_normal_flow_only_claim(
     temp_git_repo_with_workspace: Path,
 ) -> None:
-    """LifecycleMutationPort.claim_step must reject non-normal flow.
+    """CoreAdapter.claim_step must reject non-normal flow.
 
-    GAP: The protocol declares flow: Literal["normal"] but the enforcement
-    in PlanCoreAdapter.claim_step() raises ValueError if flow != "normal".
-    However, a resolver or control path that bypasses CoreAdapter could
-    still claim without the flow restriction.
+    DEM-007: CoreAdapter is the single surviving mutation authority seam.
+    PlanCoreAdapter.claim_step() raises ValueError if flow != "normal" so
+    resolver/control paths cannot claim through an alternate mutation port.
 
     xfail scope:
         - PlanCoreAdapter enforces flow="normal" via ValueError
-        - But LifecycleMutationPort is a Protocol, not a concrete class.
-        - If a caller uses a different adapter that doesn't enforce the flow
-          restriction, the contract is bypassed.
+        - The duplicate lifecycle-mutation protocol was removed; no alternate
+          protocol surface remains for contract drift.
 
     Authority:
-        - LifecycleMutationPort: interfaces.py
+        - CoreAdapter: core_adapter.py
+        - ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md DEM-007
         - ResolverClaimFlow: contracts.py
     """
     from vectl.models import Phase, Plan, Step
@@ -565,7 +561,11 @@ def test_lifecycle_mutation_port_enforces_normal_flow_only_claim(
 
     # PlanCoreAdapter.claim_step enforces flow="normal"
     with pytest.raises(ValueError, match="pinned to 'normal'"):
-        adapter.claim_step("t.step", "python-executor", flow="resolver")  # type: ignore[arg-type]
+        adapter.claim_step(
+            "t.step",
+            "python-executor",
+            flow=cast(Literal["normal"], "resolver"),
+        )
 
     adapter.claim_step("t.step", "python-executor", flow="normal")
     snapshot = adapter.snapshot()

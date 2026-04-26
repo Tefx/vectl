@@ -7,10 +7,13 @@ Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.7 (resolv
 
 Public surfaces (this module):
     - ToolFamily             (canonical tool family metadata schema)
-    - ToolFamilyRegistry     (registry of known tool families)
     - validate_allowlist()  (resolver allowlist validation surface)
     - canonical_tool_families()  (canonical tool family identifiers)
     - validate_tool_allowlist_entry()  (per-entry validation against registry)
+    - get_tool_family()     (look up metadata for a tool family)
+    - is_registered()       (check whether a tool family is registered)
+    - is_valid_tool()       (check whether a tool name is valid for a family)
+    - all_families()        (return all registered tool family identifiers)
 
 Note: Tool family taxonomy is defined in §8.4 canonical registry table.
 """
@@ -117,71 +120,57 @@ _CANONICAL_FAMILY_METADATA: Final[dict[str, ToolFamily]] = {
 
 
 # ---------------------------------------------------------------------
-# Tool Family Registry
+# Module-level helpers over canonical metadata
 # ---------------------------------------------------------------------
 
 
-class ToolFamilyRegistry:
+def get_tool_family(family: str) -> ToolFamily | None:
+    """Look up metadata for a tool family.
+
+    Args:
+        family: The tool family identifier to look up.
+
+    Returns:
+        ToolFamily metadata if the family is registered, else None.
     """
-    Registry of known tool families and their metadata.
+    return _CANONICAL_FAMILY_METADATA.get(family)
 
-    Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §8.4
 
-    The registry is populated from the static canonical registry table in §8.4.
+def all_families() -> tuple[str, ...]:
+    """Return all registered tool family identifiers.
+
+    Returns:
+        Tuple of all registered tool family identifiers.
     """
-
-    def get(self, family: str) -> ToolFamily | None:
-        """
-        Look up metadata for a tool family.
-
-        Args:
-            family: The tool family identifier to look up.
-
-        Returns:
-            ToolFamily metadata if the family is registered, else None.
-        """
-        return _CANONICAL_FAMILY_METADATA.get(family)
-
-    def all_families(self) -> tuple[str, ...]:
-        """
-        Return all registered tool family identifiers.
-
-        Returns:
-            Tuple of all registered tool family identifiers.
-        """
-        return tuple(_CANONICAL_FAMILY_METADATA.keys())
-
-    def is_registered(self, family: str) -> bool:
-        """
-        Check whether a tool family is registered.
-
-        Args:
-            family: The tool family identifier to check.
-
-        Returns:
-            True if the family is registered.
-        """
-        return family in _CANONICAL_FAMILY_METADATA
-
-    def is_valid_tool(self, tool_name: str, family: str) -> bool:
-        """
-        Check whether a tool name is valid for a given family.
-
-        Args:
-            tool_name: The tool name to check.
-            family: The tool family identifier.
-
-        Returns:
-            True if the tool name is valid for the family.
-        """
-        metadata = self.get(family)
-        if metadata is None:
-            return False
-        return tool_name in metadata.allowed_operations
+    return tuple(_CANONICAL_FAMILY_METADATA.keys())
 
 
-# Singleton instance for module-level functions
-_registry = ToolFamilyRegistry()
+def is_registered(family: str) -> bool:
+    """Check whether a tool family is registered.
+
+    Args:
+        family: The tool family identifier to check.
+
+    Returns:
+        True if the family is registered.
+    """
+    return family in _CANONICAL_FAMILY_METADATA
+
+
+def is_valid_tool(tool_name: str, family: str) -> bool:
+    """Check whether a tool name is valid for a given family.
+
+    Args:
+        tool_name: The tool name to check.
+        family: The tool family identifier.
+
+    Returns:
+        True if the tool name is valid for the family.
+    """
+    metadata = get_tool_family(family)
+    if metadata is None:
+        return False
+    return tool_name in metadata.allowed_operations
 
 
 # ---------------------------------------------------------------------
@@ -281,13 +270,13 @@ def validate_tool_allowlist_entry(
     errors: list[ToolAllowlistValidationError] = []
 
     # Check family is known
-    if not _registry.is_registered(family):
+    if not is_registered(family):
         errors.append(
             ToolAllowlistValidationError(
                 family=family,
                 tool=None,
                 reason=f"unknown tool family {family!r}; "
-                f"expected one of {_registry.all_families()}",
+                f"expected one of {all_families()}",
             )
         )
         return errors  # Can't validate tools without valid family
@@ -306,8 +295,8 @@ def validate_tool_allowlist_entry(
             continue
 
         # Check tool is valid for family
-        if not _registry.is_valid_tool(tool, family):
-            metadata = _registry.get(family)
+        if not is_valid_tool(tool, family):
+            metadata = get_tool_family(family)
             allowed = metadata.allowed_operations if metadata else ()
             errors.append(
                 ToolAllowlistValidationError(
@@ -345,10 +334,13 @@ __all__ = [
     "CanonicalToolFamily",
     "CANONICAL_TOOL_FAMILIES",
     "ToolFamily",
-    "ToolFamilyRegistry",
     "canonical_tool_families",
     "validate_allowlist",
     "validate_tool_allowlist",
     "validate_tool_allowlist_entry",
     "ToolAllowlistValidationError",
+    "get_tool_family",
+    "is_registered",
+    "is_valid_tool",
+    "all_families",
 ]

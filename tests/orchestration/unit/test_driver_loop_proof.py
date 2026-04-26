@@ -41,7 +41,7 @@ from vectl.orchestration.control import PlanAwareControl, ControlInputSources
 from vectl.orchestration.core_adapter import CoreAdapter
 from vectl.orchestration.driver import (
     DRIVE_TRANSITIONS,
-    ConcreteDriveDriver,
+    DriveDriver,
     DriveAdmissionError,
     DriveLoopResult,
     DriveRecoverResult,
@@ -124,6 +124,12 @@ class _FakeCoreAdapter:
     def complete_step(self, step_id: str, evidence: str, *, reconcile_disposition: str) -> None:
         raise NotImplementedError(f"test double: complete_step not implemented: {step_id}")
 
+
+    def load_step_data_for_dispatch(self, step_id: str):
+        raise NotImplementedError(
+            f"test double does not implement load_step_data_for_dispatch: step_id={step_id}"
+        )
+
     def defer_step(self, step_id: str) -> None:
         raise NotImplementedError(f"test double: defer_step not implemented: {step_id}")
 
@@ -160,10 +166,10 @@ def _make_driver(
     tmp_path: Path,
     core: CoreSnapshot | None = None,
     max_parallelism: int = 4,
-) -> ConcreteDriveDriver:
+) -> DriveDriver:
     store = DriveStore(store_root=tmp_path)
     control = _make_control(core)
-    return ConcreteDriveDriver(
+    return DriveDriver(
         drive_store=store,
         core_adapter=control.sources.core_adapter,
         control=control,
@@ -547,15 +553,15 @@ class TestTransitionValidation:
 
 
 # ------------------------------------------------------------------
-# ConcreteDriveDriver wiring through OrchestrationApp
+# DriveDriver wiring through OrchestrationApp
 # ------------------------------------------------------------------
 
 
 class TestOrchestrationAppDriveSurface:
-    """Verify OrchestrationApp delegates to ConcreteDriveDriver."""
+    """Verify OrchestrationApp delegates to DriveDriver."""
 
     def test_start_drive_app_delegation(self, tmp_path: Path) -> None:
-        """OrchestrationApp.start_drive delegates to ConcreteDriveDriver."""
+        """OrchestrationApp.start_drive delegates to DriveDriver."""
         from vectl.orch_app import OrchestrationApp, AppConfig
 
         core = _core()

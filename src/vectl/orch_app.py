@@ -85,15 +85,14 @@ from vectl.orchestration.control_channel import (
 from vectl.orchestration.dispatch_policy import (
     ConfigPromptRegistry,
     ConfigRoleProfileRegistry,
-    CoreStepDataAdapter,
     DispatchAuthorityError,
     DispatchCoordinator,
     normalize_parse_failure,
     normalize_review_result,
 )
 from vectl.orchestration.driver import (
-    ConcreteDriveDriver,
     DriveAdmissionError,
+    DriveDriver,
     DriveLoopResult,
     DriveRecoverResult,
     DriveResumeResult,
@@ -666,7 +665,7 @@ class OrchestrationApp:
         self._dispatch_coordinator = dispatch_coordinator or DispatchCoordinator(
             role_registry=self._role_registry,
             prompt_registry=self._prompt_registry,
-            step_adapter=CoreStepDataAdapter(cast("PlanCoreAdapter", core_adapter)),
+            core_adapter=cast("PlanCoreAdapter", core_adapter),
         )
         self._drive_child_run_contexts: dict[str, DriveChildRunContext] = {}
 
@@ -2066,8 +2065,8 @@ class OrchestrationApp:
             )
         return terminated
 
-    def _drive_driver(self) -> ConcreteDriveDriver:
-        """Return a ConcreteDriveDriver wired with the app's components.
+    def _drive_driver(self) -> DriveDriver:
+        """Return a DriveDriver wired with the app's components.
 
         Authority: docs/RFC-orch-drive.md sections 7, 10, 14, 15
 
@@ -2078,7 +2077,7 @@ class OrchestrationApp:
 
         if not isinstance(self._control, PlanAwareControl):
             raise TypeError(f"drive requires PlanAwareControl; got {type(self._control).__name__}")
-        return ConcreteDriveDriver(
+        return DriveDriver(
             drive_store=self._drive_store(),
             core_adapter=self._core_adapter,
             control=self._control,
@@ -5580,7 +5579,7 @@ def build_orchestration_app(
     dispatch_coordinator = DispatchCoordinator(
         role_registry=role_registry,
         prompt_registry=prompt_registry,
-        step_adapter=CoreStepDataAdapter(core_adapter),
+        core_adapter=core_adapter,
     )
     control = PlanAwareControl(
         sources=ControlInputSources(core_adapter=core_adapter, roster=roster, runtime=runtime),

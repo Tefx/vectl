@@ -7,11 +7,13 @@ Authority: docs/RFC-orch-drive.md sections 12, 13 (planner/resolver integration)
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
+    DriveBarrier,
+    DriveRecord,
     ExecutionRequest,
     ExecutionResult,
     PlannerMutationBundle,
@@ -108,6 +110,10 @@ class Control(Protocol):
         core: CoreSnapshot,
         roster: RosterSnapshot,
         runtime: RuntimeSnapshot,
+        drive: DriveRecord | None = None,
+        barrier: DriveBarrier | None = None,
+        open_case_ids: tuple[str, ...] = (),
+        recovery_gate_blocked: bool = False,
     ) -> ControlDecision:
         """
         Evaluate the current state and produce a control decision.
@@ -116,6 +122,10 @@ class Control(Protocol):
             core: Current view of authoritative core state.
             roster: Current view of reusable resource state.
             runtime: Current view of mechanical execution state.
+            drive: Current drive record, if a drive session is active.
+            barrier: Current barrier state, if the drive is in barrier mode.
+            open_case_ids: Open resolution case identifiers.
+            recovery_gate_blocked: Whether recovery currently blocks dispatch.
 
         Returns:
             ControlDecision indicating next action (dispatch/resolve/wait/done).
@@ -128,6 +138,8 @@ class Control(Protocol):
         core: CoreSnapshot,
         roster: RosterSnapshot,
         runtime: RuntimeSnapshot,
+        drive: DriveRecord | None = None,
+        barrier: DriveBarrier | None = None,
     ) -> ControlDecision:
         """
         Apply a resolution report and re-evaluate.
@@ -137,9 +149,36 @@ class Control(Protocol):
             core: Refreshed core snapshot.
             roster: Refreshed roster snapshot.
             runtime: Refreshed runtime snapshot.
+            drive: Current drive record, if a drive session is active.
+            barrier: Current barrier state, if the drive is in barrier mode.
 
         Returns:
             ControlDecision following application of the resolution.
+        """
+        ...
+
+    def apply_planner_result(
+        self,
+        bundle: PlannerMutationBundle,
+        core: CoreSnapshot,
+        roster: RosterSnapshot,
+        runtime: RuntimeSnapshot,
+        drive: DriveRecord | None = None,
+        barrier: DriveBarrier | None = None,
+    ) -> ControlDecision:
+        """
+        Apply planner mutation bundle and return a follow-up control decision.
+
+        Args:
+            bundle: Machine-readable planner output contract.
+            core: Refreshed authoritative core snapshot.
+            roster: Refreshed roster component snapshot.
+            runtime: Refreshed runtime component snapshot.
+            drive: Current drive record, if a drive session is active.
+            barrier: Current barrier state, if the drive is in barrier mode.
+
+        Returns:
+            Follow-up control decision after applying planner outcome.
         """
         ...
 
@@ -331,38 +370,6 @@ class Resolver(Protocol):
         Returns:
             ResolutionReport with findings and recommended action.
         """
-        ...
-
-
-class LifecycleMutationPort(Protocol):
-    """Approved orchestration mutation facade.
-
-    This is the narrow lifecycle-mutation port that runtime/control/resolver
-    seams are allowed to target. It pins two hard rules:
-
-    - claim is normal-flow only
-    - completion requires post-reconcile acceptance (``merged`` or ``noop``)
-    """
-
-    def claim_step(
-        self,
-        step_id: str,
-        agent: str,
-        *,
-        force: bool = False,
-        flow: Literal["normal"] = "normal",
-    ) -> None:
-        """Claim a step only from normal orchestration flow."""
-        ...
-
-    def complete_step(
-        self,
-        step_id: str,
-        evidence: str,
-        *,
-        reconcile_disposition: Literal["merged", "noop"],
-    ) -> None:
-        """Complete a step only after reconcile closed as ``merged`` or ``noop``."""
         ...
 
 

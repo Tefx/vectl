@@ -27,7 +27,6 @@ from vectl.orchestration.contracts import (
     PlannerRequest,
     PromptArtifactPaths,
     PromptBundle,
-    PromptRegistry,
     ReconcileResult,
     RecoveredVia,
     RecoveryAttempt,
@@ -37,7 +36,6 @@ from vectl.orchestration.contracts import (
     ResolutionCaseSource,
     ResolutionReport,
     RoleProfile,
-    RoleProfileRegistry,
     RosterSnapshot,
     RunnerHandoffEnv,
     RuntimeSnapshot,
@@ -50,11 +48,8 @@ from vectl.orchestration.core_adapter import CoreAdapter
 from vectl.orchestration.dispatch_policy import (
     ConfigPromptRegistry,
     ConfigRoleProfileRegistry,
-    CoreStepDataAdapter,
     DispatchCoordinator,
     ReviewResultParseError,
-    StepData,
-    StepDataAdapter,
     UnknownRoleError,
     normalize_parse_failure,
     normalize_review_result,
@@ -82,6 +77,7 @@ from vectl.orchestration.resolution_reports import (
     parse_resolution_report_payload,
     validate_resolution_report_payload,
 )
+from vectl.orchestration.step_data import StepData
 
 __all__ = [
     # Shared boundary types (contracts.py)
@@ -100,10 +96,8 @@ __all__ = [
     "RequestMode",
     "SessionPolicy",
     "RoleProfile",
-    "RoleProfileRegistry",
     "PromptArtifactPaths",
     "PromptBundle",
-    "PromptRegistry",
     "RunnerHandoffEnv",
     "OpenCodeLaunchConfig",
     "StructuredReviewResult",
@@ -137,14 +131,12 @@ __all__ = [
     "ConfigRoleProfileRegistry",
     "ConfigPromptRegistry",
     "DispatchCoordinator",
-    "StepDataAdapter",
     "StepData",
     "UnknownRoleError",
     "ReviewResultParseError",
     "normalize_review_result",
     "normalize_parse_failure",
     "step_verify_to_verify_mode",
-    "CoreStepDataAdapter",
     "parse_resolution_report_payload",
     "validate_resolution_report_payload",
     # Recovery fallback (recovery_fallback.py)

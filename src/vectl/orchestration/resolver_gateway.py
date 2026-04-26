@@ -21,7 +21,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Protocol
 
 from vectl.orchestration.contracts import ResolutionCase, ResolutionReport
-from vectl.orchestration.tool_registry import ToolFamilyRegistry, validate_allowlist
+from vectl.orchestration.tool_registry import (
+    get_tool_family,
+    is_registered,
+    is_valid_tool,
+    validate_allowlist,
+)
 from vectl.plan_path import is_linked_worktree
 
 if TYPE_CHECKING:
@@ -354,7 +359,6 @@ def _authorize_tool_calls(
     Returns:
         Pair of ``(denials, audit_events)``.
     """
-    registry = ToolFamilyRegistry()
     denials: list[GatewayDenial] = []
     audit_events: list[GatewayAuditEvent] = []
 
@@ -362,7 +366,6 @@ def _authorize_tool_calls(
         denial = _authorize_single_call(
             call=call,
             allowed_tool_families=allowed_tool_families,
-            registry=registry,
         )
         if denial is None:
             audit_events.append(
@@ -395,14 +398,12 @@ def _authorize_tool_calls(
 def _authorize_single_call(
     call: ResolverToolCall,
     allowed_tool_families: tuple[str, ...],
-    registry: ToolFamilyRegistry,
 ) -> GatewayDenial | None:
     """Authorize one tool call against canonical registry and allowlist.
 
     Args:
         call: Tool call request to authorize.
         allowed_tool_families: Frozen per-run allowlist snapshot.
-        registry: Canonical tool family registry.
 
     Returns:
         ``None`` if allowed, else machine-readable denial.
@@ -427,7 +428,7 @@ def _authorize_single_call(
             ),
         )
 
-    if not registry.is_registered(call.family):
+    if not is_registered(call.family):
         return GatewayDenial(
             family=call.family,
             tool=call.name,
@@ -436,8 +437,8 @@ def _authorize_single_call(
             reason=f"unknown canonical tool family {call.family!r}",
         )
 
-    if not registry.is_valid_tool(call.name, call.family):
-        metadata = registry.get(call.family)
+    if not is_valid_tool(call.name, call.family):
+        metadata = get_tool_family(call.family)
         allowed = metadata.allowed_operations if metadata is not None else ()
         return GatewayDenial(
             family=call.family,

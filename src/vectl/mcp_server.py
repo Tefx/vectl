@@ -39,11 +39,11 @@ from typing import Any, Literal
 from fastmcp import FastMCP
 from pydantic import BaseModel
 
+from vectl.agents_md import AgentsTarget, upsert_agents_md
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
 from vectl.claims import get_current_branch, repair_claims
 from vectl.core import (
     _SENTINEL,
-    AgentsTarget,
     add_phase,
     add_step,
     add_steps_bulk,
@@ -73,7 +73,6 @@ from vectl.core import (
     skip_phase,
     skip_step,
     update_checklist,
-    upsert_agents_md,
     validate_plan,
 )
 from vectl.decide import decide as _decide_impl
@@ -93,6 +92,10 @@ from vectl.lifecycle import (
     AffinityWarningMetadata,
     ClaimConflictError,
     ClaimConflictMetadata,
+    ClaimStepMetadata,
+    claim_affinity_metadata,
+    claim_conflict_metadata,
+    claim_step_metadata,
 )
 from vectl.models import (
     AffinityError,
@@ -101,7 +104,6 @@ from vectl.models import (
     CompletedResult,
     InitResult,
     NoMatchError,
-    Phase,
     PhaseStatus,
     Plan,
     PlanError,
@@ -109,12 +111,16 @@ from vectl.models import (
     Step,
     StepStatus,
 )
+from vectl.plan_helpers import get_next_steps_with_phase
 from vectl.plan_path import (
     is_linked_worktree,
     resolve_claims_path,
     resolve_plan_path,
 )
 from vectl.semantics import is_step_locked
+
+# Backward-compatible alias for characterization tests and older imports.
+_get_next_steps_with_phase = get_next_steps_with_phase
 
 mcp = FastMCP(
     "vectl",
@@ -135,7 +141,6 @@ mcp = FastMCP(
         "  Setup:     vectl_init, vectl_validate, vectl_recover, vectl_repair_claims"
     ),
 )
-
 
 from vectl.mcp_core_tools import _get_next_steps_with_phase, _load, _plan_path, _save_plan, vectl_check, vectl_claim, vectl_complete, vectl_decide, vectl_lifecycle, vectl_migrate_step_id, vectl_mutate, vectl_search, vectl_show, vectl_status, vectl_validate
 from vectl.mcp_project_tools import vectl_clipboard, vectl_init, vectl_recover, vectl_repair_claims

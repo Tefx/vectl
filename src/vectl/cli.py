@@ -23,6 +23,7 @@ from rich.table import Table
 from rich.text import Text
 
 from vectl import __version__
+from vectl.agents_md import AgentsTarget, upsert_agents_md
 from vectl.claims import get_current_branch, repair_claims
 from vectl.core import (
     RecoverResult,
@@ -80,27 +81,30 @@ from vectl.migration import migrate_from_split_state, resolve_state_path
 from vectl.models import (
     AffinityMode,
     CASConflictError,
-    Phase,
     PhaseStatus,
     Plan,
     PlanError,
     PlanIOError,
     SkipReason,
-    Step,
     StepStatus,
     format_step_selector,
 )
 from vectl.orch_app import ControlResult
+from vectl.plan_helpers import get_next_steps_with_phase
 from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.plan_path import (
     is_linked_worktree,
     resolve_claims_path,
     resolve_plan_path,
 )
-from vectl.semantics import _get_active_phase_ids, is_step_locked
+from vectl.semantics import is_step_locked
 
 console = Console(stderr=True)
 out = Console()
+
+# Backward-compatible alias for characterization tests and older imports.
+_get_next_steps_with_phase = get_next_steps_with_phase
+
 # ---------------------------------------------------------------------------
 # Status display helpers
 # ---------------------------------------------------------------------------
@@ -163,7 +167,7 @@ def _print_duplicate_id_warning_block(p: Plan) -> None:
 
     out.print("[yellow]⚠ Duplicate step-ID diagnostics:[/]")
     for line in lines:
-        out.print(f"  [yellow]{line}[/]")
+        out.print(f"  [yellow]{_esc(line)}[/]")
 
 
 def _print_duplicate_id_recommendation_for_step(p: Plan, step_id: str) -> None:
@@ -181,51 +185,6 @@ def _print_duplicate_id_recommendation_for_step(p: Plan, step_id: str) -> None:
             out.print(f"  [dim]{label}:[/] {_esc(rest)}")
         else:
             out.print(f"  [dim]{_esc(line)}[/]")
-
-
-
-def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tuple[Phase, Step]]:
-    """Get next steps with their containing phase.
-
-    Returns list of (phase, step) tuples to correctly track phase membership
-    for duplicate step IDs across different phases.
-
-    Args:
-        plan: The plan to query.
-        agent: If provided, prioritize steps whose `agent` field matches.
-    """
-    active_phase_ids = _get_active_phase_ids(plan)
-    result: list[tuple[Phase, Step]] = []
-
-    for phase in plan.phases:
-        if phase.id not in active_phase_ids:
-            continue
-        done_step_ids = {
-            s.id for s in phase.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED)
-        }
-        for step in phase.steps:
-            if step.status not in (StepStatus.PENDING, StepStatus.REJECTED):
-                continue
-            # All deps satisfied?
-            if all(dep in done_step_ids for dep in step.depends_on):
-                result.append((phase, step))
-
-    # Sort with same priority as get_next_steps
-    def _sort_key(item: tuple[Phase, Step]) -> tuple[int, int, str]:
-        _, s = item
-        # Priority 0: rejected (needs rework)
-        status_rank = 0 if s.status == StepStatus.REJECTED else 1
-        # Agent affinity: 0 = matches, 1 = unassigned, 2 = different agent
-        if agent is None or s.agent is None:
-            agent_rank = 1
-        elif s.agent == agent:
-            agent_rank = 0
-        else:
-            agent_rank = 2
-        return (status_rank, agent_rank, s.id)
-
-    result.sort(key=_sort_key)
-    return result
 
 
 # ---------------------------------------------------------------------------

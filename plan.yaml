@@ -88778,3 +88778,72 @@ phases:
     - src/vectl/driver/loop.py
     - src/vectl/driver/judge.py
     agent: python-senior-tacit
+  - id: post_review_remediation.reverify-driver-agent-selection-deep-review
+    name: Reverify driver agent-selection deep-review closure
+    status: pending
+    description: "Independent reverify for `post_review_remediation.fix-driver-agent-selection-deep-review`.\n\
+      \nScope:\n- Confirm both historical SHOULD_FIX groups from `driver-agent-selection-deep-review.gate`\
+      \ are closed:\n  1. planner runtime dispatch uses explicit planner runner authority\
+      \ and correct external-agent prompt/flag semantics;\n  2. judge runtime no longer\
+      \ has split-truth config authority via direct YAML re-read, or any remaining\
+      \ fallback has a documented non-divergence proof and active runtime consumer.\n\
+      - This is a non-invar verification step. Do not require repo-wide `uvx invar-tools\
+      \ guard --all`.\n\nReview expectations:\n- Re-read `docs/DRIVER-AGENT-SELECTION.md`\
+      \ and compare exact requirements against `src/vectl/driver/loop.py` and `src/vectl/driver/judge.py`.\n\
+      - Treat a remaining spec-code divergence as blocker-class for this phase unless\
+      \ explicit authority updates close it.\n- Finding issues is a successful verification\
+      \ outcome; report blockers with reproduction commands."
+    verification: '- Run `uv run pytest -q tests/test_driver_config.py tests/test_driver_judge.py
+      tests/test_driver_loop_hardening.py`.
+
+      - Run grep checks for `config\.route_agent\(planner`, `_load_runner_settings_from_driver_yaml`,
+      and `supports_agent_selection`; explain every remaining match.
+
+      - Produce an OPEN/BLOCK decision for driver agent-selection deep-review closure.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - docs/DRIVER-AGENT-SELECTION.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/driver/loop.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/driver/judge.py — key passage or "NOT READ: <reason>"
+
+
+      ## Verification Report
+
+      **Commands executed**:
+
+      ```
+
+      <paste commands>
+
+      ```
+
+      **Actual output**:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ## Historical Finding Closure
+
+      - Planner runner authority: PROVEN | BLOCKED
+
+      - External-agent prompt/flag semantics: PROVEN | BLOCKED
+
+      - Judge config split-truth: PROVEN | BLOCKED
+
+
+      ## Gate Decision
+
+      - [ ] OPEN
+
+      - [ ] BLOCKED
+
+      '
+    depends_on:
+    - post_review_remediation.fix-driver-agent-selection-deep-review
+    agent: gate-reviewer-tacit

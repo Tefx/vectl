@@ -88240,7 +88240,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-3
   name: Architectural Demolition — Wave 3 Flatten Wrappers & Inspection Query Stack
-  status: done
+  status: in_progress
   gate: Wave 3 complete when DEM-008..DEM-011 are resolved, inspection queries call
     RunRegistry directly, StepData lives in orchestration/step_data.py without reverse
     imports, known CoreAdapter fakes are updated, and verification commands pass.
@@ -88305,7 +88305,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-3.dem-010-replace-tool-family-registry-shell-with-module-helpers
     name: DEM-010 replace tool-family registry shell with module helpers
-    status: done
+    status: rejected
     description: Resolve DEM-010 by deleting the ToolFamilyRegistry OO wrapper in
       src/vectl/orchestration/tool_registry.py, replacing it with module-level helpers/constants
       over canonical metadata, and updating resolver_gateway authorization to call
@@ -88319,59 +88319,13 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T05:53:37.057929+00:00'
     done_at: '2026-04-26T06:07:49.429041+00:00'
-    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777182841277,"sessionID":"ses_237a617eeffeT09LPbZQZqR7Hj","part":{"id":"prt_dc85a19b9001SLsqomoyuBn45n","messageID":"msg_dc859e8c0001nFR3oDiiz0lGaT","sessionID":"ses_237a617eeffeT09LPbZQZqR7Hj","snapshot":"f32ed904b874c57ad64290decfee4c427acd1527","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777182858235,"sessionID":"ses_237a617eeffeT09LPbZQZqR7Hj","part":{"type":"tool","tool":"read","callID":"functions.read:2","state":{"status":"completed","input":{"filePath":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-3.dem-010-replace-tool-family-registry-shell-with-module-helpers/docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md"},"output":"<path>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-3.dem-010-replace-tool-family-registry-shell-with-module-helpers/docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md</path>\n<type>file</type>\n<content>\n1:
-      # Architectural demolition remediation plan\n2: \n3: ## Status\n4: \n5: - Status:
-      proposed remediation plan\n6: - Scope: repository-wide architectural simplification
-      and de-duplication\n7: - Primary goal: remove duplicated logic, false abstraction
-      seams, dead public surfaces, and contract theater without collapsing valid authority
-      boundaries\n8: \n9: ## Why this document exists\n10: \n11: Three independent
-      reviews (`duplicate-abstraction-auditor-tacit`, `architectural-demolitionist-tacit`,
-      and direct repository inspection) converged on the same core problem: the repo
-      pays high cognitive cost for duplicated logic and speculative abstraction while
-      several real authority surfaces remain valid and should be preserved.\n12: \n13:
-      This document is the authoritative remediation plan for fixing **all discovered
-      issues**, not just the overlaps between reviewers.\n14: \n15: ## Remediation
-      objectives\n16: \n17: 1. Ensure each concept has one authoritative implementation.\n18:
-      2. Remove pure pass-through wrappers and single-buyer protocols that do not
-      buy real substitution value.\n19: 3. Delete dead exported surfaces.\n20: 4.
-      Preserve valid boundaries:\n21:    - `core` vs `cli`/`mcp_server`\n22:    -
-      `runtime` vs `runners`\n23:    - config input models vs runtime contract models\n24:
-      5. Re-cut large files only **after** abstraction removal, never by adding new
-      contract-only files.\n25: \n26: ## Non-goals / preserved boundaries\n27: \n28:
-      The remediation must **not** do the following:\n29: \n30: 1. Merge `src/vectl/core.py`
-      and `src/vectl/cli.py` into one module.\n31: 2. Merge `src/vectl/orchestration/runtime.py`
-      and `src/vectl/orchestration/runners.py`.\n32: 3. Flatten all `DuplicateStepId*`
-      reporting into untyped dictionaries.\n33: 4. Introduce more protocol-only or
-      contract-only files as an organizational tactic.\n34: 5. Change `plan.yaml`
-      directly; any plan-state mutation remains vectl-owned.\n35: \n36: ## Issue register\n37:
-      \n38: Every discovered issue must be resolved by this plan.\n39: \n40: | ID
-      | Severity | Issue | Exact locations | Required disposition |\n41: |---|---|---|---|---|\n42:
-      | DEM-001 | high | `agents-md` logic duplicated across shell and authority surfaces
-      | `src/vectl/cli.py:2401-2485`, `src/vectl/core.py:2582-2677` | Extract shared
-      implementation into `src/vectl/agents_md.py`; `agents_md.py` becomes the canonical
-      owner of `AgentsTarget`, helper constants, detect, and upsert logic; `core.py`
-      may re-export temporarily only for compatibility |\n43: | DEM-002 | high | `_get_next_steps_with_phase`
-      duplicated | `src/vectl/cli.py:201-242`, `src/vectl/mcp_server.py:284-327` |
-      Extract one shared helper |\n44: | DEM-003 | medium | duplicate step-id diagnostics
-      formatting duplicated | `src/vectl/cli.py:155-199`, `src/vectl/mcp_server.py:245-276`
-      | Extract one shared structure/formatter boundary |\n45: | DEM-004 | medium
-      | claim/affinity/conflict metadata modeled in parallel across lifecycle and
-      MCP | `src/vectl/lifecycle.py:29-75`, `src/vectl/mcp_server.py:486-551` | Keep
-      shared claim metadata lifecycle-owned in `src/vectl/lifecycle.py`; keep MCP
-      transport envelope thin and consume lifecycle-owned metadata instead of redefining
-      domain objects |\n46: | DEM-005 | high | `Control` defined twice | `src/vectl/orchestration/interfaces.py:84-144`,
-      `src/vectl/orchestration/control.py:111-217` | Keep one canonical contract only
-      |\n47: | DEM-006 | high | `Resolver` defined twice | `src/vectl/orchestration/interfaces.py:294-334`,
-      `src/vectl/orchestration/resolver.py:45-65` | Keep one canonical contract only
-      |\n48: | DEM-007 | high | `LifecycleMutationPort` duplicates `CoreAdapter` authority
-      surface | `src/vectl/orchestration/interfaces.py:337-366`, `src/vectl/orchestration/core_adapter.py:24-77`
-      | Remove duplicate surface; retain one mutation authority seam |\n49: | DEM-008
-      | medium | `RunRegistryInspectionView` is pure delegation | `src/vectl/orchestration/run_store.py:1198-1242`
-      | Delete and query `RunRegistry` directly |\n50: | DEM-009 | medium | `CoreStepDataAdapter`
-      is pure delegation and forces awkw'
+    rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
+      stored in evidence; implementation unchanged'
+    rejection_history:
+    - reason: 'historical evidence cleanup: raw OpenCode JSON event stream stored
+        in evidence; implementation unchanged'
+      timestamp: '2026-04-26T12:06:21.127001+00:00'
+      reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-4
   name: Architectural Demolition — Wave 4 Unify Orchestration Authority Surfaces
   status: done

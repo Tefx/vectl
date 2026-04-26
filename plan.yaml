@@ -88018,7 +88018,7 @@ phases:
       - uv run pytest tests/ -x --tb=short -> 2914 passed, 40 skipped in 185.95s'
 - id: arch-demolition-wave-1
   name: Architectural Demolition — Wave 1 Deduplicate Direct Copies
-  status: in_progress
+  status: done
   gate: Wave 1 complete when DEM-001..DEM-004 are resolved, shared ownership is canonicalized
     in agents_md.py / plan_helpers.py / duplicate_step_id_format.py / lifecycle.py,
     import graph stays acyclic, and verification commands pass.
@@ -88113,7 +88113,7 @@ phases:
       \ / Out of Scope\n\n- None. DEM-002 is fully resolved.\n"
   - id: arch-demolition-wave-1.dem-003-extract-duplicate-step-id-formatting-owner
     name: DEM-003 extract duplicate-step-id formatting owner
-    status: claimed
+    status: done
     description: Resolve DEM-003 by extracting duplicate-step-id diagnostic and recommendation
       formatting into src/vectl/duplicate_step_id_format.py and updating CLI and MCP
       to consume the shared formatter boundary.
@@ -88124,7 +88124,10 @@ phases:
     - src/vectl/mcp_server.py
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T12:05:41.036046+00:00'
-    done_at: '2026-04-26T02:52:27.815679+00:00'
+    done_at: '2026-04-26T12:05:43.356708+00:00'
+    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
+      0); stdout=<opencode JSON event stream omitted from plan evidence> [historical_evidence_cleanup=raw_opencode_event_stream_removed;
+      implementation_status=unchanged]'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'
     rejection_history:

@@ -30,6 +30,7 @@ from vectl.orchestration.contracts import (
     DriveBarrier,
     DriveRecord,
     DriveStatus,
+    ExecutionResult,
     PlannerRequest,
     ReviewOutcome,
     RosterSnapshot,
@@ -39,7 +40,7 @@ from vectl.orchestration.driver import (
     DriveDriver,
     validate_drive_transition,
 )
-from vectl.orchestration.review_gate import ReviewGateResult
+from vectl.orchestration.review_gate import DefaultReviewGate, ReviewGateResult
 
 # ---------------------------------------------------------------------
 # Fixtures: helpers for building minimal test state
@@ -311,6 +312,93 @@ class TestReviewGateConstructor:
         )
         assert result.status == "operator_required"
         assert result.planner_request is None
+
+
+class TestDefaultReviewGate:
+    """Verify concrete review normalization behavior.
+
+    Authority: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md Wave 5,
+    required changes 1-4.
+    """
+
+    def test_json_review_output_passes(self) -> None:
+        """Structured JSON review output normalizes to ReviewGateResult."""
+        gate = DefaultReviewGate()
+        result = gate.evaluate(
+            step_id="step.a",
+            execution_result=ExecutionResult(
+                step_id="step.a",
+                status="success",
+                output_summary=(
+                    '{"review_outcome":"pass","summary":"review passed",'
+                    '"evidence_refs":["artifact://review"]}'
+                ),
+            ),
+            artifact_refs=("artifact://run",),
+        )
+
+        assert result.status == "pass"
+        assert result.summary == "review passed"
+        assert result.evidence_refs == ("artifact://run", "artifact://review")
+
+    def test_malformed_output_degrades_to_needs_fix(self) -> None:
+        """Malformed review output never silently becomes pass."""
+        gate = DefaultReviewGate()
+        result = gate.evaluate(
+            step_id="step.a",
+            execution_result=ExecutionResult(
+                step_id="step.a",
+                status="success",
+                output_summary="not structured review output",
+            ),
+        )
+
+        assert result.status == "needs_fix"
+        assert "not parseable" in result.summary
+
+    def test_fenced_yaml_review_output_passes(self) -> None:
+        """Structured YAML review output normalizes to ReviewGateResult."""
+        gate = DefaultReviewGate()
+        result = gate.evaluate(
+            step_id="step.a",
+            execution_result=ExecutionResult(
+                step_id="step.a",
+                status="success",
+                output_summary=(
+                    "```yaml\n"
+                    "review_outcome: pass\n"
+                    "summary: review passed from yaml\n"
+                    "evidence_refs:\n"
+                    "  - artifact://yaml-review\n"
+                    "```"
+                ),
+            ),
+        )
+
+        assert result.status == "pass"
+        assert result.summary == "review passed from yaml"
+        assert result.evidence_refs == ("artifact://yaml-review",)
+
+    def test_needs_replan_adds_planner_request(self) -> None:
+        """needs_replan creates bounded planner request context."""
+        gate = DefaultReviewGate()
+        result = gate.evaluate(
+            step_id="step.a",
+            execution_result=ExecutionResult(
+                step_id="step.a",
+                status="success",
+                output_summary=(
+                    '{"review_outcome":"needs_replan","summary":"missing prerequisite",'
+                    '"planner_request":{"reason":"add prerequisite",'
+                    '"affected_steps":["step.a","step.pre"]}}'
+                ),
+            ),
+        )
+
+        assert result.status == "needs_replan"
+        assert result.planner_request is not None
+        assert result.planner_request.reason == "add prerequisite"
+        assert result.planner_request.affected_steps == ("step.a", "step.pre")
 
 
 class TestReviewOutcomeBarrierRecovery:

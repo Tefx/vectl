@@ -6,8 +6,7 @@ Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md sections 3.11
 
 This module provides:
   - result types for the four drive-surface methods
-  - the DriveDriver Protocol (contract interface)
-  - ConcreteDriveDriver (wired implementation using existing orchestration
+  - DriveDriver (wired implementation using existing orchestration
     building blocks: DriveStore, PlanAwareControl, core adapter)
   - drive status transition validation
   - drive admission and parallelism validation
@@ -19,7 +18,7 @@ import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from vectl.orchestration.contracts import (
     BarrierReason,
@@ -201,153 +200,6 @@ class MaxParallelismError(ValueError):
     def __init__(self, value: int) -> None:
         super().__init__(f"max_parallelism must be between 1 and 32, got {value}")
         self.value = value
-
-
-# ---------------------------------------------------------------------
-# Drive Driver Protocol
-# ---------------------------------------------------------------------
-
-
-class DriveDriver(Protocol):
-    """Authoritative public API for drive-level orchestration.
-
-    Authority: docs/RFC-orch-drive.md sections 7, 10, 14, 15, 17
-    Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3, 4, 5
-
-    The driver owns:
-        - drive session creation and admission
-        - the main scheduling loop (run_drive_loop)
-        - barrier entry, stabilization, and resolution
-        - phase/plan auto-close
-        - drive-level recovery and resume
-
-    The driver does NOT own:
-        - plan graph authority (delegates to vectl core)
-        - individual runner mechanics (delegates to runtime)
-        - resolver reasoning (delegates to resolver)
-        - control decisions (delegates to control)
-
-    Implementation note:
-        Methods are contract-only. Loop behavior and runtime integration
-        are deferred to implementation steps.
-    """
-
-    def start_drive(
-        self,
-        *,
-        plan_path: str,
-        agent: str = "",
-        max_parallelism: int = 4,
-    ) -> DriveStartResult:
-        """Create or resolve a drive for the given plan.
-
-        Authority: docs/RFC-orch-drive.md section 7.2, 14.1
-
-        If an active drive already exists for the same plan identity
-        (canonical realpath-resolved absolute path to ``plan.yaml``), this
-        method MUST raise ``DriveAdmissionError`` with the existing
-        ``active_drive_id``.
-
-        ``max_parallelism`` constraints:
-            - minimum: 1
-            - default: 4
-            - hard maximum: 32
-            - invalid values must fail fast with ``MaxParallelismError``
-
-        Args:
-            plan_path: Canonical absolute path to ``plan.yaml``.
-            agent: Agent role that owns this drive.
-            max_parallelism: Maximum concurrent step child runs.
-
-        Returns:
-            ``DriveStartResult`` with the new or resolved drive state.
-
-        Raises:
-            DriveAdmissionError: If an active drive exists for this plan.
-            MaxParallelismError: If ``max_parallelism`` is outside [1, 32].
-        """
-        ...  # contract-only
-
-    def run_drive_loop(
-        self,
-        drive_id: str,
-    ) -> DriveLoopResult:
-        """Execute one drive scheduling loop pass.
-
-        Authority: docs/RFC-orch-drive.md section 10
-
-        The loop MUST:
-            1. Refresh authoritative snapshots (core, roster, runtime, drive)
-            2. Evaluate control decision
-            3. If ``dispatch_batch``: admit child runs up to capacity
-            4. Collect terminal child runs
-            5. Route terminal outputs through reconcile/review gates
-            6. If non-closure exists: enter barrier
-            7. If barrier active: stabilize, resolve via resolver/planner/operator
-            8. Auto-close completed phases
-            9. If all phases complete: mark drive completed
-
-        The loop MUST always run from the repository root for
-        integration-context checks.
-
-        Args:
-            drive_id: The drive to run one loop pass for.
-
-        Returns:
-            ``DriveLoopResult`` capturing the terminal or paused state.
-        """
-        ...  # contract-only
-
-    def resume_drive(
-        self,
-        drive_id: str,
-    ) -> DriveResumeResult:
-        """Resume an interrupted drive session.
-
-        Authority: docs/RFC-orch-drive.md section 15.1
-
-        Resume MUST restore:
-            - active child run set
-            - barrier state
-            - operator pause state
-            - resolver/planner pending state
-            - aggregate progress summary
-
-        Args:
-            drive_id: The drive to resume.
-
-        Returns:
-            ``DriveResumeResult`` with restored state.
-        """
-        ...  # contract-only
-
-    def recover_drive(
-        self,
-        drive_id: str,
-        *,
-        dry_run: bool = False,
-    ) -> DriveRecoverResult:
-        """Recover a drive from interrupted state.
-
-        Authority: docs/RFC-orch-drive.md section 15.2, 15.3
-
-        Recovery MUST prefer truthful continuation:
-            1. Restore persisted drive state
-            2. Restore child-run facts
-            3. Reconcile live/runtime facts to persisted records
-            4. Re-enter barrier if needed
-            5. Only reopen scheduling after state is coherent
-
-        Conflict resolution policy follows RFC-orch-drive.md section 15.3.1.
-
-        Args:
-            drive_id: The drive to recover.
-            dry_run: If True, compute recovery plan without applying changes.
-
-        Returns:
-            ``DriveRecoverResult`` with recovery outcomes.
-        """
-        ...  # contract-only
 
 
 # ---------------------------------------------------------------------
@@ -819,11 +671,11 @@ def _apply_planner_bundle_to_drive(
 
 
 # ---------------------------------------------------------------------
-# Concrete Drive Driver
+# Drive Driver
 # ---------------------------------------------------------------------
 
 
-class ConcreteDriveDriver:
+class DriveDriver:
     """Concrete implementation of drive-level orchestration wiring.
 
     Authority: docs/RFC-orch-drive.md sections 7, 10, 14, 15
@@ -2340,6 +2192,15 @@ class ConcreteDriveDriver:
         except Exception:
             # Core adapter failure: don't release leases speculatively.
             return []
+
+
+ConcreteDriveDriver = DriveDriver
+"""Deprecated compatibility alias for :class:`DriveDriver`.
+
+Authority: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md Wave 2
+requires this alias for one wave cycle only. It must be removed no later
+than the end of Wave 5; new production code must import ``DriveDriver``.
+"""
 
 
 __all__ = [

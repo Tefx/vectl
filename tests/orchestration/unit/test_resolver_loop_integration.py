@@ -33,7 +33,7 @@ from vectl.orchestration.contracts import (
 )
 from vectl.orchestration.control import ControlInputSources, PlanAwareControl
 from vectl.orchestration.driver import (
-    ConcreteDriveDriver,
+    DriveDriver,
     _apply_resolution_report_to_drive,
     _barrier_reason_for_case_source,
     _infer_case_source,
@@ -179,7 +179,7 @@ def _make_driver(
     runtime: RuntimeSnapshot | None = None,
     resolver: BoundResolver | None = None,
     max_parallelism: int = 4,
-) -> ConcreteDriveDriver:
+) -> DriveDriver:
     store = DriveStore(store_root=tmp_path)
     core_adapter = _FakeCoreAdapter(core or _core())
     control = PlanAwareControl(
@@ -189,7 +189,7 @@ def _make_driver(
             runtime=_FakeRuntimeSource(runtime or _runtime()),
         ),
     )
-    return ConcreteDriveDriver(
+    return DriveDriver(
         drive_store=store,
         core_adapter=core_adapter,
         control=control,
@@ -322,7 +322,7 @@ class TestBarrierEntryCreatesResolutionCase:
             ),
         )
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -396,7 +396,7 @@ class TestResolverInvocationPayloads:
         )
 
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -446,7 +446,7 @@ class TestResolverInvocationPayloads:
         )
 
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -515,7 +515,7 @@ class TestPostResolutionStateRefresh:
         )
 
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -566,7 +566,7 @@ class TestPostResolutionStateRefresh:
         )
 
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -623,7 +623,7 @@ class TestResolverContinuationSemantics:
         )
 
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -667,7 +667,7 @@ class TestResolverContinuationSemantics:
         )
 
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -710,7 +710,7 @@ class TestResolverContinuationSemantics:
         )
 
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -750,7 +750,7 @@ class TestResolverContinuationSemantics:
         )
 
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -788,7 +788,7 @@ class TestResolverContinuationSemantics:
         )
 
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -843,7 +843,7 @@ class TestStaleStateRegression:
         )
 
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,
@@ -892,7 +892,7 @@ class TestStaleStateRegression:
         )
 
         store = DriveStore(store_root=tmp_path)
-        driver = ConcreteDriveDriver(
+        driver = DriveDriver(
             drive_store=store,
             core_adapter=core_adapter,
             control=control,

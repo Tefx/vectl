@@ -61,7 +61,7 @@ from vectl.orchestration.contracts import (
 from vectl.orchestration.control import ControlInputSources, PlanAwareControl
 from vectl.orchestration.core_adapter import CoreAdapter
 from vectl.orchestration.driver import (
-    ConcreteDriveDriver,
+    DriveDriver,
     DriveAdmissionError,
     DriveLoopResult,
     DriveRecoverResult,
@@ -179,10 +179,10 @@ def _make_driver(
     core: CoreSnapshot | None = None,
     max_parallelism: int = 4,
     child_run_launcher: Any | None = None,
-) -> ConcreteDriveDriver:
+) -> DriveDriver:
     store = DriveStore(store_root=tmp_path)
     control = _make_control(core)
-    return ConcreteDriveDriver(
+    return DriveDriver(
         drive_store=store,
         core_adapter=control.sources.core_adapter,
         control=control,
@@ -480,7 +480,7 @@ class TestLinearDAGAutoDrain:
 
         # Simulate seed completion → next core update
         # Must mutate the fake adapter's snapshot_value because
-        # ConcreteDriveDriver reads self._core_adapter.snapshot().
+        # DriveDriver reads self._core_adapter.snapshot().
         fake_core_adapter = driver._core_adapter
         assert isinstance(fake_core_adapter, _FakeCoreAdapter), (
             "Driver core_adapter must be _FakeCoreAdapter for status mutation in test"

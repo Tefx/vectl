@@ -88163,7 +88163,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-2
   name: Architectural Demolition — Wave 2 Delete Dead Exported Surfaces
-  status: in_progress
+  status: done
   gate: Wave 2 complete when DEM-012, DEM-013, and DEM-015 dead exported surfaces
     are removed, the temporary ConcreteDriveDriver alias is documented as one-wave-only
     debt, and verification commands pass.
@@ -88172,7 +88172,7 @@ phases:
   steps:
   - id: arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports
     name: DEM-012 remove dead control-channel DTO exports
-    status: claimed
+    status: done
     description: Resolve DEM-012 by deleting InspectView and CaseView from src/vectl/orchestration/control_channel.py,
       removing any __all__ exports or production imports that keep them alive, and
       preserving only tests that still verify surviving boundaries.
@@ -88183,7 +88183,10 @@ phases:
     agent: python-executor
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T12:05:54.890629+00:00'
-    done_at: '2026-04-26T03:28:41.779612+00:00'
+    done_at: '2026-04-26T12:05:57.243011+00:00'
+    evidence: '[reconcile_disposition=noop] OpenCode completed successfully (exit
+      0); stdout=<opencode JSON event stream omitted from plan evidence> [historical_evidence_cleanup=raw_opencode_event_stream_removed;
+      implementation_status=unchanged]'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'
     rejection_history:

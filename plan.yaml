@@ -88847,3 +88847,126 @@ phases:
     depends_on:
     - post_review_remediation.fix-driver-agent-selection-deep-review
     agent: gate-reviewer-tacit
+  - id: post_review_remediation.fix-opencode-runner-final-gate-cli-surface
+    name: Fix OpenCode runner final-gate CLI surface blockers
+    status: pending
+    description: 'Fix the non-invar CLI-surface blockers recorded in `opencode_runner_verification.final-gate`.
+
+
+      Historical blocker:
+
+      - The OpenCode runner implementation itself passed targeted runtime checks,
+      but final gate had `gate_open_allowed: NO` because the broader orch CLI surface
+      had 10 failures rooted in `role_profiles.*` shadowing built-in roles instead
+      of using `role_profile_overrides`.
+
+      - Eight failures were not governed expected-red and blocked downstream config
+      work.
+
+
+      Scope:
+
+      - Reproduce the historical failure family with the current codebase using the
+      same command family where possible.
+
+      - Fix the actual CLI/config validation surface if the failure still reproduces.
+
+      - If the current codebase is already green, produce a closure proof showing
+      which later change closed the blocker family and why no product-code edit is
+      needed.
+
+
+      Expected-red / repro requirement:
+
+      1. Before code edits, run a focused repro for role_profiles shadowing built-in
+      role validation and/or the historical failing CLI families.
+
+      2. Capture the failing output, or explicitly prove the failure no longer reproduces
+      on current HEAD.
+
+      3. Then complete the fix or closure proof and rerun targeted checks green.
+
+
+      Out of scope:
+
+      - Do NOT remediate repo-wide `uvx invar-tools guard --all` shell_result/file_size/shell_complexity_debt
+      findings.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION/CLOSURE step. Stub-only completion is not acceptable.
+      Evidence must either include a real code/test fix or a concrete current-state
+      proof that the historical blocker is already closed.'
+    verification: '- Run focused repro for role-profile shadowing / orch CLI validation
+      failure.
+
+      - Run `uv run pytest -q tests/repro/test_orch_liveness.py tests/repro/test_orch_cli_recovery_faults.py
+      tests/repro/test_orch_cli_case_lifecycle.py tests/repro/test_repair_continuity_black_box.py`
+      or justify any missing file/test selection.
+
+      - Demonstrate no non-expected-red failures remain in the historical OpenCode
+      final-gate CLI-surface family.
+
+      - Do not require `uvx invar-tools guard --all`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - src/vectl/orchestration/config.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_orchestration.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/test_orch_liveness.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/test_orch_cli_recovery_faults.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/test_orch_cli_case_lifecycle.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/test_repair_continuity_black_box.py — key passage or "NOT READ:
+      <reason>"
+
+
+      ## Repro / Closure Proof
+
+      - Historical blocker reproduced? YES | NO
+
+      - If YES, failing command/output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+      - If NO, current-state closure proof:
+
+      ```
+
+      <paste command output and explanation>
+
+      ```
+
+
+      ## Fix Evidence
+
+      - Files changed or closure-only rationale:
+
+      - Role profile shadowing disposition:
+
+      - Expected-red disposition for historical non-governed failures:
+
+
+      ## Green Verification
+
+      ```
+
+      <paste targeted pytest output>
+
+      ```
+
+
+      ## Invar Exclusion
+
+      Confirm repo-wide invar/static-debt remediation was not attempted here.'
+    agent: python-senior-tacit

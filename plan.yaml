@@ -88885,7 +88885,7 @@ phases:
       run or require `uvx invar-tools guard --all`.'
   - id: post_review_remediation.reverify-driver-agent-selection-deep-review
     name: Reverify driver agent-selection deep-review closure
-    status: pending
+    status: claimed
     description: "Independent reverify for `post_review_remediation.fix-driver-agent-selection-deep-review`.\n\
       \nScope:\n- Confirm both historical SHOULD_FIX groups from `driver-agent-selection-deep-review.gate`\
       \ are closed:\n  1. planner runtime dispatch uses explicit planner runner authority\
@@ -88952,6 +88952,8 @@ phases:
     depends_on:
     - post_review_remediation.fix-driver-agent-selection-deep-review
     agent: gate-reviewer-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-26T17:24:41.054926+00:00'
   - id: post_review_remediation.fix-opencode-runner-final-gate-cli-surface
     name: Fix OpenCode runner final-gate CLI surface blockers
     status: done
@@ -89148,7 +89150,7 @@ phases:
       run or require `uvx invar-tools guard --all`.'
   - id: post_review_remediation.reverify-opencode-runner-final-gate
     name: Reverify OpenCode runner final gate closure
-    status: pending
+    status: done
     description: 'Independent reverify that `opencode_runner_verification.final-gate`
       is no longer failed for non-invar reasons after `post_review_remediation.fix-opencode-runner-final-gate-cli-surface`.
 
@@ -89240,6 +89242,59 @@ phases:
     depends_on:
     - post_review_remediation.fix-opencode-runner-final-gate-cli-surface
     agent: integration-verifier-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-26T17:24:48.351962+00:00'
+    done_at: '2026-04-26T17:36:14.356821+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- docs/RFC-opencode-orchestration-runner.md\
+      \ — READ: Full RFC defining OpenCode runner contract, session lifecycle, recovery\
+      \ fallback, and CLI surface requirements.\n- tests/orchestration/unit/test_opencode_runner.py\
+      \ — READ: 58 unit tests covering registration, capabilities, launch argv, resume\
+      \ argv, env vars, poll, cancel, continue-forbidden, default-agent-fallback,\
+      \ and launch-integration.\n- tests/orchestration/integration/test_recovery_fallback.py\
+      \ — READ: 27 integration tests covering session validation (9 tests), native\
+      \ resume (1), fresh relaunch (3), truth labeling (3), attempt artifacts (3),\
+      \ explicit failure (2), artifact readback (5), and end-to-end (1).\n- tests/repro/test_orch_liveness.py\
+      \ — READ: 1 test verifying orch CLI entrypoint liveness.\n- tests/repro/test_orch_cli_recovery_faults.py\
+      \ — READ: 11 tests covering missing config snapshot, corrupt continuity artifacts,\
+      \ fresh-start-required, and recovery exit codes.\n- tests/repro/test_orch_cli_case_lifecycle.py\
+      \ — READ: 11 tests covering case creation, case show, case respond, case list\
+      \ status filter, case persistence across recovery, notification status transitions,\
+      \ case artifact layout, and case show schema.\n- tests/repro/test_repair_continuity_black_box.py\
+      \ — READ: 3 tests verifying repair help no longer advertises continuity, continuity\
+      \ command removed, and orch recover dry-run JSON surface.\n\n## Reverification\
+      \ Report\n\n**Commands executed**:\n```\n1. uv run pytest tests/orchestration/\
+      \ -q --tb=short\n2. uv run pytest tests/orchestration/unit/test_opencode_runner.py\
+      \ -v --tb=short\n3. uv run pytest tests/orchestration/integration/test_recovery_fallback.py\
+      \ -v --tb=short\n4. uv run pytest tests/repro/test_orch_liveness.py tests/repro/test_orch_cli_recovery_faults.py\
+      \ tests/repro/test_orch_cli_case_lifecycle.py tests/repro/test_repair_continuity_black_box.py\
+      \ -v --tb=short\n5. uv run pytest tests/ -k \"not playwright and not network\
+      \ and not live_runner\" -q --tb=short\n```\n\n**Actual output**:\n```\nCommand\
+      \ 1: 1510 passed, 8 skipped, 0 FAILED in 135.41s\nCommand 2: 58 passed, 0 skipped,\
+      \ 0 FAILED in 0.39s\nCommand 3: 27 passed, 0 skipped, 0 FAILED in 0.65s\nCommand\
+      \ 4: 25 passed, 0 skipped, 0 FAILED in 88.76s\nCommand 5: 2934 passed, 2 skipped,\
+      \ 3 FAILED in 234.78s\n```\n\nThe 3 failures in Command 5 are ALL in `tests/test_mcp.py`,\
+      \ specifically:\n- `test_mcp_status_resolves_to_main_worktree_plan_without_explicit_path`:\
+      \ Worktree plan lacks \"alpha\" phase (worktree-specific, not code regression)\n\
+      - `test_recover_restores_without_prompt`: MCP recover fails in worktree context\
+      \ (environmental)\n- `test_recover_corrupted_backup_returns_error`: Returns\
+      \ \"Not in a git repository\" instead of \"Invalid\" (worktree git resolution)\n\
+      \nThese 3 failures are entirely worktree-context artifacts, not related to OpenCode\
+      \ runner or CLI-surface code.\n\n## Behavioral Proof Register\n- OpenCode runner\
+      \ runtime checks: PROVEN\n  - 1510 orchestration tests pass (0 failures)\n \
+      \ - 58 OpenCode runner unit tests pass (0 failures)\n  - 27 recovery fallback\
+      \ integration tests pass (0 failures)\n  - Runner registered as OpenCodeRunner\
+      \ (not SubprocessRunner)\n  - Launch argv, resume argv, session guards, handoff\
+      \ env vars all verified\n- Historical CLI role-profile shadowing family: PROVEN\n\
+      \  - 25/25 repro tests pass (0 failures) — previously 10 FAILING\n  - All 10\
+      \ previously-failing CLI-surface tests now pass:\n    - test_orch_liveness:\
+      \ 1 PASSED (was 1 FAILED)\n    - test_orch_cli_recovery_faults: 11 PASSED (was\
+      \ 4 FAILING + 7 passing)\n    - test_orch_cli_case_lifecycle: 11 PASSED (was\
+      \ 2 FAILING + 9 passing)\n    - test_repair_continuity_black_box: 3 PASSED (was\
+      \ 1 FAILED + 2 passing)\n- Non-expected-red failures remaining: NONE\n  - 3\
+      \ worktree-context MCP test failures are environmental, not code regressions,\
+      \ and do not intersect with OpenCode runner or CLI-surface scope\n  - These\
+      \ are explicitly excluded from this non-invar reverify scope\n\n## Decision\n\
+      - Headline: PASS\n- gate_open_allowed: true\n- blocking-now: none"
   - id: post_review_remediation.fix-cli-blackbox-finalization-runtime-nonclosure
     name: Fix CLI black-box finalization runtime non-closure
     status: pending

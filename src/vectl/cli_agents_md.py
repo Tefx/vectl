@@ -98,6 +98,12 @@ from vectl.plan_path import (
     resolve_plan_path,
 )
 from vectl.semantics import _get_active_phase_ids, is_step_locked
+from vectl.core_plan_mutations import (
+    _AGENTS_MD_BEGIN,
+    _AGENTS_MD_END,
+    _AGENTS_MD_LEGACY_HEADER,
+    _AGENTS_MD_SNIPPET,
+)
 
 console = Console(stderr=True)
 out = Console()
@@ -473,141 +479,163 @@ DashboardOutputOption = typer.Option(
 )
 
 
-# ---------------------------------------------------------------------------
-# cli.1: init + --version
-# ---------------------------------------------------------------------------
+class AgentsTarget(str, enum.Enum):
+    """Target file for the vectl agents-md section."""
+
+    auto = "auto"
+    agents = "agents"
+    claude = "claude"
 
 
-@app.callback()
-def main(
-    version: bool = typer.Option(
-        False,
-        "--version",
-        "-V",
-        callback=_version_callback,
-        is_eager=True,
-        help="Show version and exit.",
-    ),
+def _detect_agents_target(directory: Path, target: AgentsTarget = AgentsTarget.auto) -> Path:
+    """Detect the best target file for the vectl agents-md section.
+
+    Args:
+        directory: Project directory to scan.
+        target: Explicit override. ``auto`` uses detection heuristics.
+
+    Priority (when ``auto``):
+    1. Existing file with vectl markers → use it (stability over detection).
+    2. Existing file without markers → prefer AGENTS.md > CLAUDE.md.
+    3. Neither exists → .claude/ dir present → CLAUDE.md; otherwise AGENTS.md.
+    """
+    agents_md = directory / "AGENTS.md"
+    claude_md = directory / "CLAUDE.md"
+
+    if target is AgentsTarget.agents:
+        return agents_md
+    if target is AgentsTarget.claude:
+        return claude_md
+
+    # Auto mode: existing file with markers wins (don't break working setups)
+    for candidate in (agents_md, claude_md):
+        if candidate.exists():
+            content = candidate.read_text(encoding="utf-8")
+            if _AGENTS_MD_BEGIN in content:
+                return candidate
+
+    # Existing file without markers (append target)
+    if agents_md.exists():
+        return agents_md
+    if claude_md.exists():
+        return claude_md
+
+    # Fresh project: auto-detect Claude Code projects
+    if (directory / ".claude").is_dir():
+        return claude_md
+
+    return agents_md
+
+
+def _upsert_agents_md(directory: Path, target: AgentsTarget = AgentsTarget.auto) -> str:
+    """Create or upsert vectl section in AGENTS.md or CLAUDE.md.
+
+    Safety policy (agreed in this conversation, 2026-02-12):
+    - If begin/end markers exist, replace that block.
+    - If only legacy header exists (no markers), do not rewrite; append the new block.
+
+    Target selection delegated to ``_detect_agents_target()``.
+
+    Returns:
+        A status message describing what was done.
+    """
+    target_path = _detect_agents_target(directory, target)
+
+    if not target_path.exists():
+        target_path.write_text(_AGENTS_MD_SNIPPET, encoding="utf-8")
+        return f"Created {target_path.name}"
+
+    content = target_path.read_text(encoding="utf-8")
+
+    begin = content.find(_AGENTS_MD_BEGIN)
+    end = content.find(_AGENTS_MD_END)
+    if begin != -1 and end != -1 and begin < end:
+        end_inclusive = end + len(_AGENTS_MD_END)
+        new_content = content[:begin].rstrip() + "\n\n" + _AGENTS_MD_SNIPPET + "\n"
+        new_content += content[end_inclusive:].lstrip()
+        target_path.write_text(new_content, encoding="utf-8")
+        return f"Updated {target_path.name} (replaced vectl block)"
+
+    if _AGENTS_MD_LEGACY_HEADER in content:
+        with target_path.open("a", encoding="utf-8") as f:
+            f.write("\n\n" + _AGENTS_MD_SNIPPET)
+        return f"Appended updated vectl block to {target_path.name} (legacy block preserved)"
+
+    with target_path.open("a", encoding="utf-8") as f:
+        f.write("\n\n" + _AGENTS_MD_SNIPPET)
+    return f"Appended vectl section to {target_path.name}"
+
+
+def agents_md_cmd(
+    directory: Path = AgentsMdDirOption,
+    target: str = AgentsMdTargetOption,
 ) -> None:
-    """vectl: Agentic Implementation Plan Manager."""
+    """Upsert the vectl section in AGENTS.md or CLAUDE.md."""
+    result = _upsert_agents_md(directory, AgentsTarget(target))
+    out.print(result)
 
 
-@app.command()
-def mcp() -> None:
-    """Start the MCP server (stdio mode)."""
-    from vectl.mcp_server import mcp
+def _upsert_gitattributes(directory: Path) -> str:
+    """Configure .gitattributes with plan.yaml merge driver (idempotent).
 
-    mcp.run()
+    Returns:
+        A status message describing what was done.
+    """
+    gitattributes_path = directory / ".gitattributes"
+
+    # Build the target line
+    target_line = "plan.yaml merge=vectl"
+
+    if not gitattributes_path.exists():
+        gitattributes_path.write_text(f"{target_line}\n", encoding="utf-8")
+        return "Created .gitattributes with plan.yaml merge driver"
+
+    content = gitattributes_path.read_text(encoding="utf-8")
+
+    # Check if plan.yaml merge driver is already configured
+    for line in content.splitlines():
+        stripped = line.strip()
+        # Match lines like "plan.yaml merge=vectl" or "plan.yaml merge=vectl " (with trailing space)
+        if stripped.startswith("plan.yaml") and "merge=vectl" in stripped:
+            # Already configured
+            return ".gitattributes already has plan.yaml merge driver"
+
+    # Append the configuration
+    with gitattributes_path.open("a", encoding="utf-8") as f:
+        f.write(f"\n{target_line}\n")
+    return "Updated .gitattributes with plan.yaml merge driver"
 
 
-@app.command("merge-driver", hidden=True)
-def merge_driver_cmd(
-    base: str = typer.Argument(..., help="Git merge-base file path (%O)."),
-    ours: str = typer.Argument(..., help="Git ours file path (%A)."),
-    theirs: str = typer.Argument(..., help="Git theirs file path (%B)."),
+def init(
+    project: str = typer.Option(..., "--project", prompt="Project name"),
+    plan: Path | None = PlanOption,
+    agents_target: str = InitTargetOption,
 ) -> None:
-    """Git merge-driver entrypoint for plan.yaml merges."""
-    raise typer.Exit(merge_plans(base, ours, theirs))
+    """Create a new plan.yaml template and configure AGENTS.md / CLAUDE.md."""
+    target = plan or Path("plan.yaml")
+    if target.exists():
+        _die(f"{target} already exists. Delete it first or use a different path.")
+
+    template = Plan(
+        project=project,
+        context=f"Implementation plan for {project}.",
+    )
+    save_plan(template, target)
+    out.print(f"[green]Created:[/] {target}")
+
+    # Ensure AGENTS.md / CLAUDE.md has vectl section (idempotent)
+    agents_result = _upsert_agents_md(target.parent, AgentsTarget(agents_target))
+    out.print(f"[green]Agent instructions:[/] {agents_result}")
+
+    # Configure .gitattributes with plan.yaml merge driver (idempotent)
+    gitattr_result = _upsert_gitattributes(target.parent)
+    out.print(f"[green]Git attributes:[/] {gitattr_result}")
+
+    out.print()
+    out.print("[dim]→ vectl add-phase --phase-id <id> --name <name>   Add a phase[/]")
+    out.print("[dim]→ vectl guide                     Full onboarding guide[/]")
 
 
 # ---------------------------------------------------------------------------
-# vectl orch: orchestration operator commands
-# Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 6
+# cli.2: next
 # ---------------------------------------------------------------------------
-
-
-
-from vectl.cli_orchestration import _build_orchestration_runtime_app, _build_orchestration_runtime_app_or_die, _enrich_drive_scope_result, _step_id_for_run, orch_case_list, orch_case_respond, orch_case_show, orch_config_show, orch_config_tools, orch_config_validate, orch_control_pause, orch_control_stop, orch_control_unpause, orch_drive, orch_drive_recover, orch_drive_resume, orch_drive_runs, orch_drive_status, orch_inspect_actions, orch_inspect_artifacts, orch_inspect_events, orch_inspect_logs, orch_inspect_status, orch_migration_advance_state, orch_migration_validate_cutover, orch_prune, orch_recover, orch_resume, orch_run, orch_runs
-from vectl.cli_render import diff_cmd, log_cmd, render
-from vectl.cli_agents_md import agents_md_cmd, init
-from vectl.cli_plan import add_phase_cmd, add_step_cmd, add_steps_cmd, cancel, check_cmd, checkpoint, claim, clipboard_clear_cmd, clipboard_read_cmd, clipboard_write_cmd, complete, complete_phase_cmd, dag, dashboard, defer, edit_phase_cmd, edit_plan_cmd, edit_step_cmd, gate_check, guide_cmd, migrate_cmd, migrate_step_id_cmd, mine, move_step_cmd, next_cmd, recalc_lock, recover, reject, remove_step_cmd, repair_claims_cmd, review, search, show, skip, skip_phase_cmd, status, unlock, validate
-
-# Registered command implementations moved to behavior modules.
-orch_app.command("run")(orch_run)
-orch_app.command("resume")(orch_resume)
-orch_app.command("recover")(orch_recover)
-orch_app.command("runs")(orch_runs)
-orch_app.command("prune")(orch_prune)
-orch_migration_app.command("validate-cutover")(orch_migration_validate_cutover)
-orch_app.command("cutover-validate")(orch_migration_validate_cutover)
-orch_migration_app.command("advance-state")(orch_migration_advance_state)
-orch_app.command("migration-advance-state")(orch_migration_advance_state)
-orch_inspect_app.command("status")(orch_inspect_status)
-orch_app.command("status")(orch_inspect_status)
-orch_inspect_app.command("events")(orch_inspect_events)
-orch_app.command("events")(orch_inspect_events)
-orch_inspect_app.command("logs")(orch_inspect_logs)
-orch_app.command("logs")(orch_inspect_logs)
-orch_inspect_app.command("artifacts")(orch_inspect_artifacts)
-orch_app.command("artifacts")(orch_inspect_artifacts)
-orch_inspect_app.command("actions")(orch_inspect_actions)
-orch_app.command("actions")(orch_inspect_actions)
-orch_case_app.command("list")(orch_case_list)
-orch_app.command("case-list")(orch_case_list)
-orch_case_app.command("show")(orch_case_show)
-orch_app.command("case-show")(orch_case_show)
-orch_case_app.command("respond")(orch_case_respond)
-orch_app.command("case-respond")(orch_case_respond)
-orch_control_app.command("pause")(orch_control_pause)
-orch_app.command("pause")(orch_control_pause)
-orch_control_app.command("unpause")(orch_control_unpause)
-orch_app.command("unpause")(orch_control_unpause)
-orch_control_app.command("stop")(orch_control_stop)
-orch_app.command("stop")(orch_control_stop)
-orch_config_app.command("show")(orch_config_show)
-orch_app.command("config-show")(orch_config_show)
-orch_config_app.command("validate")(orch_config_validate)
-orch_app.command("config-validate")(orch_config_validate)
-orch_config_app.command("tools")(orch_config_tools)
-orch_app.command("config-tools")(orch_config_tools)
-orch_app.command("drive")(orch_drive)
-orch_app.command("drive-status")(orch_drive_status)
-orch_app.command("drive-runs")(orch_drive_runs)
-orch_app.command("drive-resume")(orch_drive_resume)
-orch_app.command("drive-recover")(orch_drive_recover)
-app.command()(render)
-app.command("diff")(diff_cmd)
-app.command("log")(log_cmd)
-app.command("agents-md")(agents_md_cmd)
-app.command()(init)
-app.command("next")(next_cmd)
-app.command()(status)
-app.command()(show)
-app.command("guide")(guide_cmd)
-app.command()(dag)
-app.command()(claim)
-app.command()(complete)
-app.command("complete-phase")(complete_phase_cmd)
-app.command()(defer)
-app.command()(reject)
-app.command()(skip)
-app.command()(cancel)
-app.command("skip-phase")(skip_phase_cmd)
-app.command("check")(check_cmd)
-app.command()(validate)
-app.command("migrate")(migrate_cmd)
-app.command("migrate-step-id")(migrate_step_id_cmd)
-app.command()(recover)
-app.command()(checkpoint)
-app.command("add-step")(add_step_cmd)
-app.command("add-phase")(add_phase_cmd)
-app.command("edit-plan")(edit_plan_cmd)
-app.command("edit-step")(edit_step_cmd)
-app.command("edit-phase")(edit_phase_cmd)
-app.command("remove-step")(remove_step_cmd)
-app.command("move-step")(move_step_cmd)
-app.command()(unlock)
-app.command("recalc-lock")(recalc_lock)
-repair_app.command("claims")(repair_claims_cmd)
-app.command("add-steps")(add_steps_cmd)
-app.command()(search)
-app.command()(mine)
-app.command()(review)
-app.command("gate-check")(gate_check)
-app.command("clipboard-write")(clipboard_write_cmd)
-app.command("clipboard-read")(clipboard_read_cmd)
-app.command("clipboard-clear")(clipboard_clear_cmd)
-app.command()(dashboard)
-
-if __name__ == "__main__":
-    app()

@@ -88970,3 +88970,97 @@ phases:
 
       Confirm repo-wide invar/static-debt remediation was not attempted here.'
     agent: python-senior-tacit
+  - id: post_review_remediation.reverify-opencode-runner-final-gate
+    name: Reverify OpenCode runner final gate closure
+    status: pending
+    description: 'Independent reverify that `opencode_runner_verification.final-gate`
+      is no longer failed for non-invar reasons after `post_review_remediation.fix-opencode-runner-final-gate-cli-surface`.
+
+
+      Scope:
+
+      - Re-run the changed-scope OpenCode runner final-gate proof and the historical
+      CLI-surface failure family.
+
+      - Gate may open only if OpenCode runner runtime checks pass and no non-expected-red
+      CLI-surface failures remain.
+
+      - Repo-wide invar/static debt is excluded and must not be used to fail this
+      non-invar reverify.
+
+
+      Decision basis:
+
+      - `gate_open_allowed=true` requires zero blocker-class non-invar failures.
+
+      - Any remaining failure must have explicit expected-red/lifecycle disposition
+      or non-intersection proof.'
+    verification: '- Run targeted OpenCode runner unit/integration checks.
+
+      - Run historical orch CLI failure-family checks.
+
+      - Produce PASS/PASS_WITH_DEBT/FAIL with `gate_open_allowed` and blocker disposition.
+
+      - Do not require `uvx invar-tools guard --all`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - docs/RFC-opencode-orchestration-runner.md — key passage or "NOT READ: <reason>"
+
+      - tests/orchestration/unit/test_opencode_runner.py — key passage or "NOT READ:
+      <reason>"
+
+      - tests/orchestration/integration/test_recovery_fallback.py — key passage or
+      "NOT READ: <reason>"
+
+      - tests/repro/test_orch_liveness.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/test_orch_cli_recovery_faults.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/test_orch_cli_case_lifecycle.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/test_repair_continuity_black_box.py — key passage or "NOT READ:
+      <reason>"
+
+
+      ## Reverification Report
+
+      **Commands executed**:
+
+      ```
+
+      <paste commands>
+
+      ```
+
+      **Actual output**:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ## Behavioral Proof Register
+
+      - OpenCode runner runtime checks: PROVEN | BLOCKED
+
+      - Historical CLI role-profile shadowing family: PROVEN | BLOCKED
+
+      - Non-expected-red failures remaining: NONE | LIST
+
+
+      ## Decision
+
+      - Headline: PASS | PASS_WITH_DEBT | FAIL
+
+      - gate_open_allowed: true | false
+
+      - blocking-now: <none or list>
+
+      '
+    depends_on:
+    - post_review_remediation.fix-opencode-runner-final-gate-cli-surface
+    agent: integration-verifier-tacit

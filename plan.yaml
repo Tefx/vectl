@@ -88240,7 +88240,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-3
   name: Architectural Demolition — Wave 3 Flatten Wrappers & Inspection Query Stack
-  status: in_progress
+  status: done
   gate: Wave 3 complete when DEM-008..DEM-011 are resolved, inspection queries call
     RunRegistry directly, StepData lives in orchestration/step_data.py without reverse
     imports, known CoreAdapter fakes are updated, and verification commands pass.
@@ -88249,7 +88249,7 @@ phases:
   steps:
   - id: arch-demolition-wave-3.dem-008-and-dem-011-collapse-inspection-query-delegation-stack
     name: DEM-008 and DEM-011 collapse inspection query delegation stack
-    status: claimed
+    status: done
     description: Resolve DEM-008 and DEM-011 by deleting RunInspectionBoundary, RunRegistryInspectionView,
       RunsQuery, CasesQuery, RunsQueryImpl, and CasesQueryImpl; keep stable read DTOs
       in src/vectl/orchestration/inspection_queries.py as the canonical DTO home;
@@ -88264,7 +88264,10 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T12:06:09.233619+00:00'
-    done_at: '2026-04-26T07:52:13.525377+00:00'
+    done_at: '2026-04-26T12:06:11.619266+00:00'
+    evidence: '[reconcile_disposition=noop] OpenCode completed successfully (exit
+      0); stdout=<opencode JSON event stream omitted from plan evidence> [historical_evidence_cleanup=raw_opencode_event_stream_removed;
+      implementation_status=unchanged]'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'
     rejection_history:

@@ -88423,7 +88423,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-5
   name: Architectural Demolition — Wave 5 Give Review Flow a Real Implementation
-  status: done
+  status: in_progress
   gate: Wave 5 complete when DEM-014 lands atomically on the post-rename DriveDriver
     state, DefaultReviewGate is the real implementation entry point, review invocation
     is wired between terminal execution and authoritative completion, and verification
@@ -88433,7 +88433,7 @@ phases:
   steps:
   - id: arch-demolition-wave-5.dem-014-implement-defaultreviewgate-concretely
     name: DEM-014 implement DefaultReviewGate concretely
-    status: done
+    status: rejected
     description: Resolve the first half of DEM-014 by adding a concrete DefaultReviewGate
       in src/vectl/orchestration/review_gate.py that implements evaluate(step_id,
       execution_result, artifact_refs=()) -> ReviewGateResult and owns post-execution
@@ -88447,58 +88447,13 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T08:25:19.631953+00:00'
     done_at: '2026-04-26T08:36:19.819094+00:00'
-    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777191932488,"sessionID":"ses_2371b4bfcffeD33WUiVY0mTuUT","part":{"id":"prt_dc8e4d246001baqG6Nxfi3v8Vs","messageID":"msg_dc8e4b44d00138NTKFdp8dhxDq","sessionID":"ses_2371b4bfcffeD33WUiVY0mTuUT","snapshot":"990e2d572ea405f9c5b71941bfb7e8536f4cddbb","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777191935593,"sessionID":"ses_2371b4bfcffeD33WUiVY0mTuUT","part":{"type":"tool","tool":"read","callID":"call_htRiYKkLft6okojBoF4nXBbJ","state":{"status":"completed","input":{"filePath":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-5.dem-014-implement-defaultreviewgate-concretely/src/vectl/orchestration/review_gate.py","offset":1,"limit":240},"output":"<path>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-5.dem-014-implement-defaultreviewgate-concretely/src/vectl/orchestration/review_gate.py</path>\n<type>file</type>\n<content>\n1:
-      \"\"\"\n2: Bounded post-execution review normalization.\n3: \n4: Authority:
-      docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.5\n5: Authority: docs/RFC-orch-drive.md
-      section 17.1\n6: \n7: This module pins the ReviewGate protocol and ReviewGateResult
-      contract.\n8: Contract-only: signatures, result types, and docstrings. No review
-      logic\n9: beyond placeholders.\n10: \"\"\"\n11: \n12: from __future__ import
-      annotations\n13: \n14: from dataclasses import dataclass\n15: from typing import
-      Protocol\n16: \n17: from vectl.orchestration.contracts import (\n18:     ExecutionResult,\n19:     PlannerRequest,\n20:     ReviewOutcome,\n21:
-      )\n22: \n23: \n24: @dataclass(frozen=True)\n25: class ReviewGateResult:\n26:     \"\"\"Bounded
-      output from the post-execution review gate.\n27: \n28:     Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md
-      section 3.10\n29:     Authority: docs/RFC-orch-drive.md section 17.1\n30: \n31:     The
-      review gate normalizes post-execution output into one of four\n32:     bounded
-      outcomes. Non-pass outcomes drive barrier transitions.\n33: \n34:     Continuation
-      rules (RFC-orch-drive.md section 17.1.1):\n35:         - ``pass``: continue
-      through reconcile and completion gates\n36:         - ``needs_fix``: enter barrier
-      with reason ``review_failed``;\n37:           step remains incomplete; after
-      barrier resolution, control may\n38:           re-dispatch the same step as
-      a fresh child run\n39:         - ``needs_replan``: enter barrier with reason
-      ``review_failed``\n40:           and transition to planner-owned replanning\n41:         -
-      ``operator_required``: transition to ``blocked_operator``\n42:           without
-      further automatic dispatch\n43: \n44:     ``needs_fix`` is not a terminal failure
-      and not an implicit plan\n45:     mutation. It is a bounded review failure that
-      preserves the current\n46:     step id and requires either resolver-guided local
-      unblocking or\n47:     operator action before the step may run again.\n48: \n49:     Attributes:\n50:         status:
-      One of ``pass``, ``needs_fix``, ``needs_replan``,\n51:             ``operator_required``.\n52:         summary:
-      Human-readable explanation of the review outcome.\n53:         evidence_refs:
-      Artifact references supporting the review outcome.\n54:         planner_request:
-      Optional planner mutation request when\n55:             ``status=''needs_replan''``.
-      When present alongside\n56:             ``needs_replan``, drive policy must
-      transition to\n57:             planner-owned replanning.\n58:     \"\"\"\n59:
-      \n60:     status: ReviewOutcome\n61:     summary: str\n62:     evidence_refs:
-      tuple[str, ...] = ()\n63:     planner_request: PlannerRequest | None = None\n64:
-      \n65: \n66: class ReviewGate(Protocol):\n67:     \"\"\"Bounded post-execution
-      review normalization contract.\n68: \n69:     Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md
-      section 4.5\n70: \n71:     The review gate is invoked after terminal execution
-      output exists\n72:     and before authoritative step completion. It reduces
-      post-execution\n73:     review into one bounded ``ReviewGateResult``.\n74: \n75:     Owns:\n76:         -
-      parsing or validating machine-readable review outputs\n77:         - reducing
-      post-execution review into one bounded result\n78: \n79:     Does NOT own:\n80:         -
-      frontier scheduling\n81:         - plan mutation\n82:         - resolver reasoning\n83:         -
-      runtime mechanics\n84: \n85:     Error contract:\n86:         - malformed review
-      output must become ``needs_fix`` or\n87:           ``operator_required``; it
-      must not silently pass\n88:         - the review gate must not directly mutate
-      authoritative plan state\n89:     \"\"\"\n90: \n91:     def evaluate(\n92:         self,\n93:         step_id:
-      str,\n94:         execution_result: ExecutionResult,\n95:         artifact_refs:
-      tuple[str, ...] = (),\n96:     ) -> ReviewGateResult:\n97:         \"\"\"Evaluate
-      post-execution review for a completed child run.\n98: \n99:         Args:\n100:             step_id:
-      Step identifier for the completed execution.\n101:             execution_result:
-      Terminal execution '
+    rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
+      stored in evidence; implementation unchanged'
+    rejection_history:
+    - reason: 'historical evidence cleanup: raw OpenCode JSON event stream stored
+        in evidence; implementation unchanged'
+      timestamp: '2026-04-26T12:06:42.965070+00:00'
+      reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-5.dem-014-wire-review-gate-into-drivedriver-and-remove-protocol-only-seam
     name: DEM-014 wire review gate into DriveDriver and remove protocol-only seam
     status: done

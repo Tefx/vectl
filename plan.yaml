@@ -88163,7 +88163,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-2
   name: Architectural Demolition — Wave 2 Delete Dead Exported Surfaces
-  status: done
+  status: in_progress
   gate: Wave 2 complete when DEM-012, DEM-013, and DEM-015 dead exported surfaces
     are removed, the temporary ConcreteDriveDriver alias is documented as one-wave-only
     debt, and verification commands pass.
@@ -88215,7 +88215,7 @@ phases:
       pattern="ArtifactReader|ArtifactWriter"  path="/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-013-delete-speculative-continuity-artifact-seams"'
   - id: arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell
     name: DEM-015 rename concrete drive driver and retire protocol shell
-    status: done
+    status: rejected
     description: Resolve DEM-015 by deleting the DriveDriver protocol in src/vectl/orchestration/driver.py,
       renaming ConcreteDriveDriver to DriveDriver, migrating imports, and retaining
       a documented deprecated ConcreteDriveDriver alias for one wave cycle only, scheduled
@@ -88228,45 +88228,13 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T05:13:43.342123+00:00'
     done_at: '2026-04-26T05:24:16.015514+00:00'
-    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777180446284,"sessionID":"ses_237ca985bffe0uLgIQ2EjgT92k","part":{"id":"prt_dc8358e4a001I1o63XzJzRoCUU","messageID":"msg_dc83569e9001R1EKL2eAeNIK5d","sessionID":"ses_237ca985bffe0uLgIQ2EjgT92k","snapshot":"2588e472f43a07f8f78d7fc40d16840772745f5f","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777180450134,"sessionID":"ses_237ca985bffe0uLgIQ2EjgT92k","part":{"type":"tool","tool":"grep","callID":"call_OBC2twmEKUMiTiIxfi89hXuJ","state":{"status":"completed","input":{"pattern":"ConcreteDriveDriver|DriveDriver","path":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell","include":"*.py"},"output":"Found
-      57 matches\n/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell/tests/orchestration/unit/test_review_gate_integration.py:\n  Line
-      39:     ConcreteDriveDriver,\n\n  Line 367:     ) -> ConcreteDriveDriver:\n\n  Line
-      380:         return ConcreteDriveDriver(\n\n  Line 409:         driver = ConcreteDriveDriver(\n\n  Line
-      447:         driver = ConcreteDriveDriver(\n\n  Line 477:         driver = ConcreteDriveDriver(\n\n  Line
-      509:         driver = ConcreteDriveDriver(\n\n\n/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell/tests/orchestration/unit/test_resolver_loop_integration.py:\n  Line
-      36:     ConcreteDriveDriver,\n\n  Line 182: ) -> ConcreteDriveDriver:\n\n  Line
-      192:     return ConcreteDriveDriver(\n\n  Line 325:         driver = ConcreteDriveDriver(\n\n  Line
-      399:         driver = ConcreteDriveDriver(\n\n  Line 449:         driver = ConcreteDriveDriver(\n\n  Line
-      518:         driver = ConcreteDriveDriver(\n\n  Line 569:         driver = ConcreteDriveDriver(\n\n  Line
-      626:         driver = ConcreteDriveDriver(\n\n  Line 670:         driver = ConcreteDriveDriver(\n\n  Line
-      713:         driver = ConcreteDriveDriver(\n\n  Line 753:         driver = ConcreteDriveDriver(\n\n  Line
-      791:         driver = ConcreteDriveDriver(\n\n  Line 846:         driver = ConcreteDriveDriver(\n\n  Line
-      895:         driver = ConcreteDriveDriver(\n\n\n/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell/tests/orchestration/unit/test_planner_loop_integration.py:\n  Line
-      43:     ConcreteDriveDriver,\n\n  Line 172: ) -> tuple[ConcreteDriveDriver,
-      _FakeCoreAdapter, _FakePlannerMutationApplier | None]:\n\n  Line 173:     \"\"\"Create
-      a ConcreteDriveDriver with fake planner mutation applier wired in.\"\"\"\n\n  Line
-      186:     driver = ConcreteDriveDriver(\n\n  Line 672:         driver = ConcreteDriveDriver(\n\n  Line
-      699:         driver = ConcreteDriveDriver(\n\n\n/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell/tests/orchestration/unit/test_drive_control_consumption.py:\n  Line
-      48:     ConcreteDriveDriver,\n\n  Line 161: ) -> ConcreteDriveDriver:\n\n  Line
-      162:     \"\"\"Create a ConcreteDriveDriver with optional control channel.\"\"\"\n\n  Line
-      165:     return ConcreteDriveDriver(\n\n\n/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell/tests/orchestration/unit/test_driver_loop_proof.py:\n  Line
-      44:     ConcreteDriveDriver,\n\n  Line 163: ) -> ConcreteDriveDriver:\n\n  Line
-      166:     return ConcreteDriveDriver(\n\n  Line 550: # ConcreteDriveDriver wiring
-      through OrchestrationApp\n\n  Line 555:     \"\"\"Verify OrchestrationApp delegates
-      to ConcreteDriveDriver.\"\"\"\n\n  Line 558:         \"\"\"OrchestrationApp.start_drive
-      delegates to ConcreteDriveDriver.\"\"\"\n\n\n/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell/tests/orchestration/unit/test_drive_recovery_semantics.py:\n  Line
-      40:     ConcreteDriveDriver,\n\n  Line 155: ) -> ConcreteDriveDriver:\n\n  Line
-      158:     return ConcreteDriveDriver(\n\n  Line 166: def _start_drive(driver:
-      ConcreteDriveDriver, plan_path: str = \"/repo/plan.yaml\") -> str:\n\n  Line
-      622:         driver_with_registry = ConcreteDriveDriver(\n\n\n/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell/tests/orchestration/test_opencode_drive_acceptance_matrix.py:\n  Line
-      64:     ConcreteDriveDriver,\n\n  Line 182: ) -> ConcreteDriveDriver:\n\n  Line
-      185:     return ConcreteDriveDriver(\n\n  Line 483:         # ConcreteDriveDriver
-      reads self._core_adapter.snapshot().\n\n\n/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell/src/vectl/orchestration/driver.py:\n  Line
-      9:   - the DriveDriver Protocol (contract interface)\n\n  Line 10:   - ConcreteDriveDriver
-      (wired implementation usi'
+    rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
+      stored in evidence; implementation unchanged'
+    rejection_history:
+    - reason: 'historical evidence cleanup: raw OpenCode JSON event stream stored
+        in evidence; implementation unchanged'
+      timestamp: '2026-04-26T12:05:59.848118+00:00'
+      reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-3
   name: Architectural Demolition — Wave 3 Flatten Wrappers & Inspection Query Stack
   status: done

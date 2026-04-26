@@ -23,8 +23,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from vectl.orchestration.continuity_artifacts import (
+    ReconcileRecoveryState,
+    RuntimeRecoveryRecord,
+)
 from vectl.orchestration.contracts import (
     BarrierReason,
+    ChildRunRef,
     ControlDecision,
     CoreSnapshot,
     DriveBarrier,
@@ -41,6 +46,7 @@ from vectl.orchestration.driver import (
     validate_drive_transition,
 )
 from vectl.orchestration.review_gate import DefaultReviewGate, ReviewGateResult
+from vectl.orchestration.run_store import RunRecord
 
 # ---------------------------------------------------------------------
 # Fixtures: helpers for building minimal test state
@@ -452,6 +458,7 @@ class TestReviewOutcomeWithDriverIntegration:
         control: MagicMock | None = None,
         resolver: MagicMock | None = None,
         review_gate: MagicMock | None = None,
+        run_registry: MagicMock | None = None,
     ) -> DriveDriver:
         if store is None:
             store = MagicMock()
@@ -471,6 +478,85 @@ class TestReviewOutcomeWithDriverIntegration:
             control=control,
             resolver=resolver,
             review_gate=review_gate,
+            run_registry=run_registry,
+        )
+
+    def test_default_review_gate_reviews_terminal_child_before_control(self) -> None:
+        """Concrete default gate handles terminal execution before control.
+
+        Authority: ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md Wave 5
+        required changes 5-7. ``DriveDriver`` must default to
+        ``DefaultReviewGate`` and route terminal execution facts through the
+        named post-execution review hook before authoritative completion flow.
+        """
+        store = MagicMock()
+        core_adapter = MagicMock()
+        control = MagicMock()
+        run_registry = MagicMock()
+        child_run = ChildRunRef(
+            run_id="run_review_pass",
+            drive_id="drv_test",
+            kind="step",
+            status="success",
+            step_id="step.reviewed",
+            artifact_root="artifacts/run_review_pass",
+        )
+
+        store.replay_drive_state.return_value = _make_drive(
+            active_child_run_ids=(child_run.run_id,)
+        )
+        store.child_run_by_id.return_value = child_run
+        core_adapter.snapshot.return_value = _make_core()
+        control.sources.roster.snapshot.return_value = _make_roster()
+        control.sources.runtime.snapshot.return_value = _make_runtime()
+        run_registry.by_id.return_value = RunRecord(
+            run_id=child_run.run_id,
+            step_id="step.reviewed",
+            status="success",
+            artifact_root="artifacts/run_review_pass",
+            runtime_state=RuntimeRecoveryRecord(
+                workspace_id="ws_review_pass",
+                step_id="step.reviewed",
+                worktree_path="/tmp/ws_review_pass",
+                scratch_branch="scratch/review-pass",
+                target_ref="main",
+                target_head_at_prepare="HEAD",
+                reconcile_state=ReconcileRecoveryState(
+                    execution_id=child_run.run_id,
+                    workspace_id="ws_review_pass",
+                    status="noop",
+                ),
+            ),
+            output_summary=(
+                '{"review_outcome":"pass","summary":"review accepted",'
+                '"evidence_refs":["review.json"]}'
+            ),
+        )
+
+        driver = DriveDriver(
+            drive_store=store,
+            core_adapter=core_adapter,
+            control=control,
+            run_registry=run_registry,
+        )
+
+        result = driver.run_drive_loop("drv_test")
+
+        assert result.completed_steps == ("step.reviewed",)
+        assert result.active_child_run_ids == ()
+        assert result.barrier is None
+        core_adapter.complete_step.assert_called_once_with(
+            "step.reviewed",
+            evidence=(
+                "post-execution review passed: review accepted; "
+                "evidence_refs=('artifacts/run_review_pass', 'review.json')"
+            ),
+            reconcile_disposition="noop",
+        )
+        control.evaluate.assert_not_called()
+        saved_drive = store.save_drive.call_args.args[0]
+        assert saved_drive.summary.startswith(
+            "post-execution review passed and step completed"
         )
 
     def test_control_resolve_from_review_triggers_barrier(self) -> None:

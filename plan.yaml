@@ -88648,7 +88648,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: post_review_remediation
   name: Post-Review Non-Invar Remediation
-  status: pending
+  status: in_progress
   gate: Phase passes when driver agent-selection deep-review SHOULD_FIX items are
     remediated or authoritatively closed, historical OpenCode/CLI failed gates are
     regated green, completed-step failure evidence cannot remain unclosed, and independent
@@ -89519,7 +89519,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: post_review_remediation.implement-drive-autonomy-safe-recovery-and-actions
     name: Implement drive autonomy safe recovery and action guidance
-    status: pending
+    status: claimed
     description: 'Implement the minimal drive autonomy improvements requested after
       system-review reflection.
 
@@ -89607,3 +89607,5 @@ phases:
 
       Confirm repo-wide invar/static-debt remediation was not attempted here.'
     agent: python-senior-tacit
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T14:33:10.808423+00:00'

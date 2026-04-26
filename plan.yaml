@@ -88113,7 +88113,7 @@ phases:
       \ / Out of Scope\n\n- None. DEM-002 is fully resolved.\n"
   - id: arch-demolition-wave-1.dem-003-extract-duplicate-step-id-formatting-owner
     name: DEM-003 extract duplicate-step-id formatting owner
-    status: rejected
+    status: claimed
     description: Resolve DEM-003 by extracting duplicate-step-id diagnostic and recommendation
       formatting into src/vectl/duplicate_step_id_format.py and updating CLI and MCP
       to consume the shared formatter boundary.
@@ -88122,8 +88122,8 @@ phases:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/cli.py
     - src/vectl/mcp_server.py
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T02:16:49.059014+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T12:05:41.036046+00:00'
     done_at: '2026-04-26T02:52:27.815679+00:00'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'

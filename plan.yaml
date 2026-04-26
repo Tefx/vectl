@@ -88331,7 +88331,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-4
   name: Architectural Demolition — Wave 4 Unify Orchestration Authority Surfaces
-  status: in_progress
+  status: done
   gate: Wave 4 complete when DEM-005, DEM-006, DEM-007, and DEM-016 leave exactly
     one surviving authority/contract surface each, contract-lock coverage is migrated
     to surviving seams, and verification commands pass.
@@ -88395,7 +88395,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-4.dem-016-retire-public-role-and-prompt-registry-protocols
     name: DEM-016 retire public role and prompt registry protocols
-    status: claimed
+    status: done
     description: Resolve DEM-016 by removing public RoleProfileRegistry and PromptRegistry
       protocols from contracts.py, treating ConfigRoleProfileRegistry and ConfigPromptRegistry
       as the concrete in-repo authority surfaces, and updating surviving type annotations,
@@ -88410,7 +88410,10 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T12:06:38.080277+00:00'
-    done_at: '2026-04-26T08:25:15.706761+00:00'
+    done_at: '2026-04-26T12:06:40.525161+00:00'
+    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
+      0); stdout=<opencode JSON event stream omitted from plan evidence> [historical_evidence_cleanup=raw_opencode_event_stream_removed;
+      implementation_status=unchanged]'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'
     rejection_history:

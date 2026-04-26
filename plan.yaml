@@ -88885,7 +88885,7 @@ phases:
       run or require `uvx invar-tools guard --all`.'
   - id: post_review_remediation.reverify-driver-agent-selection-deep-review
     name: Reverify driver agent-selection deep-review closure
-    status: pending
+    status: claimed
     description: "Independent reverify for `post_review_remediation.fix-driver-agent-selection-deep-review`.\n\
       \nScope:\n- Confirm both historical SHOULD_FIX groups from `driver-agent-selection-deep-review.gate`\
       \ are closed:\n  1. planner runtime dispatch uses explicit planner runner authority\
@@ -88952,6 +88952,8 @@ phases:
     depends_on:
     - post_review_remediation.fix-driver-agent-selection-deep-review
     agent: gate-reviewer-tacit
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T14:57:49.549434+00:00'
   - id: post_review_remediation.fix-opencode-runner-final-gate-cli-surface
     name: Fix OpenCode runner final-gate CLI surface blockers
     status: done

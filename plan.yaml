@@ -89605,7 +89605,7 @@ phases:
       this step intentionally does not run or require `uvx invar-tools guard --all`.'
   - id: post_review_remediation.reverify-completed-step-failure-evidence-guard
     name: Reverify completed-step failure evidence guard
-    status: claimed
+    status: done
     description: 'Independent verification for the completed-step failure evidence
       guard.
 
@@ -89689,6 +89689,76 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T14:52:45.133873+00:00'
+    done_at: '2026-04-26T14:57:29.904652+00:00'
+    evidence: '## refs Read Confirmation
+
+      - src/vectl/cli_plan.py — validation/review surfaces print `validate_plan()`
+      issues as ERROR and exit 1 when errors exist.
+
+      - src/vectl/core_plan_queries.py — guard is wired through `validate_plan()`
+      and reports `Completed evidence guard: step ... unclosed failure evidence (...)`.
+
+      - src/vectl/mcp_core_tools.py — `vectl_validate()` calls `validate_plan()` and
+      therefore inherits the same guard output.
+
+      - tests — `tests/test_validation.py::TestCompletedEvidenceGuard` and `tests/test_review.py::TestReview::test_review_exposes_completed_evidence_guard`
+      were independently exercised.
+
+
+      ## Verification Report
+
+      Independent verifier task `ses_235b87e5fffenptncoM1rYH03j` returned PASS/BLOCKING
+      CLOSED.
+
+
+      Commands executed by verifier:
+
+      ```
+
+      uv run pytest -q tests/test_validation.py::TestCompletedEvidenceGuard
+
+      # 3 passed
+
+      uv run pytest -q tests/test_review.py::TestReview::test_review_exposes_completed_evidence_guard
+
+      # 1 passed
+
+      uv run pytest -q tests/test_validation.py tests/test_review.py
+
+      # 94 passed
+
+      ```
+
+      Verifier also performed live `validate_plan()` and CLI `vectl validate` / `vectl
+      review` checks on unclosed/closed/expected-red fixtures; both public CLI surfaces
+      exited 1 for unclosed failures and showed guard keyword, step id, and failure
+      reason.
+
+
+      ## Coverage Matrix
+
+      - Unclosed `gate_open_allowed=false`: CAUGHT
+
+      - `NEEDS_REVISION` without closure: CAUGHT
+
+      - Later retest closure: NOT_FLAGGED
+
+      - Governed expected-red: NOT_FLAGGED
+
+      - Actionable output: YES — guard keyword + step id + failure reason + closure
+      requirement visible.
+
+
+      ## Decision
+
+      - [x] PASS
+
+      - [ ] BLOCKED
+
+
+      Caveat recorded: no dedicated test for `runtime non-closure: fail`; implementation
+      recognizes it, but this is a minor non-blocking coverage gap for this reverify
+      step. Repo-wide invar/static debt remained out of scope.'
   - id: post_review_remediation.gate
     name: Gate post-review non-invar remediation
     status: pending

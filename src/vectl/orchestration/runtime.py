@@ -1618,7 +1618,7 @@ def _perform_reconcile(
     workspace_path = Path(binding.worktree_path)
     _validate_worktree_integrity(binding=binding, workspace_path=workspace_path)
     integration_root = _resolve_integration_root(workspace_path)
-    _validate_integration_context(integration_root)
+    integration_dirty_paths = _validate_integration_context(integration_root)
 
     changed_paths = _list_changed_paths(
         workspace_path=workspace_path,
@@ -1646,6 +1646,26 @@ def _perform_reconcile(
             artifact_refs=tuple(artifact_refs),
         )
 
+    untracked_conflicts, adopted_untracked, backed_up_untracked = _resolve_untracked_collisions(
+        execution_id=execution_id,
+        integration_root=integration_root,
+        workspace_path=workspace_path,
+        paths=effective_paths,
+    )
+    if adopted_untracked:
+        adopted = ",".join(adopted_untracked)
+        artifact_refs.append(f"untracked_collisions_adopted:{adopted}")
+    artifact_refs.extend(f"untracked_collision_backup:{ref}" for ref in backed_up_untracked)
+    if untracked_conflicts:
+        return ReconcileResult(
+            execution_id=execution_id,
+            workspace_id=workspace_id,
+            status="merge_conflict",
+            summary="Reconcile detected untracked integration collisions; operator resolution required",
+            conflict_files=untracked_conflicts,
+            artifact_refs=tuple(artifact_refs),
+        )
+
     _commit_workspace_changes(
         workspace_path=workspace_path,
         paths=effective_paths,
@@ -1653,10 +1673,10 @@ def _perform_reconcile(
     )
 
     workspace_head = _git_stdout(["rev-parse", "HEAD"], cwd=workspace_path)
-    merge_result = _run_git(
-        ["merge", "--no-ff", "--no-edit", workspace_head],
-        cwd=integration_root,
-    )
+    merge_args = ["merge", "--no-ff", "--no-edit"]
+    if integration_dirty_paths:
+        merge_args.append("--autostash")
+    merge_result = _run_git([*merge_args, workspace_head], cwd=integration_root)
     if merge_result.returncode == 0:
         if "Already up to date." in (merge_result.stdout or ""):
             status: Literal["merged", "noop", "merge_conflict", "aborted"] = "noop"
@@ -1664,6 +1684,8 @@ def _perform_reconcile(
         else:
             status = "merged"
             summary = "Reconcile merged workspace changes into integration context"
+            if integration_dirty_paths:
+                summary += " with git autostash for pre-existing local mutations"
         return ReconcileResult(
             execution_id=execution_id,
             workspace_id=workspace_id,
@@ -1718,16 +1740,16 @@ def _validate_worktree_integrity(*, binding: WorktreeBinding, workspace_path: Pa
         )
 
 
-def _validate_integration_context(repo_root: Path) -> None:
+def _validate_integration_context(repo_root: Path) -> tuple[str, ...]:
     """Validate main integration context safety preflight.
 
     Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 9,
-    reconcile requires a clean integration context.  However, files that
-    are part of the protected-paths set (currently ``plan.yaml``) are
-    expected to be modified by the orchestration flow itself (claim/complete
-    operations).  Those files are restored to their pre-worktree state by
-    ``_restore_protected_paths`` before the actual merge, so their presence
-    in the dirty list is not a safety violation.
+    reconcile rejects active git operations, and reports local tracked
+    mutations to the caller.  The caller may use git autostash for these
+    pre-existing local mutations so foreground drive supervision can continue
+    without requiring an operator commit.  Files that are part of the
+    protected-paths set (currently ``plan.yaml``) are expected to be modified
+    by the orchestration flow itself and are not returned here.
     """
 
     git_dir = Path(_git_stdout(["rev-parse", "--git-dir"], cwd=repo_root))
@@ -1760,11 +1782,8 @@ def _validate_integration_context(repo_root: Path) -> None:
         unprotected_dirty = tuple(
             path for path in dirty_paths if path not in _PROTECTED_RECONCILE_PATHS
         )
-        if unprotected_dirty:
-            raise ReconcileError(
-                "Integration-context preflight failed: "
-                "local tracked mutations make reconcile unsafe"
-            )
+        return unprotected_dirty
+    return ()
 
 
 def _list_changed_paths(*, workspace_path: Path, base_ref: str) -> tuple[str, ...]:
@@ -1838,6 +1857,56 @@ def _restore_protected_paths(
         ["checkout", target_spec, "--", *protected_paths],
         cwd=workspace_path,
     )
+
+
+def _resolve_untracked_collisions(
+    *,
+    execution_id: str,
+    integration_root: Path,
+    workspace_path: Path,
+    paths: tuple[str, ...],
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    """Clear untracked files that would block git merge.
+
+    Failed foreground runs can leave files in the integration worktree as
+    untracked copies of files later produced by a retried workspace commit.
+    Git's merge autostash does not include untracked files, so an otherwise
+    safe retry aborts with "untracked working tree files would be overwritten".
+    If the untracked file is byte-identical to the workspace version, adopting
+    the incoming tracked file is lossless: remove the untracked copy and let the
+    merge add the tracked file.  Non-identical file collisions are first backed
+    up under ``.vectl/reconcile-untracked/`` and then removed so the incoming
+    tracked file can merge without losing operator data.
+    """
+
+    untracked_output = _git_stdout(
+        ["ls-files", "--others", "--exclude-standard"],
+        cwd=integration_root,
+    )
+    untracked = {line.strip() for line in untracked_output.splitlines() if line.strip()}
+    conflicts: list[str] = []
+    adopted: list[str] = []
+    backed_up: list[str] = []
+    for path in paths:
+        normalized = path.lstrip("./")
+        if normalized not in untracked:
+            continue
+        integration_file = integration_root / normalized
+        workspace_file = workspace_path / normalized
+        if not integration_file.is_file() or not workspace_file.is_file():
+            conflicts.append(normalized)
+            continue
+        if integration_file.read_bytes() == workspace_file.read_bytes():
+            integration_file.unlink()
+            adopted.append(normalized)
+            continue
+
+        backup_path = integration_root / ".vectl" / "reconcile-untracked" / execution_id / normalized
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(integration_file, backup_path)
+        integration_file.unlink()
+        backed_up.append(f"{normalized}->{backup_path.relative_to(integration_root)}")
+    return tuple(conflicts), tuple(adopted), tuple(backed_up)
 
 
 def _list_merge_conflicts(repo_root: Path) -> tuple[str, ...]:

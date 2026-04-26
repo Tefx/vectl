@@ -1407,7 +1407,18 @@ class DriveDriver:
             roster=roster,
             runtime=runtime,
             drive=record,
-            blocked_step_ids=tuple(sid for sid in core.blocked_step_ids),
+            blocked_step_ids=tuple(
+                dict.fromkeys(
+                    (
+                        *core.blocked_step_ids,
+                        *(
+                            sid
+                            for sid in core.in_progress_step_ids
+                            if sid in record.frontier_step_ids
+                        ),
+                    )
+                )
+            ),
             artifact_refs=(),
         )
 
@@ -2206,6 +2217,45 @@ class DriveDriver:
                 + [rid for rid in recovered_ids if rid not in {r.run_id for r in active_runs}]
             )
         )
+
+        # If a previous supervisor died after a child run reached a terminal
+        # state but before authoritative completion/defer, the plan can be left
+        # with a claimed step and no active drive child.  In drive recovery that
+        # claim is an orchestration-owned orphan: keeping it makes control see
+        # "Execution already in progress" forever while the drive has no live
+        # child to collect.  Release only steps owned by this drive (current
+        # frontier, historical child-run refs, or the drive agent's live
+        # in-progress snapshot when there are no recoverable active child runs)
+        # whose child facts are absent from the recovered active set.
+        core = self._core_adapter.snapshot(agent=record.agent or "default")
+        recovered_active_set = set(recovered_active_ids)
+        refs_by_step: dict[str, list[ChildRunRef]] = {}
+        for ref in all_child_runs:
+            refs_by_step.setdefault(ref.step_id, []).append(ref)
+        drive_owned_step_ids = set(record.frontier_step_ids) | set(refs_by_step)
+        if not recovered_active_set:
+            # A crash can happen after core claim succeeds but before the child
+            # run ref is persisted.  In that state the step is absent from both
+            # the stale frontier cache and child-run history, yet control will
+            # keep returning "Execution already in progress" forever.  The
+            # snapshot is already scoped to ``record.agent`` by CoreAdapter, so
+            # these in-progress IDs are drive-agent-owned candidates.
+            drive_owned_step_ids.update(core.in_progress_step_ids)
+        orphaned_claim_step_ids: list[str] = []
+        for step_id in core.in_progress_step_ids:
+            if step_id not in drive_owned_step_ids:
+                continue
+            step_refs = refs_by_step.get(step_id, [])
+            if any(ref.run_id in recovered_active_set for ref in step_refs):
+                continue
+            orphaned_claim_step_ids.append(step_id)
+
+        for step_id in orphaned_claim_step_ids:
+            conflict_notes.append(
+                f"released orphaned drive claim for {step_id}: no active child run remains"
+            )
+            if not dry_run:
+                self._core_adapter.defer_step(step_id)
 
         # Step 4: Re-enter barrier if persisted state requires it.
         # Authority: RFC-orch-drive.md section 15.3.1

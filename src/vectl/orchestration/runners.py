@@ -288,14 +288,36 @@ def _append_opencode_text_parts(value: object, sink: list[str]) -> None:
             _append_opencode_text_parts(item, sink)
 
 
+def _append_resolution_report_payloads(value: object, sink: list[dict[str, object]]) -> None:
+    """Collect ResolutionReport-shaped JSON payloads from arbitrary event values."""
+
+    if isinstance(value, dict):
+        if isinstance(value.get("status"), str) and isinstance(value.get("summary"), str):
+            sink.append(value)
+        for nested in value.values():
+            _append_resolution_report_payloads(nested, sink)
+        return
+    if isinstance(value, list | tuple):
+        for nested in value:
+            _append_resolution_report_payloads(nested, sink)
+        return
+    if isinstance(value, str):
+        for nested in _iter_json_values_from_text(value):
+            _append_resolution_report_payloads(nested, sink)
+
+
 def _summarize_opencode_stdout(stdout: str) -> str:
     """Return runner-visible text from OpenCode JSON stdout when possible."""
 
+    report_payloads: list[dict[str, object]] = []
     text_parts: list[str] = []
     for value in _iter_json_values_from_text(stdout):
+        _append_resolution_report_payloads(value, report_payloads)
         _append_opencode_text_parts(value, text_parts)
+    if report_payloads:
+        return json.dumps(report_payloads[-1], separators=(",", ":"))
     if text_parts:
-        return "\n".join(text_parts).strip()
+        return text_parts[-1].strip()
     return stdout.strip()
 
 
@@ -330,6 +352,8 @@ class SubprocessRunner:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
         except OSError as exc:
             raise RunnerLaunchError(
@@ -612,6 +636,8 @@ class OpenCodeRunner:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
         except OSError as exc:
             raise RunnerLaunchError(

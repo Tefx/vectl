@@ -515,7 +515,7 @@ def test_begin_reconcile_returns_aborted_when_worktree_integrity_preflight_fails
 def test_begin_reconcile_returns_aborted_when_integration_context_is_dirty(
     temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """R27 failure-path proof: dirty tracked integration context blocks reconcile."""
+    """Dirty tracked integration context reconciles through git autostash."""
 
     base_dir = temp_git_repo / ".vectl" / "workspaces"
     runtime = Runtime(workspace_root=base_dir)
@@ -546,8 +546,79 @@ def test_begin_reconcile_returns_aborted_when_integration_context_is_dirty(
 
     reconcile_result = runtime.begin_reconcile(execution_id)
     assert reconcile_result is not None
-    assert reconcile_result.status == "aborted"
-    assert "Integration-context preflight failed" in reconcile_result.summary
+    assert reconcile_result.status == "merged"
+    assert "autostash" in reconcile_result.summary
+    assert (temp_git_repo / "README.md").read_text(encoding="utf-8") == "dirty tracked change\n"
+    assert (temp_git_repo / "integration.txt").read_text(encoding="utf-8") == "requires merge\n"
+
+
+def test_begin_reconcile_adopts_identical_untracked_collision(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Identical untracked files do not block retry merge reconciliation."""
+
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(temp_git_repo)
+
+    request = _request(step_id="test-reconcile-untracked-collision")
+    workspace = runtime.prepare(request)
+    execution_id = runtime.start(request=request, workspace=workspace)
+
+    workspace_path = base_dir / request.step_id
+    (workspace_path / "new_owner.py").write_text("value = 1\n", encoding="utf-8")
+    (temp_git_repo / "new_owner.py").write_text("value = 1\n", encoding="utf-8")
+
+    state = runtime._active_workspaces[workspace]
+    assert state.execution_state is not None
+    state.execution_state.status = "success"
+
+    reconcile_result = runtime.begin_reconcile(execution_id)
+    assert reconcile_result is not None
+    assert reconcile_result.status == "merged"
+    assert "untracked_collisions_adopted:new_owner.py" in reconcile_result.artifact_refs
+    assert (temp_git_repo / "new_owner.py").read_text(encoding="utf-8") == "value = 1\n"
+    tracked = subprocess.run(
+        ["git", "ls-files", "new_owner.py"],
+        cwd=temp_git_repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert tracked.stdout.strip() == "new_owner.py"
+
+
+def test_begin_reconcile_backs_up_nonidentical_untracked_collision(
+    temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Non-identical untracked collisions are preserved and do not block merge."""
+
+    base_dir = temp_git_repo / ".vectl" / "workspaces"
+    runtime = Runtime(workspace_root=base_dir)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(temp_git_repo)
+
+    request = _request(step_id="test-reconcile-untracked-backup")
+    workspace = runtime.prepare(request)
+    execution_id = runtime.start(request=request, workspace=workspace)
+
+    workspace_path = base_dir / request.step_id
+    (workspace_path / "new_owner.py").write_text("incoming = 1\n", encoding="utf-8")
+    (temp_git_repo / "new_owner.py").write_text("local = 2\n", encoding="utf-8")
+
+    state = runtime._active_workspaces[workspace]
+    assert state.execution_state is not None
+    state.execution_state.status = "success"
+
+    reconcile_result = runtime.begin_reconcile(execution_id)
+    assert reconcile_result is not None
+    assert reconcile_result.status == "merged"
+    refs = "\n".join(reconcile_result.artifact_refs)
+    assert "untracked_collision_backup:new_owner.py->" in refs
+    assert (temp_git_repo / "new_owner.py").read_text(encoding="utf-8") == "incoming = 1\n"
+    backup = temp_git_repo / ".vectl" / "reconcile-untracked" / execution_id / "new_owner.py"
+    assert backup.read_text(encoding="utf-8") == "local = 2\n"
 
 
 def test_begin_reconcile_filters_protected_paths_before_merge(

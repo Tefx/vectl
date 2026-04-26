@@ -2495,11 +2495,15 @@ class OrchestrationApp:
 
         context = self._drive_child_run_contexts.get(child_run_id)
         if context is None:
+            snapshots = self.refresh_snapshots(agent=self._config.default_agent)
             resolution_case = ResolutionCase(
                 case_id=f"case-{generate_run_id()}",
                 case_source="runtime_failure",
                 reason="drive child finalization context missing",
                 summary=execution_result.output_summary,
+                core=snapshots.core,
+                roster=snapshots.roster,
+                runtime=snapshots.runtime,
                 blocked_step_ids=(execution_result.step_id,),
             )
             self._emit_drive_progress_event(
@@ -5405,6 +5409,7 @@ def build_orchestration_app(
                     time.sleep(0.01)
                     continue
                 return self._result_to_payload(
+                    case=case,
                     result=result,
                     execution_id=execution_id,
                     role_id=dispatch_spec.role_id,
@@ -5432,6 +5437,7 @@ def build_orchestration_app(
         def _result_to_payload(
             self,
             *,
+            case: ResolutionCase,
             result: ExecutionResult,
             execution_id: str,
             role_id: str,
@@ -5452,6 +5458,13 @@ def build_orchestration_app(
 
             payload = _extract_resolution_report_payload(result.output_summary)
             if payload is None:
+                fallback = self._fallback_unstructured_success_payload(
+                    case=case,
+                    execution_id=execution_id,
+                    role_id=role_id,
+                )
+                if fallback is not None:
+                    return fallback
                 return {
                     "status": "operator_required",
                     "summary": (
@@ -5478,6 +5491,45 @@ def build_orchestration_app(
                     "operator_message": "Review resolver output formatting and retry.",
                 }
             return payload
+
+        def _fallback_unstructured_success_payload(
+            self,
+            *,
+            case: ResolutionCase,
+            execution_id: str,
+            role_id: str,
+        ) -> dict[str, object] | None:
+            """Unblock stale drive cases when resolver exits cleanly without JSON.
+
+            This is intentionally narrow: it only applies to runtime-failure
+            cases that have no blocked step references and whose drive already
+            has runnable frontier work. In that state, keeping the barrier would
+            deadlock normal drive progress behind an unstructured resolver reply.
+            """
+
+            drive = case.drive
+            if case.case_source not in {"runtime_failure", "unknown"}:
+                return None
+            if drive is None or not drive.frontier_step_ids:
+                return None
+            if set(case.core.in_progress_step_ids).intersection(drive.frontier_step_ids):
+                return None
+            if set(case.blocked_step_ids).intersection(drive.frontier_step_ids):
+                return None
+            return {
+                "status": "unblocked",
+                "summary": (
+                    "Resolver produced unstructured output for a stale runtime case; "
+                    "blocked refs do not intersect the runnable drive frontier."
+                ),
+                "evidence_refs": (
+                    f"resolver_execution_id={execution_id}",
+                    f"resolver_role_id={role_id}",
+                    f"case_id={case.case_id}",
+                    f"frontier_step_ids={drive.frontier_step_ids}",
+                ),
+                "operator_message": None,
+            }
 
     class GatewayEnforcedResolverInvocation(ResolverInvocationSurface):
         def __init__(

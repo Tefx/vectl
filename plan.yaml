@@ -88545,7 +88545,7 @@ phases:
       is pure delegation and forces awkw'
 - id: arch-demolition-wave-4
   name: Architectural Demolition — Wave 4 Unify Orchestration Authority Surfaces
-  status: in_progress
+  status: done
   gate: Wave 4 complete when DEM-005, DEM-006, DEM-007, and DEM-016 leave exactly
     one surviving authority/contract surface each, contract-lock coverage is migrated
     to surviving seams, and verification commands pass.
@@ -88583,7 +88583,7 @@ phases:
       --tb=short passed: 2930 passed, 41 skipped in 182.63s.'
   - id: arch-demolition-wave-4.dem-007-converge-on-coreadapter-as-the-only-mutation-authority-seam
     name: DEM-007 converge on CoreAdapter as the only mutation authority seam
-    status: pending
+    status: done
     description: Resolve DEM-007 by removing LifecycleMutationPort, migrating contract-lock
       coverage to the surviving CoreAdapter public boundary, and proving the CoreAdapter
       seam still works cleanly after Wave 3 removed inspection-query protocol layers.
@@ -88594,9 +88594,54 @@ phases:
     - src/vectl/orchestration/core_adapter.py
     - tests/orchestration/
     agent: python-senior-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-26T08:04:21.861674+00:00'
+    done_at: '2026-04-26T08:13:37.105934+00:00'
+    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
+      0); stdout={"type":"step_start","timestamp":1777190672391,"sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","part":{"id":"prt_dc8d1980600197CXKV0KFPDmLz","messageID":"msg_dc8d18390001KDP9YYDvWDPeTD","sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","snapshot":"e32cd9ecc3a1293138a2dfeac06b26e87f7bced4","type":"step-start"}}
+
+      {"type":"tool_use","timestamp":1777190677462,"sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","part":{"type":"tool","tool":"todowrite","callID":"call_pdrY27AVPCNuwOLIk0qpgKAc","state":{"status":"completed","input":{"todos":[{"content":"Read
+      referenced architecture plan and relevant orchestration interfaces/core adapter
+      files","status":"in_progress","priority":"high"},{"content":"Update implementation/tests
+      to remove LifecycleMutationPort and cover CoreAdapter boundary","status":"pending","priority":"high"},{"content":"Run
+      required verification and collect output","status":"pending","priority":"high"}]},"output":"[\n  {\n    \"content\":
+      \"Read referenced architecture plan and relevant orchestration interfaces/core
+      adapter files\",\n    \"status\": \"in_progress\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\":
+      \"Update implementation/tests to remove LifecycleMutationPort and cover CoreAdapter
+      boundary\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\":
+      \"Run required verification and collect output\",\n    \"status\": \"pending\",\n    \"priority\":
+      \"high\"\n  }\n]","metadata":{"todos":[{"content":"Read referenced architecture
+      plan and relevant orchestration interfaces/core adapter files","status":"in_progress","priority":"high"},{"content":"Update
+      implementation/tests to remove LifecycleMutationPort and cover CoreAdapter boundary","status":"pending","priority":"high"},{"content":"Run
+      required verification and collect output","status":"pending","priority":"high"}],"truncated":false},"title":"3
+      todos","time":{"start":1777190677458,"end":1777190677461}},"metadata":{"openai":{"itemId":"fc_08d2780662f3e55f0169edc7151bf881919c1738486d9a519f"}},"id":"prt_dc8d1aa9c001BougBzGCadDQB1","sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","messageID":"msg_dc8d18390001KDP9YYDvWDPeTD"}}
+
+      {"type":"step_finish","timestamp":1777190677554,"sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","part":{"id":"prt_dc8d1abf00018OYsNVbOg7kYrY","reason":"tool-calls","snapshot":"e32cd9ecc3a1293138a2dfeac06b26e87f7bced4","messageID":"msg_dc8d18390001KDP9YYDvWDPeTD","sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","type":"step-finish","tokens":{"total":24263,"input":21568,"output":87,"reasoning":48,"cache":{"write":0,"read":2560}},"cost":0}}
+
+      {"type":"step_start","timestamp":1777190681848,"sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","part":{"id":"prt_dc8d1bcf6001049WJ7Du1gyoZZ","messageID":"msg_dc8d1ac6a001K3Ve3klNDstMVR","sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","snapshot":"e32cd9ecc3a1293138a2dfeac06b26e87f7bced4","type":"step-start"}}
+
+      {"type":"tool_use","timestamp":1777190712821,"sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","part":{"type":"tool","tool":"read","callID":"call_nD6jo4FnGCIu1q7qcnmWDffi","state":{"status":"completed","input":{"filePath":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-4.dem-007-converge-on-coreadapter-as-the-only-mutation-authority-seam/docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md","offset":1,"limit":240},"output":"<path>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-4.dem-007-converge-on-coreadapter-as-the-only-mutation-authority-seam/docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md</path>\n<type>file</type>\n<content>\n1:
+      # Architectural demolition remediation plan\n2: \n3: ## Status\n4: \n5: - Status:
+      proposed remediation plan\n6: - Scope: repository-wide architectural simplification
+      and de-duplication\n7: - Primary goal: remove duplicated logic, false abstraction
+      seams, dead public surfaces, and contract theater without collapsing valid authority
+      boundaries\n8: \n9: ## Why this document exists\n10: \n11: Three independent
+      reviews (`duplicate-abstraction-auditor-tacit`, `architectural-demolitionist-tacit`,
+      and direct repository inspection) converged on the same core problem: the repo
+      pays high cognitive cost for duplicated logic and speculative abstraction while
+      several real authority surfaces remain valid and should be preserved.\n12: \n13:
+      This document is the authoritative remediation plan for fixing **all discovered
+      issues**, not just the overlaps between reviewers.\n14: \n15: ## Remediation
+      objectives\n16: \n17: 1. Ensure each concept has one authoritative implementation.\n18:
+      2. Remove pure pass-through wrappers and single-buyer protocols that do not
+      buy real substitution value.\n19: 3. Delete dead exported surfaces.\n20: 4.
+      Preserve valid boundaries:\n21:    - `core` vs `cli`/`mcp_server`\n22:    -
+      `runtime` vs `runners`\n23:    - config input models vs runtime contract models\n24:
+      5. Re-cut large files only **after** abstraction removal, never by adding new
+      contract-only files.\n25: \n26: ## Non-goals / preserved boundaries\n27:'
   - id: arch-demolition-wave-4.dem-016-retire-public-role-and-prompt-registry-protocols
     name: DEM-016 retire public role and prompt registry protocols
-    status: pending
+    status: done
     description: Resolve DEM-016 by removing public RoleProfileRegistry and PromptRegistry
       protocols from contracts.py, treating ConfigRoleProfileRegistry and ConfigPromptRegistry
       as the concrete in-repo authority surfaces, and updating surviving type annotations,
@@ -88609,9 +88654,50 @@ phases:
     - src/vectl/orchestration/config.py
     - src/vectl/orchestration/dispatch_policy.py
     agent: python-refactor-master-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-26T08:13:41.038309+00:00'
+    done_at: '2026-04-26T08:25:15.706761+00:00'
+    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
+      0); stdout={"type":"step_start","timestamp":1777191232325,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"id":"prt_dc8da2342001jyNLUmxwSlcyJB","messageID":"msg_dc8da0b58001d6StWY4P1Adsoi","sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","snapshot":"dac2b7658a50a09f3aecb8ca31d2e51df3a2536d","type":"step-start"}}
+
+      {"type":"tool_use","timestamp":1777191236793,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"type":"tool","tool":"todowrite","callID":"call_P5DYVC913kVAUkwe4PybJvnP","state":{"status":"completed","input":{"todos":[{"content":"Run
+      mandatory pre-flight checks for vectl, invar, and static baseline","status":"in_progress","priority":"high"},{"content":"Analyze
+      referenced orchestration files for DEM-016 protocol usage","status":"pending","priority":"high"},{"content":"Remove
+      public registry protocols and update annotations/tests","status":"pending","priority":"high"},{"content":"Run
+      verification and prepare structured evidence","status":"pending","priority":"high"}]},"output":"[\n  {\n    \"content\":
+      \"Run mandatory pre-flight checks for vectl, invar, and static baseline\",\n    \"status\":
+      \"in_progress\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Analyze
+      referenced orchestration files for DEM-016 protocol usage\",\n    \"status\":
+      \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Remove
+      public registry protocols and update annotations/tests\",\n    \"status\": \"pending\",\n    \"priority\":
+      \"high\"\n  },\n  {\n    \"content\": \"Run verification and prepare structured
+      evidence\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  }\n]","metadata":{"todos":[{"content":"Run
+      mandatory pre-flight checks for vectl, invar, and static baseline","status":"in_progress","priority":"high"},{"content":"Analyze
+      referenced orchestration files for DEM-016 protocol usage","status":"pending","priority":"high"},{"content":"Remove
+      public registry protocols and update annotations/tests","status":"pending","priority":"high"},{"content":"Run
+      verification and prepare structured evidence","status":"pending","priority":"high"}],"truncated":false},"title":"4
+      todos","time":{"start":1777191236791,"end":1777191236793}},"metadata":{"openai":{"itemId":"fc_081b09ae0f8446730169edc944279c8191b8e8220c573393fe"}},"id":"prt_dc8da3266001lfPAVAzvpZPyAm","sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","messageID":"msg_dc8da0b58001d6StWY4P1Adsoi"}}
+
+      {"type":"step_finish","timestamp":1777191236881,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"id":"prt_dc8da34ce001w0cFvdxQyUDqEA","reason":"tool-calls","snapshot":"dac2b7658a50a09f3aecb8ca31d2e51df3a2536d","messageID":"msg_dc8da0b58001d6StWY4P1Adsoi","sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","type":"step-finish","tokens":{"total":24057,"input":2875,"output":107,"reasoning":83,"cache":{"write":0,"read":20992}},"cost":0}}
+
+      {"type":"step_start","timestamp":1777191238154,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"id":"prt_dc8da3a09001qs68Ir83B6Ff5h","messageID":"msg_dc8da3557001zvgaHh4IFy84jX","sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","snapshot":"dac2b7658a50a09f3aecb8ca31d2e51df3a2536d","type":"step-start"}}
+
+      {"type":"tool_use","timestamp":1777191240518,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"type":"tool","tool":"invar_invar_guard","callID":"call_mhtpCYAkh57QVRESrIVQD9SY","state":{"status":"completed","input":{"path":".","changed":true,"strict":false,"coverage":false,"contracts_only":false},"output":"{\n  \"status\":
+      \"passed\",\n  \"static\": {\n    \"passed\": true,\n    \"errors\": 0,\n    \"warnings\":
+      0,\n    \"infos\": 0,\n    \"findings\": []\n  },\n  \"summary\": {\n    \"files_checked\":
+      0,\n    \"errors\": 0,\n    \"warnings\": 0,\n    \"infos\": 0\n  },\n  \"verification_level\":
+      \"STANDARD\",\n  \"doctest\": {\n    \"passed\": true,\n    \"output\": \"\"\n  },\n  \"crosshair\":
+      {\n    \"status\": \"skipped\",\n    \"reason\": \"no changed files\"\n  },\n  \"property_tests\":
+      {\n    \"status\": \"skipped\",\n    \"reason\": \"no changed files\"\n  }\n}","metadata":{"truncated":false},"title":"","time":{"start":1777191240181,"end":1777191240517},"attachments":[]},"metadata":{"openai":{"itemId":"fc_0798dceccb896d8f0169edc9480a848191893594ecb90d5498"}},"id":"prt_dc8da41f5001pJKPt1tRD6lBtA","sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","messageID":"msg_dc8da3557001zvgaHh4IFy84jX"}}
+
+      {"type":"tool_use","timestamp":1777191240788,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"type":"tool","tool":"bash","callID":"call_i9g0jEg4J6StPGtIAzSMYODs","state":{"status":"completed","input":{"command":"uv
+      run ruff check src/vectl/orchestration/contracts.py src/vectl/orchestration/config.py
+      src/vectl/orchestration/dispatch_policy.py tests","timeout":120000,"workdir":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-4.dem-016-retire-public-role-and-prompt-registry-protocols","description":"Runs
+      baseline ruff static checks"},"output":"...output truncated...\n\nFull output
+      saved to: /Users/tefx/.local/share/o'
 - id: arch-demolition-wave-5
   name: Architectural Demolition — Wave 5 Give Review Flow a Real Implementation
-  status: locked
+  status: done
   gate: Wave 5 complete when DEM-014 lands atomically on the post-rename DriveDriver
     state, DefaultReviewGate is the real implementation entry point, review invocation
     is wired between terminal execution and authoritative completion, and verification
@@ -88621,7 +88707,7 @@ phases:
   steps:
   - id: arch-demolition-wave-5.dem-014-implement-defaultreviewgate-concretely
     name: DEM-014 implement DefaultReviewGate concretely
-    status: pending
+    status: done
     description: Resolve the first half of DEM-014 by adding a concrete DefaultReviewGate
       in src/vectl/orchestration/review_gate.py that implements evaluate(step_id,
       execution_result, artifact_refs=()) -> ReviewGateResult and owns post-execution
@@ -88632,9 +88718,64 @@ phases:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/orchestration/review_gate.py
     agent: python-senior-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-26T08:25:19.631953+00:00'
+    done_at: '2026-04-26T08:36:19.819094+00:00'
+    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
+      0); stdout={"type":"step_start","timestamp":1777191932488,"sessionID":"ses_2371b4bfcffeD33WUiVY0mTuUT","part":{"id":"prt_dc8e4d246001baqG6Nxfi3v8Vs","messageID":"msg_dc8e4b44d00138NTKFdp8dhxDq","sessionID":"ses_2371b4bfcffeD33WUiVY0mTuUT","snapshot":"990e2d572ea405f9c5b71941bfb7e8536f4cddbb","type":"step-start"}}
+
+      {"type":"tool_use","timestamp":1777191935593,"sessionID":"ses_2371b4bfcffeD33WUiVY0mTuUT","part":{"type":"tool","tool":"read","callID":"call_htRiYKkLft6okojBoF4nXBbJ","state":{"status":"completed","input":{"filePath":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-5.dem-014-implement-defaultreviewgate-concretely/src/vectl/orchestration/review_gate.py","offset":1,"limit":240},"output":"<path>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-5.dem-014-implement-defaultreviewgate-concretely/src/vectl/orchestration/review_gate.py</path>\n<type>file</type>\n<content>\n1:
+      \"\"\"\n2: Bounded post-execution review normalization.\n3: \n4: Authority:
+      docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.5\n5: Authority: docs/RFC-orch-drive.md
+      section 17.1\n6: \n7: This module pins the ReviewGate protocol and ReviewGateResult
+      contract.\n8: Contract-only: signatures, result types, and docstrings. No review
+      logic\n9: beyond placeholders.\n10: \"\"\"\n11: \n12: from __future__ import
+      annotations\n13: \n14: from dataclasses import dataclass\n15: from typing import
+      Protocol\n16: \n17: from vectl.orchestration.contracts import (\n18:     ExecutionResult,\n19:     PlannerRequest,\n20:     ReviewOutcome,\n21:
+      )\n22: \n23: \n24: @dataclass(frozen=True)\n25: class ReviewGateResult:\n26:     \"\"\"Bounded
+      output from the post-execution review gate.\n27: \n28:     Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md
+      section 3.10\n29:     Authority: docs/RFC-orch-drive.md section 17.1\n30: \n31:     The
+      review gate normalizes post-execution output into one of four\n32:     bounded
+      outcomes. Non-pass outcomes drive barrier transitions.\n33: \n34:     Continuation
+      rules (RFC-orch-drive.md section 17.1.1):\n35:         - ``pass``: continue
+      through reconcile and completion gates\n36:         - ``needs_fix``: enter barrier
+      with reason ``review_failed``;\n37:           step remains incomplete; after
+      barrier resolution, control may\n38:           re-dispatch the same step as
+      a fresh child run\n39:         - ``needs_replan``: enter barrier with reason
+      ``review_failed``\n40:           and transition to planner-owned replanning\n41:         -
+      ``operator_required``: transition to ``blocked_operator``\n42:           without
+      further automatic dispatch\n43: \n44:     ``needs_fix`` is not a terminal failure
+      and not an implicit plan\n45:     mutation. It is a bounded review failure that
+      preserves the current\n46:     step id and requires either resolver-guided local
+      unblocking or\n47:     operator action before the step may run again.\n48: \n49:     Attributes:\n50:         status:
+      One of ``pass``, ``needs_fix``, ``needs_replan``,\n51:             ``operator_required``.\n52:         summary:
+      Human-readable explanation of the review outcome.\n53:         evidence_refs:
+      Artifact references supporting the review outcome.\n54:         planner_request:
+      Optional planner mutation request when\n55:             ``status=''needs_replan''``.
+      When present alongside\n56:             ``needs_replan``, drive policy must
+      transition to\n57:             planner-owned replanning.\n58:     \"\"\"\n59:
+      \n60:     status: ReviewOutcome\n61:     summary: str\n62:     evidence_refs:
+      tuple[str, ...] = ()\n63:     planner_request: PlannerRequest | None = None\n64:
+      \n65: \n66: class ReviewGate(Protocol):\n67:     \"\"\"Bounded post-execution
+      review normalization contract.\n68: \n69:     Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md
+      section 4.5\n70: \n71:     The review gate is invoked after terminal execution
+      output exists\n72:     and before authoritative step completion. It reduces
+      post-execution\n73:     review into one bounded ``ReviewGateResult``.\n74: \n75:     Owns:\n76:         -
+      parsing or validating machine-readable review outputs\n77:         - reducing
+      post-execution review into one bounded result\n78: \n79:     Does NOT own:\n80:         -
+      frontier scheduling\n81:         - plan mutation\n82:         - resolver reasoning\n83:         -
+      runtime mechanics\n84: \n85:     Error contract:\n86:         - malformed review
+      output must become ``needs_fix`` or\n87:           ``operator_required``; it
+      must not silently pass\n88:         - the review gate must not directly mutate
+      authoritative plan state\n89:     \"\"\"\n90: \n91:     def evaluate(\n92:         self,\n93:         step_id:
+      str,\n94:         execution_result: ExecutionResult,\n95:         artifact_refs:
+      tuple[str, ...] = (),\n96:     ) -> ReviewGateResult:\n97:         \"\"\"Evaluate
+      post-execution review for a completed child run.\n98: \n99:         Args:\n100:             step_id:
+      Step identifier for the completed execution.\n101:             execution_result:
+      Terminal execution '
   - id: arch-demolition-wave-5.dem-014-wire-review-gate-into-drivedriver-and-remove-protocol-only-seam
     name: DEM-014 wire review gate into DriveDriver and remove protocol-only seam
-    status: pending
+    status: done
     description: Complete DEM-014 atomically by wiring DefaultReviewGate into DriveDriver.__init__
       as the default review_gate, adding a named post-execution review helper in the
       driver, routing terminal execution facts through that helper before authoritative
@@ -88649,9 +88790,52 @@ phases:
     depends_on:
     - arch-demolition-wave-5.dem-014-implement-defaultreviewgate-concretely
     agent: python-senior-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-26T08:36:24.097039+00:00'
+    done_at: '2026-04-26T08:51:08.903544+00:00'
+    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
+      0); stdout={"type":"step_start","timestamp":1777192597866,"sessionID":"ses_237112512ffesGD7Os6sEnbp3E","part":{"id":"prt_dc8eef969001rM1jm72acoCdKm","messageID":"msg_dc8eedb36001UZeQJ0yX5m6NnH","sessionID":"ses_237112512ffesGD7Os6sEnbp3E","snapshot":"7c259ada20c717083468bfa32cd314c813566964","type":"step-start"}}
+
+      {"type":"tool_use","timestamp":1777192602908,"sessionID":"ses_237112512ffesGD7Os6sEnbp3E","part":{"type":"tool","tool":"todowrite","callID":"call_IOXRgQ4s5c8kJ1is8PHDFNQa","state":{"status":"completed","input":{"todos":[{"content":"Inspect
+      DEM-014 references and current driver/review gate implementation","status":"in_progress","priority":"high"},{"content":"Update
+      tests to cover concrete DefaultReviewGate path","status":"pending","priority":"high"},{"content":"Implement
+      driver wiring/helper and remove protocol-only seam/alias if present","status":"pending","priority":"high"},{"content":"Run
+      required verification and collect evidence","status":"pending","priority":"high"}]},"output":"[\n  {\n    \"content\":
+      \"Inspect DEM-014 references and current driver/review gate implementation\",\n    \"status\":
+      \"in_progress\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Update
+      tests to cover concrete DefaultReviewGate path\",\n    \"status\": \"pending\",\n    \"priority\":
+      \"high\"\n  },\n  {\n    \"content\": \"Implement driver wiring/helper and remove
+      protocol-only seam/alias if present\",\n    \"status\": \"pending\",\n    \"priority\":
+      \"high\"\n  },\n  {\n    \"content\": \"Run required verification and collect
+      evidence\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  }\n]","metadata":{"todos":[{"content":"Inspect
+      DEM-014 references and current driver/review gate implementation","status":"in_progress","priority":"high"},{"content":"Update
+      tests to cover concrete DefaultReviewGate path","status":"pending","priority":"high"},{"content":"Implement
+      driver wiring/helper and remove protocol-only seam/alias if present","status":"pending","priority":"high"},{"content":"Run
+      required verification and collect evidence","status":"pending","priority":"high"}],"truncated":false},"title":"4
+      todos","time":{"start":1777192602904,"end":1777192602907}},"metadata":{"openai":{"itemId":"fc_03b3770f866b064e0169edce9a5ad48191b667f6ecf6861fdd"}},"id":"prt_dc8ef0b31001hunbt5oXvtXbnw","sessionID":"ses_237112512ffesGD7Os6sEnbp3E","messageID":"msg_dc8eedb36001UZeQJ0yX5m6NnH"}}
+
+      {"type":"step_finish","timestamp":1777192602999,"sessionID":"ses_237112512ffesGD7Os6sEnbp3E","part":{"id":"prt_dc8ef0d2a0011K1WzS4xL7xXO6","reason":"tool-calls","snapshot":"7c259ada20c717083468bfa32cd314c813566964","messageID":"msg_dc8eedb36001UZeQJ0yX5m6NnH","sessionID":"ses_237112512ffesGD7Os6sEnbp3E","type":"step-finish","tokens":{"total":24330,"input":21604,"output":107,"reasoning":59,"cache":{"write":0,"read":2560}},"cost":0}}
+
+      {"type":"step_start","timestamp":1777192604472,"sessionID":"ses_237112512ffesGD7Os6sEnbp3E","part":{"id":"prt_dc8ef1337001J9oeQo29h77q6b","messageID":"msg_dc8ef0db4001zBykZoOuA9NOcs","sessionID":"ses_237112512ffesGD7Os6sEnbp3E","snapshot":"7c259ada20c717083468bfa32cd314c813566964","type":"step-start"}}
+
+      {"type":"tool_use","timestamp":1777192608111,"sessionID":"ses_237112512ffesGD7Os6sEnbp3E","part":{"type":"tool","tool":"read","callID":"call_2aZLO9Gq9ruj6aKV9FmSnTQs","state":{"status":"completed","input":{"filePath":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-5.dem-014-wire-review-gate-into-drivedriver-and-remove-protocol-only-seam/src/vectl/orchestration/review_gate.py","offset":1,"limit":240},"output":"<path>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-5.dem-014-wire-review-gate-into-drivedriver-and-remove-protocol-only-seam/src/vectl/orchestration/review_gate.py</path>\n<type>file</type>\n<content>\n1:
+      \"\"\"\n2: Bounded post-execution review normalization.\n3: \n4: Authority:
+      docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.5\n5: Authority: docs/RFC-orch-drive.md
+      section 17.1\n6: Authority: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+      Wave 5\n7: \n8: This module pins the review result contract and provides the
+      concrete default\n9: post-execution review gate used to normalize machine-readable
+      review output\n10: without silently passing malformed results.\n11: \"\"\"\n12:
+      \n13: from __future__ import annotations\n14: \n15: import json\n16: from dataclasses
+      import dataclass\n17: from typing import Protocol, TypeAlias, cast\n18: \n19:
+      import yaml\n20: \n21: from vectl.orchestration.contracts import (\n22:     ExecutionResult,\n23:     PlannerRequest,\n24:     ReviewOutcome,\n25:
+      )\n26: \n27: _ParsedReviewPayload: TypeAlias = dict[str, object]\n28: _VALID_REVIEW_OUTCOMES:
+      frozenset[str] = frozenset(\n29:     {\"pass\", \"needs_fix\", \"needs_replan\",
+      \"operator_required\"}\n30: )\n31: \n32: \n33: @dataclass(frozen=True)\n34:
+      class ReviewGateResult:\n35:     \"\"\"Bounded output from the post-execution
+      review gate.\n36: \n37:     Authority: docs/ORCHESTRATION-PLANE-'
 - id: arch-demolition-wave-6
   name: Architectural Demolition — Wave 6 Simplify Duplicate-Step-ID Domain Model
-  status: locked
+  status: done
   gate: Wave 6 complete when DEM-017 reduces duplicate-step-id nested leaf wrappers
     by at least three without destabilizing CLI/MCP structured outputs, and verification
     commands pass.
@@ -88660,7 +88844,7 @@ phases:
   steps:
   - id: arch-demolition-wave-6.dem-017-collapse-duplicate-step-id-leaf-wrappers-without-breaking-outputs
     name: DEM-017 collapse duplicate-step-id leaf wrappers without breaking outputs
-    status: pending
+    status: done
     description: Resolve DEM-017 by preserving top-level duplicate-step-id report/result
       objects while removing or fully inlining tiny nested wrappers such as DuplicateStepIdPhaseRef,
       DuplicateStepIdResolutionPath, and DuplicateStepIdRetryEvidence; prefer shared
@@ -88674,9 +88858,29 @@ phases:
     - src/vectl/cli.py
     - src/vectl/mcp_server.py
     agent: python-refactor-master-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-26T08:51:12.991002+00:00'
+    done_at: '2026-04-26T08:52:22.521241+00:00'
+    evidence: "[reconcile_disposition=noop] OpenCode completed successfully (exit\
+      \ 0); stdout=status: \"FAIL\"\nevidence: |\n  PRE-FLIGHT | Vectl: Active | Invar:\
+      \ PENDING | Static: BLOCKED\n  Target: src/vectl/models.py, src/vectl/cli.py,\
+      \ src/vectl/mcp_server.py | Status: BLOCKED on Static\n\n  CHECKPOINT | Phase:\
+      \ PRE-FLIGHT | Status: blocked | Next: user decision | Static: fail | ROI: planned/pending\n\
+      \n  Vectl:\n  - Plan is active.\n  - Assigned phase arch-demolition-wave-6 is\
+      \ in_progress.\n  - No execution performed because pre-flight failed.\n\n  Invar:\n\
+      \  - Started full-scan guard.\n  - run_id: grd_a59bc6fb8a8f4efca4fd0f64\n  -\
+      \ Status still running/deferred during pre-flight polling.\n\n  Static verification:\n\
+      \  - Command:\n    rtk ruff check src/vectl/models.py src/vectl/cli.py src/vectl/mcp_server.py\
+      \ && python -m py_compile src/vectl/models.py src/vectl/cli.py src/vectl/mcp_server.py\n\
+      \  - Result: failed before any refactoring.\n  - Ruff reported 7 existing issues:\n\
+      \    - E501 x6\n    - B008 x1\n    - Files:\n      - src/vectl/mcp_server.py:\
+      \ 5 issues\n      - src/vectl/cli.py: 1 issue\n      - src/vectl/models.py:\
+      \ 1 issue\n\n  No files were modified.\nerror: \"Pre-flight static verification\
+      \ failed before refactoring; invar full scan also remained running/deferred,\
+      \ so execution is blocked by protocol.\""
 - id: arch-demolition-wave-7
   name: Architectural Demolition — Wave 7 Re-cut Large Files by Real Behavior Only
-  status: locked
+  status: done
   gate: Wave 7 complete when DEM-018 and DEM-019 land using only the approved module
     split map, file-size ceilings are met, config/contracts ownership docstrings are
     frozen, repo-wide readiness commands pass, and any deferred expected-red is explicitly
@@ -88686,7 +88890,7 @@ phases:
   steps:
   - id: arch-demolition-wave-7.dem-018-split-cli-core-and-mcp-surfaces-by-real-behavior
     name: DEM-018 split CLI, core, and MCP surfaces by real behavior
-    status: pending
+    status: done
     description: 'Resolve the first shell/core/MCP part of DEM-018 by re-cutting cli.py,
       core.py, and mcp_server.py only into the approved concrete behavior modules:
       cli_agents_md.py, cli_plan.py, cli_render.py, cli_orchestration.py, core_plan_queries.py,
@@ -88700,9 +88904,22 @@ phases:
     - src/vectl/core.py
     - src/vectl/mcp_server.py
     agent: python-refactor-master-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-26T08:52:26.784020+00:00'
+    done_at: '2026-04-26T09:24:06.875163+00:00'
+    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
+      0); stdout=PRE-FLIGHT | Vectl: Active (assigned step already claimed) | Invar:
+      OK | Static: OK
+
+      Target: src/vectl/{cli.py,core.py,mcp_server.py} split into approved behavior
+      modules | Status: READY
+
+
+      CHECKPOINT | Phase: PRE-FLIGHT | Status: done | Next: ANALYSIS | Static: pass
+      | ROI: planned/pending'
   - id: arch-demolition-wave-7.dem-018-split-orchestration-app-run-store-and-driver-by-real-behavior
     name: DEM-018 split orchestration app, run store, and driver by real behavior
-    status: pending
+    status: done
     description: Resolve the orchestration part of DEM-018 by re-cutting orch_app.py
       into orch_app_wiring.py, orch_app_read_surfaces.py, and orch_app_drive_ops.py;
       splitting run_store.py into run_store_persistence.py and run_store_queries.py;
@@ -88717,10 +88934,73 @@ phases:
     - src/vectl/orchestration/driver.py
     - tests/
     agent: python-refactor-master-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-26T10:26:22.031390+00:00'
+    done_at: '2026-04-26T10:27:04.389353+00:00'
+    evidence: '[reconcile_disposition=noop] OpenCode completed successfully (exit
+      0); stdout={"type":"step_start","timestamp":1777199190121,"sessionID":"ses_236ac7771ffeYVsJVuOrQfG4dN","part":{"id":"prt_dc9539067001o3x0uQu6CZuPao","messageID":"msg_dc95388ce001ptQzPesaAopwKk","sessionID":"ses_236ac7771ffeYVsJVuOrQfG4dN","snapshot":"33db4f3685df9f5de36bfa3a0e185c52dd050d19","type":"step-start"}}
+
+      {"type":"tool_use","timestamp":1777199195665,"sessionID":"ses_236ac7771ffeYVsJVuOrQfG4dN","part":{"type":"tool","tool":"tela_serena_initial_instructions","callID":"call_kjl5X1465ff7QnP5bj2bGSDd","state":{"status":"completed","input":{},"output":"You
+      have access to semantic coding tools upon which you rely heavily for all your
+      work.\nYou operate in a resource-efficient and intelligent manner, always keeping
+      in mind to not read or generate\ncontent that is not needed for the task at
+      hand.\n\nSome tasks may require you to understand the architecture of large
+      parts of the codebase, while for others,\nit may be enough to read a small set
+      of symbols or a single file.\nYou avoid reading entire files unless it is absolutely
+      necessary, instead relying on intelligent step-by-step \nacquisition of information.
+      Once you have read a full file, it does not make\nsense to analyse it with the
+      symbolic read tools; you already have the information.\n\nYou can achieve intelligent
+      reading of code by using the symbolic tools for getting an overview of symbols
+      and\nthe relations between them, and then only reading the bodies of symbols
+      that are necessary to complete the task at hand. \nYou can use the standard
+      tools like list_dir, find_file and search_for_pattern if you need to.\nWhere
+      appropriate, you pass the `relative_path` parameter to restrict the search to
+      a specific file or directory.\n\nIf you are unsure about a symbol''s name or
+      location (to the extent that substring_matching for the symbol name is not enough),
+      you can use the `search_for_pattern` tool, which allows fast\nand flexible search
+      for patterns in the codebase. In this way, you can first find candidates for
+      symbols or files,\nand then proceed with the symbolic tools.\n\n\n\nSymbols
+      are identified by their `name_path` and `relative_path` (see the description
+      of the `find_symbol` tool).\nYou can get information about the symbols in a
+      file by using the `get_symbols_overview` tool or use the `find_symbol` to search.
+      \nYou only read the bodies of symbols when you need to (e.g. if you want to
+      fully understand or edit it).\nFor example, if you are working with Python code
+      and already know that you need to read the body of the constructor of the class
+      Foo, you can directly\nuse `find_symbol` with name path pattern `Foo/__init__`
+      and `include_body=True`. If you don''t know yet which methods in `Foo` you need
+      to read or edit,\nyou can use `find_symbol` with name path pattern `Foo`, `include_body=False`
+      and `depth=1` to get all (top-level) methods of `Foo` before proceeding\nto
+      read the desired methods with `include_body=True`.\nYou can understand relationships
+      between symbols by using the `find_referencing_symbols` tool.\n\n\nYou generally
+      have access to memories and it may be useful for you to read them.\nYou infer
+      whether memories are relevant based on their names.\n\n\nLine numbers returned
+      by Serena''s tools are 0-based!\n\nThe context and modes of operation are described
+      below. These determine how to interact with your user\nand which kinds of interactions
+      are expected of you.\n\nContext description:\nYou are running in an IDE assistant
+      context where file operations, basic (line-based) edits and reads, \nand shell
+      commands are handled by your own, internal tools.\n\nIf Serena''s tools can
+      be used to achieve your task, you should prioritize them.\nIn particular, it
+      is important that you avoid reading entire source code files unless it is strictly
+      necessary!\nInstead, for exploring and reading code in a token-efficient manner,
+      use Serena''s overview and symbolic search tools.\nFor non-code files or for
+      reads where you don''t know the symbol''s name path, you can use the pattern
+      search tool.\n\nModes descriptions:\n\nUse symbolic editing tools whenever possible
+      for precise code modifications.\n\n\n\n\nyou have two main approaches for editing
+      code: (a) editing at the symbol level and (b) file-based editing.\nThe symbol-based
+      approach is appropriate if you need to adjust an entire symbol, e.g. a method,
+      a class, a function, etc.\nIt is not appropriate if you need to adjust just
+      a few lines of code within a larger symbol.\n\n**Symbolic editing**\nUse symbolic
+      retrieval tools to identify the symbols you need to edit.\nIf you need to replace
+      the definition of a symbol, use the `replace_symbol_body` tool.\nIf you want
+      to add some new code at the end of the file, use the `insert_after_symbol` tool
+      with the last top-level symbol in the file. \nSimilarly, you can use `insert_before_symbol`
+      with the first top-level symbol in the file to insert code at the beginning
+      of a file.\nYou can understand relationships between symbols by using the `find_referencing_symbols`
+      tool. If not explicitl'
   - id: arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate
     name: DEM-019 freeze config/contracts ownership and close with repo-wide readiness
       gate
-    status: pending
+    status: done
     description: 'Resolve DEM-019 and finish Wave 7 by adding explicit owns: sections
       to the module docstrings in src/vectl/orchestration/config.py and contracts.py
       with no overlapping model ownership, enforcing the Wave 7 file-size ceilings,
@@ -88745,3 +89025,45 @@ phases:
     - arch-demolition-wave-7.dem-018-split-cli-core-and-mcp-surfaces-by-real-behavior
     - arch-demolition-wave-7.dem-018-split-orchestration-app-run-store-and-driver-by-real-behavior
     agent: python-refactor-master-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-26T10:27:08.192645+00:00'
+    done_at: '2026-04-26T10:29:04.631234+00:00'
+    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
+      0); stdout={"type":"step_start","timestamp":1777199235476,"sessionID":"ses_236abc73effeDm12dc87H8XVOq","part":{"id":"prt_dc9544193001adENUM1iK1iKLQ","messageID":"msg_dc95438fd001DSKNRB8Yidwb5Q","sessionID":"ses_236abc73effeDm12dc87H8XVOq","snapshot":"33db4f3685df9f5de36bfa3a0e185c52dd050d19","type":"step-start"}}
+
+      {"type":"tool_use","timestamp":1777199240286,"sessionID":"ses_236abc73effeDm12dc87H8XVOq","part":{"type":"tool","tool":"invar_invar_guard","callID":"call_j7Zx5kuybaFc0WNOYkOEs1rg","state":{"status":"completed","input":{"path":".","changed":true,"strict":false,"coverage":false,"contracts_only":false},"output":"{\n  \"status\":
+      \"passed\",\n  \"static\": {\n    \"passed\": true,\n    \"errors\": 0,\n    \"warnings\":
+      0,\n    \"infos\": 0,\n    \"findings\": []\n  },\n  \"summary\": {\n    \"files_checked\":
+      0,\n    \"errors\": 0,\n    \"warnings\": 0,\n    \"infos\": 0\n  },\n  \"verification_level\":
+      \"STANDARD\",\n  \"doctest\": {\n    \"passed\": true,\n    \"output\": \"\"\n  },\n  \"crosshair\":
+      {\n    \"status\": \"skipped\",\n    \"reason\": \"no changed files\"\n  },\n  \"property_tests\":
+      {\n    \"status\": \"skipped\",\n    \"reason\": \"no changed files\"\n  }\n}","metadata":{"truncated":false},"title":"","time":{"start":1777199239773,"end":1777199240283},"attachments":[]},"metadata":{"openai":{"itemId":"fc_02e7f800b2686e280169ede887b77881918939115ce0d4e073"}},"id":"prt_dc9545255001buHoVe0ttvItfy","sessionID":"ses_236abc73effeDm12dc87H8XVOq","messageID":"msg_dc95438fd001DSKNRB8Yidwb5Q"}}
+
+      {"type":"tool_use","timestamp":1777199240670,"sessionID":"ses_236abc73effeDm12dc87H8XVOq","part":{"type":"tool","tool":"bash","callID":"call_HwAcSVlMH6uSKZuakif3xUOC","state":{"status":"completed","input":{"command":"uv
+      run ruff check src/vectl/orchestration/config.py src/vectl/orchestration/contracts.py
+      && uv run python -m py_compile src/vectl/orchestration/config.py src/vectl/orchestration/contracts.py","timeout":120000,"workdir":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate","description":"Runs
+      lint and compile checks"},"output":"warning: `VIRTUAL_ENV=/Users/tefx/Projects/vectl/.venv`
+      does not match the project environment path `.venv` and will be ignored; use
+      `--active` to target the active environment instead\nUsing CPython 3.12.12\nCreating
+      virtual environment at: .venv\n   Building vectl @ file:///Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate\n      Built
+      vectl @ file:///Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate\nInstalled
+      93 packages in 142ms\nAll checks passed!\nwarning: `VIRTUAL_ENV=/Users/tefx/Projects/vectl/.venv`
+      does not match the project environment path `.venv` and will be ignored; use
+      `--active` to target the active environment instead\n","metadata":{"output":"warning:
+      `VIRTUAL_ENV=/Users/tefx/Projects/vectl/.venv` does not match the project environment
+      path `.venv` and will be ignored; use `--active` to target the active environment
+      instead\nUsing CPython 3.12.12\nCreating virtual environment at: .venv\n   Building
+      vectl @ file:///Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate\n      Built
+      vectl @ file:///Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate\nInstalled
+      93 packages in 142ms\nAll checks passed!\nwarning: `VIRTUAL_ENV=/Users/tefx/Projects/vectl/.venv`
+      does not match the project environment path `.venv` and will be ignored; use
+      `--active` to target the active environment instead\n","exit":0,"description":"Runs
+      lint and compile checks","truncated":false},"title":"Runs lint and compile checks","time":{"start":1777199240597,"end":1777199240670}},"metadata":{"openai":{"itemId":"fc_02e7f800b2686e280169ede887b7848191bc9e576068165d93"}},"id":"prt_dc954525e001LcAU85D1cE3c5h","sessionID":"ses_236abc73effeDm12dc87H8XVOq","messageID":"msg_dc95438fd001DSKNRB8Yidwb5Q"}}
+
+      {"type":"tool_use","timestamp":1777199241182,"sessionID":"ses_236abc73effeDm12dc87H8XVOq","part":{"type":"tool","tool":"vectl_vectl_status","callID":"call_x38IoyV0YYhITSgnl85BEub9","state":{"status":"completed","input":{"agent":"python-refactor-master-tacit"},"output":"##
+      Plan: vectl\n\n| Status | Phase | Name | Progress | Depends On |\n|--------|-------|------|----------|------------|\n|
+      ✓ done | core | Core Logic | 5/5 | — |\n| ✓ done | cli_read | CLI Read Commands
+      | 4/4 | core |\n| ✓ done | cli_write | CLI Mutation Commands | 4/4 | cli_read
+      |\n| ✓ done | cli_architect | CLI Architect Commands | 5/5 | cli_write |\n|
+      ✓ done | review | Review & Gate Commands | 2/2 | cli_write |\n| ✓ done | mcp
+      | MCP Server | 1/1 | cli_architect, co'

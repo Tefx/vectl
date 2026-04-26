@@ -498,6 +498,8 @@ class TestOpenCodeRunnerLaunch:
         assert call_args[1]["stdout"] == subprocess.PIPE
         assert call_args[1]["stderr"] == subprocess.PIPE
         assert call_args[1]["text"] is True
+        assert call_args[1]["encoding"] == "utf-8"
+        assert call_args[1]["errors"] == "replace"
 
     @patch("vectl.orchestration.runners.subprocess.Popen")
     def test_launch_raises_on_oserror(self, mock_popen: MagicMock) -> None:
@@ -763,6 +765,81 @@ class TestOpenCodeRunnerPoll:
             poll_result.output_summary
         )
         assert "sessionID" not in poll_result.output_summary
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_prefers_final_opencode_text_event(
+        self, mock_popen: MagicMock
+    ) -> None:
+        """poll() keeps final answer text instead of earlier progress text."""
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        progress_event = {
+            "type": "text",
+            "part": {"type": "text", "text": "I will inspect the case first."},
+        }
+        final_event = {
+            "type": "text",
+            "part": {
+                "type": "text",
+                "text": '{"status":"unblocked","summary":"done"}',
+            },
+        }
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = "\n".join(
+            [json.dumps(progress_event), json.dumps(final_event)]
+        )
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        assert poll_result.status == "success"
+        assert 'stdout={"status":"unblocked","summary":"done"}' in (
+            poll_result.output_summary
+        )
+        assert "I will inspect" not in poll_result.output_summary
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_extracts_report_from_long_opencode_event_stream(
+        self, mock_popen: MagicMock
+    ) -> None:
+        """poll() finds report JSON even after large tool-output events."""
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        large_tool_event = {
+            "type": "tool_use",
+            "part": {
+                "type": "tool",
+                "state": {"output": "x" * 6000},
+            },
+        }
+        final_event = {
+            "type": "text",
+            "part": {
+                "type": "text",
+                "text": '{"status":"unblocked","summary":"after tools"}',
+            },
+        }
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = "\n".join(
+            [json.dumps(large_tool_event), json.dumps(final_event)]
+        )
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        assert poll_result.status == "success"
+        assert 'stdout={"status":"unblocked","summary":"after tools"}' in (
+            poll_result.output_summary
+        )
+        assert "x" * 100 not in poll_result.output_summary
 
     @patch("vectl.orchestration.runners.subprocess.Popen")
     def test_poll_returns_fail_on_nonzero_exit(self, mock_popen: MagicMock) -> None:

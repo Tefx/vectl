@@ -28,6 +28,19 @@ _logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
+class ClaimStepMetadata:
+    """Lifecycle-owned metadata for a successfully claimed step."""
+
+    step_id: str
+    step_name: str
+    phase_id: str
+    phase_name: str
+    claimed_by: str
+    suggested_agent: str | None
+    affinity_override: bool
+
+
+@dataclass(frozen=True)
 class AffinityWarningMetadata:
     """Lifecycle-owned affinity warning details for claim consumers.
 
@@ -129,6 +142,56 @@ class ClaimConflictError(PlanError):
             f"Step '{step_id}' is already claimed on branch '{branch}' "
             f"by '{claimant}' (claimed at {claimed_at})"
         )
+
+
+def claim_step_metadata(
+    *, phase_id: str, phase_name: str, step: Step, claimed_by: str
+) -> ClaimStepMetadata:
+    """Build lifecycle-owned metadata for transport surfaces."""
+
+    return ClaimStepMetadata(
+        step_id=step.id,
+        step_name=step.name,
+        phase_id=phase_id,
+        phase_name=phase_name,
+        claimed_by=claimed_by,
+        suggested_agent=step.agent,
+        affinity_override=step.affinity_override,
+    )
+
+
+def claim_conflict_metadata(error: ClaimConflictError) -> ClaimConflictMetadata:
+    """Build lifecycle-owned conflict metadata from a claim conflict error."""
+
+    return ClaimConflictMetadata(
+        step_id=error.step_id,
+        branch=error.branch,
+        claimant=error.claimant,
+        claimed_at=error.claimed_at,
+    )
+
+
+def claim_affinity_metadata(
+    *, result: ClaimResult, step: Step, claiming_agent: str
+) -> tuple[AffinityWarningMetadata | None, AffinityOverrideMetadata | None]:
+    """Build lifecycle-owned affinity metadata for a claim result."""
+
+    if result.warning_message is None:
+        return None, None
+    if result.affinity_override:
+        return None, AffinityOverrideMetadata(
+            overridden_agent=step.agent or "",
+            override_by=claiming_agent,
+            message=result.warning_message,
+        )
+    if result.affinity_warning:
+        return AffinityWarningMetadata(
+            step_agent=step.agent or "",
+            claiming_agent=claiming_agent,
+            affinity="suggested",
+            message=result.warning_message,
+        ), None
+    return None, None
 
 
 def get_claimed_steps(plan: Plan, agent: str | None = None) -> list[tuple[str, Step]]:

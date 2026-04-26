@@ -88018,7 +88018,7 @@ phases:
       - uv run pytest tests/ -x --tb=short -> 2914 passed, 40 skipped in 185.95s'
 - id: arch-demolition-wave-1
   name: Architectural Demolition — Wave 1 Deduplicate Direct Copies
-  status: done
+  status: in_progress
   gate: Wave 1 complete when DEM-001..DEM-004 are resolved, shared ownership is canonicalized
     in agents_md.py / plan_helpers.py / duplicate_step_id_format.py / lifecycle.py,
     import graph stays acyclic, and verification commands pass.
@@ -88137,7 +88137,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-1.dem-004-keep-claim-metadata-lifecycle-owned
     name: DEM-004 keep claim metadata lifecycle-owned
-    status: done
+    status: rejected
     description: Resolve DEM-004 by keeping shared claim/affinity/conflict metadata
       lifecycle-owned in src/vectl/lifecycle.py and making mcp_server.py consume that
       domain metadata via a thin transport envelope instead of redefining parallel
@@ -88151,48 +88151,13 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T03:11:08.524914+00:00'
     done_at: '2026-04-26T03:23:17.859180+00:00'
-    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777173076119,"sessionID":"ses_2383aee9effe639TSEzzDZiIaQ","part":{"id":"prt_dc7c51896001s6BlvYwNtU0WlO","messageID":"msg_dc7c5119c0015UJRop1CzWGCwc","sessionID":"ses_2383aee9effe639TSEzzDZiIaQ","snapshot":"2a41bfaa6fd8c4c3c022328c98d89cf3f1386e4d","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777173080256,"sessionID":"ses_2383aee9effe639TSEzzDZiIaQ","part":{"type":"tool","tool":"todowrite","callID":"call_VdL6Ijb2NxkSdAyrsbvQqU4K","state":{"status":"completed","input":{"todos":[{"content":"Read
-      referenced remediation plan and lifecycle/MCP code for DEM-004 scope","status":"in_progress","priority":"high"},{"content":"Modify
-      MCP server to consume lifecycle-owned metadata models","status":"pending","priority":"high"},{"content":"Run
-      required pytest verification and capture output","status":"pending","priority":"high"},{"content":"Return
-      YAML evidence with files changed, verification, and NOT Done","status":"pending","priority":"high"}]},"output":"[\n  {\n    \"content\":
-      \"Read referenced remediation plan and lifecycle/MCP code for DEM-004 scope\",\n    \"status\":
-      \"in_progress\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Modify
-      MCP server to consume lifecycle-owned metadata models\",\n    \"status\": \"pending\",\n    \"priority\":
-      \"high\"\n  },\n  {\n    \"content\": \"Run required pytest verification and
-      capture output\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\":
-      \"Return YAML evidence with files changed, verification, and NOT Done\",\n    \"status\":
-      \"pending\",\n    \"priority\": \"high\"\n  }\n]","metadata":{"todos":[{"content":"Read
-      referenced remediation plan and lifecycle/MCP code for DEM-004 scope","status":"in_progress","priority":"high"},{"content":"Modify
-      MCP server to consume lifecycle-owned metadata models","status":"pending","priority":"high"},{"content":"Run
-      required pytest verification and capture output","status":"pending","priority":"high"},{"content":"Return
-      YAML evidence with files changed, verification, and NOT Done","status":"pending","priority":"high"}],"truncated":false},"title":"4
-      todos","time":{"start":1777173080253,"end":1777173080255}},"metadata":{"openai":{"itemId":"fc_085d5293406810ce0169ed8257ee788191bc537096f4713bcd"}},"id":"prt_dc7c52798001V8fI1ey1Ig0Gqr","sessionID":"ses_2383aee9effe639TSEzzDZiIaQ","messageID":"msg_dc7c5119c0015UJRop1CzWGCwc"}}
-
-      {"type":"step_finish","timestamp":1777173080349,"sessionID":"ses_2383aee9effe639TSEzzDZiIaQ","part":{"id":"prt_dc7c528d7001pA6cp44ArUPAjw","reason":"tool-calls","snapshot":"2a41bfaa6fd8c4c3c022328c98d89cf3f1386e4d","messageID":"msg_dc7c5119c0015UJRop1CzWGCwc","sessionID":"ses_2383aee9effe639TSEzzDZiIaQ","type":"step-finish","tokens":{"total":24270,"input":19479,"output":109,"reasoning":74,"cache":{"write":0,"read":4608}},"cost":0}}
-
-      {"type":"step_start","timestamp":1777173081487,"sessionID":"ses_2383aee9effe639TSEzzDZiIaQ","part":{"id":"prt_dc7c52d8c001LQxRM6pu1FuAUT","messageID":"msg_dc7c52954001TSOjX9DqXGJ9ho","sessionID":"ses_2383aee9effe639TSEzzDZiIaQ","snapshot":"2a41bfaa6fd8c4c3c022328c98d89cf3f1386e4d","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777173083195,"sessionID":"ses_2383aee9effe639TSEzzDZiIaQ","part":{"type":"tool","tool":"read","callID":"call_4AvMg9oPRpyAjnBE8LY1sIa3","state":{"status":"completed","input":{"filePath":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-1.dem-004-keep-claim-metadata-lifecycle-owned/docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md","offset":1,"limit":220},"output":"<path>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-1.dem-004-keep-claim-metadata-lifecycle-owned/docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md</path>\n<type>file</type>\n<content>\n1:
-      # Architectural demolition remediation plan\n2: \n3: ## Status\n4: \n5: - Status:
-      proposed remediation plan\n6: - Scope: repository-wide architectural simplification
-      and de-duplication\n7: - Primary goal: remove duplicated logic, false abstraction
-      seams, dead public surfaces, and contract theater without collapsing valid authority
-      boundaries\n8: \n9: ## Why this document exists\n10: \n11: Three independent
-      reviews (`duplicate-abstraction-auditor-tacit`, `architectural-demolitionist-tacit`,
-      and direct repository inspection) converged on the same core problem: the repo
-      pays high cognitive cost for duplicated logic and speculative abstraction while
-      several real authority surfaces remain valid and should be preserved.\n12: \n13:
-      This document is the authoritative remediation plan for fixing **all discovered
-      issues**, not just the overlaps between reviewers.\n14: \n15: ## Remediation
-      objectives\n16: \n17: 1. Ensure each concept has one authoritative implementation.\n18:
-      2. Remove pure pass-through wrappers and single-buyer protocols that do not
-      buy real substitution value.\n19: 3. Delete dead exported surfaces.\n20: 4.
-      Preserve valid boundaries:\n21:    - `core` vs `cli`/`mcp_server`\n22:    -
-      `run'
+    rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
+      stored in evidence; implementation unchanged'
+    rejection_history:
+    - reason: 'historical evidence cleanup: raw OpenCode JSON event stream stored
+        in evidence; implementation unchanged'
+      timestamp: '2026-04-26T12:05:45.609764+00:00'
+      reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-2
   name: Architectural Demolition — Wave 2 Delete Dead Exported Surfaces
   status: done

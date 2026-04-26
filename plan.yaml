@@ -88240,7 +88240,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-3
   name: Architectural Demolition — Wave 3 Flatten Wrappers & Inspection Query Stack
-  status: done
+  status: in_progress
   gate: Wave 3 complete when DEM-008..DEM-011 are resolved, inspection queries call
     RunRegistry directly, StepData lives in orchestration/step_data.py without reverse
     imports, known CoreAdapter fakes are updated, and verification commands pass.
@@ -88277,7 +88277,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-3.dem-009-relocate-step-data-and-collapse-adapter-indirection
     name: DEM-009 relocate step data and collapse adapter indirection
-    status: done
+    status: rejected
     description: Resolve DEM-009 by creating src/vectl/orchestration/step_data.py
       as the leaf owner of StepData, deleting CoreStepDataAdapter and the StepDataAdapter
       protocol, extending CoreAdapter with load_step_data_for_dispatch(step_id), switching
@@ -88293,46 +88293,13 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T05:38:42.599799+00:00'
     done_at: '2026-04-26T05:53:28.200290+00:00'
-    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777181945091,"sessionID":"ses_237b3bb91ffeHz7EDmjNUztZw0","part":{"id":"prt_dc84c6d020014QVQFXorZyUNCF","messageID":"msg_dc84c464c001EN8Mpw7jf43rbo","sessionID":"ses_237b3bb91ffeHz7EDmjNUztZw0","snapshot":"669041cd9f0edc2e5b2c1c6963604a4a4bef5b49","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777181952508,"sessionID":"ses_237b3bb91ffeHz7EDmjNUztZw0","part":{"type":"tool","tool":"invar_invar_guard","callID":"call_pjIfCVCOT0irQeZoiRtEIB9R","state":{"status":"completed","input":{"path":".","changed":true,"strict":false,"coverage":false,"contracts_only":false},"output":"{\n  \"status\":
-      \"passed\",\n  \"static\": {\n    \"passed\": true,\n    \"errors\": 0,\n    \"warnings\":
-      0,\n    \"infos\": 0,\n    \"findings\": []\n  },\n  \"summary\": {\n    \"files_checked\":
-      0,\n    \"errors\": 0,\n    \"warnings\": 0,\n    \"infos\": 0\n  },\n  \"verification_level\":
-      \"STANDARD\",\n  \"doctest\": {\n    \"passed\": true,\n    \"output\": \"\"\n  },\n  \"crosshair\":
-      {\n    \"status\": \"skipped\",\n    \"reason\": \"no changed files\"\n  },\n  \"property_tests\":
-      {\n    \"status\": \"skipped\",\n    \"reason\": \"no changed files\"\n  }\n}","metadata":{"truncated":false},"title":"","time":{"start":1777181951748,"end":1777181952505},"attachments":[]},"metadata":{"openai":{"itemId":"fc_011b38ea7014a9cc0169eda4ffaeac819188275433168022d0"}},"id":"prt_dc84c86fb001e9AAVqFTufsSqG","sessionID":"ses_237b3bb91ffeHz7EDmjNUztZw0","messageID":"msg_dc84c464c001EN8Mpw7jf43rbo"}}
-
-      {"type":"tool_use","timestamp":1777181952974,"sessionID":"ses_237b3bb91ffeHz7EDmjNUztZw0","part":{"type":"tool","tool":"bash","callID":"call_9miLEXJ71lzCEeIJm0kRJVam","state":{"status":"completed","input":{"command":"uv
-      run ruff check src/vectl/orchestration tests/orchestration && uv run mypy src/vectl/orchestration","timeout":120000,"workdir":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-3.dem-009-relocate-step-data-and-collapse-adapter-indirection","description":"Runs
-      preflight lint and type checks"},"output":"...output truncated...\n\nFull output
-      saved to: /Users/tefx/.local/share/opencode/tool-output/tool_dc84c8b920015SRfNsI7Hpaqc6\n\nE501
-      Line too long (104 > 100)\n  --> tests/orchestration/unit/test_runner_backend_red.py:26:101\n   |\n24
-      |         - test_complete_step_requires_explicit_reconcile_disposition (no disposition
-      source yet)\n25 |     user-notification gap:\n26 |         - test_execution_result_operator_message_populated_on_transport_error
-      (operator_message is None)\n   |                                                                                                     ^^^^\n27
-      |         - test_resolver_invocation_failure_produces_operator_message (path
-      from report→user not wired)\n28 |     approved-facade/main-worktree gap:\n   |\n\nE501
-      Line too long (102 > 100)\n  --> tests/orchestration/unit/test_runner_backend_red.py:27:101\n   |\n25
-      |     user-notification gap:\n26 |         - test_execution_result_operator_message_populated_on_transport_error
-      (operator_message is None)\n27 |         - test_resolver_invocation_failure_produces_operator_message
-      (path from report→user not wired)\n   |                                                                                                     ^^\n28
-      |     approved-facade/main-worktree gap:\n29 |         - test_resolver_gateway_invoke_respects_resolver_authority_contract
-      (no worktree-site check)\n   |\n\nE501 Line too long (121 > 100)\n  --> tests/orchestration/unit/test_runner_backend_red.py:30:101\n   |\n28
-      |     approved-facade/main-worktree gap:\n29 |         - test_resolver_gateway_invoke_respects_resolver_authority_contract
-      (no worktree-site check)\n30 |         - test_lifecycle_mutation_port_enforces_normal_flow_only_claim
-      (PlanCoreAdapter enforces; other adapters may not)\n   |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^\n31
-      | \"\"\"\n   |\n\nE501 Line too long (137 > 100)\n  --> tests/orchestration/unit/test_runner_backend_red.py:45:101\n   |\n43
-      | …\n44 | …n_runtime_lifecycle\",\n45 | …red tests intentionally stay red until
-      execution and reconcile wiring is completed.\",\n   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n46
-      | …\n   |\n\nE402 Module level import not at top of file\n  --> tests/orchestration/unit/test_runner_backend_red.py:48:1\n   |\n46
-      |   )\n47 |\n48 | / from vectl.orchestration.contracts import (\n49 | |     CoreSnapshot,\n50
-      | |     ExecutionRequest,\n51 | |     ExecutionResult,\n52 | |     ReconcileDisposition,\n53
-      | |     ResolverAuthorityContract,\n54 | |     RosterSnapshot,\n55 | |     RuntimeSnapshot,\n56
-      | | )\n   | |_^\n57 |   from vectl.orchestration.interfaces import (\n58 |       LifecycleMutationPort,\n   |\n\nI001
-      [*] Import block is un-sorted or un-formatted\n  --> tests/orchestration/unit/test_runner_backend_red.py:48:1\n   |\n46
-      |   )\n47 |\n48 | / from vectl.orchestration.'
+    rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
+      stored in evidence; implementation unchanged'
+    rejection_history:
+    - reason: 'historical evidence cleanup: raw OpenCode JSON event stream stored
+        in evidence; implementation unchanged'
+      timestamp: '2026-04-26T12:06:13.992855+00:00'
+      reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-3.dem-010-replace-tool-family-registry-shell-with-module-helpers
     name: DEM-010 replace tool-family registry shell with module helpers
     status: done

@@ -88249,7 +88249,7 @@ phases:
   steps:
   - id: arch-demolition-wave-3.dem-008-and-dem-011-collapse-inspection-query-delegation-stack
     name: DEM-008 and DEM-011 collapse inspection query delegation stack
-    status: rejected
+    status: claimed
     description: Resolve DEM-008 and DEM-011 by deleting RunInspectionBoundary, RunRegistryInspectionView,
       RunsQuery, CasesQuery, RunsQueryImpl, and CasesQueryImpl; keep stable read DTOs
       in src/vectl/orchestration/inspection_queries.py as the canonical DTO home;
@@ -88262,8 +88262,8 @@ phases:
     - src/vectl/orchestration/run_store.py
     - src/vectl/orch_app.py
     agent: python-refactor-master-tacit
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T07:51:26.356687+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T12:06:09.233619+00:00'
     done_at: '2026-04-26T07:52:13.525377+00:00'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'

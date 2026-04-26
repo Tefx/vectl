@@ -90262,7 +90262,7 @@ phases:
       full live/smoke sweep remains part of final verification.'
   - id: post_review_remediation.backfill-missing-gate-evidence
     name: Backfill missing post-review gate evidence
-    status: pending
+    status: claimed
     description: 'Supplemental evidence-only closure for final gate proof gaps found
       in `post_review_remediation.gate` review.
 
@@ -90347,3 +90347,5 @@ phases:
     - post_review_remediation.fix-cli-blackbox-finalization-runtime-nonclosure
     - post_review_remediation.implement-drive-autonomy-safe-recovery-and-actions
     agent: integration-verifier-tacit
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T18:15:17.907183+00:00'

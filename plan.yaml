@@ -89248,7 +89248,7 @@ phases:
     agent: integration-verifier-tacit
   - id: post_review_remediation.implement-completed-step-failure-evidence-guard
     name: Implement completed-step failure evidence guard
-    status: claimed
+    status: done
     description: "Add a non-invar guard that prevents completed review/gate/test/verification\
       \ evidence from hiding unclosed failure states.\n\nProblem to fix:\n- System\
       \ review found completed steps whose evidence contained `FAIL`, `NEEDS_REVISION`,\
@@ -89340,6 +89340,93 @@ phases:
     agent: python-senior-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T14:39:43.221061+00:00'
+    done_at: '2026-04-26T14:43:53.275531+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: path does not exist in this checkout; `README.md`
+      exists at repo root, but step ref was stale.
+
+      - src/vectl/core_plan_queries.py — read `validate_plan()` and `review_plan()`;
+      chosen surface is `validate_plan()` so CLI review/validate and MCP validate
+      inherit the guard.
+
+      - src/vectl/cli_plan.py — read `validate()` and `review()` output paths; validation
+      issues print as ERROR and review exits 1 on errors.
+
+      - src/vectl/mcp_core_tools.py — read `vectl_validate()`; MCP read-only validation
+      reports `validate_plan()` issues.
+
+      - tests — read `tests/test_validation.py` and `tests/test_review.py`; added
+      focused guard fixtures and CLI review exposure test.
+
+
+      ## Expected-Red Proof
+
+      - Red fixture/test command before implementation:
+
+      ```
+
+      uv run pytest -q tests/test_validation.py::TestCompletedEvidenceGuard
+
+      ```
+
+      - Failing output:
+
+      ```
+
+      tests/test_validation.py F.. [100%]
+
+      FAILED TestCompletedEvidenceGuard.test_done_gate_failure_without_later_closure_is_blocking
+
+      E assert False
+
+      1 failed, 2 passed
+
+      ```
+
+
+      ## Implementation Evidence
+
+      - Surface chosen for guard output: `validate_plan()` in `src/vectl/core_plan_queries.py`,
+      therefore `vectl validate`, `vectl review`, `vectl gate-check` pre-validation,
+      and `vectl_validate` can expose it without a new framework.
+
+      - Failure tokens classified: `gate_open_allowed=false`, `NEEDS_REVISION`, `runtime
+      non-closure: fail`, numeric failed tests, and uppercase `FAIL`/`FAILED`/`FAILURE`.
+
+      - Closure/expected-red exceptions implemented: later same-phase completed evidence
+      with `gate_open_allowed=true`, approved/pass review outcome, runtime non-closure
+      closed/pass, `PASS`/green/OPEN evidence; expected-red/non-blocking exception
+      requires owner + lifecycle/disposition + gate-intersection/non-intersection
+      proof.
+
+      - Files changed: `src/vectl/core_plan_queries.py`, `tests/test_validation.py`,
+      `tests/test_review.py`.
+
+
+      ## Green Verification
+
+      ```
+
+      uv run pytest -q tests/test_validation.py::TestCompletedEvidenceGuard tests/test_review.py::TestReview::test_review_exposes_completed_evidence_guard
+
+      # 4 passed
+
+
+      uv run pytest -q tests/test_validation.py tests/test_review.py tests/test_orch_cli_surface.py
+
+      # 116 passed
+
+      ```
+
+
+      ## Invar Exclusion
+
+      - Did not attempt repo-wide invar/static debt remediation.
+
+      - `invar_guard(changed=True)` was run and failed on existing/out-of-scope `shell_result`,
+      `file_size`, and `shell_complexity_debt` findings across `core_plan_queries.py`/`cli_orchestration.py`;
+      this step intentionally does not run or require `uvx invar-tools guard --all`.'
   - id: post_review_remediation.reverify-completed-step-failure-evidence-guard
     name: Reverify completed-step failure evidence guard
     status: pending

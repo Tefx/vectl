@@ -6,9 +6,9 @@ Authority: docs/ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md
 
 Covers:
     - DispatchSpec construction from ControlDecision + step data
-    - RoleProfileRegistry configuration-backed lookup
-    - RoleProfileRegistry unknown-role explicit failure
-    - PromptRegistry role-family-specific rendering
+    - ConfigRoleProfileRegistry configuration-backed lookup
+    - ConfigRoleProfileRegistry unknown-role explicit failure
+    - ConfigPromptRegistry role-family-specific rendering
     - Review result normalization (pass -> None, non-pass -> ResolutionCase)
     - Parse failure normalization
     - Execution context routing by RoleProfile (main_worktree for resolver/planner/reviewer)
@@ -134,13 +134,13 @@ class TestStepVerifyToVerifyMode:
 
 
 class TestConfigRoleProfileRegistry:
-    """Configuration-backed RoleProfileRegistry tests.
+    """Configuration-backed ConfigRoleProfileRegistry tests.
 
     Authority: ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8.3, §8.4
     """
 
     def test_get_returns_concrete_profile(self) -> None:
-        """RoleProfileRegistry.get() must return a concrete RoleProfile."""
+        """ConfigRoleProfileRegistry.get() must return a concrete RoleProfile."""
         registry = ConfigRoleProfileRegistry()
         profile = registry.get("python-executor")
         assert isinstance(profile, RoleProfile)
@@ -346,13 +346,13 @@ class TestConfigRoleProfileRegistry:
 
 
 class TestConfigPromptRegistry:
-    """Configuration-backed PromptRegistry tests.
+    """Configuration-backed ConfigPromptRegistry tests.
 
     Authority: ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §10, §11
     """
 
     def test_render_returns_prompt_bundle(self) -> None:
-        """PromptRegistry.render() must return a PromptBundle."""
+        """ConfigPromptRegistry.render() must return a PromptBundle."""
         registry = ConfigPromptRegistry()
         spec = DispatchSpec(
             source_kind="step",

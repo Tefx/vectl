@@ -7,7 +7,7 @@ Authority: docs/RFC-orch-drive.md sections 12, 13 (planner/resolver integration)
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from vectl.orchestration.contracts import (
     ControlDecision,
@@ -370,38 +370,6 @@ class Resolver(Protocol):
         Returns:
             ResolutionReport with findings and recommended action.
         """
-        ...
-
-
-class LifecycleMutationPort(Protocol):
-    """Approved orchestration mutation facade.
-
-    This is the narrow lifecycle-mutation port that runtime/control/resolver
-    seams are allowed to target. It pins two hard rules:
-
-    - claim is normal-flow only
-    - completion requires post-reconcile acceptance (``merged`` or ``noop``)
-    """
-
-    def claim_step(
-        self,
-        step_id: str,
-        agent: str,
-        *,
-        force: bool = False,
-        flow: Literal["normal"] = "normal",
-    ) -> None:
-        """Claim a step only from normal orchestration flow."""
-        ...
-
-    def complete_step(
-        self,
-        step_id: str,
-        evidence: str,
-        *,
-        reconcile_disposition: Literal["merged", "noop"],
-    ) -> None:
-        """Complete a step only after reconcile closed as ``merged`` or ``noop``."""
         ...
 
 

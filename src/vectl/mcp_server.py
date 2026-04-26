@@ -41,11 +41,6 @@ from pydantic import BaseModel
 
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
 from vectl.claims import get_current_branch, repair_claims
-from vectl.duplicate_step_id_format import (
-    format_duplicate_step_id_diagnostics,
-    format_duplicate_step_id_recommendation,
-    get_duplicate_step_id_recommendation,
-)
 from vectl.core import (
     _SENTINEL,
     AgentsTarget,
@@ -82,13 +77,23 @@ from vectl.core import (
     validate_plan,
 )
 from vectl.decide import decide as _decide_impl
+from vectl.duplicate_step_id_format import (
+    format_duplicate_step_id_diagnostics,
+    format_duplicate_step_id_recommendation,
+    get_duplicate_step_id_recommendation,
+)
 from vectl.io import (
     _backup_definition,
     _resolve_git_dir,
     load_plan_definition,
     save_plan,
 )
-from vectl.lifecycle import ClaimConflictError
+from vectl.lifecycle import (
+    AffinityOverrideMetadata,
+    AffinityWarningMetadata,
+    ClaimConflictError,
+    ClaimConflictMetadata,
+)
 from vectl.models import (
     AffinityError,
     AmbiguousMatchError,
@@ -487,57 +492,24 @@ class ClaimStepData(BaseModel):
     affinity_override: bool = False
 
 
-class AffinityWarningData(BaseModel):
-    """Affinity warning details.
-
-    RFC: docs/RFC-affinity.md
-    Returned when claim proceeds despite affinity mismatch.
-    """
-
-    step_agent: str
-    claiming_agent: str
-    affinity: str
-    message: str
-
-
-class AffinityOverrideData(BaseModel):
-    """Affinity override details.
-
-    RFC: docs/RFC-affinity.md
-    Returned when --force overrides exclusive affinity.
-    """
-
-    overridden_agent: str
-    override_by: str
-    message: str
-
-
-class ClaimResult(BaseModel):
+class ClaimResponseEnvelope(BaseModel):
     """Structured response for vectl_claim.
 
     Source: FR R6 — return structured fields; clients can decide how to display.
+    Source: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md DEM-004 —
+    keep MCP as a thin transport envelope around lifecycle-owned claim metadata.
     """
 
     ok: bool
     markdown: str
     claimed: ClaimStepData | None = None
     guidance: GuidancePayload | None = None
-    affinity_warning: AffinityWarningData | None = None
-    affinity_override: AffinityOverrideData | None = None
+    affinity_warning: AffinityWarningMetadata | None = None
+    affinity_override: AffinityOverrideMetadata | None = None
     error: str | None = None
     error_code: str | None = None
     duplicate_step_id_recommendation: dict[str, Any] | None = None
-    # Claim conflict details for existing-claim rejection
-    claim_conflict: ClaimConflictData | None = None
-
-
-class ClaimConflictData(BaseModel):
-    """Structured data about an existing claim that blocked a claim attempt."""
-
-    step_id: str
-    branch: str
-    claimant: str
-    claimed_at: str
+    claim_conflict: ClaimConflictMetadata | None = None
 
 
 @mcp.tool(
@@ -571,9 +543,11 @@ def vectl_claim(
         available = get_next_steps(plan, agent=agent)
         if not available:
             err = "No steps available to claim."
-            return ClaimResult(ok=False, markdown=f"**Error:** {err}", error=err).model_dump(
-                mode="json", exclude_none=True
-            )
+            return ClaimResponseEnvelope(
+                ok=False,
+                markdown=f"**Error:** {err}",
+                error=err,
+            ).model_dump(mode="json", exclude_none=True)
         step_id = available[0].id
 
     lock_notice: str = ""
@@ -586,12 +560,6 @@ def vectl_claim(
         )
     except ClaimConflictError as e:
         # Claim conflict: existing claim record blocking this attempt
-        conflict_data = ClaimConflictData(
-            step_id=e.step_id,
-            branch=e.branch,
-            claimant=e.claimant,
-            claimed_at=e.claimed_at,
-        )
         err = str(e)
         conflict_md_lines = [
             f"**Claim Conflict:** {e.step_id} is already claimed on branch '{e.branch}'",
@@ -603,18 +571,18 @@ def vectl_claim(
             "2. If this is a stale/ghost claim (common after agent restarts), "
             "run `vectl_repair_claims()` to fix it — this is routine maintenance, not an error.",
         ]
-        return ClaimResult(
+        return ClaimResponseEnvelope(
             ok=False,
             markdown="\n".join(conflict_md_lines),
             error=err,
             error_code="claim_conflict",
-            claim_conflict=conflict_data,
+            claim_conflict=e.metadata,
         ).model_dump(mode="json", exclude_none=True)
     except AffinityError as e:
         # RFC: docs/RFC-affinity.md
         # Exclusive affinity violation
         err = str(e)
-        return ClaimResult(
+        return ClaimResponseEnvelope(
             ok=False,
             markdown=f"**Affinity Error:** {err}",
             error=err,
@@ -670,7 +638,7 @@ def vectl_claim(
             )
 
         markdown = "\n".join(markdown_lines)
-        return ClaimResult(
+        return ClaimResponseEnvelope(
             ok=False,
             markdown=markdown,
             error=err,
@@ -706,24 +674,15 @@ def vectl_claim(
 
         # RFC: docs/RFC-affinity.md
         # Build affinity warning/override data
-        affinity_warning_data: AffinityWarningData | None = None
-        affinity_override_data: AffinityOverrideData | None = None
+        affinity_warning_data: AffinityWarningMetadata | None = None
+        affinity_override_data: AffinityOverrideMetadata | None = None
 
         if result.warning_message:
             if result.affinity_override:
-                affinity_override_data = AffinityOverrideData(
-                    overridden_agent=step.agent or "",
-                    override_by=agent,
-                    message=result.warning_message,
-                )
+                affinity_override_data = result.affinity_override_metadata
                 md_lines.append(f"⚠️ **Affinity Override:** {result.warning_message}")
             elif result.affinity_warning:
-                affinity_warning_data = AffinityWarningData(
-                    step_agent=step.agent or "",
-                    claiming_agent=agent,
-                    affinity="suggested",
-                    message=result.warning_message,
-                )
+                affinity_warning_data = result.affinity_warning_metadata
                 md_lines.append(f"⚠️ **Affinity Warning:** {result.warning_message}")
             md_lines.append("")
 
@@ -735,7 +694,7 @@ def vectl_claim(
         markdown = "\n".join(md_lines).rstrip() + "\n"
         if lock_notice:
             markdown = markdown.rstrip("\n") + f"\n\n{lock_notice}\n"
-        return ClaimResult(
+        return ClaimResponseEnvelope(
             ok=True,
             markdown=markdown,
             claimed=claimed,
@@ -747,7 +706,7 @@ def vectl_claim(
     fallback_markdown = f"Claimed: {step_id}\n"
     if lock_notice:
         fallback_markdown = fallback_markdown.rstrip("\n") + f"\n\n{lock_notice}\n"
-    return ClaimResult(
+    return ClaimResponseEnvelope(
         ok=True,
         markdown=fallback_markdown,
     ).model_dump(mode="json", exclude_none=True)

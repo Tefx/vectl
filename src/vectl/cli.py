@@ -3190,16 +3190,17 @@ def claim(
         )
     except ClaimConflictError as e:
         # Rich claim conflict diagnostics with actionable next step
-        console.print(f"[red bold]Error:[/] {e}")
+        metadata = e.metadata
+        console.print(f"[red bold]Error:[/] {e}", soft_wrap=True)
         console.print()
         console.print("[bold]Claim Details:[/]")
-        console.print(f"  Step ID:    {e.step_id}")
-        console.print(f"  Branch:     {e.branch}")
-        console.print(f"  Claimed by: {e.claimant}")
-        console.print(f"  Claimed at: {e.claimed_at}")
+        console.print(f"  Step ID:    {metadata.step_id}", soft_wrap=True)
+        console.print(f"  Branch:     {metadata.branch}", soft_wrap=True)
+        console.print(f"  Claimed by: {metadata.claimant}", soft_wrap=True)
+        console.print(f"  Claimed at: {metadata.claimed_at}", soft_wrap=True)
         console.print()
         console.print("[bold]Next Steps:[/]")
-        console.print(f"  1. Inspect the step: [cyan]vectl show {e.step_id}[/]")
+        console.print(f"  1. Inspect the step: [cyan]vectl show {metadata.step_id}[/]")
         console.print("  2. If this claim is stale, you can repair claims with:")
         console.print("     [cyan]vectl repair claims --dry-run[/]")
         raise typer.Exit(1) from None

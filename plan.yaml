@@ -88885,7 +88885,7 @@ phases:
       run or require `uvx invar-tools guard --all`.'
   - id: post_review_remediation.reverify-driver-agent-selection-deep-review
     name: Reverify driver agent-selection deep-review closure
-    status: claimed
+    status: pending
     description: "Independent reverify for `post_review_remediation.fix-driver-agent-selection-deep-review`.\n\
       \nScope:\n- Confirm both historical SHOULD_FIX groups from `driver-agent-selection-deep-review.gate`\
       \ are closed:\n  1. planner runtime dispatch uses explicit planner runner authority\
@@ -88952,8 +88952,6 @@ phases:
     depends_on:
     - post_review_remediation.fix-driver-agent-selection-deep-review
     agent: gate-reviewer-tacit
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T17:24:41.054926+00:00'
   - id: post_review_remediation.fix-opencode-runner-final-gate-cli-surface
     name: Fix OpenCode runner final-gate CLI surface blockers
     status: done
@@ -89297,7 +89295,7 @@ phases:
       - Headline: PASS\n- gate_open_allowed: true\n- blocking-now: none"
   - id: post_review_remediation.fix-cli-blackbox-finalization-runtime-nonclosure
     name: Fix CLI black-box finalization runtime non-closure
-    status: pending
+    status: done
     description: 'Fix or close the non-invar failure recorded in `cli_blackbox_finalization.full-plan-check`.
 
 
@@ -89395,9 +89393,14 @@ phases:
     depends_on:
     - post_review_remediation.reverify-opencode-runner-final-gate
     agent: python-senior-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-26T17:46:27.323443+00:00'
+    done_at: '2026-04-26T17:49:42.061541+00:00'
+    evidence: '[reconcile_disposition=noop] OpenCode completed successfully (exit
+      0); stdout=OpenCode emitted JSON event stream without final text'
   - id: post_review_remediation.reverify-cli-blackbox-finalization
     name: Reverify CLI black-box finalization
-    status: pending
+    status: claimed
     description: 'Independent reverify for the historical `cli_blackbox_finalization.full-plan-check`
       failure after runtime non-closure remediation.
 
@@ -89477,6 +89480,8 @@ phases:
     depends_on:
     - post_review_remediation.fix-cli-blackbox-finalization-runtime-nonclosure
     agent: integration-verifier-tacit
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T18:03:44.297611+00:00'
   - id: post_review_remediation.implement-completed-step-failure-evidence-guard
     name: Implement completed-step failure evidence guard
     status: done

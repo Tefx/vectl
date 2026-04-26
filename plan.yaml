@@ -88331,7 +88331,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-4
   name: Architectural Demolition — Wave 4 Unify Orchestration Authority Surfaces
-  status: done
+  status: in_progress
   gate: Wave 4 complete when DEM-005, DEM-006, DEM-007, and DEM-016 leave exactly
     one surviving authority/contract surface each, contract-lock coverage is migrated
     to surviving seams, and verification commands pass.
@@ -88395,7 +88395,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-4.dem-016-retire-public-role-and-prompt-registry-protocols
     name: DEM-016 retire public role and prompt registry protocols
-    status: done
+    status: rejected
     description: Resolve DEM-016 by removing public RoleProfileRegistry and PromptRegistry
       protocols from contracts.py, treating ConfigRoleProfileRegistry and ConfigPromptRegistry
       as the concrete in-repo authority surfaces, and updating surviving type annotations,
@@ -88411,44 +88411,13 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T08:13:41.038309+00:00'
     done_at: '2026-04-26T08:25:15.706761+00:00'
-    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777191232325,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"id":"prt_dc8da2342001jyNLUmxwSlcyJB","messageID":"msg_dc8da0b58001d6StWY4P1Adsoi","sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","snapshot":"dac2b7658a50a09f3aecb8ca31d2e51df3a2536d","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777191236793,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"type":"tool","tool":"todowrite","callID":"call_P5DYVC913kVAUkwe4PybJvnP","state":{"status":"completed","input":{"todos":[{"content":"Run
-      mandatory pre-flight checks for vectl, invar, and static baseline","status":"in_progress","priority":"high"},{"content":"Analyze
-      referenced orchestration files for DEM-016 protocol usage","status":"pending","priority":"high"},{"content":"Remove
-      public registry protocols and update annotations/tests","status":"pending","priority":"high"},{"content":"Run
-      verification and prepare structured evidence","status":"pending","priority":"high"}]},"output":"[\n  {\n    \"content\":
-      \"Run mandatory pre-flight checks for vectl, invar, and static baseline\",\n    \"status\":
-      \"in_progress\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Analyze
-      referenced orchestration files for DEM-016 protocol usage\",\n    \"status\":
-      \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Remove
-      public registry protocols and update annotations/tests\",\n    \"status\": \"pending\",\n    \"priority\":
-      \"high\"\n  },\n  {\n    \"content\": \"Run verification and prepare structured
-      evidence\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  }\n]","metadata":{"todos":[{"content":"Run
-      mandatory pre-flight checks for vectl, invar, and static baseline","status":"in_progress","priority":"high"},{"content":"Analyze
-      referenced orchestration files for DEM-016 protocol usage","status":"pending","priority":"high"},{"content":"Remove
-      public registry protocols and update annotations/tests","status":"pending","priority":"high"},{"content":"Run
-      verification and prepare structured evidence","status":"pending","priority":"high"}],"truncated":false},"title":"4
-      todos","time":{"start":1777191236791,"end":1777191236793}},"metadata":{"openai":{"itemId":"fc_081b09ae0f8446730169edc944279c8191b8e8220c573393fe"}},"id":"prt_dc8da3266001lfPAVAzvpZPyAm","sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","messageID":"msg_dc8da0b58001d6StWY4P1Adsoi"}}
-
-      {"type":"step_finish","timestamp":1777191236881,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"id":"prt_dc8da34ce001w0cFvdxQyUDqEA","reason":"tool-calls","snapshot":"dac2b7658a50a09f3aecb8ca31d2e51df3a2536d","messageID":"msg_dc8da0b58001d6StWY4P1Adsoi","sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","type":"step-finish","tokens":{"total":24057,"input":2875,"output":107,"reasoning":83,"cache":{"write":0,"read":20992}},"cost":0}}
-
-      {"type":"step_start","timestamp":1777191238154,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"id":"prt_dc8da3a09001qs68Ir83B6Ff5h","messageID":"msg_dc8da3557001zvgaHh4IFy84jX","sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","snapshot":"dac2b7658a50a09f3aecb8ca31d2e51df3a2536d","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777191240518,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"type":"tool","tool":"invar_invar_guard","callID":"call_mhtpCYAkh57QVRESrIVQD9SY","state":{"status":"completed","input":{"path":".","changed":true,"strict":false,"coverage":false,"contracts_only":false},"output":"{\n  \"status\":
-      \"passed\",\n  \"static\": {\n    \"passed\": true,\n    \"errors\": 0,\n    \"warnings\":
-      0,\n    \"infos\": 0,\n    \"findings\": []\n  },\n  \"summary\": {\n    \"files_checked\":
-      0,\n    \"errors\": 0,\n    \"warnings\": 0,\n    \"infos\": 0\n  },\n  \"verification_level\":
-      \"STANDARD\",\n  \"doctest\": {\n    \"passed\": true,\n    \"output\": \"\"\n  },\n  \"crosshair\":
-      {\n    \"status\": \"skipped\",\n    \"reason\": \"no changed files\"\n  },\n  \"property_tests\":
-      {\n    \"status\": \"skipped\",\n    \"reason\": \"no changed files\"\n  }\n}","metadata":{"truncated":false},"title":"","time":{"start":1777191240181,"end":1777191240517},"attachments":[]},"metadata":{"openai":{"itemId":"fc_0798dceccb896d8f0169edc9480a848191893594ecb90d5498"}},"id":"prt_dc8da41f5001pJKPt1tRD6lBtA","sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","messageID":"msg_dc8da3557001zvgaHh4IFy84jX"}}
-
-      {"type":"tool_use","timestamp":1777191240788,"sessionID":"ses_23725f4eeffeAdZSTFBdXy7O3u","part":{"type":"tool","tool":"bash","callID":"call_i9g0jEg4J6StPGtIAzSMYODs","state":{"status":"completed","input":{"command":"uv
-      run ruff check src/vectl/orchestration/contracts.py src/vectl/orchestration/config.py
-      src/vectl/orchestration/dispatch_policy.py tests","timeout":120000,"workdir":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-4.dem-016-retire-public-role-and-prompt-registry-protocols","description":"Runs
-      baseline ruff static checks"},"output":"...output truncated...\n\nFull output
-      saved to: /Users/tefx/.local/share/o'
+    rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
+      stored in evidence; implementation unchanged'
+    rejection_history:
+    - reason: 'historical evidence cleanup: raw OpenCode JSON event stream stored
+        in evidence; implementation unchanged'
+      timestamp: '2026-04-26T12:06:35.673856+00:00'
+      reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-5
   name: Architectural Demolition — Wave 5 Give Review Flow a Real Implementation
   status: done

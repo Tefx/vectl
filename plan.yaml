@@ -88423,7 +88423,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-5
   name: Architectural Demolition — Wave 5 Give Review Flow a Real Implementation
-  status: done
+  status: in_progress
   gate: Wave 5 complete when DEM-014 lands atomically on the post-rename DriveDriver
     state, DefaultReviewGate is the real implementation entry point, review invocation
     is wired between terminal execution and authoritative completion, and verification
@@ -88459,7 +88459,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-5.dem-014-wire-review-gate-into-drivedriver-and-remove-protocol-only-seam
     name: DEM-014 wire review gate into DriveDriver and remove protocol-only seam
-    status: done
+    status: rejected
     description: Complete DEM-014 atomically by wiring DefaultReviewGate into DriveDriver.__init__
       as the default review_gate, adding a named post-execution review helper in the
       driver, routing terminal execution facts through that helper before authoritative
@@ -88477,46 +88477,13 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T08:36:24.097039+00:00'
     done_at: '2026-04-26T08:51:08.903544+00:00'
-    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777192597866,"sessionID":"ses_237112512ffesGD7Os6sEnbp3E","part":{"id":"prt_dc8eef969001rM1jm72acoCdKm","messageID":"msg_dc8eedb36001UZeQJ0yX5m6NnH","sessionID":"ses_237112512ffesGD7Os6sEnbp3E","snapshot":"7c259ada20c717083468bfa32cd314c813566964","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777192602908,"sessionID":"ses_237112512ffesGD7Os6sEnbp3E","part":{"type":"tool","tool":"todowrite","callID":"call_IOXRgQ4s5c8kJ1is8PHDFNQa","state":{"status":"completed","input":{"todos":[{"content":"Inspect
-      DEM-014 references and current driver/review gate implementation","status":"in_progress","priority":"high"},{"content":"Update
-      tests to cover concrete DefaultReviewGate path","status":"pending","priority":"high"},{"content":"Implement
-      driver wiring/helper and remove protocol-only seam/alias if present","status":"pending","priority":"high"},{"content":"Run
-      required verification and collect evidence","status":"pending","priority":"high"}]},"output":"[\n  {\n    \"content\":
-      \"Inspect DEM-014 references and current driver/review gate implementation\",\n    \"status\":
-      \"in_progress\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Update
-      tests to cover concrete DefaultReviewGate path\",\n    \"status\": \"pending\",\n    \"priority\":
-      \"high\"\n  },\n  {\n    \"content\": \"Implement driver wiring/helper and remove
-      protocol-only seam/alias if present\",\n    \"status\": \"pending\",\n    \"priority\":
-      \"high\"\n  },\n  {\n    \"content\": \"Run required verification and collect
-      evidence\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  }\n]","metadata":{"todos":[{"content":"Inspect
-      DEM-014 references and current driver/review gate implementation","status":"in_progress","priority":"high"},{"content":"Update
-      tests to cover concrete DefaultReviewGate path","status":"pending","priority":"high"},{"content":"Implement
-      driver wiring/helper and remove protocol-only seam/alias if present","status":"pending","priority":"high"},{"content":"Run
-      required verification and collect evidence","status":"pending","priority":"high"}],"truncated":false},"title":"4
-      todos","time":{"start":1777192602904,"end":1777192602907}},"metadata":{"openai":{"itemId":"fc_03b3770f866b064e0169edce9a5ad48191b667f6ecf6861fdd"}},"id":"prt_dc8ef0b31001hunbt5oXvtXbnw","sessionID":"ses_237112512ffesGD7Os6sEnbp3E","messageID":"msg_dc8eedb36001UZeQJ0yX5m6NnH"}}
-
-      {"type":"step_finish","timestamp":1777192602999,"sessionID":"ses_237112512ffesGD7Os6sEnbp3E","part":{"id":"prt_dc8ef0d2a0011K1WzS4xL7xXO6","reason":"tool-calls","snapshot":"7c259ada20c717083468bfa32cd314c813566964","messageID":"msg_dc8eedb36001UZeQJ0yX5m6NnH","sessionID":"ses_237112512ffesGD7Os6sEnbp3E","type":"step-finish","tokens":{"total":24330,"input":21604,"output":107,"reasoning":59,"cache":{"write":0,"read":2560}},"cost":0}}
-
-      {"type":"step_start","timestamp":1777192604472,"sessionID":"ses_237112512ffesGD7Os6sEnbp3E","part":{"id":"prt_dc8ef1337001J9oeQo29h77q6b","messageID":"msg_dc8ef0db4001zBykZoOuA9NOcs","sessionID":"ses_237112512ffesGD7Os6sEnbp3E","snapshot":"7c259ada20c717083468bfa32cd314c813566964","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777192608111,"sessionID":"ses_237112512ffesGD7Os6sEnbp3E","part":{"type":"tool","tool":"read","callID":"call_2aZLO9Gq9ruj6aKV9FmSnTQs","state":{"status":"completed","input":{"filePath":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-5.dem-014-wire-review-gate-into-drivedriver-and-remove-protocol-only-seam/src/vectl/orchestration/review_gate.py","offset":1,"limit":240},"output":"<path>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-5.dem-014-wire-review-gate-into-drivedriver-and-remove-protocol-only-seam/src/vectl/orchestration/review_gate.py</path>\n<type>file</type>\n<content>\n1:
-      \"\"\"\n2: Bounded post-execution review normalization.\n3: \n4: Authority:
-      docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.5\n5: Authority: docs/RFC-orch-drive.md
-      section 17.1\n6: Authority: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
-      Wave 5\n7: \n8: This module pins the review result contract and provides the
-      concrete default\n9: post-execution review gate used to normalize machine-readable
-      review output\n10: without silently passing malformed results.\n11: \"\"\"\n12:
-      \n13: from __future__ import annotations\n14: \n15: import json\n16: from dataclasses
-      import dataclass\n17: from typing import Protocol, TypeAlias, cast\n18: \n19:
-      import yaml\n20: \n21: from vectl.orchestration.contracts import (\n22:     ExecutionResult,\n23:     PlannerRequest,\n24:     ReviewOutcome,\n25:
-      )\n26: \n27: _ParsedReviewPayload: TypeAlias = dict[str, object]\n28: _VALID_REVIEW_OUTCOMES:
-      frozenset[str] = frozenset(\n29:     {\"pass\", \"needs_fix\", \"needs_replan\",
-      \"operator_required\"}\n30: )\n31: \n32: \n33: @dataclass(frozen=True)\n34:
-      class ReviewGateResult:\n35:     \"\"\"Bounded output from the post-execution
-      review gate.\n36: \n37:     Authority: docs/ORCHESTRATION-PLANE-'
+    rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
+      stored in evidence; implementation unchanged'
+    rejection_history:
+    - reason: 'historical evidence cleanup: raw OpenCode JSON event stream stored
+        in evidence; implementation unchanged'
+      timestamp: '2026-04-26T12:06:50.939947+00:00'
+      reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-6
   name: Architectural Demolition — Wave 6 Simplify Duplicate-Step-ID Domain Model
   status: done

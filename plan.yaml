@@ -88018,7 +88018,7 @@ phases:
       - uv run pytest tests/ -x --tb=short -> 2914 passed, 40 skipped in 185.95s'
 - id: arch-demolition-wave-1
   name: Architectural Demolition — Wave 1 Deduplicate Direct Copies
-  status: done
+  status: in_progress
   gate: Wave 1 complete when DEM-001..DEM-004 are resolved, shared ownership is canonicalized
     in agents_md.py / plan_helpers.py / duplicate_step_id_format.py / lifecycle.py,
     import graph stays acyclic, and verification commands pass.
@@ -88113,7 +88113,7 @@ phases:
       \ / Out of Scope\n\n- None. DEM-002 is fully resolved.\n"
   - id: arch-demolition-wave-1.dem-003-extract-duplicate-step-id-formatting-owner
     name: DEM-003 extract duplicate-step-id formatting owner
-    status: done
+    status: rejected
     description: Resolve DEM-003 by extracting duplicate-step-id diagnostic and recommendation
       formatting into src/vectl/duplicate_step_id_format.py and updating CLI and MCP
       to consume the shared formatter boundary.
@@ -88125,39 +88125,13 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T02:16:49.059014+00:00'
     done_at: '2026-04-26T02:52:27.815679+00:00'
-    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777169817726,"sessionID":"ses_2386caa7fffeXR7Gb8XeCT6rUx","part":{"id":"prt_dc793607a001FIdP6Jk57FUEhs","messageID":"msg_dc79355bb001Vtv0IA11S4NENX","sessionID":"ses_2386caa7fffeXR7Gb8XeCT6rUx","snapshot":"84f95b876093d961b1b7de17acdba37a8e6605c1","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777169820564,"sessionID":"ses_2386caa7fffeXR7Gb8XeCT6rUx","part":{"type":"tool","tool":"read","callID":"functions.read:0","state":{"status":"error","input":{"filePath":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-1.dem-003-extract-duplicate-step-id-formatting-owner/.vectl/docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md"},"error":"File
-      not found: /Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-1.dem-003-extract-duplicate-step-id-formatting-owner/.vectl/docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md","time":{"start":1777169820557,"end":1777169820563}},"id":"prt_dc7936b89001iqDfTjlltRTcoa","sessionID":"ses_2386caa7fffeXR7Gb8XeCT6rUx","messageID":"msg_dc79355bb001Vtv0IA11S4NENX"}}
-
-      {"type":"tool_use","timestamp":1777169820568,"sessionID":"ses_2386caa7fffeXR7Gb8XeCT6rUx","part":{"type":"tool","tool":"read","callID":"functions.read:1","state":{"status":"completed","input":{"filePath":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-1.dem-003-extract-duplicate-step-id-formatting-owner/src/vectl/cli.py"},"output":"<path>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-1.dem-003-extract-duplicate-step-id-formatting-owner/src/vectl/cli.py</path>\n<type>file</type>\n<content>\n1:
-      \"\"\"CLI interface using Typer + Rich.\n2: \n3: Spec authority: tools/vectl/plan.yaml,
-      phases cli_read + cli_write.\n4: \"\"\"\n5: \n6: from __future__ import annotations\n7:
-      \n8: import enum\n9: import json\n10: import os\n11: import sys\n12: import
-      time\n13: from dataclasses import asdict, is_dataclass, replace\n14: from pathlib
-      import Path\n15: from typing import Any, Literal, NoReturn, cast\n16: \n17:
-      import typer\n18: from rich.console import Console\n19: from rich.markdown import
-      Markdown\n20: from rich.markup import escape as _esc\n21: from rich.panel import
-      Panel\n22: from rich.table import Table\n23: from rich.text import Text\n24:
-      \n25: from vectl import __version__\n26: from vectl.claims import get_current_branch,
-      repair_claims\n27: from vectl.core import (\n28:     RecoverResult,\n29:     add_phase,\n30:     add_step,\n31:     add_steps_bulk,\n32:     analyze_duplicate_step_ids,\n33:     apply_duplicate_step_id_migration,\n34:     build_duplicate_step_id_migration_dry_run,\n35:     build_duplicate_step_id_migration_evidence,\n36:     claim_step,\n37:     clipboard_clear,\n38:     clipboard_write,\n39:     complete_phase,\n40:     complete_step,\n41:     defer_step,\n42:     diff_plans,\n43:     duplicate_step_id_recommendation_for_target,\n44:     edit_phase,\n45:     edit_step,\n46:     format_lock_changes,\n47:     get_claimed_steps,\n48:     get_next_steps,\n49:     move_step,\n50:     recalc_lock_status,\n51:     reject_step,\n52:     remove_step,\n53:     render_plan,\n54:     require_unambiguous_target_step_id,\n55:     review_plan,\n56:     search_plan,\n57:     skip_phase,\n58:     skip_step,\n59:     unlock_phase,\n60:     update_checklist,\n61:     validate_plan,\n62:
-      )\n63: from vectl.core import (\n64:     gate_check as core_gate_check,\n65:
-      )\n66: from vectl.dashboard import generate_dashboard\n67: from vectl.guide
-      import GUIDE_ALL as _GUIDE_ALL\n68: from vectl.guide import GUIDE_TOPICS as
-      _GUIDE_TOPICS\n69: from vectl.io import (\n70:     _resolve_git_dir,\n71:     load_plan_definition,\n72:     save_plan,\n73:
-      )\n74: from vectl.lifecycle import ClaimConflictError\n75: from vectl.merge_driver
-      import merge_plans\n76: from vectl.migration import migrate_from_split_state,
-      resolve_state_path\n77: from vectl.models import (\n78:     AffinityMode,\n79:     CASConflictError,\n80:     Phase,\n81:     PhaseStatus,\n82:     Plan,\n83:     PlanError,\n84:     PlanIOError,\n85:     SkipReason,\n86:     Step,\n87:     StepStatus,\n88:     format_step_selector,\n89:
-      )\n90: from vectl.orch_app import ControlResult\n91: from vectl.orchestration.recovery
-      import LegacyRunStatus\n92: from vectl.plan_path import (\n93:     is_linked_worktree,\n94:     resolve_claims_path,\n95:     resolve_plan_path,\n96:
-      )\n97: from vectl.semantics import _get_active_phase_ids, is_step_locked\n98:
-      \n99: console = Console(stderr=True)\n100: out = Console()\n101: # ---------------------------------------------------------------------------\n102:
-      # Status display helpers\n103: # ---------------------------------------------------------------------------\n104:
-      \n105: _STEP_STATUS_STYLE = {\n106:     StepStatus.PENDING: (\"○\", \"dim\"),\n107:     StepStatus.CLAIMED:
-      (\"◉\", \"yellow\"),\n108:     StepStatus.DONE: (\"✓\", \"green\"),\n109:     StepStatus.SKIPPED:
-      (\"⊘\", \"dim\"),\n110:     StepStatus.REJECTED: (\"✗\", \"red bold\"),\n111:
-      }\n112: \n'
+    rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
+      stored in evidence; implementation unchanged'
+    rejection_history:
+    - reason: 'historical evidence cleanup: raw OpenCode JSON event stream stored
+        in evidence; implementation unchanged'
+      timestamp: '2026-04-26T12:05:38.701599+00:00'
+      reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-1.dem-004-keep-claim-metadata-lifecycle-owned
     name: DEM-004 keep claim metadata lifecycle-owned
     status: done

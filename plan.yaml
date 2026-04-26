@@ -88172,7 +88172,7 @@ phases:
   steps:
   - id: arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports
     name: DEM-012 remove dead control-channel DTO exports
-    status: rejected
+    status: claimed
     description: Resolve DEM-012 by deleting InspectView and CaseView from src/vectl/orchestration/control_channel.py,
       removing any __all__ exports or production imports that keep them alive, and
       preserving only tests that still verify surviving boundaries.
@@ -88181,8 +88181,8 @@ phases:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/orchestration/control_channel.py
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T03:23:21.500301+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T12:05:54.890629+00:00'
     done_at: '2026-04-26T03:28:41.779612+00:00'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'

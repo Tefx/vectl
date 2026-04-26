@@ -88459,7 +88459,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-5.dem-014-wire-review-gate-into-drivedriver-and-remove-protocol-only-seam
     name: DEM-014 wire review gate into DriveDriver and remove protocol-only seam
-    status: rejected
+    status: claimed
     description: Complete DEM-014 atomically by wiring DefaultReviewGate into DriveDriver.__init__
       as the default review_gate, adding a named post-execution review helper in the
       driver, routing terminal execution facts through that helper before authoritative
@@ -88474,8 +88474,8 @@ phases:
     depends_on:
     - arch-demolition-wave-5.dem-014-implement-defaultreviewgate-concretely
     agent: python-senior-tacit
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T08:36:24.097039+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T12:06:53.692405+00:00'
     done_at: '2026-04-26T08:51:08.903544+00:00'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'

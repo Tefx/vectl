@@ -29,7 +29,6 @@ from vectl.core import (
     add_phase,
     add_step,
     add_steps_bulk,
-    analyze_duplicate_step_ids,
     apply_duplicate_step_id_migration,
     build_duplicate_step_id_migration_dry_run,
     build_duplicate_step_id_migration_evidence,
@@ -40,7 +39,6 @@ from vectl.core import (
     complete_step,
     defer_step,
     diff_plans,
-    duplicate_step_id_recommendation_for_target,
     edit_phase,
     edit_step,
     format_lock_changes,
@@ -64,6 +62,11 @@ from vectl.core import (
     gate_check as core_gate_check,
 )
 from vectl.dashboard import generate_dashboard
+from vectl.duplicate_step_id_format import (
+    format_duplicate_step_id_diagnostics,
+    format_duplicate_step_id_recommendation,
+    get_duplicate_step_id_recommendation,
+)
 from vectl.guide import GUIDE_ALL as _GUIDE_ALL
 from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
 from vectl.io import (
@@ -154,48 +157,31 @@ def _one_line_summary(description: str, max_len: int = 72) -> str:
 
 def _print_duplicate_id_warning_block(p: Plan) -> None:
     """Print duplicate step-ID diagnostics for read-only surfaces."""
-    diagnostics = analyze_duplicate_step_ids(p)
-    if not diagnostics.conflicts:
+    lines = format_duplicate_step_id_diagnostics(p)
+    if not lines:
         return
 
     out.print("[yellow]⚠ Duplicate step-ID diagnostics:[/]")
-    for conflict in diagnostics.conflicts:
-        phases = ", ".join(conflict.phase_ids)
-        out.print(
-            f"  [yellow]WARN:[/] duplicate step ID '{_esc(conflict.step_id)}' "
-            f"appears {conflict.occurrences} time(s) across phases: {_esc(phases)}"
-        )
+    for line in lines:
+        out.print(f"  [yellow]{line}[/]")
 
 
 def _print_duplicate_id_recommendation_for_step(p: Plan, step_id: str) -> None:
     """Print duplicate-ID repair recommendation for an ambiguous step target."""
-    diagnostics = analyze_duplicate_step_ids(p)
-    recommendation = duplicate_step_id_recommendation_for_target(diagnostics, step_id)
+    recommendation = get_duplicate_step_id_recommendation(p, step_id)
     if recommendation is None:
         return
 
     out.print(
         "[yellow]⚠ Ambiguous step target: duplicate ID detected across phases.[/]",
     )
-    phases = ", ".join(duplicate.phase for duplicate in recommendation.duplicates)
-    out.print(
-        "  "
-        f"[dim]type={_esc(recommendation.type)} "
-        f"step_id={_esc(recommendation.step_id)} "
-        f"duplicates={_esc(phases)}[/]"
-    )
-    out.print(
-        "  [dim]resolution.explicit_phase:[/] "
-        f"{_esc(recommendation.resolution_path.explicit_phase)}",
-    )
-    out.print(
-        "  [dim]resolution.auto_migrate_flag:[/] "
-        f"{_esc(recommendation.resolution_path.auto_migrate_flag)}",
-    )
-    out.print(
-        "  [dim]resolution.migration_tool:[/] "
-        f"{_esc(recommendation.resolution_path.migration_tool)}",
-    )
+    for line in format_duplicate_step_id_recommendation(recommendation):
+        label, _, rest = line.partition(": ")
+        if label.startswith("resolution."):
+            out.print(f"  [dim]{label}:[/] {_esc(rest)}")
+        else:
+            out.print(f"  [dim]{_esc(line)}[/]")
+
 
 
 def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tuple[Phase, Step]]:

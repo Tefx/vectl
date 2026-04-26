@@ -88163,7 +88163,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-2
   name: Architectural Demolition — Wave 2 Delete Dead Exported Surfaces
-  status: done
+  status: in_progress
   gate: Wave 2 complete when DEM-012, DEM-013, and DEM-015 dead exported surfaces
     are removed, the temporary ConcreteDriveDriver alias is documented as one-wave-only
     debt, and verification commands pass.
@@ -88172,7 +88172,7 @@ phases:
   steps:
   - id: arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports
     name: DEM-012 remove dead control-channel DTO exports
-    status: done
+    status: rejected
     description: Resolve DEM-012 by deleting InspectView and CaseView from src/vectl/orchestration/control_channel.py,
       removing any __all__ exports or production imports that keep them alive, and
       preserving only tests that still verify surviving boundaries.
@@ -88184,23 +88184,13 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T03:23:21.500301+00:00'
     done_at: '2026-04-26T03:28:41.779612+00:00'
-    evidence: '[reconcile_disposition=noop] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777173811987,"sessionID":"ses_2382fbdbeffeyfjoY5bifmT45t","part":{"id":"prt_dc7d0530b001zXtkcLWPFi4haD","messageID":"msg_dc7d0428b001uzLsaXSMG2I12r","sessionID":"ses_2382fbdbeffeyfjoY5bifmT45t","snapshot":"2588e472f43a07f8f78d7fc40d16840772745f5f","type":"step-start"}}
-
-      {"type":"text","timestamp":1777174117284,"sessionID":"ses_2382fbdbeffeyfjoY5bifmT45t","part":{"id":"prt_dc7d055e4002n3mT31aL0qNFWW","messageID":"msg_dc7d0428b001uzLsaXSMG2I12r","sessionID":"ses_2382fbdbeffeyfjoY5bifmT45t","type":"text","text":"<tool_call>todowrite|todos_<|im_middle|>[{\"task\":
-      \"Read control_channel.py to understand InspectView and CaseView\", \"status\":
-      \"in_progress\"}, {\"task\": \"Find all imports/references to InspectView and
-      CaseView\", \"status\": \"pending\"}, {\"task\": \"Delete InspectView and CaseView
-      from control_channel.py\", \"status\": \"pending\"}, {\"task\": \"Remove __all__
-      exports and production imports\", \"status\": \"pending\"}, {\"task\": \"Update/remove
-      tests that reference deleted classes\", \"status\": \"pending\"}, {\"task\":
-      \"Run verification: uv run pytest tests/ -x --tb=short\", \"status\": \"pending\"}]<|im_assistant|>assistant<|im_middle|></think><tool_call>read|filePath_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/src/vectl/orchestration/control_channel.py<|im_assistant|>assistant<|im_middle|><tool_call>read|filePath_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md<|im_assistant|>assistant<|im_middle|></think><tool_call>grep|pattern_<|im_middle|>InspectView|CaseView<|im_path_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/src<|im_assistant|>assistant<|im_middle|><tool_call>grep|pattern_<|im_middle|>InspectView|CaseView<|im_path_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/tests<tool_call>grep|pattern_<|im_middle|>control_channel<|im_path_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/src<|im_assistant|>assistant<|im_middle|><tool_call>grep|pattern_<|im_middle|>control_channel<|im_path_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/tests<tool_call>read|filePath_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/src/vectl/orchestration/__init__.py\n<|im_assistant|>assistant<|im_middle|>Let
-      me read the file and search in parallel.<tool_call>read|filePath_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/src/vectl/orchestration/control_channel.py<|im_assistant|>assistant<|im_middle|><tool_call>grep|pattern_<|im_middle|>InspectView|CaseView<|im_path_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports<tool_call>glob|pattern_<|im_middle|>src/vectl/orchestration/__init__.py<|im_path_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports\n<|im_assistant|>assistant<|im_middle|>Good,
-      now let me get the actual results.<tool_call>read|filePath_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/src/vectl/orchestration/control_channel.py<|im_assistant|>assistant<|im_middle|><tool_call>grep|pattern_<|im_middle|>InspectView|CaseView<|im_path_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports\n<|im_assistant|>assistant<|im_middle|>Let
-      me just go ahead and read the relevant files.<tool_call>read|filePath_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/src/vectl/orchestration/control_channel.py<tool_call>grep|pattern_<|im_middle|>InspectView|CaseView<|im_path_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports\n<|im_assistant|>assistant<|im_middle|>I
-      need to focus. Let me read the key file first.<tool_call>read|filePath_<|im_middle|>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/src/vectl/orchestration/control_channel.py<tool_call>bash|command_<|im_middle|>rg
-      -n \"InspectView|CaseView\" /Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-012-remove-dead-control-channel-dto-exports/<|im_description_<|im_middle|>Search
-      for InspectView and CaseView r'
+    rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
+      stored in evidence; implementation unchanged'
+    rejection_history:
+    - reason: 'historical evidence cleanup: raw OpenCode JSON event stream stored
+        in evidence; implementation unchanged'
+      timestamp: '2026-04-26T12:05:52.516637+00:00'
+      reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-2.dem-013-delete-speculative-continuity-artifact-seams
     name: DEM-013 delete speculative continuity artifact seams
     status: done

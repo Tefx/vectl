@@ -11,6 +11,18 @@ Public surfaces (authority pinned to ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.m
     - freeze_config()                (immutability enforcement boundary)
     - load_orchestration_config()   (config loader surface)
 
+owns:
+    ConfigValue, ResolverToolAllowlist, RosterConfig, DispatchConfig,
+    RuntimeConfig, ControlConfig, ResolverConfig, RoleFieldProvenance,
+    ContinuityConfig, ObservabilityConfig, OperatorConfig, DriveConfig,
+    OrchestrationConfig, FrozenConfigSnapshot, ConfigValidationError,
+    RoleProfileOverrideError, plus config loading/validation/freeze helpers.
+
+Does not own runtime/execution contract models such as DispatchSpec,
+ExecutionRequest, ExecutionResult, DriveRecord, DriveLease, DriveConfigFrozen,
+or RoleProfile; those remain contract-owned and may be imported here only to
+materialize frozen config and role-profile outputs.
+
 These surfaces are shared orchestration-plane concerns; they are not private
 submodules of any single component.
 """

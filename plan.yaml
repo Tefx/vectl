@@ -88018,7 +88018,7 @@ phases:
       - uv run pytest tests/ -x --tb=short -> 2914 passed, 40 skipped in 185.95s'
 - id: arch-demolition-wave-1
   name: Architectural Demolition — Wave 1 Deduplicate Direct Copies
-  status: in_progress
+  status: done
   gate: Wave 1 complete when DEM-001..DEM-004 are resolved, shared ownership is canonicalized
     in agents_md.py / plan_helpers.py / duplicate_step_id_format.py / lifecycle.py,
     import graph stays acyclic, and verification commands pass.
@@ -88137,7 +88137,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-1.dem-004-keep-claim-metadata-lifecycle-owned
     name: DEM-004 keep claim metadata lifecycle-owned
-    status: claimed
+    status: done
     description: Resolve DEM-004 by keeping shared claim/affinity/conflict metadata
       lifecycle-owned in src/vectl/lifecycle.py and making mcp_server.py consume that
       domain metadata via a thin transport envelope instead of redefining parallel
@@ -88150,7 +88150,10 @@ phases:
     agent: python-senior-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T12:05:47.898031+00:00'
-    done_at: '2026-04-26T03:23:17.859180+00:00'
+    done_at: '2026-04-26T12:05:50.225806+00:00'
+    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
+      0); stdout=<opencode JSON event stream omitted from plan evidence> [historical_evidence_cleanup=raw_opencode_event_stream_removed;
+      implementation_status=unchanged]'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'
     rejection_history:

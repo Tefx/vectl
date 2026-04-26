@@ -473,141 +473,302 @@ DashboardOutputOption = typer.Option(
 )
 
 
-# ---------------------------------------------------------------------------
-# cli.1: init + --version
-# ---------------------------------------------------------------------------
-
-
-@app.callback()
-def main(
-    version: bool = typer.Option(
-        False,
-        "--version",
-        "-V",
-        callback=_version_callback,
-        is_eager=True,
-        help="Show version and exit.",
+def render(
+    phase: str | None = typer.Option(None, "--phase", help="Render only this phase."),
+    full: bool = typer.Option(
+        False, "--full", help="Show complete step descriptions (no truncation)."
     ),
+    output: Path | None = RenderOutputOption,
+    plan: Path | None = PlanOption,
 ) -> None:
-    """vectl: Agentic Implementation Plan Manager."""
+    """Render plan as Markdown (read-only export).
+
+    Stakeholder report: phase progress, step status, one-line descriptions.
+    Omits operational detail (claimed_by, rejection_history, etc.).
+    Use --full to include complete step descriptions.
+    """
+    p, _, plan_path = _load(plan)
+
+    try:
+        md = render_plan(p, phase_id=phase, full=full)
+    except PlanError as e:
+        _die(str(e))
+        return  # unreachable
+
+    if output is not None:
+        output.write_text(md, encoding="utf-8")
+        console.print(f"[green]Written:[/] {output}")
+    else:
+        out.print(md)
 
 
-@app.command()
-def mcp() -> None:
-    """Start the MCP server (stdio mode)."""
-    from vectl.mcp_server import mcp
-
-    mcp.run()
-
-
-@app.command("merge-driver", hidden=True)
-def merge_driver_cmd(
-    base: str = typer.Argument(..., help="Git merge-base file path (%O)."),
-    ours: str = typer.Argument(..., help="Git ours file path (%A)."),
-    theirs: str = typer.Argument(..., help="Git theirs file path (%B)."),
+def diff_cmd(
+    ref: str = typer.Argument("HEAD", help="Git ref to compare against (default: HEAD)."),
+    plan: Path | None = PlanOption,
 ) -> None:
-    """Git merge-driver entrypoint for plan.yaml merges."""
-    raise typer.Exit(merge_plans(base, ours, theirs))
+    """Show plan changes since a git ref (default: last commit).
+
+    Compares current plan.yaml against the version at the given git ref.
+    Shows added/removed phases and steps, status transitions, and modifications.
+    """
+    import subprocess as sp
+
+    p_new, _, plan = _load(plan)
+
+    # Get old plan from git
+    try:
+        result = sp.run(
+            ["git", "show", f"{ref}:./{plan.name}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=str(plan.parent.resolve()),
+        )
+    except (sp.TimeoutExpired, OSError) as e:
+        _die(f"Git error: {e}")
+        return  # unreachable
+
+    if result.returncode != 0:
+        # Likely file didn't exist at that ref
+        if "does not exist" in result.stderr or "not exist" in result.stderr:
+            out.print(f"[dim]No plan.yaml at {ref} — showing current state as all new.[/]")
+            from vectl.models import Plan as PlanModel
+
+            p_old = PlanModel(project=p_new.project)
+        else:
+            _die(f"git show {ref}:./{plan.name} failed: {result.stderr.strip()}")
+            return  # unreachable
+    else:
+        import yaml
+
+        from vectl.models import Plan as PlanModel
+
+        try:
+            raw = yaml.safe_load(result.stdout)
+            p_old = PlanModel(**raw)
+        except Exception as e:
+            _die(f"Failed to parse plan at {ref}: {e}")
+            return  # unreachable
+
+    diff = diff_plans(p_old, p_new)
+
+    if not diff.has_changes:
+        out.print(f"[dim]No changes since {ref}.[/]")
+        return
+
+    out.print(f"[bold]Changes since {ref}:[/]\n")
+
+    if diff.phase_changes:
+        out.print("[bold]Phases:[/]")
+        for pc in diff.phase_changes:
+            if pc.kind == "added":
+                out.print(f"  [green]+[/] {pc.phase_id} — {pc.phase_name}")
+            elif pc.kind == "removed":
+                out.print(f"  [red]-[/] {pc.phase_id} — {pc.phase_name}")
+            elif pc.kind == "status_changed":
+                old_val = pc.old_status.value if pc.old_status else "?"
+                new_val = pc.new_status.value if pc.new_status else "?"
+                out.print(f"  [yellow]~[/] {pc.phase_id} — {old_val} → {new_val}")
+        out.print()
+
+    if diff.step_changes:
+        out.print("[bold]Steps:[/]")
+        for sc in diff.step_changes:
+            if sc.kind == "added":
+                out.print(f"  [green]+[/] {sc.step_id} — {sc.step_name} ({sc.phase_id})")
+            elif sc.kind == "removed":
+                out.print(f"  [red]-[/] {sc.step_id} — {sc.step_name} ({sc.phase_id})")
+            elif sc.kind == "status_changed":
+                old_val = sc.old_status.value if sc.old_status else "?"
+                new_val = sc.new_status.value if sc.new_status else "?"
+                out.print(f"  [yellow]~[/] {sc.step_id} — {old_val} → {new_val} ({sc.phase_id})")
+            elif sc.kind == "modified":
+                out.print(f"  [cyan]≈[/] {sc.step_id} — {sc.detail} ({sc.phase_id})")
+
+    total = len(diff.phase_changes) + len(diff.step_changes)
+    out.print(f"\n[dim]{total} change(s) total[/]")
 
 
-# ---------------------------------------------------------------------------
-# vectl orch: orchestration operator commands
-# Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 6
-# ---------------------------------------------------------------------------
+def log_cmd(
+    last: int = typer.Option(
+        5, "--last", "-n", help="Number of recent commits to show (default: 5)."
+    ),
+    plan: Path | None = PlanOption,
+) -> None:
+    """Show recent plan mutations from git history.
+
+    Reads git log filtered to plan.yaml commits and shows what changed
+    in each commit. Reuses diff_plans for structured change detection.
+    """
+    import subprocess as sp
+
+    plan_resolved = resolve_plan_path(plan)
+    plan_dir = str(plan_resolved.parent)
+
+    # Get recent commits that touched plan.yaml
+    try:
+        result = sp.run(
+            ["git", "log", f"-{last}", "--format=%H|%ai|%s", "--", plan_resolved.name],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=plan_dir,
+        )
+    except (sp.TimeoutExpired, OSError) as e:
+        _die(f"Git error: {e}")
+        return  # unreachable
+
+    if result.returncode != 0:
+        _die(f"git log failed: {result.stderr.strip()}")
+        return  # unreachable
+
+    lines = [line.strip() for line in result.stdout.strip().splitlines() if line.strip()]
+    if not lines:
+        out.print("[dim]No git history for plan.yaml.[/]")
+        return
+
+    out.print(f"[bold]Plan history (last {len(lines)}):[/]\n")
+
+    for i, line in enumerate(lines):
+        parts = line.split("|", 2)
+        if len(parts) < 3:
+            continue
+        commit_hash, date, message = parts[0], parts[1], parts[2]
+        short_hash = commit_hash[:8]
+        short_date = date[:10]
+
+        out.print(f"  [bold cyan]{short_hash}[/] {short_date}  {message}")
+
+        # Compute diff for this commit vs its parent
+        parent_ref = f"{commit_hash}~1"
+
+        old_plan = _git_plan_at_ref(parent_ref, plan_resolved, plan_dir)
+        new_plan = _git_plan_at_ref(commit_hash, plan_resolved, plan_dir)
+
+        if old_plan is not None and new_plan is not None:
+            diff = diff_plans(old_plan, new_plan)
+            if diff.has_changes:
+                for pc in diff.phase_changes:
+                    if pc.kind == "added":
+                        out.print(f"    [green]+phase[/] {pc.phase_id} ({pc.phase_name})")
+                    elif pc.kind == "removed":
+                        out.print(f"    [red]-phase[/] {pc.phase_id}")
+                    elif pc.kind == "status_changed":
+                        old_v = pc.old_status.value if pc.old_status else "?"
+                        new_v = pc.new_status.value if pc.new_status else "?"
+                        out.print(f"    [yellow]~phase[/] {pc.phase_id}: {old_v} → {new_v}")
+                for sc in diff.step_changes:
+                    if sc.kind == "added":
+                        out.print(f"    [green]+step[/]  {sc.step_id} ({sc.step_name})")
+                    elif sc.kind == "removed":
+                        out.print(f"    [red]-step[/]  {sc.step_id}")
+                    elif sc.kind == "status_changed":
+                        old_v = sc.old_status.value if sc.old_status else "?"
+                        new_v = sc.new_status.value if sc.new_status else "?"
+                        out.print(f"    [yellow]~step[/]  {sc.step_id}: {old_v} → {new_v}")
+                    elif sc.kind == "modified":
+                        out.print(f"    [cyan]≈step[/]  {sc.step_id}: {sc.detail}")
+            else:
+                out.print("    [dim](no structural changes)[/]")
+        elif new_plan is not None and old_plan is None:
+            out.print("    [green](initial commit)[/]")
+        else:
+            out.print("    [dim](unable to parse)[/]")
+
+        if i < len(lines) - 1:
+            out.print()
 
 
+def _git_plan_at_ref(ref: str, plan_path: Path, cwd: str) -> Plan | None:
+    """Try to load plan.yaml at a given git ref. Returns None on failure."""
+    import subprocess as sp
 
-from vectl.cli_orchestration import _build_orchestration_runtime_app, _build_orchestration_runtime_app_or_die, _enrich_drive_scope_result, _step_id_for_run, orch_case_list, orch_case_respond, orch_case_show, orch_config_show, orch_config_tools, orch_config_validate, orch_control_pause, orch_control_stop, orch_control_unpause, orch_drive, orch_drive_recover, orch_drive_resume, orch_drive_runs, orch_drive_status, orch_inspect_actions, orch_inspect_artifacts, orch_inspect_events, orch_inspect_logs, orch_inspect_status, orch_migration_advance_state, orch_migration_validate_cutover, orch_prune, orch_recover, orch_resume, orch_run, orch_runs
-from vectl.cli_render import diff_cmd, log_cmd, render
-from vectl.cli_agents_md import agents_md_cmd, init
-from vectl.cli_plan import add_phase_cmd, add_step_cmd, add_steps_cmd, cancel, check_cmd, checkpoint, claim, clipboard_clear_cmd, clipboard_read_cmd, clipboard_write_cmd, complete, complete_phase_cmd, dag, dashboard, defer, edit_phase_cmd, edit_plan_cmd, edit_step_cmd, gate_check, guide_cmd, migrate_cmd, migrate_step_id_cmd, mine, move_step_cmd, next_cmd, recalc_lock, recover, reject, remove_step_cmd, repair_claims_cmd, review, search, show, skip, skip_phase_cmd, status, unlock, validate
+    import yaml
 
-# Registered command implementations moved to behavior modules.
-orch_app.command("run")(orch_run)
-orch_app.command("resume")(orch_resume)
-orch_app.command("recover")(orch_recover)
-orch_app.command("runs")(orch_runs)
-orch_app.command("prune")(orch_prune)
-orch_migration_app.command("validate-cutover")(orch_migration_validate_cutover)
-orch_app.command("cutover-validate")(orch_migration_validate_cutover)
-orch_migration_app.command("advance-state")(orch_migration_advance_state)
-orch_app.command("migration-advance-state")(orch_migration_advance_state)
-orch_inspect_app.command("status")(orch_inspect_status)
-orch_app.command("status")(orch_inspect_status)
-orch_inspect_app.command("events")(orch_inspect_events)
-orch_app.command("events")(orch_inspect_events)
-orch_inspect_app.command("logs")(orch_inspect_logs)
-orch_app.command("logs")(orch_inspect_logs)
-orch_inspect_app.command("artifacts")(orch_inspect_artifacts)
-orch_app.command("artifacts")(orch_inspect_artifacts)
-orch_inspect_app.command("actions")(orch_inspect_actions)
-orch_app.command("actions")(orch_inspect_actions)
-orch_case_app.command("list")(orch_case_list)
-orch_app.command("case-list")(orch_case_list)
-orch_case_app.command("show")(orch_case_show)
-orch_app.command("case-show")(orch_case_show)
-orch_case_app.command("respond")(orch_case_respond)
-orch_app.command("case-respond")(orch_case_respond)
-orch_control_app.command("pause")(orch_control_pause)
-orch_app.command("pause")(orch_control_pause)
-orch_control_app.command("unpause")(orch_control_unpause)
-orch_app.command("unpause")(orch_control_unpause)
-orch_control_app.command("stop")(orch_control_stop)
-orch_app.command("stop")(orch_control_stop)
-orch_config_app.command("show")(orch_config_show)
-orch_app.command("config-show")(orch_config_show)
-orch_config_app.command("validate")(orch_config_validate)
-orch_app.command("config-validate")(orch_config_validate)
-orch_config_app.command("tools")(orch_config_tools)
-orch_app.command("config-tools")(orch_config_tools)
-orch_app.command("drive")(orch_drive)
-orch_app.command("drive-status")(orch_drive_status)
-orch_app.command("drive-runs")(orch_drive_runs)
-orch_app.command("drive-resume")(orch_drive_resume)
-orch_app.command("drive-recover")(orch_drive_recover)
-app.command()(render)
-app.command("diff")(diff_cmd)
-app.command("log")(log_cmd)
-app.command("agents-md")(agents_md_cmd)
-app.command()(init)
-app.command("next")(next_cmd)
-app.command()(status)
-app.command()(show)
-app.command("guide")(guide_cmd)
-app.command()(dag)
-app.command()(claim)
-app.command()(complete)
-app.command("complete-phase")(complete_phase_cmd)
-app.command()(defer)
-app.command()(reject)
-app.command()(skip)
-app.command()(cancel)
-app.command("skip-phase")(skip_phase_cmd)
-app.command("check")(check_cmd)
-app.command()(validate)
-app.command("migrate")(migrate_cmd)
-app.command("migrate-step-id")(migrate_step_id_cmd)
-app.command()(recover)
-app.command()(checkpoint)
-app.command("add-step")(add_step_cmd)
-app.command("add-phase")(add_phase_cmd)
-app.command("edit-plan")(edit_plan_cmd)
-app.command("edit-step")(edit_step_cmd)
-app.command("edit-phase")(edit_phase_cmd)
-app.command("remove-step")(remove_step_cmd)
-app.command("move-step")(move_step_cmd)
-app.command()(unlock)
-app.command("recalc-lock")(recalc_lock)
-repair_app.command("claims")(repair_claims_cmd)
-app.command("add-steps")(add_steps_cmd)
-app.command()(search)
-app.command()(mine)
-app.command()(review)
-app.command("gate-check")(gate_check)
-app.command("clipboard-write")(clipboard_write_cmd)
-app.command("clipboard-read")(clipboard_read_cmd)
-app.command("clipboard-clear")(clipboard_clear_cmd)
-app.command()(dashboard)
+    try:
+        result = sp.run(
+            ["git", "show", f"{ref}:./{plan_path.name}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=cwd,
+        )
+    except (sp.TimeoutExpired, OSError):
+        return None
 
-if __name__ == "__main__":
-    app()
+    if result.returncode != 0:
+        return None
+
+    try:
+        raw = yaml.safe_load(result.stdout)
+        return Plan(**raw)
+    except Exception:
+        return None
+
+
+_AGENTS_MD_LEGACY_HEADER = "## Plan Tracking (vectl)"
+_AGENTS_MD_BEGIN = "<!-- VECTL:AGENTS:BEGIN -->"
+_AGENTS_MD_END = "<!-- VECTL:AGENTS:END -->"
+
+# Source:
+#   - User instruction in this conversation (2026-02-12): no manual YAML edits, and
+#     agreed safe AGENTS.md migration approach using begin/end markers.
+_AGENTS_MD_SNIPPET = f"""\
+{_AGENTS_MD_BEGIN}
+## Plan Tracking (vectl)
+
+vectl tracks this repo's implementation plan as a structured `plan.yaml`:
+what to do next, who claimed it, and what counts as done (with verification evidence).
+
+Full guide: `vectl_guide` (CLI fallback: `vectl guide`)
+Quick view: `vectl_status` (CLI fallback: `vectl status`)
+
+### MCP vs CLI
+- Source of truth: `plan.yaml` (channel-agnostic).
+- **Always prefer MCP tools** (``vectl_status``, ``vectl_claim``,
+  ``vectl_complete``, etc.) when available.
+- CLI fallback priority: `uv run vectl` > `vectl` > `uvx vectl`.
+- Evidence requirements are identical across MCP and CLI.
+
+### Claim-time Guidance
+- `vectl claim` may emit a bounded Guidance block delimited by:
+  - `--- VECTL:GUIDANCE:BEGIN ---`
+  - `--- VECTL:GUIDANCE:END ---`
+- For automation/CI: use `vectl claim --no-guidance` to keep stdout clean.
+
+### plan.yaml — Managed File (DO NOT EDIT DIRECTLY)
+
+`plan.yaml` is exclusively owned by vectl. Direct edits (Edit, Write, sed, or
+any file tool) **will** corrupt plan state — vectl performs CAS writes, lock
+recalculation, and schema validation on every save, none of which run on direct
+edits.
+
+**To modify plan state, ONLY use:**
+- MCP (preferred): `vectl_claim`, `vectl_complete`, `vectl_mutate`, etc.
+- CLI (fallback): `uv run vectl claim`, `vectl claim`, or `uvx vectl claim`, etc.
+
+If a vectl command fails, report the error — do **not** edit `plan.yaml`
+directly as a workaround. Use `vectl guide stuck` for troubleshooting.
+
+### Rules
+- One claimed step at a time.
+- Evidence is mandatory when completing (commands run + outputs + gaps).
+- Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
+
+### Step ID Uniqueness
+**Step IDs must be globally unique across ALL phases.**
+- Example: `auth.login` and `api.login` are different step IDs.
+- Example: Using just `login` in two phases creates a duplicate — not allowed.
+- If you have legacy duplicate step IDs, use `vectl migrate-step-id --dry-run`
+  to preview and `--yes` to repair.
+
+### For Architects / Planners
+- **Design Mode**: Run ``vectl_guide`` (CLI fallback:
+  ``vectl guide --on planning``) to learn the Architect Protocol.
+- **Ambiguity = Failure**: Workers will hallucinate if steps are vague.
+- **Constraint Tools**:
+  - `--evidence-template`: Force workers to provide specific proof (e.g., "Paste logs here").
+  - `--refs`: Pin specific files (e.g., "src/auth.py") to the worker's context.
+{_AGENTS_MD_END}
+"""
+

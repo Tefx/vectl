@@ -89246,3 +89246,95 @@ phases:
     depends_on:
     - post_review_remediation.fix-cli-blackbox-finalization-runtime-nonclosure
     agent: integration-verifier-tacit
+  - id: post_review_remediation.implement-completed-step-failure-evidence-guard
+    name: Implement completed-step failure evidence guard
+    status: pending
+    description: "Add a non-invar guard that prevents completed review/gate/test/verification\
+      \ evidence from hiding unclosed failure states.\n\nProblem to fix:\n- System\
+      \ review found completed steps whose evidence contained `FAIL`, `NEEDS_REVISION`,\
+      \ `gate_open_allowed=false`, non-expected-red failed tests, or `runtime non-closure:\
+      \ fail` while later closure was absent or ambiguous.\n- The plan currently relies\
+      \ on manual review to notice those contradictions.\n\nScope:\n- Implement a\
+      \ lightweight scanner in the existing plan review/validation surface that inspects\
+      \ completed review/gate/test/verification-like steps.\n- The scanner must flag\
+      \ failure evidence unless one of these is mechanically visible:\n  1. a later\
+      \ same-phase step closes the blocker with green/OPEN/gate_open_allowed=true\
+      \ evidence;\n  2. the step is explicitly intentional expected-red with owner/lifecycle/non-intersection\
+      \ disposition;\n  3. the failure is explicitly non-blocking with gate-intersection\
+      \ proof.\n- Keep this separate from repo-wide invar/static-debt checks; do not\
+      \ invoke `uvx invar-tools guard --all`.\n\nExpected-red / falsifiability requirement:\n\
+      1. Add or run a focused test fixture containing a completed gate step with `gate_open_allowed=false`\
+      \ and no later closure; prove the new guard reports it.\n2. Add or run a paired\
+      \ fixture where a later retest closes the blocker; prove the guard does not\
+      \ report a false positive.\n3. Capture the failing output before implementation\
+      \ if the test is newly authored red-first.\n\nOut of scope:\n- Do NOT mass-rewrite\
+      \ historical plan evidence.\n- Do NOT fix repo-wide `shell_result`, `file_size`,\
+      \ or `shell_complexity_debt` findings in this step.\n\n## Completion Criteria\
+      \ (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is\
+      \ not acceptable. The guard must classify real evidence text and produce actionable\
+      \ step IDs / reasons."
+    verification: '- Targeted tests prove unclosed failure evidence is reported and
+      closed/expected-red cases are not false positives.
+
+      - Existing plan review/validate CLI or MCP path exposes the guard output, or
+      the step explains the exact existing surface chosen.
+
+      - Run the focused tests added/updated for this guard.
+
+      - Do not require `uvx invar-tools guard --all`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_plan_queries.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - tests — key fixture/test passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Red fixture/test command before implementation:
+
+      ```
+
+      <paste command>
+
+      ```
+
+      - Failing output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ## Implementation Evidence
+
+      - Surface chosen for guard output:
+
+      - Failure tokens classified:
+
+      - Closure/expected-red exceptions implemented:
+
+      - Files changed:
+
+
+      ## Green Verification
+
+      ```
+
+      <paste targeted test output>
+
+      ```
+
+
+      ## Invar Exclusion
+
+      Confirm repo-wide invar/static-debt remediation was not attempted here.'
+    agent: python-senior-tacit

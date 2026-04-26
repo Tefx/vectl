@@ -88661,7 +88661,7 @@ phases:
   steps:
   - id: post_review_remediation.fix-driver-agent-selection-deep-review
     name: Fix driver agent-selection deep-review findings
-    status: pending
+    status: claimed
     description: 'Fix the non-invar SHOULD_FIX findings from `driver-agent-selection-deep-review.gate`.
 
 
@@ -88778,6 +88778,8 @@ phases:
     - src/vectl/driver/loop.py
     - src/vectl/driver/judge.py
     agent: python-senior-tacit
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T14:44:18.454453+00:00'
   - id: post_review_remediation.reverify-driver-agent-selection-deep-review
     name: Reverify driver agent-selection deep-review closure
     status: pending

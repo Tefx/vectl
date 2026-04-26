@@ -90262,7 +90262,7 @@ phases:
       full live/smoke sweep remains part of final verification.'
   - id: post_review_remediation.backfill-missing-gate-evidence
     name: Backfill missing post-review gate evidence
-    status: claimed
+    status: done
     description: 'Supplemental evidence-only closure for final gate proof gaps found
       in `post_review_remediation.gate` review.
 
@@ -90349,3 +90349,113 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T18:15:17.907183+00:00'
+    done_at: '2026-04-26T18:18:18.714403+00:00'
+    evidence: '## refs Read Confirmation
+
+      - README.md — `vectl` is the execution control plane for AI agents and enforces
+      evidence requirements, claim locking, DAG discipline, and agent affinity.
+
+      - docs/ORCHESTRATION-CLI-QUICKSTART.md — documents `vectl orch` as the orchestration
+      entrypoint; recovery uses `vectl orch recover RUN_ID` / `--dry-run --json`;
+      selector safety and no-silent-deletion are explicit; command cheat sheet covers
+      orch surfaces.
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md — canonical CLI/config/observability
+      spec; command structure covers run/resume/recover/runs/prune, inspect status/events/logs/artifacts/actions,
+      case list/show/respond, control pause/unpause/stop, config show/validate/tools.
+
+      - docs/RFC-opencode-orchestration-runner.md — OpenCode uses a dedicated runner;
+      launch/resume require headless `opencode run --format json --dir ... --agent
+      <agent_id> --file ...`; recovery prefers native resume then explicit fresh relaunch.
+
+      - tests/repro/test_orch_cli_recovery_red.py — black-box recovery-red matrix
+      covers run lifecycle, inspect, case, control, config, help, and prune surfaces
+      and verifies previously expected-red CLI/operator workflow gaps are closed.
+
+      - tests/repro/test_orch_liveness.py — `test_orch_liveness_cli_entrypoint` creates
+      a minimal fixture, invokes `vectl orch run --json`, asserts exit 0, no runtime
+      wiring failure, success true, and step_id `core.ready`.
+
+      - tests/test_orch_cli_surface.py — drive autonomy tests cover command registration,
+      active-drive attach, safe auto-recovery, unsafe/operator-controlled recovery,
+      retry limit reporting, foreground/once behavior, JSON/JSONL/plain progress,
+      and structured `auto_recovery`/`reason_code`/`human_required`/`suggested_action`
+      output.
+
+
+      ## Supplemental Verification Report
+
+      **Commands executed**:
+
+      ```sh
+
+      uv run pytest -q tests/repro/test_orch_cli_recovery_red.py tests/repro/test_orch_liveness.py
+
+      uv run pytest -q tests/test_orch_cli_surface.py -k "drive and (active or auto
+      or unsafe or foreground or once)"
+
+      uv run pytest -q tests/test_orch_cli_surface.py -k "drive" --no-header
+
+      uv run vectl orch drive --help
+
+      uv run vectl orch drive-recover --latest --dry-run --json
+
+      source scan for "runtime non-closure" in src/vectl/ and tests/
+
+      uv run pytest -q tests/repro/test_orch_cli_recovery_red.py -v --no-header
+
+      ```
+
+      **Actual output**:
+
+      ```text
+
+      CLI recovery-red + liveness: 21 passed in 6.98s.
+
+      Drive autonomy filtered tests: 7 passed, 18 deselected in 0.33s.
+
+      All drive-related CLI surface tests: 16 passed, 9 deselected in 0.44s.
+
+      `vectl orch drive --help` rendered command help with options including --agent,
+      --max-parallelism, --once, --poll-interval, --status-interval, --progress, --quiet,
+      --verbose, --jsonl, --json, --output, --plan, --help.
+
+      `vectl orch drive-recover --latest --dry-run --json` returned structured dry-run
+      JSON with status=blocked_operator, reason_code=operator_required, human_required=true,
+      suggested_action, conflict_resolutions, recovered_child_run_ids, failed_child_run_ids,
+      and summary.
+
+      Source scan: `runtime non-closure` appears as classification/guard strings in
+      src/vectl/orch_app.py, src/vectl/cli_orchestration.py, and src/vectl/core_plan_queries.py;
+      no tests/ matches and no unhandled public CLI output leak. CLI maps the token
+      to reason_code=runtime_nonclosure/action guidance.
+
+      Verbose recovery-red rerun: 20 passed in 6.23s; all previously expected-red
+      tests green.
+
+      ```
+
+
+      ## Closure
+
+      - CLI black-box runtime non-closure missing evidence: PROVEN — recovery-red/liveness
+      public CLI tests are green; no unhandled `runtime non-closure: fail` leaks to
+      public CLI output; remaining source tokens are classifier/guard strings.
+
+      - Drive autonomy/action-guidance missing evidence: PROVEN — drive surface tests
+      pass for safe auto-recovery, unsafe operator-controlled recovery, retry limits,
+      active-drive attach, foreground/once behavior, and structured guidance; CLI
+      smoke confirms help and dry-run recovery JSON surfaces.
+
+      - blocking-now: none
+
+
+      ## Decision
+
+      - [x] OPEN
+
+      - [ ] BLOCKED
+
+
+      No product-code changes were made by this supplemental evidence step; repo-wide
+      invar/static debt remains explicitly outside this non-invar gate lane.'

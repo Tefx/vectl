@@ -1229,6 +1229,32 @@ def test_run_and_control_route_through_typed_boundaries(tmp_path: Path) -> None:
     assert any("type=control.pause" in row for row in actions.data)
 
 
+def test_runs_summarizes_stored_opencode_event_streams(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    assert app._config.run_store_root is not None
+    registry = RunRegistry(store_root=app._config.run_store_root)
+    registry.save(
+        RunRecord(
+            run_id="run-noisy",
+            step_id="core.ready",
+            plan_path=str(app._config.plan_path),
+            status="success",
+            output_summary=(
+                'OpenCode completed successfully (exit 0); stdout={"type":"step_start"}\n'
+                '{"type":"tool_use","part":{"state":{"output":"not wired noise"}}}'
+            ),
+        )
+    )
+
+    runs = app.runs(step_id="core.ready")
+
+    assert runs[0].output_summary == (
+        "OpenCode completed successfully (exit 0); "
+        "stdout=<opencode JSON event stream omitted from plan evidence>"
+    )
+    assert "not wired" not in runs[0].output_summary
+
+
 def test_run_admission_failure_when_same_plan_already_has_active_run(tmp_path: Path) -> None:
     app = _build_app(tmp_path)
     assert app._config.run_store_root is not None

@@ -4330,7 +4330,7 @@ class OrchestrationApp:
                     run_id=record.run_id,
                     step_id=record.step_id,
                     status=record.status,
-                    output_summary=record.output_summary,
+                    output_summary=summarize_plan_evidence(record.output_summary),
                     source=record.source,
                     legacy_run_id=record.legacy_run_id,
                     legacy_migration_state=record.legacy_migration_state,

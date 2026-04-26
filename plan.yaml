@@ -88646,3 +88646,15 @@ phases:
         JSON event stream; no implementation rework requested'
       timestamp: '2026-04-26T11:58:08.985701+00:00'
       reviewer: minimalist-architect-tacit
+- id: post_review_remediation
+  name: Post-Review Non-Invar Remediation
+  status: pending
+  gate: Phase passes when driver agent-selection deep-review SHOULD_FIX items are
+    remediated or authoritatively closed, historical OpenCode/CLI failed gates are
+    regated green, completed-step failure evidence cannot remain unclosed, and independent
+    gate review finds no blocker-class non-invar issues.
+  context: Fix or close system-review findings that are not repo-wide invar/static-debt
+    remediation. Explicitly excludes shell_result/file_size/shell_complexity_debt
+    cleanup from uvx invar-tools guard --all.
+  depends_on:
+  - arch-demolition-wave-7

@@ -89517,3 +89517,93 @@ phases:
     - post_review_remediation.reverify-cli-blackbox-finalization
     - post_review_remediation.reverify-completed-step-failure-evidence-guard
     agent: gate-reviewer-tacit
+  - id: post_review_remediation.implement-drive-autonomy-safe-recovery-and-actions
+    name: Implement drive autonomy safe recovery and action guidance
+    status: pending
+    description: 'Implement the minimal drive autonomy improvements requested after
+      system-review reflection.
+
+
+      Scope:
+
+      - `vectl orch drive` should autonomously inspect existing active/interrupted
+      drive state on startup and run safe recovery when recovery can be applied without
+      destructive/operator-confirmation semantics.
+
+      - Drive-facing errors should expose structured next-action guidance (reason_code,
+      suggested action, human_required) where the existing result surface can carry
+      it without adding a large framework.
+
+      - Keep this minimal: reuse existing drive records, recover_drive semantics,
+      and plain dataclass/dict outputs. Do not introduce a new orchestration framework,
+      middleware, event bus, or manager layer.
+
+      - Preserve explicit manual `vectl orch drive-recover` for operator-driven recovery
+      and destructive/ambiguous cases.
+
+
+      Out of scope:
+
+      - Repo-wide invar/static debt (`shell_result`, `file_size`, `shell_complexity_debt`).
+
+      - Full auto-remediation of arbitrary product bugs.
+
+
+      Completion criteria:
+
+      - Unit or integration tests prove drive startup performs safe auto-recovery
+      when needed.
+
+      - Tests prove ambiguous/destructive recovery remains operator-controlled.
+
+      - CLI JSON/human output includes enough structured guidance to tell the operator
+      whether manual drive-recover or plan remediation is needed.
+
+      - Live/smoke tests are run or explicitly skipped with environment reasons.'
+    verification: '- Run focused unit/integration tests for drive auto-recovery and
+      action guidance.
+
+      - Run relevant CLI smoke tests for `vectl orch drive`, `vectl orch drive-recover
+      --latest --dry-run`, and JSON output.
+
+      - Run live smoke tests when environment flags/tools are available; otherwise
+      record exact skip reason.
+
+      - Do not require `uvx invar-tools guard --all`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - src/vectl/orch_app.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_orchestration.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/driver.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/contracts.py — key passage or "NOT READ: <reason>"
+
+      - tests/orchestration — key passage or "NOT READ: <reason>"
+
+
+      ## Implementation Evidence
+
+      - Files changed:
+
+      - Safe auto-recovery behavior:
+
+      - Structured action guidance behavior:
+
+      - Manual/operator-controlled cases preserved:
+
+
+      ## Verification
+
+      ```
+
+      <paste unit/integration/smoke/live outputs>
+
+      ```
+
+
+      ## Invar Exclusion
+
+      Confirm repo-wide invar/static-debt remediation was not attempted here.'
+    agent: python-senior-tacit

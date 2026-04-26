@@ -88331,7 +88331,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-4
   name: Architectural Demolition — Wave 4 Unify Orchestration Authority Surfaces
-  status: done
+  status: in_progress
   gate: Wave 4 complete when DEM-005, DEM-006, DEM-007, and DEM-016 leave exactly
     one surviving authority/contract surface each, contract-lock coverage is migrated
     to surviving seams, and verification commands pass.
@@ -88369,7 +88369,7 @@ phases:
       --tb=short passed: 2930 passed, 41 skipped in 182.63s.'
   - id: arch-demolition-wave-4.dem-007-converge-on-coreadapter-as-the-only-mutation-authority-seam
     name: DEM-007 converge on CoreAdapter as the only mutation authority seam
-    status: done
+    status: rejected
     description: Resolve DEM-007 by removing LifecycleMutationPort, migrating contract-lock
       coverage to the surviving CoreAdapter public boundary, and proving the CoreAdapter
       seam still works cleanly after Wave 3 removed inspection-query protocol layers.
@@ -88383,48 +88383,13 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T08:04:21.861674+00:00'
     done_at: '2026-04-26T08:13:37.105934+00:00'
-    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777190672391,"sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","part":{"id":"prt_dc8d1980600197CXKV0KFPDmLz","messageID":"msg_dc8d18390001KDP9YYDvWDPeTD","sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","snapshot":"e32cd9ecc3a1293138a2dfeac06b26e87f7bced4","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777190677462,"sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","part":{"type":"tool","tool":"todowrite","callID":"call_pdrY27AVPCNuwOLIk0qpgKAc","state":{"status":"completed","input":{"todos":[{"content":"Read
-      referenced architecture plan and relevant orchestration interfaces/core adapter
-      files","status":"in_progress","priority":"high"},{"content":"Update implementation/tests
-      to remove LifecycleMutationPort and cover CoreAdapter boundary","status":"pending","priority":"high"},{"content":"Run
-      required verification and collect output","status":"pending","priority":"high"}]},"output":"[\n  {\n    \"content\":
-      \"Read referenced architecture plan and relevant orchestration interfaces/core
-      adapter files\",\n    \"status\": \"in_progress\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\":
-      \"Update implementation/tests to remove LifecycleMutationPort and cover CoreAdapter
-      boundary\",\n    \"status\": \"pending\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\":
-      \"Run required verification and collect output\",\n    \"status\": \"pending\",\n    \"priority\":
-      \"high\"\n  }\n]","metadata":{"todos":[{"content":"Read referenced architecture
-      plan and relevant orchestration interfaces/core adapter files","status":"in_progress","priority":"high"},{"content":"Update
-      implementation/tests to remove LifecycleMutationPort and cover CoreAdapter boundary","status":"pending","priority":"high"},{"content":"Run
-      required verification and collect output","status":"pending","priority":"high"}],"truncated":false},"title":"3
-      todos","time":{"start":1777190677458,"end":1777190677461}},"metadata":{"openai":{"itemId":"fc_08d2780662f3e55f0169edc7151bf881919c1738486d9a519f"}},"id":"prt_dc8d1aa9c001BougBzGCadDQB1","sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","messageID":"msg_dc8d18390001KDP9YYDvWDPeTD"}}
-
-      {"type":"step_finish","timestamp":1777190677554,"sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","part":{"id":"prt_dc8d1abf00018OYsNVbOg7kYrY","reason":"tool-calls","snapshot":"e32cd9ecc3a1293138a2dfeac06b26e87f7bced4","messageID":"msg_dc8d18390001KDP9YYDvWDPeTD","sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","type":"step-finish","tokens":{"total":24263,"input":21568,"output":87,"reasoning":48,"cache":{"write":0,"read":2560}},"cost":0}}
-
-      {"type":"step_start","timestamp":1777190681848,"sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","part":{"id":"prt_dc8d1bcf6001049WJ7Du1gyoZZ","messageID":"msg_dc8d1ac6a001K3Ve3klNDstMVR","sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","snapshot":"e32cd9ecc3a1293138a2dfeac06b26e87f7bced4","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777190712821,"sessionID":"ses_2372e7cacffeN4lPBkAp5Euoaa","part":{"type":"tool","tool":"read","callID":"call_nD6jo4FnGCIu1q7qcnmWDffi","state":{"status":"completed","input":{"filePath":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-4.dem-007-converge-on-coreadapter-as-the-only-mutation-authority-seam/docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md","offset":1,"limit":240},"output":"<path>/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-4.dem-007-converge-on-coreadapter-as-the-only-mutation-authority-seam/docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md</path>\n<type>file</type>\n<content>\n1:
-      # Architectural demolition remediation plan\n2: \n3: ## Status\n4: \n5: - Status:
-      proposed remediation plan\n6: - Scope: repository-wide architectural simplification
-      and de-duplication\n7: - Primary goal: remove duplicated logic, false abstraction
-      seams, dead public surfaces, and contract theater without collapsing valid authority
-      boundaries\n8: \n9: ## Why this document exists\n10: \n11: Three independent
-      reviews (`duplicate-abstraction-auditor-tacit`, `architectural-demolitionist-tacit`,
-      and direct repository inspection) converged on the same core problem: the repo
-      pays high cognitive cost for duplicated logic and speculative abstraction while
-      several real authority surfaces remain valid and should be preserved.\n12: \n13:
-      This document is the authoritative remediation plan for fixing **all discovered
-      issues**, not just the overlaps between reviewers.\n14: \n15: ## Remediation
-      objectives\n16: \n17: 1. Ensure each concept has one authoritative implementation.\n18:
-      2. Remove pure pass-through wrappers and single-buyer protocols that do not
-      buy real substitution value.\n19: 3. Delete dead exported surfaces.\n20: 4.
-      Preserve valid boundaries:\n21:    - `core` vs `cli`/`mcp_server`\n22:    -
-      `runtime` vs `runners`\n23:    - config input models vs runtime contract models\n24:
-      5. Re-cut large files only **after** abstraction removal, never by adding new
-      contract-only files.\n25: \n26: ## Non-goals / preserved boundaries\n27:'
+    rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
+      stored in evidence; implementation unchanged'
+    rejection_history:
+    - reason: 'historical evidence cleanup: raw OpenCode JSON event stream stored
+        in evidence; implementation unchanged'
+      timestamp: '2026-04-26T12:06:28.375440+00:00'
+      reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-4.dem-016-retire-public-role-and-prompt-registry-protocols
     name: DEM-016 retire public role and prompt registry protocols
     status: done

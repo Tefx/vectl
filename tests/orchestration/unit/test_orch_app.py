@@ -1325,7 +1325,7 @@ def test_start_runtime_execution_renders_prompt_bundle_before_runtime_launch(
     app._dispatch_coordinator = DispatchCoordinator(
         role_registry=app._role_registry,
         prompt_registry=prompt_registry,
-        step_adapter=app._dispatch_coordinator.step_adapter,
+        core_adapter=app._dispatch_coordinator.core_adapter,
     )
 
     captured_work_refs: list[tuple[str, ...]] = []
@@ -1366,7 +1366,7 @@ def test_start_runtime_execution_fails_closed_when_prompt_registry_lacks_role_su
     app._dispatch_coordinator = DispatchCoordinator(
         role_registry=app._role_registry,
         prompt_registry=MissingRolePromptRegistry(),
-        step_adapter=app._dispatch_coordinator.step_adapter,
+        core_adapter=app._dispatch_coordinator.core_adapter,
     )
 
     prepare_called = False

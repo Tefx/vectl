@@ -96,11 +96,11 @@ from vectl.orchestration.dispatch_policy import (
 )
 
 
-class StubStepDataAdapter:
+class StubCoreAdapter:
     def __init__(self, steps: dict[str, StepData]) -> None:
         self._steps = steps
 
-    def load_step_data(self, step_id: str) -> StepData | None:
+    def load_step_data_for_dispatch(self, step_id: str) -> StepData | None:
         return self._steps.get(step_id)
 
 
@@ -110,12 +110,12 @@ class CountingDispatchCoordinator(DispatchCoordinator):
         *,
         role_registry: ConfigRoleProfileRegistry,
         prompt_registry: ConfigPromptRegistry,
-        step_adapter: StubStepDataAdapter,
+        core_adapter: StubCoreAdapter,
     ) -> None:
         super().__init__(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
         self.decisions: list[ControlDecision] = []
 
@@ -150,7 +150,7 @@ def test_dispatch_spec_construction_from_control_decision() -> None:
     coordinator = CountingDispatchCoordinator(
         role_registry=ConfigRoleProfileRegistry(),
         prompt_registry=ConfigPromptRegistry(),
-        step_adapter=StubStepDataAdapter({"core.test-step": step_data}),
+        core_adapter=StubCoreAdapter({"core.test-step": step_data}),
     )
     app = OrchestrationApp(
         config=AppConfig(default_agent="python-executor"),
@@ -189,7 +189,7 @@ def test_dispatch_spec_verify_mode_expected_red_wires_correctly() -> None:
     coordinator = DispatchCoordinator(
         role_registry=ConfigRoleProfileRegistry(),
         prompt_registry=ConfigPromptRegistry(),
-        step_adapter=StubStepDataAdapter(
+        core_adapter=StubCoreAdapter(
             {
                 "core.test-step": StepData(
                     step_id="core.test-step",

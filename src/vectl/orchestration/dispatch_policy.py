@@ -20,7 +20,7 @@ Public surfaces:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, Protocol
+from typing import Literal
 
 from vectl.orchestration.config import (
     DEFAULT_DISPATCH_ROLE_ID,
@@ -41,7 +41,8 @@ from vectl.orchestration.contracts import (
     RuntimeSnapshot,
     StructuredReviewResult,
 )
-from vectl.orchestration.core_adapter import PlanCoreAdapter
+from vectl.orchestration.core_adapter import CoreAdapter
+from vectl.orchestration.step_data import StepData
 
 # ---------------------------------------------------------------------
 # Errors
@@ -511,50 +512,6 @@ _ROLE_FAMILY_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------
 
 
-class StepDataAdapter(Protocol):
-    """Protocol for loading authoritative step data for dispatch construction.
-
-    Authority: docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §6.1
-
-    The dispatch coordinator loads step data through this adapter to keep
-    core/plan awareness out of the coordinator itself.
-    """
-
-    def load_step_data(self, step_id: str) -> StepData | None:
-        """Load authoritative step data for the given step ID.
-
-        Args:
-            step_id: The step ID to load.
-
-        Returns:
-            Step data if found, else None.
-        """
-        ...
-
-
-@dataclass(frozen=True)
-class StepData:
-    """Authoritative step data used by the dispatch coordinator.
-
-    Attributes:
-        step_id: The step identifier.
-        description: Step description from the plan.
-        verification: Step verification criteria.
-        refs: Step references.
-        evidence_template: Step evidence template.
-        verify: Step verification mode (expected_red/must_green/None).
-        agent: Step agent assignment (may be None).
-    """
-
-    step_id: str
-    description: str
-    verification: str
-    refs: tuple[str, ...]
-    evidence_template: str
-    verify: str | None
-    agent: str | None
-
-
 @dataclass(frozen=True)
 class DispatchCoordinator:
     """Build DispatchSpec from ControlDecision, step data, and role registry.
@@ -575,7 +532,7 @@ class DispatchCoordinator:
 
     role_registry: ConfigRoleProfileRegistry
     prompt_registry: PromptRegistry
-    step_adapter: StepDataAdapter
+    core_adapter: CoreAdapter
     runner: str = "codex"
 
     def render_prompt_bundle(self, spec: DispatchSpec) -> PromptBundle:
@@ -665,7 +622,7 @@ class DispatchCoordinator:
         role_override = decision.role_bindings.get(step_id)
 
         # 1. Load authoritative step data
-        step_data = self.step_adapter.load_step_data(step_id)
+        step_data = self.core_adapter.load_step_data_for_dispatch(step_id)
         if step_data is None:
             raise ValueError(f"Step data not found for step_id={step_id!r}")
 
@@ -746,30 +703,6 @@ class DispatchCoordinator:
             output_contract=profile.output_contract,
             mutation_policy=profile.mutation_policy,
         )
-
-
-class CoreStepDataAdapter:
-    """StepDataAdapter implementation backed by PlanCoreAdapter.
-
-    Loads authoritative step data from the plan through the official
-    PlanCoreAdapter public seam. Does not access PlanCoreAdapter internals.
-
-    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md §3.6
-    """
-
-    def __init__(self, core_adapter: PlanCoreAdapter) -> None:
-        self._core_adapter = core_adapter
-
-    def load_step_data(self, step_id: str) -> StepData | None:
-        """Load step data from authoritative vectl core.
-
-        Args:
-            step_id: Step identifier.
-
-        Returns:
-            StepData if found, else None.
-        """
-        return self._core_adapter.load_step_data_for_dispatch(step_id)
 
 
 # ---------------------------------------------------------------------
@@ -877,11 +810,9 @@ def normalize_parse_failure(
 __all__ = [
     "ConfigPromptRegistry",
     "ConfigRoleProfileRegistry",
-    "CoreStepDataAdapter",
     "DispatchAuthorityError",
     "DispatchCoordinator",
     "ReviewResultParseError",
-    "StepDataAdapter",
     "StepData",
     "UnknownRoleError",
     "normalize_parse_failure",

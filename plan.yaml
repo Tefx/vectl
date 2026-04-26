@@ -88880,7 +88880,7 @@ phases:
       \ so execution is blocked by protocol.\""
 - id: arch-demolition-wave-7
   name: Architectural Demolition — Wave 7 Re-cut Large Files by Real Behavior Only
-  status: done
+  status: in_progress
   gate: Wave 7 complete when DEM-018 and DEM-019 land using only the approved module
     split map, file-size ceilings are met, config/contracts ownership docstrings are
     frozen, repo-wide readiness commands pass, and any deferred expected-red is explicitly
@@ -88952,7 +88952,7 @@ phases:
   - id: arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate
     name: DEM-019 freeze config/contracts ownership and close with repo-wide readiness
       gate
-    status: done
+    status: rejected
     description: 'Resolve DEM-019 and finish Wave 7 by adding explicit owns: sections
       to the module docstrings in src/vectl/orchestration/config.py and contracts.py
       with no overlapping model ownership, enforcing the Wave 7 file-size ceilings,
@@ -88980,42 +88980,10 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T10:27:08.192645+00:00'
     done_at: '2026-04-26T10:29:04.631234+00:00'
-    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777199235476,"sessionID":"ses_236abc73effeDm12dc87H8XVOq","part":{"id":"prt_dc9544193001adENUM1iK1iKLQ","messageID":"msg_dc95438fd001DSKNRB8Yidwb5Q","sessionID":"ses_236abc73effeDm12dc87H8XVOq","snapshot":"33db4f3685df9f5de36bfa3a0e185c52dd050d19","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777199240286,"sessionID":"ses_236abc73effeDm12dc87H8XVOq","part":{"type":"tool","tool":"invar_invar_guard","callID":"call_j7Zx5kuybaFc0WNOYkOEs1rg","state":{"status":"completed","input":{"path":".","changed":true,"strict":false,"coverage":false,"contracts_only":false},"output":"{\n  \"status\":
-      \"passed\",\n  \"static\": {\n    \"passed\": true,\n    \"errors\": 0,\n    \"warnings\":
-      0,\n    \"infos\": 0,\n    \"findings\": []\n  },\n  \"summary\": {\n    \"files_checked\":
-      0,\n    \"errors\": 0,\n    \"warnings\": 0,\n    \"infos\": 0\n  },\n  \"verification_level\":
-      \"STANDARD\",\n  \"doctest\": {\n    \"passed\": true,\n    \"output\": \"\"\n  },\n  \"crosshair\":
-      {\n    \"status\": \"skipped\",\n    \"reason\": \"no changed files\"\n  },\n  \"property_tests\":
-      {\n    \"status\": \"skipped\",\n    \"reason\": \"no changed files\"\n  }\n}","metadata":{"truncated":false},"title":"","time":{"start":1777199239773,"end":1777199240283},"attachments":[]},"metadata":{"openai":{"itemId":"fc_02e7f800b2686e280169ede887b77881918939115ce0d4e073"}},"id":"prt_dc9545255001buHoVe0ttvItfy","sessionID":"ses_236abc73effeDm12dc87H8XVOq","messageID":"msg_dc95438fd001DSKNRB8Yidwb5Q"}}
-
-      {"type":"tool_use","timestamp":1777199240670,"sessionID":"ses_236abc73effeDm12dc87H8XVOq","part":{"type":"tool","tool":"bash","callID":"call_HwAcSVlMH6uSKZuakif3xUOC","state":{"status":"completed","input":{"command":"uv
-      run ruff check src/vectl/orchestration/config.py src/vectl/orchestration/contracts.py
-      && uv run python -m py_compile src/vectl/orchestration/config.py src/vectl/orchestration/contracts.py","timeout":120000,"workdir":"/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate","description":"Runs
-      lint and compile checks"},"output":"warning: `VIRTUAL_ENV=/Users/tefx/Projects/vectl/.venv`
-      does not match the project environment path `.venv` and will be ignored; use
-      `--active` to target the active environment instead\nUsing CPython 3.12.12\nCreating
-      virtual environment at: .venv\n   Building vectl @ file:///Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate\n      Built
-      vectl @ file:///Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate\nInstalled
-      93 packages in 142ms\nAll checks passed!\nwarning: `VIRTUAL_ENV=/Users/tefx/Projects/vectl/.venv`
-      does not match the project environment path `.venv` and will be ignored; use
-      `--active` to target the active environment instead\n","metadata":{"output":"warning:
-      `VIRTUAL_ENV=/Users/tefx/Projects/vectl/.venv` does not match the project environment
-      path `.venv` and will be ignored; use `--active` to target the active environment
-      instead\nUsing CPython 3.12.12\nCreating virtual environment at: .venv\n   Building
-      vectl @ file:///Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate\n      Built
-      vectl @ file:///Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate\nInstalled
-      93 packages in 142ms\nAll checks passed!\nwarning: `VIRTUAL_ENV=/Users/tefx/Projects/vectl/.venv`
-      does not match the project environment path `.venv` and will be ignored; use
-      `--active` to target the active environment instead\n","exit":0,"description":"Runs
-      lint and compile checks","truncated":false},"title":"Runs lint and compile checks","time":{"start":1777199240597,"end":1777199240670}},"metadata":{"openai":{"itemId":"fc_02e7f800b2686e280169ede887b7848191bc9e576068165d93"}},"id":"prt_dc954525e001LcAU85D1cE3c5h","sessionID":"ses_236abc73effeDm12dc87H8XVOq","messageID":"msg_dc95438fd001DSKNRB8Yidwb5Q"}}
-
-      {"type":"tool_use","timestamp":1777199241182,"sessionID":"ses_236abc73effeDm12dc87H8XVOq","part":{"type":"tool","tool":"vectl_vectl_status","callID":"call_x38IoyV0YYhITSgnl85BEub9","state":{"status":"completed","input":{"agent":"python-refactor-master-tacit"},"output":"##
-      Plan: vectl\n\n| Status | Phase | Name | Progress | Depends On |\n|--------|-------|------|----------|------------|\n|
-      ✓ done | core | Core Logic | 5/5 | — |\n| ✓ done | cli_read | CLI Read Commands
-      | 4/4 | core |\n| ✓ done | cli_write | CLI Mutation Commands | 4/4 | cli_read
-      |\n| ✓ done | cli_architect | CLI Architect Commands | 5/5 | cli_write |\n|
-      ✓ done | review | Review & Gate Commands | 2/2 | cli_write |\n| ✓ done | mcp
-      | MCP Server | 1/1 | cli_architect, co'
+    rejection_reason: 'evidence-only sanitization: previous completion stored raw
+      OpenCode JSON event stream; no implementation rework requested'
+    rejection_history:
+    - reason: 'evidence-only sanitization: previous completion stored raw OpenCode
+        JSON event stream; no implementation rework requested'
+      timestamp: '2026-04-26T11:58:08.985701+00:00'
+      reviewer: minimalist-architect-tacit

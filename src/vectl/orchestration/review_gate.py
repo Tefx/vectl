@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Protocol, TypeAlias, cast
+from typing import TypeAlias, cast
 
 import yaml
 
@@ -70,53 +70,6 @@ class ReviewGateResult:
     summary: str
     evidence_refs: tuple[str, ...] = ()
     planner_request: PlannerRequest | None = None
-
-
-class ReviewGate(Protocol):
-    """Bounded post-execution review normalization contract.
-
-    Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md section 4.5
-
-    The review gate is invoked after terminal execution output exists
-    and before authoritative step completion. It reduces post-execution
-    review into one bounded ``ReviewGateResult``.
-
-    Owns:
-        - parsing or validating machine-readable review outputs
-        - reducing post-execution review into one bounded result
-
-    Does NOT own:
-        - frontier scheduling
-        - plan mutation
-        - resolver reasoning
-        - runtime mechanics
-
-    Error contract:
-        - malformed review output must become ``needs_fix`` or
-          ``operator_required``; it must not silently pass
-        - the review gate must not directly mutate authoritative plan state
-    """
-
-    def evaluate(
-        self,
-        step_id: str,
-        execution_result: ExecutionResult,
-        artifact_refs: tuple[str, ...] = (),
-    ) -> ReviewGateResult:
-        """Evaluate post-execution review for a completed child run.
-
-        Args:
-            step_id: Step identifier for the completed execution.
-            execution_result: Terminal execution result from runtime.
-            artifact_refs: Optional artifact references that may contain
-                review evidence or structured review output.
-
-        Returns:
-            Bounded ``ReviewGateResult`` indicating whether the step
-            may proceed through completion gates, needs local fix,
-            requires replan, or requires operator attention.
-        """
-        ...  # contract-only
 
 
 @dataclass(frozen=True)
@@ -189,7 +142,6 @@ class DefaultReviewGate:
 
 __all__ = [
     "DefaultReviewGate",
-    "ReviewGate",
     "ReviewGateResult",
 ]
 

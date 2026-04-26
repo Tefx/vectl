@@ -18,7 +18,7 @@ import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from vectl.orchestration.contracts import (
     BarrierReason,
@@ -28,22 +28,24 @@ from vectl.orchestration.contracts import (
     DriveBarrier,
     DriveRecord,
     DriveStatus,
+    ExecutionResult,
     PlannerMutationBundle,
     PlannerRequest,
+    ReconcileDisposition,
     ResolutionCase,
     ResolutionCaseSource,
     ResolutionReport,
     RosterSnapshot,
     RuntimeSnapshot,
 )
+from vectl.orchestration.review_gate import DefaultReviewGate, ReviewGateResult
 
 if TYPE_CHECKING:
     from vectl.orchestration.control import PlanAwareControl
     from vectl.orchestration.control_channel import FilesystemControlChannel
     from vectl.orchestration.core_adapter import CoreAdapter, PlannerMutationApplier
     from vectl.orchestration.resolver import Resolver
-    from vectl.orchestration.review_gate import ReviewGate
-    from vectl.orchestration.run_store import DriveStore, RunRegistry
+    from vectl.orchestration.run_store import DriveStore, RunRecord, RunRegistry
 
 
 # ---------------------------------------------------------------------
@@ -432,6 +434,99 @@ def _resolver_should_handle_active_barrier(record: DriveRecord) -> bool:
     return barrier.reason in {"runtime_failure", "merge_conflict", "review_failed"}
 
 
+def _execution_result_from_terminal_child_run(
+    *,
+    child_run: ChildRunRef,
+    run_record: RunRecord,
+) -> ExecutionResult:
+    """Build review input from durable terminal child-run facts.
+
+    Authority: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md Wave 5,
+    required change 7. The review gate consumes terminal ``ExecutionResult``
+    facts; drive recovery stores those facts across ``ChildRunRef`` and
+    ``RunRecord`` surfaces.
+
+    Args:
+        child_run: Terminal child-run reference from the drive store.
+        run_record: Durable run registry record carrying output summary.
+
+    Returns:
+        ``ExecutionResult`` suitable for post-execution review evaluation.
+    """
+    status: Literal["success", "fail", "stall", "transport_error"]
+    if child_run.status == "success":
+        status = "success"
+    elif child_run.status == "stall":
+        status = "stall"
+    elif child_run.status == "transport_error":
+        status = "transport_error"
+    else:
+        status = "fail"
+
+    return ExecutionResult(
+        step_id=child_run.step_id or run_record.step_id,
+        status=status,
+        output_summary=run_record.output_summary,
+        session_id=child_run.session_id,
+    )
+
+
+def _artifact_refs_for_review(
+    *,
+    child_run: ChildRunRef,
+    run_record: RunRecord,
+) -> tuple[str, ...]:
+    """Collect artifact references for post-execution review.
+
+    Authority: docs/RFC-orch-drive.md section 17.1 and
+    docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md Wave 5 required change 7.
+    Review evaluation accepts artifact references alongside terminal execution
+    output.
+
+    Args:
+        child_run: Terminal child-run reference.
+        run_record: Durable run record with persisted artifact metadata.
+
+    Returns:
+        Stable artifact reference tuple for review evaluation.
+    """
+    refs: list[str] = []
+    if child_run.artifact_root:
+        refs.append(child_run.artifact_root)
+    if run_record.artifact_root and run_record.artifact_root not in refs:
+        refs.append(run_record.artifact_root)
+    for artifact in run_record.artifacts:
+        if artifact.artifact_ref:
+            refs.append(artifact.artifact_ref)
+    return tuple(dict.fromkeys(refs))
+
+
+def _reconcile_disposition_from_run_record(
+    run_record: RunRecord,
+) -> ReconcileDisposition | None:
+    """Return accepted reconcile proof for authoritative completion.
+
+    Authority: docs/ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md Rule 4
+    (completion only after reconcile merged/noop) and contracts.py
+    ``ReconcileDisposition`` contract.
+
+    Args:
+        run_record: Durable run record with runtime recovery state.
+
+    Returns:
+        ``"merged"`` or ``"noop"`` when terminal reconcile proof exists;
+        otherwise ``None``.
+    """
+    runtime_state = run_record.runtime_state
+    if runtime_state is None or runtime_state.reconcile_state is None:
+        return None
+    if runtime_state.reconcile_state.status == "merged":
+        return "merged"
+    if runtime_state.reconcile_state.status == "noop":
+        return "noop"
+    return None
+
+
 def _apply_resolution_report_to_drive(
     record: DriveRecord,
     barrier: DriveBarrier,
@@ -712,7 +807,7 @@ class DriveDriver:
         core_adapter: CoreAdapter,
         control: PlanAwareControl,
         resolver: Resolver | None = None,
-        review_gate: ReviewGate | None = None,
+        review_gate: DefaultReviewGate | None = None,
         planner_mutation_applier: PlannerMutationApplier | None = None,
         run_registry: RunRegistry | None = None,
         control_channel: FilesystemControlChannel | None = None,
@@ -724,7 +819,7 @@ class DriveDriver:
         self._core_adapter = core_adapter
         self._control = control
         self._resolver = resolver
-        self._review_gate = review_gate
+        self._review_gate = review_gate if review_gate is not None else DefaultReviewGate()
         self._planner_mutation_applier = planner_mutation_applier
         self._run_registry = run_registry
         self._control_channel = control_channel
@@ -894,6 +989,10 @@ class DriveDriver:
                 summary=record.summary,
             )
 
+        reviewed_terminal_child = self._review_terminal_child_run(record)
+        if reviewed_terminal_child is not None:
+            return reviewed_terminal_child
+
         # Refresh authoritative snapshot.
         core = self._core_adapter.snapshot(agent=record.agent or "default")
 
@@ -1052,6 +1151,183 @@ class DriveDriver:
             self._drive_store.save_child_run(ref)
             launched.append(ref)
         return tuple(launched)
+
+    def _review_terminal_child_run(self, record: DriveRecord) -> DriveLoopResult | None:
+        """Route one terminal step child-run fact through post-execution review.
+
+        Authority: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md Wave 5,
+        required changes 6-7. Terminal execution output must pass through the
+        named post-execution review hook before the driver treats the step as
+        completed or enters a review barrier.
+
+        Args:
+            record: Current drive record after drive-scoped control consumption.
+
+        Returns:
+            ``DriveLoopResult`` when a terminal child run was reviewed; otherwise
+            ``None`` so normal scheduling can continue.
+        """
+        if self._run_registry is None:
+            return None
+
+        for run_id in record.active_child_run_ids:
+            child_run = self._drive_store.child_run_by_id(run_id)
+            if child_run is None or child_run.kind != "step" or child_run.step_id is None:
+                continue
+            if child_run.status in ("pending", "running", "cancelled"):
+                continue
+
+            run_record = self._run_registry.by_id(run_id)
+            if run_record is None:
+                continue
+
+            execution_result = _execution_result_from_terminal_child_run(
+                child_run=child_run,
+                run_record=run_record,
+            )
+            review_result = self._handle_post_execution_review(
+                step_id=child_run.step_id,
+                execution_result=execution_result,
+                artifact_refs=_artifact_refs_for_review(child_run=child_run, run_record=run_record),
+            )
+            authoritative_completion = False
+            if review_result.status == "pass":
+                reconcile_disposition = _reconcile_disposition_from_run_record(run_record)
+                if reconcile_disposition is not None:
+                    self._core_adapter.complete_step(
+                        child_run.step_id,
+                        evidence=(
+                            f"post-execution review passed: {review_result.summary}; "
+                            f"evidence_refs={review_result.evidence_refs}"
+                        ),
+                        reconcile_disposition=reconcile_disposition,
+                    )
+                    authoritative_completion = True
+
+            updated = self._apply_post_execution_review_result(
+                record=record,
+                child_run=child_run,
+                review_result=review_result,
+                authoritative_completion=authoritative_completion,
+            )
+            self._drive_store.save_drive(updated)
+            completed_steps = (child_run.step_id,) if authoritative_completion else ()
+            return DriveLoopResult(
+                drive_id=record.drive_id,
+                status=updated.status,
+                completed_steps=completed_steps,
+                active_child_run_ids=updated.active_child_run_ids,
+                barrier=updated.barrier,
+                summary=updated.summary,
+            )
+
+        return None
+
+    def _handle_post_execution_review(
+        self,
+        *,
+        step_id: str,
+        execution_result: ExecutionResult,
+        artifact_refs: tuple[str, ...] = (),
+    ) -> ReviewGateResult:
+        """Evaluate terminal execution output through the configured review gate.
+
+        Authority: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md Wave 5,
+        required changes 6-7. This method is the canonical driver hook between
+        terminal execution facts and authoritative completion handling.
+
+        Args:
+            step_id: Step identifier for the completed child run.
+            execution_result: Terminal execution result from the run registry.
+            artifact_refs: Artifact references that support review evaluation.
+
+        Returns:
+            Bounded post-execution review result from the concrete review gate.
+        """
+        return self._review_gate.evaluate(
+            step_id=step_id,
+            execution_result=execution_result,
+            artifact_refs=artifact_refs,
+        )
+
+    def _apply_post_execution_review_result(
+        self,
+        *,
+        record: DriveRecord,
+        child_run: ChildRunRef,
+        review_result: ReviewGateResult,
+        authoritative_completion: bool,
+    ) -> DriveRecord:
+        """Project a review outcome onto durable drive state.
+
+        Authority: docs/RFC-orch-drive.md section 17.1.1 and
+        docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md Wave 5 acceptance
+        criteria 4-5. Non-pass review outcomes enter explicit barriers; pass
+        outcomes remove the terminal child run from the active child set so the
+        driver can proceed to later completion gates without re-reviewing it.
+
+        Args:
+            record: Current drive record.
+            child_run: Terminal step child run being reviewed.
+            review_result: Bounded review outcome.
+            authoritative_completion: Whether core completion succeeded after
+                accepted reconcile proof.
+
+        Returns:
+            Updated drive record reflecting the review outcome.
+        """
+        active_child_run_ids = record.active_child_run_ids
+        if authoritative_completion or review_result.status != "pass":
+            active_child_run_ids = tuple(
+                run_id for run_id in record.active_child_run_ids if run_id != child_run.run_id
+            )
+        now = time.time()
+        if review_result.status == "pass":
+            if authoritative_completion:
+                summary = (
+                    f"post-execution review passed and step completed for "
+                    f"step={child_run.step_id}: {review_result.summary}"
+                )
+            else:
+                summary = (
+                    f"post-execution review passed for step={child_run.step_id}; "
+                    f"waiting for reconcile disposition: {review_result.summary}"
+                )
+            return replace(
+                record,
+                updated_at=now,
+                active_child_run_ids=active_child_run_ids,
+                summary=summary,
+            )
+
+        barrier_reason: BarrierReason = "review_failed"
+        new_status: DriveStatus = "resolving"
+        if review_result.status == "needs_replan":
+            new_status = "replanning"
+        elif review_result.status == "operator_required":
+            new_status = "blocked_operator"
+
+        case_id = f"review_{child_run.run_id}"
+        barrier = DriveBarrier(
+            reason=barrier_reason,
+            entered_at=now,
+            case_ids=(case_id,),
+            pending_resolver_run_id=None,
+            pending_planner_run_id=None,
+            active_child_run_ids_at_entry=active_child_run_ids,
+        )
+        return replace(
+            record,
+            status=new_status,
+            updated_at=now,
+            active_child_run_ids=active_child_run_ids,
+            blocked_case_ids=(case_id,),
+            barrier=barrier,
+            summary=(
+                f"post-execution review {review_result.status} for "
+                f"step={child_run.step_id}: {review_result.summary}"
+            ),
+        )
 
     # ------------------------------------------------------------------
     # Resolver-loop integration
@@ -2193,18 +2469,7 @@ class DriveDriver:
             # Core adapter failure: don't release leases speculatively.
             return []
 
-
-ConcreteDriveDriver = DriveDriver
-"""Deprecated compatibility alias for :class:`DriveDriver`.
-
-Authority: docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md Wave 2
-requires this alias for one wave cycle only. It must be removed no later
-than the end of Wave 5; new production code must import ``DriveDriver``.
-"""
-
-
 __all__ = [
-    "ConcreteDriveDriver",
     "DRIVE_DEFAULTS",
     "DRIVE_TRANSITIONS",
     "DriveAdmissionError",

@@ -88648,7 +88648,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: post_review_remediation
   name: Post-Review Non-Invar Remediation
-  status: in_progress
+  status: done
   gate: Phase passes when driver agent-selection deep-review SHOULD_FIX items are
     remediated or authoritatively closed, historical OpenCode/CLI failed gates are
     regated green, completed-step failure evidence cannot remain unclosed, and independent
@@ -90057,7 +90057,7 @@ phases:
       step. Repo-wide invar/static debt remained out of scope.'
   - id: post_review_remediation.gate
     name: Gate post-review non-invar remediation
-    status: claimed
+    status: done
     description: 'Final independent gate for post-review non-invar remediation.
 
 
@@ -90153,6 +90153,166 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T18:18:24.033545+00:00'
+    done_at: '2026-04-26T18:20:15.096553+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - docs/DRIVER-AGENT-SELECTION.md — NOT READ: file absent after planned driver
+      demolition (`git ls-files` returned no output). Replacement read: `docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md`;
+      key passage: `role_id` is plan-facing, `agent_id` is concrete runtime persona,
+      prompt policy lives in dispatch layer, runtime/runner consume already-resolved
+      dispatch material.
+
+      - docs/RFC-opencode-orchestration-runner.md — OpenCode uses dedicated `OpenCodeRunner`;
+      launch contract is `opencode run --format json --dir <workspace> --agent <agent_id>
+      --file .vectl/orch/runner_prompt.md`; recovery resumes native session first,
+      then uses explicit fresh relaunch.
+
+      - README.md — vectl is an execution control plane requiring evidence, DAG/claim
+      discipline, and continuity recovery via `uv run vectl orch recover [RUN_ID|--latest]`;
+      dry-run is diagnostic and no-silent-deletion is required.
+
+      - docs/ORCHESTRATION-CLI-QUICKSTART.md — `vectl orch recover` replaces legacy
+      continuity repair; `--latest` fails explicitly if no run exists; command sheet
+      includes run/resume/recover/runs/status/events/logs/artifacts/actions/pause/unpause/stop/prune/config.
+
+
+      ## Gate Review Report
+
+      **Reviewer**: gate-reviewer-tacit
+
+      **Phase**: post_review_remediation
+
+
+      ## Step Evidence Matrix
+
+      | Step ID | Status | Evidence quality | Concerns |
+
+      |---|---|---|---|
+
+      | post_review_remediation.fix-driver-agent-selection-deep-review | done | Adequate;
+      refs absence explained, replacement authority cited, regression + green tests
+      recorded | None blocking |
+
+      | post_review_remediation.reverify-driver-agent-selection-deep-review | done
+      | Strong; replacement refs, grep closure, equivalent tests | None |
+
+      | post_review_remediation.fix-opencode-runner-final-gate-cli-surface | done
+      | Adequate; current-state closure proof with role-profile tests | None |
+
+      | post_review_remediation.reverify-opencode-runner-final-gate | done | Strong;
+      OpenCode/runtime/repro suites green; unrelated worktree failures dispositioned
+      non-intersecting | None |
+
+      | post_review_remediation.fix-cli-blackbox-finalization-runtime-nonclosure |
+      done | Originally weak | Closed by supplemental backfill evidence |
+
+      | post_review_remediation.reverify-cli-blackbox-finalization | done | Strong;
+      refs, CLI smoke, liveness tests, no public `runtime non-closure: fail` leak
+      | None |
+
+      | post_review_remediation.implement-completed-step-failure-evidence-guard |
+      done | Strong; red-first proof, implementation surface, focused green tests
+      | Minor non-blocking: runtime-token dedicated case not separately tested, source
+      recognizes token |
+
+      | post_review_remediation.reverify-completed-step-failure-evidence-guard | done
+      | Adequate; public validate/review exposure verified | None blocking |
+
+      | post_review_remediation.implement-drive-autonomy-safe-recovery-and-actions
+      | done | Originally lacked refs-read detail | Closed by supplemental backfill
+      evidence |
+
+      | post_review_remediation.backfill-missing-gate-evidence | done | Strong; refs
+      + command output supplied for both prior gaps | None |
+
+
+      ## Closure Register
+
+      - Driver agent-selection SHOULD_FIX: PROVEN — historical files are absent by
+      design; replacement dispatch policy plus current dispatch/orch tests pass (`115
+      passed`).
+
+      - OpenCode final-gate CLI blocker: PROVEN — OpenCode/recovery tests pass (`89
+      passed`), historical CLI recovery/liveness family passes (`21 passed`).
+
+      - CLI black-box runtime non-closure: PROVEN — recovery/liveness tests pass,
+      source scan shows only classifier/guard strings, not public CLI failure output.
+
+      - Completed-step failure evidence guard: PROVEN — focused guard/review tests
+      pass (`4 passed`); guard reports actionable completed evidence failures.
+
+      - Repo-wide invar/static debt: EXCLUDED_TO_SEPARATE_LANE — phase explicitly
+      excludes `shell_result`, `file_size`, `shell_complexity_debt`; no decision made
+      on those families and no repo-wide invar guard was required.
+
+
+      ## Issues Identified
+
+      | Severity | Description | Related Step | Blocking? |
+
+      |---|---|---|---|
+
+      | None | No non-invar blocker-class issue remains open after supplemental evidence
+      | N/A | No |
+
+
+      ## Commands Reviewed/Executed
+
+      ```sh
+
+      vectl_show post_review_remediation
+
+      vectl_render post_review_remediation --full
+
+      vectl_review post_review_remediation --include-done --check-refs
+
+      git ls-files "docs/DRIVER-AGENT-SELECTION.md" "src/vectl/driver/loop.py" "src/vectl/driver/judge.py"
+
+      uv run pytest -q tests/orchestration/unit/test_orch_app.py::test_start_runtime_execution_uses_profile_agent_id_for_runner_request
+      tests/orchestration/unit/test_dispatch_policy.py tests/orchestration/unit/test_prompt_artifact_contract.py
+
+      uv run pytest -q tests/orchestration/unit/test_opencode_runner.py tests/orchestration/integration/test_recovery_fallback.py
+
+      uv run pytest -q tests/repro/test_orch_cli_recovery_red.py tests/repro/test_orch_liveness.py
+
+      uv run pytest -q tests/test_orch_cli_surface.py -k "drive and (active or auto
+      or unsafe or foreground or once)"
+
+      uv run pytest -q tests/test_validation.py::TestCompletedEvidenceGuard tests/test_review.py::TestReview::test_review_exposes_completed_evidence_guard
+
+      uv run vectl orch drive --help
+
+      uv run vectl orch drive-recover --latest --dry-run --json
+
+      ```
+
+      ```text
+
+      git ls-files historical driver refs: no output.
+
+      Dispatch/prompt closure: 115 passed.
+
+      OpenCode runner + recovery fallback: 89 passed.
+
+      CLI recovery-red + liveness: 21 passed.
+
+      Drive autonomy filtered tests: 7 passed, 18 deselected.
+
+      Completed evidence guard tests: 4 passed.
+
+      drive --help rendered documented options.
+
+      drive-recover dry-run JSON returned status=blocked_operator, reason_code=operator_required,
+      human_required=true, suggested_action present.
+
+      ```
+
+
+      ## Decision
+
+      - [x] OPEN
+
+      - [ ] BLOCKED'
   - id: post_review_remediation.implement-drive-autonomy-safe-recovery-and-actions
     name: Implement drive autonomy safe recovery and action guidance
     status: done

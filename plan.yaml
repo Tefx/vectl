@@ -88137,7 +88137,7 @@ phases:
       reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-1.dem-004-keep-claim-metadata-lifecycle-owned
     name: DEM-004 keep claim metadata lifecycle-owned
-    status: rejected
+    status: claimed
     description: Resolve DEM-004 by keeping shared claim/affinity/conflict metadata
       lifecycle-owned in src/vectl/lifecycle.py and making mcp_server.py consume that
       domain metadata via a thin transport envelope instead of redefining parallel
@@ -88148,8 +88148,8 @@ phases:
     - src/vectl/lifecycle.py
     - src/vectl/mcp_server.py
     agent: python-senior-tacit
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T03:11:08.524914+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T12:05:47.898031+00:00'
     done_at: '2026-04-26T03:23:17.859180+00:00'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'

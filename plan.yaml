@@ -89519,7 +89519,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: post_review_remediation.implement-drive-autonomy-safe-recovery-and-actions
     name: Implement drive autonomy safe recovery and action guidance
-    status: claimed
+    status: done
     description: 'Implement the minimal drive autonomy improvements requested after
       system-review reflection.
 
@@ -89609,3 +89609,20 @@ phases:
     agent: python-senior-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T14:33:10.808423+00:00'
+    done_at: '2026-04-26T14:39:34.677362+00:00'
+    evidence: 'Implemented minimal CLI-side drive autonomy in `src/vectl/cli_orchestration.py`:
+      when `vectl orch drive` hits an active same-plan DriveAdmissionError it now
+      dry-runs `recover_drive`, auto-applies recovery only for safe/non-operator previews,
+      and stops with structured guidance for failed/ambiguous recovery previews. Added
+      `_drive_action_guidance` reason_code/suggested_action/human_required enrichment
+      and attached auto_recovery metadata to JSON results without introducing new
+      framework layers. Added focused CLI tests in `tests/test_orch_cli_surface.py`
+      for active-drive attach, safe auto-apply, and unsafe/operator-controlled recovery.
+      Verification run: `uv run pytest -q tests/test_orch_cli_surface.py -k "drive
+      and (active or auto or unsafe or foreground or once)"` -> 6 passed, 16 deselected.
+      CLI smoke run: `uv run vectl orch drive --help` -> command surface renders.
+      CLI recover smoke run: `uv run vectl orch drive-recover --latest --dry-run --json`
+      -> returned terminal completed drive payload with reason_code=completed, human_required=false,
+      suggested_action="no action required". Live `vectl orch drive` execution was
+      not launched here because it would mutate the live plan and spawn real runners;
+      full live/smoke sweep remains part of final verification.'

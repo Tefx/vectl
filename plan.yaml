@@ -88423,7 +88423,7 @@ phases:
       reviewer: minimalist-architect-tacit
 - id: arch-demolition-wave-5
   name: Architectural Demolition — Wave 5 Give Review Flow a Real Implementation
-  status: in_progress
+  status: done
   gate: Wave 5 complete when DEM-014 lands atomically on the post-rename DriveDriver
     state, DefaultReviewGate is the real implementation entry point, review invocation
     is wired between terminal execution and authoritative completion, and verification
@@ -88433,7 +88433,7 @@ phases:
   steps:
   - id: arch-demolition-wave-5.dem-014-implement-defaultreviewgate-concretely
     name: DEM-014 implement DefaultReviewGate concretely
-    status: claimed
+    status: done
     description: Resolve the first half of DEM-014 by adding a concrete DefaultReviewGate
       in src/vectl/orchestration/review_gate.py that implements evaluate(step_id,
       execution_result, artifact_refs=()) -> ReviewGateResult and owns post-execution
@@ -88446,7 +88446,10 @@ phases:
     agent: python-senior-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T12:06:45.405669+00:00'
-    done_at: '2026-04-26T08:36:19.819094+00:00'
+    done_at: '2026-04-26T12:06:48.172378+00:00'
+    evidence: '[reconcile_disposition=merged] OpenCode completed successfully (exit
+      0); stdout=<opencode JSON event stream omitted from plan evidence> [historical_evidence_cleanup=raw_opencode_event_stream_removed;
+      implementation_status=unchanged]'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'
     rejection_history:

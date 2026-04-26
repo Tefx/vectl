@@ -89338,3 +89338,87 @@ phases:
 
       Confirm repo-wide invar/static-debt remediation was not attempted here.'
     agent: python-senior-tacit
+  - id: post_review_remediation.reverify-completed-step-failure-evidence-guard
+    name: Reverify completed-step failure evidence guard
+    status: pending
+    description: 'Independent verification for the completed-step failure evidence
+      guard.
+
+
+      Scope:
+
+      - Validate that the guard catches unclosed failed review/gate/test evidence.
+
+      - Validate that it does not flag closed blocker chains, governed expected-red
+      cases, or explicitly non-intersecting debt.
+
+      - Validate output is actionable: step ID, failure reason, and closure requirement
+      are visible to operators.
+
+
+      This is a non-invar verification step; repo-wide static debt is explicitly out
+      of scope.'
+    verification: '- Run focused guard tests.
+
+      - Exercise the public review/validate surface selected by the implementation
+      step.
+
+      - Produce PASS/BLOCK decision with evidence of true positive and true negative
+      cases.
+
+      - Do not require `uvx invar-tools guard --all`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_plan_queries.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - tests — key fixture/test passage or "NOT READ: <reason>"
+
+
+      ## Verification Report
+
+      **Commands executed**:
+
+      ```
+
+      <paste commands>
+
+      ```
+
+      **Actual output**:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ## Coverage Matrix
+
+      - Unclosed `gate_open_allowed=false`: CAUGHT | MISSED
+
+      - `NEEDS_REVISION` without closure: CAUGHT | MISSED
+
+      - Later retest closure: NOT_FLAGGED | FALSE_POSITIVE
+
+      - Governed expected-red: NOT_FLAGGED | FALSE_POSITIVE
+
+      - Actionable output: YES | NO
+
+
+      ## Decision
+
+      - [ ] PASS
+
+      - [ ] BLOCKED
+
+      '
+    depends_on:
+    - post_review_remediation.implement-completed-step-failure-evidence-guard
+    agent: integration-verifier-tacit

@@ -90259,3 +90259,90 @@ phases:
       suggested_action="no action required". Live `vectl orch drive` execution was
       not launched here because it would mutate the live plan and spawn real runners;
       full live/smoke sweep remains part of final verification.'
+  - id: post_review_remediation.backfill-missing-gate-evidence
+    name: Backfill missing post-review gate evidence
+    status: pending
+    description: 'Supplemental evidence-only closure for final gate proof gaps found
+      in `post_review_remediation.gate` review.
+
+
+      Scope:
+
+      - Provide refs-read confirmation and command output for `post_review_remediation.fix-cli-blackbox-finalization-runtime-nonclosure`,
+      whose original completion evidence lacked audit-grade refs/command detail.
+
+      - Provide refs-read confirmation and command output for `post_review_remediation.implement-drive-autonomy-safe-recovery-and-actions`,
+      whose original completion evidence had command summaries but no explicit refs-read
+      confirmation.
+
+      - Do not change product code unless a live blocker is found.
+
+      - Do not run or require repo-wide `uvx invar-tools guard --all`; invar/static
+      debt remains separate-lane.
+
+
+      This step exists only to make the final non-invar gate auditable without rewriting
+      historical completed-step evidence.'
+    verification: '- Read and cite the relevant CLI/recovery/runner/drive refs.
+
+      - Run focused CLI black-box runtime non-closure tests or current equivalent
+      and confirm no `runtime non-closure: fail` public CLI output remains.
+
+      - Run focused drive autonomy/action-guidance tests and CLI smoke commands.
+
+      - Produce OPEN/BLOCK supplemental evidence decision for final gate.'
+    evidence_template: '## refs Read Confirmation
+
+      - README.md — key passage or NOT READ reason
+
+      - docs/ORCHESTRATION-CLI-QUICKSTART.md — key passage or NOT READ reason
+
+      - docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md — key passage
+      or NOT READ reason
+
+      - docs/RFC-opencode-orchestration-runner.md — key passage or NOT READ reason
+
+      - tests/repro/test_orch_cli_recovery_red.py — key passage or NOT READ reason
+
+      - tests/repro/test_orch_liveness.py — key passage or NOT READ reason
+
+      - tests/test_orch_cli_surface.py — key passage or NOT READ reason
+
+
+      ## Supplemental Verification Report
+
+      **Commands executed**:
+
+      ```sh
+
+      <paste commands>
+
+      ```
+
+      **Actual output**:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+
+      ## Closure
+
+      - CLI black-box runtime non-closure missing evidence: PROVEN | BLOCKED
+
+      - Drive autonomy/action-guidance missing evidence: PROVEN | BLOCKED
+
+      - blocking-now: <none or list>
+
+
+      ## Decision
+
+      - [ ] OPEN
+
+      - [ ] BLOCKED'
+    depends_on:
+    - post_review_remediation.fix-cli-blackbox-finalization-runtime-nonclosure
+    - post_review_remediation.implement-drive-autonomy-safe-recovery-and-actions
+    agent: integration-verifier-tacit

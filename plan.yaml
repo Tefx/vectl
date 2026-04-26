@@ -88661,7 +88661,7 @@ phases:
   steps:
   - id: post_review_remediation.fix-driver-agent-selection-deep-review
     name: Fix driver agent-selection deep-review findings
-    status: claimed
+    status: done
     description: 'Fix the non-invar SHOULD_FIX findings from `driver-agent-selection-deep-review.gate`.
 
 
@@ -88780,6 +88780,109 @@ phases:
     agent: python-senior-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T14:44:18.454453+00:00'
+    done_at: '2026-04-26T14:51:08.645078+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/DRIVER-AGENT-SELECTION.md — NOT READ: file no longer exists after orchestration-plane/driver
+      demolition; current authority read instead: `docs/ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md`
+      §§8-10, 15, 17 (role profile agent_id, role->runner default, planner as resolver
+      subagent, runtime/runner backend boundaries).
+
+      - src/vectl/driver/loop.py — NOT READ: file no longer exists; current execution
+      path read in `src/vectl/orch_app.py` and `src/vectl/orchestration/dispatch_policy.py`.
+
+      - src/vectl/driver/judge.py — NOT READ: file no longer exists; grep confirms
+      `_load_runner_settings_from_driver_yaml` has no source matches.
+
+
+      ## Expected-Red / Repro Proof
+
+      - Historical `src/vectl/driver/*` surface is absent, so I reproduced the surviving
+      equivalent defect in current orchestration code: `RoleProfile.agent_id` was
+      used for prompt rendering but runtime runner requests still used `dispatch_spec.role_id`,
+      so concrete external/tacit agent selection drifted before OpenCode `--agent`.
+
+      - Failing command before fix:
+
+      ```
+
+      uv run pytest -q tests/orchestration/unit/test_orch_app.py::test_start_runtime_execution_uses_profile_agent_id_for_runner_request
+
+      ```
+
+      - Failing output:
+
+      ```
+
+      E AssertionError: assert [''python-executor''] == [''python-executor-tacit'']
+
+      FAILED tests/orchestration/unit/test_orch_app.py::test_start_runtime_execution_uses_profile_agent_id_for_runner_request
+
+      ```
+
+
+      ## Fix Evidence
+
+      - Files changed: `src/vectl/orch_app.py`, `tests/orchestration/unit/test_orch_app.py`.
+
+      - Ownership decisions: kept runner ownership in `DispatchCoordinator`/RoleProfile
+      (`profile.default_runner` remains `dispatch_spec.runner`), kept prompt ownership
+      in `ConfigPromptRegistry`, and changed runtime request/artifact materialization
+      to use concrete `RoleProfile.agent_id` via `_agent_id_for_dispatch()` instead
+      of role_id. Also fixed child-run and resolver-invocation runtime request paths.
+
+      - Grep results for drift patterns:
+
+      ```
+
+      Grep source: config\.route_agent\(|_load_runner_settings_from_driver_yaml|supports_agent_selection
+      -> no source matches
+
+      Grep source: agent_id=dispatch_spec\.role_id|planner\.runner|external_agent_name
+      -> no source matches
+
+      Grep plan.yaml still contains historical references to removed src/vectl/driver/loop.py
+      and src/vectl/driver/judge.py; those are archived execution history, not live
+      source.
+
+      ```
+
+      - Named legacy tests `tests/test_driver_config.py tests/test_driver_judge.py
+      tests/test_driver_loop_hardening.py` are absent in this repo state; ran current
+      equivalent config/dispatch/runner/orch-app suites instead.
+
+
+      ## Green Verification
+
+      ```
+
+      uv run pytest -q tests/orchestration/unit/test_orch_app.py::test_start_runtime_execution_uses_profile_agent_id_for_runner_request
+
+      # 1 passed
+
+
+      uv run pytest -q tests/orchestration/unit/test_orch_app.py
+
+      # 72 passed
+
+
+      uv run pytest -q tests/orchestration/unit/test_config_state_impl.py tests/orchestration/unit/test_config_roundtrip_and_isolation.py
+      tests/orchestration/unit/test_opencode_runner.py tests/orchestration/unit/test_orch_app.py
+
+      # 194 passed
+
+
+      uv run pytest -q tests/orchestration/unit/test_dispatch_policy.py tests/orchestration/unit/test_prompt_artifact_contract.py
+
+      # 113 passed
+
+      ```
+
+
+      ## Invar Exclusion
+
+      Repo-wide invar/static debt remediation was not attempted; this step did not
+      run or require `uvx invar-tools guard --all`.'
   - id: post_review_remediation.reverify-driver-agent-selection-deep-review
     name: Reverify driver agent-selection deep-review closure
     status: pending

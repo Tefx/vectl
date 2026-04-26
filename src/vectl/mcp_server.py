@@ -41,13 +41,17 @@ from pydantic import BaseModel
 
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
 from vectl.claims import get_current_branch, repair_claims
+from vectl.duplicate_step_id_format import (
+    format_duplicate_step_id_diagnostics,
+    format_duplicate_step_id_recommendation,
+    get_duplicate_step_id_recommendation,
+)
 from vectl.core import (
     _SENTINEL,
     AgentsTarget,
     add_phase,
     add_step,
     add_steps_bulk,
-    analyze_duplicate_step_ids,
     apply_duplicate_step_id_migration,
     build_duplicate_step_id_migration_dry_run,
     build_duplicate_step_id_migration_evidence,
@@ -57,7 +61,6 @@ from vectl.core import (
     complete_phase,
     complete_step,
     defer_step,
-    duplicate_step_id_recommendation_for_target,
     edit_phase,
     edit_plan,
     edit_step,
@@ -244,35 +247,21 @@ def _fmt_phase_summary(plan: Plan) -> str:
 
 def _duplicate_id_diagnostics_lines(plan: Plan) -> list[str]:
     """Format duplicate step-ID diagnostics for read-only MCP tools."""
-    diagnostics = analyze_duplicate_step_ids(plan)
-    if not diagnostics.conflicts:
+    lines = format_duplicate_step_id_diagnostics(plan)
+    if not lines:
         return []
-
-    lines: list[str] = ["## Duplicate Step-ID Diagnostics", ""]
-    for conflict in diagnostics.conflicts:
-        phases = ", ".join(conflict.phase_ids)
-        lines.append(
-            f"WARN: duplicate step ID '{conflict.step_id}' appears "
-            f"{conflict.occurrences} time(s) across phases: {phases}"
-        )
-    return lines
+    return ["## Duplicate Step-ID Diagnostics", "" , *lines]
 
 
 def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> list[str]:
     """Format duplicate-ID repair recommendation for targeted step reads."""
-    diagnostics = analyze_duplicate_step_ids(plan)
-    recommendation = duplicate_step_id_recommendation_for_target(diagnostics, step_id)
+    recommendation = get_duplicate_step_id_recommendation(plan, step_id)
     if recommendation is None:
         return []
-
-    phase_list = ", ".join(duplicate.phase for duplicate in recommendation.duplicates)
     return [
         "",
         "## Duplicate-ID Repair Recommendation",
-        (f"type={recommendation.type}; step_id={recommendation.step_id}; duplicates={phase_list}"),
-        f"resolution.explicit_phase: {recommendation.resolution_path.explicit_phase}",
-        f"resolution.auto_migrate_flag: {recommendation.resolution_path.auto_migrate_flag}",
-        f"resolution.migration_tool: {recommendation.resolution_path.migration_tool}",
+        *format_duplicate_step_id_recommendation(recommendation),
     ]
 
 
@@ -641,8 +630,7 @@ def vectl_claim(
 
         recommendation_payload: dict[str, Any] | None = None
         if error_code == "duplicate_step_id_ambiguous_target" and step_id is not None:
-            diagnostics = analyze_duplicate_step_ids(plan)
-            recommendation = duplicate_step_id_recommendation_for_target(diagnostics, step_id)
+            recommendation = get_duplicate_step_id_recommendation(plan, step_id)
             if recommendation is not None:
                 recommendation_payload = {
                     "type": recommendation.type,
@@ -1580,17 +1568,13 @@ def vectl_dag(phase_id: str | None = None) -> str:
     except PlanError as e:
         return f"**Error:** {e}"
 
-    diagnostics = analyze_duplicate_step_ids(plan)
-    if not diagnostics.conflicts:
+    lines = format_duplicate_step_id_diagnostics(plan)
+    if not lines:
         return mmd
 
     warning_lines = ["%% Duplicate Step-ID Diagnostics"]
-    for conflict in diagnostics.conflicts:
-        warning_lines.append(
-            "%% WARN duplicate step ID "
-            f"'{conflict.step_id}' appears {conflict.occurrences} time(s) across phases: "
-            f"{', '.join(conflict.phase_ids)}"
-        )
+    for line in lines:
+        warning_lines.append(f"%% {line}")
     return "\n".join([*warning_lines, "", mmd])
 
 

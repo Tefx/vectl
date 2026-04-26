@@ -864,10 +864,9 @@ class TestToolRegistryValidation:
         but §8.4 requires tool-level registry (core.status, core.show, etc.)
         This test documents the gap.
         """
-        from vectl.orchestration.tool_registry import ToolFamilyRegistry
+        from vectl.orchestration.tool_registry import get_tool_family
 
-        registry = ToolFamilyRegistry()
-        metadata = registry.get("core")
+        metadata = get_tool_family("core")
 
         assert metadata is not None
         assert {"status", "show", "claim", "complete", "defer"}.issubset(
@@ -881,10 +880,9 @@ class TestToolRegistryValidation:
 
         NOTE: See test_tool_registry_core_family_tools for gap documentation.
         """
-        from vectl.orchestration.tool_registry import ToolFamilyRegistry
+        from vectl.orchestration.tool_registry import get_tool_family
 
-        registry = ToolFamilyRegistry()
-        metadata = registry.get("orchestration")
+        metadata = get_tool_family("orchestration")
 
         assert metadata is not None
         assert {"read_events", "read_state", "read_case"}.issubset(set(metadata.allowed_operations))

@@ -88952,7 +88952,7 @@ phases:
   - id: arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate
     name: DEM-019 freeze config/contracts ownership and close with repo-wide readiness
       gate
-    status: rejected
+    status: claimed
     description: 'Resolve DEM-019 and finish Wave 7 by adding explicit owns: sections
       to the module docstrings in src/vectl/orchestration/config.py and contracts.py
       with no overlapping model ownership, enforcing the Wave 7 file-size ceilings,
@@ -88977,8 +88977,8 @@ phases:
     - arch-demolition-wave-7.dem-018-split-cli-core-and-mcp-surfaces-by-real-behavior
     - arch-demolition-wave-7.dem-018-split-orchestration-app-run-store-and-driver-by-real-behavior
     agent: python-refactor-master-tacit
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T10:27:08.192645+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T11:58:11.246348+00:00'
     done_at: '2026-04-26T10:29:04.631234+00:00'
     rejection_reason: 'evidence-only sanitization: previous completion stored raw
       OpenCode JSON event stream; no implementation rework requested'

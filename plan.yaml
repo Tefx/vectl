@@ -88880,7 +88880,7 @@ phases:
       \ so execution is blocked by protocol.\""
 - id: arch-demolition-wave-7
   name: Architectural Demolition — Wave 7 Re-cut Large Files by Real Behavior Only
-  status: done
+  status: in_progress
   gate: Wave 7 complete when DEM-018 and DEM-019 land using only the approved module
     split map, file-size ceilings are met, config/contracts ownership docstrings are
     frozen, repo-wide readiness commands pass, and any deferred expected-red is explicitly
@@ -88919,7 +88919,7 @@ phases:
       | ROI: planned/pending'
   - id: arch-demolition-wave-7.dem-018-split-orchestration-app-run-store-and-driver-by-real-behavior
     name: DEM-018 split orchestration app, run store, and driver by real behavior
-    status: done
+    status: rejected
     description: Resolve the orchestration part of DEM-018 by re-cutting orch_app.py
       into orch_app_wiring.py, orch_app_read_surfaces.py, and orch_app_drive_ops.py;
       splitting run_store.py into run_store_persistence.py and run_store_queries.py;
@@ -88937,66 +88937,13 @@ phases:
     claimed_by: python-executor
     claimed_at: '2026-04-26T10:26:22.031390+00:00'
     done_at: '2026-04-26T10:27:04.389353+00:00'
-    evidence: '[reconcile_disposition=noop] OpenCode completed successfully (exit
-      0); stdout={"type":"step_start","timestamp":1777199190121,"sessionID":"ses_236ac7771ffeYVsJVuOrQfG4dN","part":{"id":"prt_dc9539067001o3x0uQu6CZuPao","messageID":"msg_dc95388ce001ptQzPesaAopwKk","sessionID":"ses_236ac7771ffeYVsJVuOrQfG4dN","snapshot":"33db4f3685df9f5de36bfa3a0e185c52dd050d19","type":"step-start"}}
-
-      {"type":"tool_use","timestamp":1777199195665,"sessionID":"ses_236ac7771ffeYVsJVuOrQfG4dN","part":{"type":"tool","tool":"tela_serena_initial_instructions","callID":"call_kjl5X1465ff7QnP5bj2bGSDd","state":{"status":"completed","input":{},"output":"You
-      have access to semantic coding tools upon which you rely heavily for all your
-      work.\nYou operate in a resource-efficient and intelligent manner, always keeping
-      in mind to not read or generate\ncontent that is not needed for the task at
-      hand.\n\nSome tasks may require you to understand the architecture of large
-      parts of the codebase, while for others,\nit may be enough to read a small set
-      of symbols or a single file.\nYou avoid reading entire files unless it is absolutely
-      necessary, instead relying on intelligent step-by-step \nacquisition of information.
-      Once you have read a full file, it does not make\nsense to analyse it with the
-      symbolic read tools; you already have the information.\n\nYou can achieve intelligent
-      reading of code by using the symbolic tools for getting an overview of symbols
-      and\nthe relations between them, and then only reading the bodies of symbols
-      that are necessary to complete the task at hand. \nYou can use the standard
-      tools like list_dir, find_file and search_for_pattern if you need to.\nWhere
-      appropriate, you pass the `relative_path` parameter to restrict the search to
-      a specific file or directory.\n\nIf you are unsure about a symbol''s name or
-      location (to the extent that substring_matching for the symbol name is not enough),
-      you can use the `search_for_pattern` tool, which allows fast\nand flexible search
-      for patterns in the codebase. In this way, you can first find candidates for
-      symbols or files,\nand then proceed with the symbolic tools.\n\n\n\nSymbols
-      are identified by their `name_path` and `relative_path` (see the description
-      of the `find_symbol` tool).\nYou can get information about the symbols in a
-      file by using the `get_symbols_overview` tool or use the `find_symbol` to search.
-      \nYou only read the bodies of symbols when you need to (e.g. if you want to
-      fully understand or edit it).\nFor example, if you are working with Python code
-      and already know that you need to read the body of the constructor of the class
-      Foo, you can directly\nuse `find_symbol` with name path pattern `Foo/__init__`
-      and `include_body=True`. If you don''t know yet which methods in `Foo` you need
-      to read or edit,\nyou can use `find_symbol` with name path pattern `Foo`, `include_body=False`
-      and `depth=1` to get all (top-level) methods of `Foo` before proceeding\nto
-      read the desired methods with `include_body=True`.\nYou can understand relationships
-      between symbols by using the `find_referencing_symbols` tool.\n\n\nYou generally
-      have access to memories and it may be useful for you to read them.\nYou infer
-      whether memories are relevant based on their names.\n\n\nLine numbers returned
-      by Serena''s tools are 0-based!\n\nThe context and modes of operation are described
-      below. These determine how to interact with your user\nand which kinds of interactions
-      are expected of you.\n\nContext description:\nYou are running in an IDE assistant
-      context where file operations, basic (line-based) edits and reads, \nand shell
-      commands are handled by your own, internal tools.\n\nIf Serena''s tools can
-      be used to achieve your task, you should prioritize them.\nIn particular, it
-      is important that you avoid reading entire source code files unless it is strictly
-      necessary!\nInstead, for exploring and reading code in a token-efficient manner,
-      use Serena''s overview and symbolic search tools.\nFor non-code files or for
-      reads where you don''t know the symbol''s name path, you can use the pattern
-      search tool.\n\nModes descriptions:\n\nUse symbolic editing tools whenever possible
-      for precise code modifications.\n\n\n\n\nyou have two main approaches for editing
-      code: (a) editing at the symbol level and (b) file-based editing.\nThe symbol-based
-      approach is appropriate if you need to adjust an entire symbol, e.g. a method,
-      a class, a function, etc.\nIt is not appropriate if you need to adjust just
-      a few lines of code within a larger symbol.\n\n**Symbolic editing**\nUse symbolic
-      retrieval tools to identify the symbols you need to edit.\nIf you need to replace
-      the definition of a symbol, use the `replace_symbol_body` tool.\nIf you want
-      to add some new code at the end of the file, use the `insert_after_symbol` tool
-      with the last top-level symbol in the file. \nSimilarly, you can use `insert_before_symbol`
-      with the first top-level symbol in the file to insert code at the beginning
-      of a file.\nYou can understand relationships between symbols by using the `find_referencing_symbols`
-      tool. If not explicitl'
+    rejection_reason: 'evidence-only sanitization: previous completion stored raw
+      OpenCode JSON event stream; no implementation rework requested'
+    rejection_history:
+    - reason: 'evidence-only sanitization: previous completion stored raw OpenCode
+        JSON event stream; no implementation rework requested'
+      timestamp: '2026-04-26T11:57:56.140028+00:00'
+      reviewer: minimalist-architect-tacit
   - id: arch-demolition-wave-7.dem-019-freeze-config-contracts-ownership-and-close-with-repo-wide-readiness-gate
     name: DEM-019 freeze config/contracts ownership and close with repo-wide readiness
       gate

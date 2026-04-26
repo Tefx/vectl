@@ -88215,7 +88215,7 @@ phases:
       pattern="ArtifactReader|ArtifactWriter"  path="/Users/tefx/Projects/vectl/.vectl/workspaces/arch-demolition-wave-2.dem-013-delete-speculative-continuity-artifact-seams"'
   - id: arch-demolition-wave-2.dem-015-rename-concrete-drive-driver-and-retire-protocol-shell
     name: DEM-015 rename concrete drive driver and retire protocol shell
-    status: rejected
+    status: claimed
     description: Resolve DEM-015 by deleting the DriveDriver protocol in src/vectl/orchestration/driver.py,
       renaming ConcreteDriveDriver to DriveDriver, migrating imports, and retaining
       a documented deprecated ConcreteDriveDriver alias for one wave cycle only, scheduled
@@ -88225,8 +88225,8 @@ phases:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - src/vectl/orchestration/driver.py
     agent: python-senior-tacit
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T05:13:43.342123+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T12:06:02.164627+00:00'
     done_at: '2026-04-26T05:24:16.015514+00:00'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'

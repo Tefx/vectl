@@ -10,8 +10,8 @@ be closed by downstream implementation steps.
 Spec-Fixture Conformance:
     - DispatchSpec: ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §7.1
     - RoleProfile: ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8.2
-    - RoleProfileRegistry: ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8.3
-    - PromptRegistry: ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §10.1
+    - ConfigRoleProfileRegistry: ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §8.3
+    - ConfigPromptRegistry: ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §10.1
     - StructuredReviewResult:
         ORCHESTRATION-PLANE-DISPATCH-AND-PROMPT-POLICY.md §13.1
     - Review normalization:
@@ -77,10 +77,8 @@ from vectl.orchestration.contracts import (
     CoreSnapshot,
     DispatchSpec,
     PromptBundle,
-    PromptRegistry,
     ResolutionCase,
     RoleProfile,
-    RoleProfileRegistry,
     RosterSnapshot,
     RuntimeSnapshot,
     StructuredReviewResult,
@@ -225,17 +223,16 @@ def test_dispatch_spec_main_worktree_roles_enforce_execution_context() -> None:
 
 
 # ---------------------------------------------------------------------
-# GAP 2: RoleProfileRegistry concrete implementation
+# GAP 2: ConfigRoleProfileRegistry concrete implementation
 # ---------------------------------------------------------------------
-# RoleProfileRegistry is defined as a Protocol in contracts.py, but
-# there is no concrete implementation that provides actual role lookups.
+# ConfigRoleProfileRegistry provides concrete role lookups.
 
 
-class TestRoleProfileRegistryProtocol:
-    """RoleProfileRegistry protocol behavior backed by concrete config registry."""
+class TestConfigRoleProfileRegistryBehavior:
+    """ConfigRoleProfileRegistry concrete behavior."""
 
     def test_role_profile_registry_get_returns_concrete_profile(self) -> None:
-        """RoleProfileRegistry.get() returns a concrete profile for known roles."""
+        """ConfigRoleProfileRegistry.get() returns a concrete profile for known roles."""
         registry = ConfigRoleProfileRegistry()
 
         profile = registry.get("python-executor")
@@ -243,13 +240,13 @@ class TestRoleProfileRegistryProtocol:
         assert profile.role_id == "python-executor"
 
     def test_role_profile_registry_has_role_unknown_role_returns_false(self) -> None:
-        """RoleProfileRegistry.has_role() returns False for unknown roles."""
+        """ConfigRoleProfileRegistry.has_role() returns False for unknown roles."""
         registry = ConfigRoleProfileRegistry()
 
         assert registry.has_role("unknown-role") is False
 
     def test_role_profile_registry_fails_explicitly_on_unknown_role(self) -> None:
-        """RoleProfileRegistry.get() fails explicitly for unknown roles."""
+        """ConfigRoleProfileRegistry.get() fails explicitly for unknown roles."""
         registry = ConfigRoleProfileRegistry()
 
         # Should raise, not return a default or guess
@@ -258,17 +255,16 @@ class TestRoleProfileRegistryProtocol:
 
 
 # ---------------------------------------------------------------------
-# GAP 3: PromptRegistry concrete implementation
+# GAP 3: ConfigPromptRegistry concrete implementation
 # ---------------------------------------------------------------------
-# PromptRegistry is defined as a Protocol in contracts.py, but there is
-# no concrete implementation for role-aware prompt rendering.
+# ConfigPromptRegistry provides concrete role-aware prompt rendering.
 
 
-class TestPromptRegistryProtocol:
-    """PromptRegistry behavior backed by concrete config registry."""
+class TestConfigPromptRegistryBehavior:
+    """ConfigPromptRegistry behavior backed by concrete config registry."""
 
     def test_prompt_registry_render_returns_prompt_bundle(self) -> None:
-        """PromptRegistry.render() returns a PromptBundle for known roles."""
+        """ConfigPromptRegistry.render() returns a PromptBundle for known roles."""
         registry = ConfigPromptRegistry(role_registry=ConfigRoleProfileRegistry())
 
         spec = DispatchSpec(
@@ -288,7 +284,7 @@ class TestPromptRegistryProtocol:
         assert bundle.task_prompt  # should be non-empty
 
     def test_prompt_registry_has_role_for_known_role(self) -> None:
-        """PromptRegistry.has_role() returns True for known roles."""
+        """ConfigPromptRegistry.has_role() returns True for known roles."""
         registry = ConfigPromptRegistry(role_registry=ConfigRoleProfileRegistry())
 
         assert registry.has_role("python-executor") is True

@@ -14,7 +14,7 @@ Authority: docs/RFC-orch-drive.md sections 8, 9, 12, 13 (drive scheduling types)
 """
 
 from dataclasses import dataclass, field
-from typing import Literal, Protocol, TypeAlias
+from typing import Literal, TypeAlias
 
 from vectl.models import IsolationMode
 
@@ -77,7 +77,6 @@ __all__ = [
     "PlannerRequest",
     "PromptArtifactPaths",
     "PromptBundle",
-    "PromptRegistry",
     "ReconcileDisposition",
     "ReconcileResult",
     "RecoveryAttempt",
@@ -94,7 +93,6 @@ __all__ = [
     "ReviewOutcome",
     "RoleOutputContract",
     "RoleProfile",
-    "RoleProfileRegistry",
     "SessionMode",
     "StructuredReviewResult",
     "WorktreeBinding",
@@ -318,14 +316,6 @@ class RoleProfile:
     default_runner: str
 
 
-class RoleProfileRegistry(Protocol):
-    """Configuration-backed lookup for open-ended role IDs."""
-
-    def get(self, role_id: str) -> RoleProfile: ...
-
-    def has_role(self, role_id: str) -> bool: ...
-
-
 @dataclass(frozen=True)
 class PromptBundle:
     """Rendered prompt material for a dispatch spec.
@@ -336,14 +326,6 @@ class PromptBundle:
     system_prompt: str
     task_prompt: str
     messages: tuple[dict[str, str], ...]
-
-
-class PromptRegistry(Protocol):
-    """Central prompt rendering boundary for role-aware dispatch."""
-
-    def render(self, spec: DispatchSpec) -> PromptBundle: ...
-
-    def has_role(self, role_id: str) -> bool: ...
 
 
 @dataclass(frozen=True)
@@ -1189,9 +1171,10 @@ class RunnerHandoffEnv:
         }
 
 
-_OPENCODE_BOOTSTRAP_MESSAGE_START: Literal[
-    "Read the attached runner prompt file, execute the requested task in the current workspace, and then exit."
-] = "Read the attached runner prompt file, execute the requested task in the current workspace, and then exit."
+_OPENCODE_BOOTSTRAP_MESSAGE_START = (
+    "Read the attached runner prompt file, execute the requested task in the "
+    "current workspace, and then exit."
+)
 """Frozen one-shot bootstrap message for OpenCode start mode.
 
 Authority: docs/RFC-opencode-orchestration-runner.md section 9.2

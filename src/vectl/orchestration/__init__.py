@@ -27,7 +27,6 @@ from vectl.orchestration.contracts import (
     PlannerRequest,
     PromptArtifactPaths,
     PromptBundle,
-    PromptRegistry,
     ReconcileResult,
     RecoveredVia,
     RecoveryAttempt,
@@ -37,7 +36,6 @@ from vectl.orchestration.contracts import (
     ResolutionCaseSource,
     ResolutionReport,
     RoleProfile,
-    RoleProfileRegistry,
     RosterSnapshot,
     RunnerHandoffEnv,
     RuntimeSnapshot,
@@ -57,7 +55,6 @@ from vectl.orchestration.dispatch_policy import (
     normalize_review_result,
     step_verify_to_verify_mode,
 )
-from vectl.orchestration.step_data import StepData
 from vectl.orchestration.interfaces import (
     Control,
     PlannerAdapter,
@@ -80,6 +77,7 @@ from vectl.orchestration.resolution_reports import (
     parse_resolution_report_payload,
     validate_resolution_report_payload,
 )
+from vectl.orchestration.step_data import StepData
 
 __all__ = [
     # Shared boundary types (contracts.py)
@@ -98,10 +96,8 @@ __all__ = [
     "RequestMode",
     "SessionPolicy",
     "RoleProfile",
-    "RoleProfileRegistry",
     "PromptArtifactPaths",
     "PromptBundle",
-    "PromptRegistry",
     "RunnerHandoffEnv",
     "OpenCodeLaunchConfig",
     "StructuredReviewResult",

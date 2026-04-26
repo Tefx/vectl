@@ -89064,3 +89064,103 @@ phases:
     depends_on:
     - post_review_remediation.fix-opencode-runner-final-gate-cli-surface
     agent: integration-verifier-tacit
+  - id: post_review_remediation.fix-cli-blackbox-finalization-runtime-nonclosure
+    name: Fix CLI black-box finalization runtime non-closure
+    status: pending
+    description: 'Fix or close the non-invar failure recorded in `cli_blackbox_finalization.full-plan-check`.
+
+
+      Historical blocker:
+
+      - `test_claim_before_start_seam`, `test_claim_before_start_durable_before_start`,
+      and `test_full_lifecycle_proof_all_three_seams` failed because `OrchestrationApp.run()`
+      invoked resolver logic that treated the execution context as a linked worktree
+      and returned `runtime non-closure: fail` before the normal CLI path could complete.
+
+
+      Scope:
+
+      - Reproduce the historical CLI black-box runtime non-closure on current HEAD.
+
+      - If still failing, fix the resolver/linked-worktree/main-worktree authority
+      seam so ordinary CLI run paths are not incorrectly blocked.
+
+      - If already green, produce a closure proof showing the exact commands and why
+      no further code change is needed.
+
+
+      Out of scope:
+
+      - Do NOT remediate repo-wide invar/static-debt findings.
+
+      - Do NOT rewrite unrelated CLI tests beyond the failing black-box finalization
+      family.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION/CLOSURE step. Evidence must show the real CLI path
+      reaches runtime completion or a concrete current-state proof that the historical
+      blocker is already closed.'
+    verification: '- Run focused tests covering the historical claim-before-start
+      and lifecycle seams.
+
+      - Run relevant CLI black-box finalization matrix or explain exact test names
+      if renamed.
+
+      - Confirm no `runtime non-closure: fail` remains for the covered public CLI
+      path.
+
+      - Do not require `uvx invar-tools guard --all`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - tests/repro/test_orch_cli_recovery_red.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/test_orch_liveness.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orch_app.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/plan_path.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/resolver_gateway.py — key passage or "NOT READ: <reason>"
+
+
+      ## Repro / Closure Proof
+
+      - Historical runtime non-closure reproduced? YES | NO
+
+      - Failing output or green current-state proof:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ## Fix Evidence
+
+      - Files changed or closure-only rationale:
+
+      - Resolver/linked-worktree authority seam disposition:
+
+      - CLI path exercised:
+
+
+      ## Green Verification
+
+      ```
+
+      <paste targeted test/CLI output>
+
+      ```
+
+
+      ## Invar Exclusion
+
+      Confirm repo-wide invar/static-debt remediation was not attempted here.'
+    depends_on:
+    - post_review_remediation.reverify-opencode-runner-final-gate
+    agent: python-senior-tacit

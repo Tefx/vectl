@@ -311,13 +311,17 @@ def _summarize_opencode_stdout(stdout: str) -> str:
 
     report_payloads: list[dict[str, object]] = []
     text_parts: list[str] = []
+    saw_json_event = False
     for value in _iter_json_values_from_text(stdout):
+        saw_json_event = True
         _append_resolution_report_payloads(value, report_payloads)
         _append_opencode_text_parts(value, text_parts)
     if report_payloads:
         return json.dumps(report_payloads[-1], separators=(",", ":"))
     if text_parts:
         return text_parts[-1].strip()
+    if saw_json_event:
+        return "OpenCode emitted JSON event stream without final text"
     return stdout.strip()
 
 

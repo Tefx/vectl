@@ -90,6 +90,11 @@ from vectl.orchestration.dispatch_policy import (
     normalize_parse_failure,
     normalize_review_result,
 )
+from vectl.orchestration.evidence import (
+    assess_freeform_evidence,
+    extract_runner_payload,
+    summarize_plan_evidence,
+)
 from vectl.orchestration.driver import (
     DriveAdmissionError,
     DriveDriver,
@@ -99,6 +104,7 @@ from vectl.orchestration.driver import (
     DriveStartResult,
     DriveStatusResult,
     MaxParallelismError,
+    TERMINAL_DRIVE_STATUSES,
 )
 from vectl.orchestration.events import (
     EventCorruptionError,
@@ -1050,6 +1056,16 @@ class OrchestrationApp:
         if review_case is not None:
             return review_case
 
+        freeform_failure_case = self._normalize_freeform_evidence_case(
+            step_id=step_id,
+            raw_output=execution_result.output_summary,
+            role_id=dispatch_spec.role_id,
+            output_contract=dispatch_spec.output_contract,
+            snapshots=snapshots,
+        )
+        if freeform_failure_case is not None:
+            return freeform_failure_case
+
         # Second gate: re-check after reconcile/resolve paths, because
         # paused state might have been set during reconcile processing.
         complete_blocked_2, complete_reason_2 = self._is_complete_blocked_by_gate()
@@ -1067,7 +1083,7 @@ class OrchestrationApp:
             raise ValueError("Reconcile disposition missing despite completion gate approval")
         self._core_adapter.complete_step(
             step_id,
-            execution_result.output_summary,
+            summarize_plan_evidence(execution_result.output_summary),
             reconcile_disposition=reconcile_disposition,
         )
         return None
@@ -1104,8 +1120,9 @@ class OrchestrationApp:
     ) -> ResolutionCase | None:
         if output_contract != "structured_review_result":
             return None
+        payload = extract_runner_payload(raw_output)
         try:
-            parsed = self._parse_structured_review_result(raw_output)
+            parsed = self._parse_structured_review_result(payload)
         except ValueError:
             return build_review_parse_failure_case(
                 raw_output=raw_output,
@@ -1121,6 +1138,38 @@ class OrchestrationApp:
             core=snapshots.core,
             roster=snapshots.roster,
             runtime=snapshots.runtime,
+        )
+
+    def _normalize_freeform_evidence_case(
+        self,
+        *,
+        step_id: str,
+        raw_output: str,
+        role_id: str,
+        output_contract: str,
+        snapshots: SnapshotBundle,
+    ) -> ResolutionCase | None:
+        """Block completion when freeform evidence explicitly reports failure."""
+
+        if output_contract != "freeform_evidence":
+            return None
+        assessment = assess_freeform_evidence(raw_output)
+        if not assessment.failed:
+            return None
+        return ResolutionCase(
+            case_id=f"case-{generate_run_id()}",
+            case_source="review_failed",
+            reason=f"freeform evidence failure: {assessment.reason}",
+            summary=assessment.summary,
+            core=snapshots.core,
+            roster=snapshots.roster,
+            runtime=snapshots.runtime,
+            blocked_step_ids=(step_id,),
+            artifact_refs=(
+                f"role_id={role_id}",
+                f"output_contract={output_contract}",
+                "freeform_evidence_failure",
+            ),
         )
 
     def _parse_structured_review_result(self, raw_output: str) -> StructuredReviewResult:
@@ -2131,7 +2180,13 @@ class OrchestrationApp:
         Returns:
             DriveLoopResult capturing the terminal or paused state.
         """
-        return self._drive_driver().run_drive_loop(drive_id)
+        result = self._drive_driver().run_drive_loop(drive_id)
+        if result.status in TERMINAL_DRIVE_STATUSES:
+            self._cleanup_drive_workspaces_for_terminal_status(
+                drive_id=drive_id,
+                terminal_status=result.status,
+            )
+        return result
 
     def run_drive_foreground(
         self,
@@ -2197,6 +2252,11 @@ class OrchestrationApp:
 
             if self._foreground_drive_should_exit(status):
                 final_result = self._drive_status_to_loop_result(status)
+                if final_result.status in TERMINAL_DRIVE_STATUSES:
+                    self._cleanup_drive_workspaces_for_terminal_status(
+                        drive_id=drive_id,
+                        terminal_status=final_result.status,
+                    )
                 self._emit_terminal_drive_progress(
                     progress_callback=progress_callback,
                     result=final_result,
@@ -2224,6 +2284,11 @@ class OrchestrationApp:
                 time.sleep(max(0.1, poll_interval_seconds))
                 last_result = self.run_drive_loop(drive_id)
                 if self._foreground_loop_result_should_exit(last_result):
+                    if last_result.status in TERMINAL_DRIVE_STATUSES:
+                        self._cleanup_drive_workspaces_for_terminal_status(
+                            drive_id=drive_id,
+                            terminal_status=last_result.status,
+                        )
                     self._emit_terminal_drive_progress(
                         progress_callback=progress_callback,
                         result=last_result,
@@ -2234,6 +2299,11 @@ class OrchestrationApp:
 
             last_result = self.run_drive_loop(drive_id)
             if self._foreground_loop_result_should_exit(last_result):
+                if last_result.status in TERMINAL_DRIVE_STATUSES:
+                    self._cleanup_drive_workspaces_for_terminal_status(
+                        drive_id=drive_id,
+                        terminal_status=last_result.status,
+                    )
                 self._emit_terminal_drive_progress(
                     progress_callback=progress_callback,
                     result=last_result,
@@ -2626,14 +2696,68 @@ class OrchestrationApp:
             )
         )
         child_ref = store.child_run_by_id(child_run_id)
-        if child_ref is not None and child_ref.workspace:
-            try:
-                self._runtime.cleanup_child_run(child_ref.workspace, force=False)
-            except Exception as exc:
-                self._append_log(
-                    f"drive_id={drive_id} run_id={child_run_id} "
-                    f"workspace_cleanup_skipped reason={exc}"
-                )
+        if child_ref is not None:
+            self._cleanup_child_run_worktree(child_ref=child_ref, force=False)
+
+    def _cleanup_drive_workspaces_for_terminal_status(
+        self,
+        *,
+        drive_id: str,
+        terminal_status: str,
+    ) -> None:
+        """Sweep child-run worktrees when a drive reaches a terminal state."""
+
+        policy = self._effective_orchestration_config().runtime.cleanup_policy
+        if policy == "never":
+            return
+        store = self._drive_store()
+        for child_ref in store.child_runs_for_drive(drive_id):
+            if child_ref.status in {"pending", "running"}:
+                continue
+            if policy == "on-success" and child_ref.status != "success":
+                continue
+            self._cleanup_child_run_worktree(
+                child_ref=child_ref,
+                force=(policy == "always"),
+                terminal_status=terminal_status,
+            )
+
+    def _cleanup_child_run_worktree(
+        self,
+        *,
+        child_ref: ChildRunRef,
+        force: bool,
+        terminal_status: str | None = None,
+    ) -> None:
+        """Clean a child worktree by live workspace id, falling back to persisted path."""
+
+        if not child_ref.workspace and not child_ref.artifact_root:
+            return
+        try:
+            if child_ref.workspace:
+                self._runtime.cleanup_child_run(child_ref.workspace, force=force)
+                return
+        except Exception as exc:
+            self._append_log(
+                f"drive_id={child_ref.drive_id} run_id={child_ref.run_id} "
+                f"workspace_cleanup_by_id_skipped reason={exc}"
+            )
+            if not force and "not found" not in str(exc).lower():
+                return
+        if not child_ref.artifact_root:
+            return
+        try:
+            self._runtime.cleanup_worktree_path(
+                step_id=child_ref.step_id or child_ref.run_id,
+                worktree_path=Path(child_ref.artifact_root),
+                force=force,
+            )
+        except Exception as exc:
+            suffix = f" terminal_status={terminal_status}" if terminal_status else ""
+            self._append_log(
+                f"drive_id={child_ref.drive_id} run_id={child_ref.run_id} "
+                f"workspace_cleanup_by_path_skipped{suffix} reason={exc}"
+            )
 
     def _record_drive_child_failure(
         self,

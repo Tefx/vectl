@@ -35,9 +35,11 @@ from vectl.orchestration.config import (
     default_role_profiles,
 )
 from vectl.orchestration.contracts import (
+    ChildRunRef,
     ControlDecision,
     CoreSnapshot,
     DispatchSpec,
+    DriveRecord,
     ExecutionResult,
     ReconcileResult,
     ResolutionCase,
@@ -284,6 +286,115 @@ def test_build_composes_real_collaborators_without_noop_resolver_dependency(tmp_
     assert orch._core_adapter.__class__.__name__ == "PlanCoreAdapter"
     assert orch._resolver.__class__.__name__ == "BoundResolver"
     assert orch._resolver.invocation.__class__.__name__ == "GatewayEnforcedResolverInvocation"
+
+
+def test_terminal_drive_cleanup_sweeps_success_child_by_persisted_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    store = orch._drive_store()
+    drive_id = "drv-cleanup"
+    now = time.time()
+    store.save_drive(
+        DriveRecord(
+            drive_id=drive_id,
+            plan_path=str(tmp_path / "plan.yaml"),
+            status="completed",
+            started_at=now,
+            updated_at=now,
+            active_child_run_ids=(),
+            frontier_step_ids=(),
+            blocked_case_ids=(),
+            summary="done",
+        )
+    )
+    worktree_path = tmp_path / "persisted-child-worktree"
+    worktree_path.mkdir()
+    store.save_child_run(
+        ChildRunRef(
+            run_id="child-1",
+            drive_id=drive_id,
+            kind="step",
+            status="success",
+            step_id="core.ready",
+            workspace="stale-workspace-id",
+            artifact_root=str(worktree_path),
+        )
+    )
+    cleanup_calls: list[tuple[str, str, bool]] = []
+
+    def cleanup_child_run(workspace: str, force: bool = False) -> None:
+        _ = force
+        raise ValueError(f"Workspace not found: {workspace}")
+
+    def cleanup_worktree_path(*, step_id: str, worktree_path: Path, force: bool = True) -> None:
+        cleanup_calls.append((step_id, str(worktree_path), force))
+
+    monkeypatch.setattr(app._runtime, "cleanup_child_run", cleanup_child_run)
+    monkeypatch.setattr(app._runtime, "cleanup_worktree_path", cleanup_worktree_path)
+
+    orch._cleanup_drive_workspaces_for_terminal_status(
+        drive_id=drive_id,
+        terminal_status="completed",
+    )
+
+    assert cleanup_calls == [("core.ready", str(worktree_path), False)]
+
+
+def test_terminal_drive_cleanup_does_not_bypass_live_lifecycle_barrier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    store = orch._drive_store()
+    drive_id = "drv-cleanup-blocked"
+    now = time.time()
+    store.save_drive(
+        DriveRecord(
+            drive_id=drive_id,
+            plan_path=str(tmp_path / "plan.yaml"),
+            status="completed",
+            started_at=now,
+            updated_at=now,
+            active_child_run_ids=(),
+            frontier_step_ids=(),
+            blocked_case_ids=(),
+            summary="done",
+        )
+    )
+    worktree_path = tmp_path / "blocked-child-worktree"
+    worktree_path.mkdir()
+    store.save_child_run(
+        ChildRunRef(
+            run_id="child-blocked",
+            drive_id=drive_id,
+            kind="step",
+            status="success",
+            step_id="core.ready",
+            workspace="live-workspace-id",
+            artifact_root=str(worktree_path),
+        )
+    )
+    cleanup_calls: list[str] = []
+
+    def cleanup_child_run(workspace: str, force: bool = False) -> None:
+        _ = workspace, force
+        raise ValueError("cleanup blocked: reconcile not captured")
+
+    def cleanup_worktree_path(*, step_id: str, worktree_path: Path, force: bool = True) -> None:
+        _ = step_id, worktree_path, force
+        cleanup_calls.append("path")
+
+    monkeypatch.setattr(app._runtime, "cleanup_child_run", cleanup_child_run)
+    monkeypatch.setattr(app._runtime, "cleanup_worktree_path", cleanup_worktree_path)
+
+    orch._cleanup_drive_workspaces_for_terminal_status(
+        drive_id=drive_id,
+        terminal_status="completed",
+    )
+
+    assert cleanup_calls == []
 
 
 def test_runtime_mediation_source_narrows_allowlist_to_live_case_tools() -> None:
@@ -1407,6 +1518,7 @@ def test_route_terminal_execution_completes_only_after_reconcile_allows_it(
     app = _build_app(tmp_path)
     orch = cast(Any, app)
     calls: list[str] = []
+    completed_evidence: list[str] = []
 
     def begin_reconcile(execution_id: str) -> ReconcileResult:
         calls.append(f"reconcile:{execution_id}")
@@ -1422,6 +1534,7 @@ def test_route_terminal_execution_completes_only_after_reconcile_allows_it(
         return True, "ok"
 
     def complete_step(step_id: str, evidence: str, *, reconcile_disposition: str) -> None:
+        completed_evidence.append(evidence)
         calls.append(f"complete:{step_id}:{reconcile_disposition}")
 
     monkeypatch.setattr(app._runtime, "begin_reconcile", begin_reconcile)
@@ -1444,12 +1557,19 @@ def test_route_terminal_execution_completes_only_after_reconcile_allows_it(
         execution_result=ExecutionResult(
             step_id="core.ready",
             status="success",
-            output_summary="verification passed",
+            output_summary=(
+                'OpenCode completed successfully (exit 0); stdout={"type":"step_start"}\n'
+                '{"type":"tool_use","state":{"status":"completed"}}'
+            ),
         ),
     )
 
     assert case is None
     assert calls == ["reconcile:exec-1", "can_complete:exec-1", "complete:core.ready:merged"]
+    assert completed_evidence == [
+        "OpenCode completed successfully (exit 0); "
+        "stdout=<opencode JSON event stream omitted from plan evidence>"
+    ]
 
 
 def test_route_terminal_execution_hard_gates_non_closing_reconcile_status(
@@ -1498,6 +1618,61 @@ def test_route_terminal_execution_hard_gates_non_closing_reconcile_status(
 
     assert case is not None
     assert case.case_source == "runtime_failure"
+    assert completed == []
+
+
+def test_route_terminal_execution_blocks_freeform_failure_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    completed: list[str] = []
+
+    monkeypatch.setattr(
+        app._runtime,
+        "begin_reconcile",
+        lambda execution_id: ReconcileResult(
+            execution_id=execution_id,
+            workspace_id="ws-1",
+            status="noop",
+            summary="nothing to merge",
+        ),
+    )
+    monkeypatch.setattr(app._runtime, "can_complete", lambda _execution_id: (True, "ok"))
+    monkeypatch.setattr(app._runtime, "reconcile_disposition", lambda _execution_id: "noop")
+    monkeypatch.setattr(
+        app._core_adapter,
+        "complete_step",
+        lambda step_id, evidence, *, reconcile_disposition: completed.append(step_id),
+    )
+
+    case = orch.route_terminal_execution(
+        step_id="core.ready",
+        execution_id="exec-freeform-fail",
+        dispatch_spec=DispatchSpec(
+            source_kind="step",
+            source_id="core.ready",
+            role_id="python-executor",
+            role_source="default",
+            execution_context="linked_worktree",
+            runner="codex",
+            session_mode="fresh",
+            output_contract="freeform_evidence",
+        ),
+        execution_result=ExecutionResult(
+            step_id="core.ready",
+            status="success",
+            output_summary=(
+                'OpenCode completed successfully (exit 0); stdout=status: "FAIL"\n'
+                "evidence: |\n  Static: BLOCKED\nerror: verification failed"
+            ),
+        ),
+    )
+
+    assert case is not None
+    assert case.case_source == "review_failed"
+    assert case.blocked_step_ids == ("core.ready",)
+    assert "freeform evidence failure" in case.reason
     assert completed == []
 
 
@@ -1658,18 +1833,22 @@ def test_route_terminal_execution_non_pass_review_becomes_resolution_case(
         execution_result=ExecutionResult(
             step_id="core.ready",
             status="success",
-            output_summary=json.dumps(
-                {
-                    "review_outcome": "needs_fix",
-                    "summary": "defects remain",
-                    "evidence_refs": ["artifact://review"],
-                }
+            output_summary=(
+                "OpenCode completed successfully (exit 0); stdout="
+                + json.dumps(
+                    {
+                        "review_outcome": "needs_fix",
+                        "summary": "defects remain",
+                        "evidence_refs": ["artifact://review"],
+                    }
+                )
             ),
         ),
     )
 
     assert case is not None
     assert case.case_source == "review_failed"
+    assert "needs_fix" in case.reason
     assert completed == []
 
 
@@ -2256,7 +2435,6 @@ def test_prompt_materialization_uses_worktree_path_not_workspace_root(
     for prompt materialization.
     """
     app = _build_app(tmp_path)
-    orch = cast(Any, app)
 
     # Track the actual worktree path used by runtime.prepare/start.
     prepared_workspace_ids: list[str] = []
@@ -2304,7 +2482,6 @@ def test_prompt_materialization_resume_path_uses_worktree(
     path also uses the worktree correctly.
     """
     app = _build_app(tmp_path)
-    orch = cast(Any, app)
 
     # Run a step first so we can resume it.
     started = app.run(step_id="core.ready", agent="python-executor")

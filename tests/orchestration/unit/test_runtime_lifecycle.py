@@ -481,9 +481,18 @@ def test_begin_reconcile_executes_real_merge_into_integration_context(
     reconcile_result = runtime.begin_reconcile(execution_id)
     assert reconcile_result is not None
     assert reconcile_result.status == "merged"
+    assert "squash-merged" in reconcile_result.summary
     assert (temp_git_repo / "feature.txt").read_text(encoding="utf-8") == (
         "integrated by runtime reconcile\n"
     )
+    parents = subprocess.run(
+        ["git", "rev-list", "--parents", "-n", "1", "HEAD"],
+        cwd=temp_git_repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip().split()
+    assert len(parents) == 2  # squash reconcile creates a normal one-parent commit
 
 
 def test_begin_reconcile_returns_aborted_when_worktree_integrity_preflight_fails(

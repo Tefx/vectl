@@ -842,6 +842,30 @@ class TestOpenCodeRunnerPoll:
         assert "x" * 100 not in poll_result.output_summary
 
     @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_omits_raw_opencode_json_when_no_final_text(
+        self, mock_popen: MagicMock
+    ) -> None:
+        """poll() does not persist raw event JSON when OpenCode emits no final text."""
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        event = {"type": "session.updated", "sessionID": "ses_123"}
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = json.dumps(event)
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        assert poll_result.status == "success"
+        assert "stdout=OpenCode emitted JSON event stream without final text" in (
+            poll_result.output_summary
+        )
+        assert "sessionID" not in poll_result.output_summary
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
     def test_poll_returns_fail_on_nonzero_exit(self, mock_popen: MagicMock) -> None:
         """poll() must return 'fail' when OpenCode exits with nonzero code."""
         mock_process = MagicMock()

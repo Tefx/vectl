@@ -90149,6 +90149,7 @@ phases:
     - post_review_remediation.reverify-opencode-runner-final-gate
     - post_review_remediation.reverify-cli-blackbox-finalization
     - post_review_remediation.reverify-completed-step-failure-evidence-guard
+    - post_review_remediation.backfill-missing-gate-evidence
     agent: gate-reviewer-tacit
   - id: post_review_remediation.implement-drive-autonomy-safe-recovery-and-actions
     name: Implement drive autonomy safe recovery and action guidance

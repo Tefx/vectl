@@ -88369,7 +88369,7 @@ phases:
       --tb=short passed: 2930 passed, 41 skipped in 182.63s.'
   - id: arch-demolition-wave-4.dem-007-converge-on-coreadapter-as-the-only-mutation-authority-seam
     name: DEM-007 converge on CoreAdapter as the only mutation authority seam
-    status: rejected
+    status: claimed
     description: Resolve DEM-007 by removing LifecycleMutationPort, migrating contract-lock
       coverage to the surviving CoreAdapter public boundary, and proving the CoreAdapter
       seam still works cleanly after Wave 3 removed inspection-query protocol layers.
@@ -88380,8 +88380,8 @@ phases:
     - src/vectl/orchestration/core_adapter.py
     - tests/orchestration/
     agent: python-senior-tacit
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T08:04:21.861674+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T12:06:30.775941+00:00'
     done_at: '2026-04-26T08:13:37.105934+00:00'
     rejection_reason: 'historical evidence cleanup: raw OpenCode JSON event stream
       stored in evidence; implementation unchanged'

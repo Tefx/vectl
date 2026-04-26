@@ -88919,7 +88919,7 @@ phases:
       | ROI: planned/pending'
   - id: arch-demolition-wave-7.dem-018-split-orchestration-app-run-store-and-driver-by-real-behavior
     name: DEM-018 split orchestration app, run store, and driver by real behavior
-    status: rejected
+    status: claimed
     description: Resolve the orchestration part of DEM-018 by re-cutting orch_app.py
       into orch_app_wiring.py, orch_app_read_surfaces.py, and orch_app_drive_ops.py;
       splitting run_store.py into run_store_persistence.py and run_store_queries.py;
@@ -88934,8 +88934,8 @@ phases:
     - src/vectl/orchestration/driver.py
     - tests/
     agent: python-refactor-master-tacit
-    claimed_by: python-executor
-    claimed_at: '2026-04-26T10:26:22.031390+00:00'
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-26T11:57:58.415755+00:00'
     done_at: '2026-04-26T10:27:04.389353+00:00'
     rejection_reason: 'evidence-only sanitization: previous completion stored raw
       OpenCode JSON event stream; no implementation rework requested'

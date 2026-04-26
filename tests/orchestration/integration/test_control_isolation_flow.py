@@ -104,6 +104,12 @@ class _FakeCoreAdapter:
         _ = reconcile_disposition
         raise NotImplementedError(f"test double: complete_step({step_id})")
 
+
+    def load_step_data_for_dispatch(self, step_id: str):
+        raise NotImplementedError(
+            f"test double does not implement load_step_data_for_dispatch: step_id={step_id}"
+        )
+
     def defer_step(self, step_id: str) -> None:
         raise NotImplementedError(f"test double: defer_step({step_id})")
 

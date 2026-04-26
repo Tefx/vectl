@@ -85,7 +85,6 @@ from vectl.orchestration.control_channel import (
 from vectl.orchestration.dispatch_policy import (
     ConfigPromptRegistry,
     ConfigRoleProfileRegistry,
-    CoreStepDataAdapter,
     DispatchAuthorityError,
     DispatchCoordinator,
     normalize_parse_failure,
@@ -666,7 +665,7 @@ class OrchestrationApp:
         self._dispatch_coordinator = dispatch_coordinator or DispatchCoordinator(
             role_registry=self._role_registry,
             prompt_registry=self._prompt_registry,
-            step_adapter=CoreStepDataAdapter(cast("PlanCoreAdapter", core_adapter)),
+            core_adapter=cast("PlanCoreAdapter", core_adapter),
         )
         self._drive_child_run_contexts: dict[str, DriveChildRunContext] = {}
 
@@ -5580,7 +5579,7 @@ def build_orchestration_app(
     dispatch_coordinator = DispatchCoordinator(
         role_registry=role_registry,
         prompt_registry=prompt_registry,
-        step_adapter=CoreStepDataAdapter(core_adapter),
+        core_adapter=core_adapter,
     )
     control = PlanAwareControl(
         sources=ControlInputSources(core_adapter=core_adapter, roster=roster, runtime=runtime),

@@ -50,16 +50,14 @@ from vectl.orchestration.core_adapter import CoreAdapter
 from vectl.orchestration.dispatch_policy import (
     ConfigPromptRegistry,
     ConfigRoleProfileRegistry,
-    CoreStepDataAdapter,
     DispatchCoordinator,
     ReviewResultParseError,
-    StepData,
-    StepDataAdapter,
     UnknownRoleError,
     normalize_parse_failure,
     normalize_review_result,
     step_verify_to_verify_mode,
 )
+from vectl.orchestration.step_data import StepData
 from vectl.orchestration.interfaces import (
     Control,
     PlannerAdapter,
@@ -137,14 +135,12 @@ __all__ = [
     "ConfigRoleProfileRegistry",
     "ConfigPromptRegistry",
     "DispatchCoordinator",
-    "StepDataAdapter",
     "StepData",
     "UnknownRoleError",
     "ReviewResultParseError",
     "normalize_review_result",
     "normalize_parse_failure",
     "step_verify_to_verify_mode",
-    "CoreStepDataAdapter",
     "parse_resolution_report_payload",
     "validate_resolution_report_payload",
     # Recovery fallback (recovery_fallback.py)

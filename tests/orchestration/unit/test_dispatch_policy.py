@@ -17,6 +17,8 @@ Covers:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from vectl.orchestration.config import OrchestrationConfig
@@ -92,13 +94,13 @@ def _make_step_data(
     )
 
 
-class StubStepDataAdapter:
-    """Test stub that provides known step data."""
+class StubCoreAdapter:
+    """Test stub that provides known step data through the core seam."""
 
     def __init__(self, steps: dict[str, StepData] | None = None) -> None:
         self._steps = steps or {}
 
-    def load_step_data(self, step_id: str) -> StepData | None:
+    def load_step_data_for_dispatch(self, step_id: str) -> StepData | None:
         return self._steps.get(step_id)
 
     def add_step(self, step: StepData) -> None:
@@ -630,14 +632,14 @@ class TestDispatchCoordinator:
             verify="must_green",
             agent="python-executor",
         )
-        step_adapter = StubStepDataAdapter({"core.test-step": step_data})
+        core_adapter = StubCoreAdapter({"core.test-step": step_data})
         role_registry = ConfigRoleProfileRegistry()
         prompt_registry = ConfigPromptRegistry()
 
         coordinator = DispatchCoordinator(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
 
         decision = ControlDecision(
@@ -668,14 +670,14 @@ class TestDispatchCoordinator:
     def test_build_dispatch_spec_default_role_when_no_agent(self) -> None:
         """When step.agent is None, dispatch uses the default role (§9.1 precedence 2)."""
         step_data = _make_step_data(step_id="core.no-agent", agent=None)
-        step_adapter = StubStepDataAdapter({"core.no-agent": step_data})
+        core_adapter = StubCoreAdapter({"core.no-agent": step_data})
         role_registry = ConfigRoleProfileRegistry()
         prompt_registry = ConfigPromptRegistry()
 
         coordinator = DispatchCoordinator(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
 
         decision = ControlDecision(
@@ -692,14 +694,14 @@ class TestDispatchCoordinator:
     def test_build_dispatch_spec_role_from_step_agent(self) -> None:
         """When step.agent is present, dispatch uses that role (§9.1 precedence 1)."""
         step_data = _make_step_data(step_id="core.planner-step", agent="vectl-planner")
-        step_adapter = StubStepDataAdapter({"core.planner-step": step_data})
+        core_adapter = StubCoreAdapter({"core.planner-step": step_data})
         role_registry = ConfigRoleProfileRegistry()
         prompt_registry = ConfigPromptRegistry()
 
         coordinator = DispatchCoordinator(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
 
         # Note: decision.role is separate from step.agent. The coordinator
@@ -721,12 +723,12 @@ class TestDispatchCoordinator:
         """build_dispatch_spec must reject non-dispatch ControlDecisions."""
         role_registry = ConfigRoleProfileRegistry()
         prompt_registry = ConfigPromptRegistry()
-        step_adapter = StubStepDataAdapter()
+        core_adapter = StubCoreAdapter()
 
         coordinator = DispatchCoordinator(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
 
         for kind in ("resolve", "wait", "done"):
@@ -737,12 +739,12 @@ class TestDispatchCoordinator:
         """build_dispatch_spec must reject dispatch decisions without step_id."""
         role_registry = ConfigRoleProfileRegistry()
         prompt_registry = ConfigPromptRegistry()
-        step_adapter = StubStepDataAdapter()
+        core_adapter = StubCoreAdapter()
 
         coordinator = DispatchCoordinator(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
 
         with pytest.raises(ValueError, match="step_id"):
@@ -753,14 +755,14 @@ class TestDispatchCoordinator:
     def test_build_dispatch_spec_rejects_unknown_role(self) -> None:
         """build_dispatch_spec must raise UnknownRoleError for unknown roles."""
         step_data = _make_step_data(step_id="core.bad-role", agent="unknown-agent")
-        step_adapter = StubStepDataAdapter({"core.bad-role": step_data})
+        core_adapter = StubCoreAdapter({"core.bad-role": step_data})
         role_registry = ConfigRoleProfileRegistry()
         prompt_registry = ConfigPromptRegistry()
 
         coordinator = DispatchCoordinator(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
 
         decision = ControlDecision(
@@ -781,12 +783,12 @@ class TestDispatchCoordinator:
         """
         role_registry = ConfigRoleProfileRegistry()
         prompt_registry = ConfigPromptRegistry()
-        step_adapter = StubStepDataAdapter()
+        core_adapter = StubCoreAdapter()
 
         coordinator = DispatchCoordinator(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
 
         spec = coordinator.build_resolution_subtask_spec(
@@ -811,12 +813,12 @@ class TestDispatchCoordinator:
         """build_resolution_subtask_spec must raise UnknownRoleError for unknown roles."""
         role_registry = ConfigRoleProfileRegistry()
         prompt_registry = ConfigPromptRegistry()
-        step_adapter = StubStepDataAdapter()
+        core_adapter = StubCoreAdapter()
 
         coordinator = DispatchCoordinator(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
 
         with pytest.raises(UnknownRoleError):
@@ -832,14 +834,14 @@ class TestDispatchCoordinator:
             step_id="core.verify-step",
             verify="expected_red",
         )
-        step_adapter = StubStepDataAdapter({"core.verify-step": step_data})
+        core_adapter = StubCoreAdapter({"core.verify-step": step_data})
         role_registry = ConfigRoleProfileRegistry()
         prompt_registry = ConfigPromptRegistry()
 
         coordinator = DispatchCoordinator(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
 
         decision = ControlDecision(
@@ -860,12 +862,12 @@ class TestDispatchCoordinator:
         """
         role_registry = ConfigRoleProfileRegistry()
         prompt_registry = ConfigPromptRegistry()
-        step_adapter = StubStepDataAdapter()
+        core_adapter = StubCoreAdapter()
 
         coordinator = DispatchCoordinator(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
 
         # Verify prompt registry is accessible
@@ -1050,12 +1052,12 @@ class TestPlannerSubagentRouting:
         """
         role_registry = ConfigRoleProfileRegistry()
         prompt_registry = ConfigPromptRegistry()
-        step_adapter = StubStepDataAdapter()
+        core_adapter = StubCoreAdapter()
 
         coordinator = DispatchCoordinator(
             role_registry=role_registry,
             prompt_registry=prompt_registry,
-            step_adapter=step_adapter,
+            core_adapter=core_adapter,
         )
 
         spec = coordinator.build_resolution_subtask_spec(
@@ -1094,23 +1096,21 @@ class TestPlannerSubagentRouting:
 
 
 # ---------------------------------------------------------------------
-# Tests: CoreStepDataAdapter boundary hygiene
+# Tests: core adapter dispatch boundary hygiene
 # ---------------------------------------------------------------------
 
 
-class TestCoreStepDataAdapterBoundary:
-    """Verify CoreStepDataAdapter uses stable public seam, not private internals.
+class TestCoreAdapterDispatchBoundary:
+    """Verify PlanCoreAdapter exposes the stable dispatch step-data seam.
 
     Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md §3.6
     """
 
-    def test_adapter_delegates_to_public_core_seam(self, tmp_path: Path) -> None:
-        """CoreStepDataAdapter must not access PlanCoreAdapter._plan_path directly."""
+    def test_core_adapter_loads_step_data_for_dispatch(self, tmp_path: Path) -> None:
+        """PlanCoreAdapter must provide dispatch step data through its public seam."""
         from vectl.io import save_plan
         from vectl.models import Phase, Plan, Step
         from vectl.orchestration.core_adapter import PlanCoreAdapter
-
-        from vectl.orchestration.dispatch_policy import CoreStepDataAdapter
 
         plan_path = tmp_path / "plan.yaml"
         plan = Plan(
@@ -1136,24 +1136,19 @@ class TestCoreStepDataAdapterBoundary:
         )
         save_plan(plan, plan_path)
         core_adapter = PlanCoreAdapter(plan_path)
-        adapter = CoreStepDataAdapter(core_adapter)
 
-        result = adapter.load_step_data("core.example")
+        result = core_adapter.load_step_data_for_dispatch("core.example")
 
         assert result is not None
         assert result.step_id == "core.example"
         assert result.description == "Test step"
-        # Verify delegation went through public seam by checking
-        # load_step_data_for_dispatch was called (no private _plan_path access)
         assert result.verify == "expected_red"
 
     def test_adapter_returns_none_for_missing_step(self, tmp_path: Path) -> None:
-        """CoreStepDataAdapter returns None for nonexistent steps via public seam."""
+        """PlanCoreAdapter returns None for nonexistent dispatch step data."""
         from vectl.io import save_plan
         from vectl.models import Phase, Plan, Step
         from vectl.orchestration.core_adapter import PlanCoreAdapter
-
-        from vectl.orchestration.dispatch_policy import CoreStepDataAdapter
 
         plan_path = tmp_path / "plan.yaml"
         plan = Plan(
@@ -1162,8 +1157,7 @@ class TestCoreStepDataAdapterBoundary:
         )
         save_plan(plan, plan_path)
         core_adapter = PlanCoreAdapter(plan_path)
-        adapter = CoreStepDataAdapter(core_adapter)
 
-        result = adapter.load_step_data("core.nonexistent")
+        result = core_adapter.load_step_data_for_dispatch("core.nonexistent")
 
         assert result is None

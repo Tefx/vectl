@@ -88954,7 +88954,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: post_review_remediation.fix-opencode-runner-final-gate-cli-surface
     name: Fix OpenCode runner final-gate CLI surface blockers
-    status: claimed
+    status: done
     description: 'Fix the non-invar CLI-surface blockers recorded in `opencode_runner_verification.final-gate`.
 
 
@@ -89077,6 +89077,75 @@ phases:
     agent: python-senior-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-26T14:51:23.124564+00:00'
+    done_at: '2026-04-26T14:52:24.807475+00:00'
+    evidence: '## refs Read Confirmation
+
+      - src/vectl/orchestration/config.py — read role profile override/shadowing path:
+      `_builtin_role_ids`, `_parse_role_profile_overrides`, `_parse_custom_role_profiles`,
+      `_merge_role_profiles`; current logic rejects built-in IDs under `role_profiles`
+      and requires `role_profile_overrides` for built-in changes.
+
+      - src/vectl/cli_orchestration.py — read drive/CLI JSON output surface during
+      prior drive work; no role-profile shadowing logic lives there.
+
+      - tests/repro/test_orch_liveness.py — read/run via repro suite; current liveness
+      repro passes.
+
+      - tests/repro/test_orch_cli_recovery_faults.py — read/run via repro suite; current
+      recovery fault CLI repro passes.
+
+      - tests/repro/test_orch_cli_case_lifecycle.py — read/run via repro suite; current
+      case lifecycle CLI repro passes.
+
+      - tests/repro/test_repair_continuity_black_box.py — read/run via repro suite;
+      current repair-continuity black-box repro passes.
+
+
+      ## Repro / Closure Proof
+
+      - Historical blocker reproduced? NO.
+
+      - Current-state closure proof:
+
+      ```
+
+      uv run pytest -q tests/repro/test_orch_liveness.py tests/repro/test_orch_cli_recovery_faults.py
+      tests/repro/test_orch_cli_case_lifecycle.py tests/repro/test_repair_continuity_black_box.py
+
+      # 25 passed
+
+
+      uv run pytest -q tests/orchestration/unit/test_config_state_impl.py -k "builtin_shadow
+      or role_profiles" tests/orchestration/unit/test_config_roundtrip_and_isolation.py
+
+      # 5 passed, 59 deselected
+
+      ```
+
+      - The role-profile shadowing blocker is already closed by current config code/tests:
+      built-in role IDs under `role_profiles` raise `RoleProfileOverrideError("shadows
+      built-in role")`, while built-in changes round-trip through `role_profile_overrides`.
+
+
+      ## Fix Evidence
+
+      - Files changed for this closure step: none. No product-code edit was needed
+      for this historical CLI-surface blocker.
+
+      - Role profile shadowing disposition: current implementation explicitly forbids
+      `role_profiles.<builtin>` and points users to `role_profile_overrides`.
+
+      - Expected-red disposition: no non-expected-red failures remain in the historical
+      repro family above; all selected repro tests passed.
+
+      - Requested command note: the step-requested repro files all exist in current
+      checkout and were run.
+
+
+      ## Invar Exclusion
+
+      Repo-wide invar/static debt remediation was not attempted; this step did not
+      run or require `uvx invar-tools guard --all`.'
   - id: post_review_remediation.reverify-opencode-runner-final-gate
     name: Reverify OpenCode runner final gate closure
     status: pending

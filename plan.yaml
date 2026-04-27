@@ -90849,17 +90849,27 @@ phases:
       remediation phase can close.
 
 
-      Review depth: STANDARD
+      Review depth: THOROUGH
 
 
       Gate decision basis must verify:
 
-      - Failure inventory was collected and matched the known guard face.
+      - Failure inventory mapped every guard finding to a domain step or explicit
+      residual/replan bucket.
 
-      - Shell/core boundary fixes include expected-red proof and property/contract-backed
-      evidence.
+      - Each domain step stayed within its owned file cluster and included scoped
+      red baseline evidence.
 
-      - Hygiene tail cleanup did not mask real defects with broad allows.
+      - Semantic changes include expected-red proof and property/contract-backed or
+      targeted regression evidence.
+
+      - Any new/changed `**/core/**` function has non-vacuous @pre, @post, and doctest.
+
+      - Result-boundary decisions are consistent: true shell boundaries return `Result[T,E]`,
+      while narrow allows explain intentional adapter/compatibility cases.
+
+      - Complexity/dead-code findings were fixed or justified narrowly; broad blanket
+      allows are blocking.
 
       - Full authoritative guard is green via `uvx invar-tools guard --all`.
 
@@ -90868,60 +90878,74 @@ phases:
 
       - Full guard is non-zero.
 
-      - Core functions were added/changed without @pre/@post/doctest.
+      - Any planned domain has unowned residual findings without replan.
 
-      - Shell functions still violate Result[T,E] without narrow invar justification.
+      - Evidence lacks refs read confirmation, scoped red baseline, or expected-red
+      proof for semantic implementation changes.
 
-      - Evidence lacks refs read confirmation or expected-red proof for implementation
-      steps.'
-    verification: '- Gate reviews all phase evidence.
+      - Public CLI/MCP/schema compatibility was changed without evidence.'
+    verification: '- Gate reviews every phase step''s evidence.
 
-      - Gate decision basis maps unresolved guard findings to PROVEN closure or explicit
+      - Gate decision basis maps all guard obligations to PROVEN closure or explicit
       BLOCK.
 
-      - No downstream execution is recommended unless full guard is green.'
+      - Final decision is OPEN only if full guard exits zero and evidence supports
+      scoped remediation without broad masking.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
-      For each ref in this step:
+      - INVAR.md — <passage read>
 
-      - AGENTS.md — key passage or "NOT READ: <reason>"
-
-      - INVAR.md — key passage or "NOT READ: <reason>"
-
-
-      ## Gate Review Report
-
-      **Phase:** invar_guard_remediation
-
-      **Reviewer:** gate-reviewer-tacit
+      - AGENTS.md — <passage read>
 
 
       ## Step Evidence Review
 
-      | Step ID | Evidence present? | Expected-red present? | Concerns |
+      | Step ID | Evidence Quality | Scoped Findings Closed | Concerns |
 
-      |---|---|---|---|
-
-
-      ## Gate Decision Basis
-
-      | requirement_ref | artifact/evidence refs reviewed | unresolved status | blocks?
-      | reason |
-
-      |---|---|---|---|---|
+      | --- | --- | --- | --- |
 
 
-      ## Final Decision
+      ## Guard Closure Register
 
-      - [ ] OPEN: invar guard remediation complete, `uvx invar-tools guard --all`
-      green
+      | Requirement / Rule Family | Evidence Ref | Status | Gate Decision Basis |
 
-      - [ ] BLOCKED: remaining guard or evidence blockers
+      | --- | --- | --- | --- |
+
+      | shell_result | <ref> | PROVEN/BLOCK | <why> |
+
+      | shell_complexity_debt | <ref> | PROVEN/BLOCK | <why> |
+
+      | dead_param/dead_assign/dead_export | <ref> | PROVEN/BLOCK | <why> |
+
+      | Core contracts/doctests | <ref> | PROVEN/BLOCK | <why> |
 
 
-      **Required actions if BLOCKED:** <list>'
+      ## Gate Decision
+
+      - [ ] OPEN: full guard green and all evidence acceptable
+
+      - [ ] BLOCKED: list blockers and required fix/retest ownership'
+    refs:
+    - INVAR.md
+    - AGENTS.md
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
+    - fix-plan-mutation-query-domain
+    - fix-lifecycle-duplicate-domain
+    - fix-run-store-domain
+    - fix-orch-config-projections-domain
+    - fix-orch-runtime-runners-domain
+    - fix-orch-events-control-domain
+    - fix-orch-inspection-prompt-domain
+    - fix-orch-recovery-continuity-domain
+    - fix-orch-app-driver-domain
+    - fix-cli-orchestration-domain
+    - fix-cli-plan-domain
+    - fix-cli-render-agent-domain
+    - fix-mcp-tooling-domain
+    - fix-io-storage-domain
+    - fix-plan-path-migration-domain
+    - fix-small-support-domain
     - invar_guard_remediation.verify-full-guard
     agent: gate-reviewer-tacit
   - id: fix-plan-mutation-query-domain

@@ -91297,3 +91297,80 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-orch-events-control-domain
+    name: Fix orchestration events/control invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
+      events and control-channel logic.
+
+
+      Owned files:
+
+      - `src/vectl/orchestration/events.py`
+
+      - `src/vectl/orchestration/control_channel.py`
+
+      - `src/vectl/orchestration/control.py`
+
+
+      Seed findings: shell Result boundary, shell pure-logic, shell complexity, file/function
+      size, and dead parameter findings.
+
+
+      Guardrails:
+
+      - Preserve event schema, control request semantics, pause/resume/stop behavior,
+      and receive timeout contract.
+
+      - Do not hide real event/control defects with broad allows.
+
+      - If logic moves to Core, add @pre/@post/doctest first.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - Control-channel behavior has targeted regression/property evidence if changed.
+
+      - Event/control public semantics remain compatible.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/orchestration/events.py — <symbols/sections read>
+
+      - src/vectl/orchestration/control_channel.py — <symbols/sections read>
+
+      - src/vectl/orchestration/control.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Control/event rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - Targeted event/control tests: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

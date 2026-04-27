@@ -2210,7 +2210,14 @@ class OrchestrationApp:
         """
 
         start_time = time.time()
-        known_child_run_ids: set[str] = set()
+        # Foreground supervision may attach to an already-active drive.  Seed
+        # the progress cursor with persisted child runs so resumed supervision
+        # does not replay historical runs as fresh ``child_dispatched`` events.
+        # Any child launched by the first loop pass below will not be in this
+        # set yet and will still be reported normally.
+        known_child_run_ids: set[str] = {
+            child.run_id for child in self.drive_runs(drive_id=drive_id)
+        }
         last_snapshot_at = 0.0
         last_child_heartbeat_at: dict[str, float] = {}
         last_workspace_change_count: dict[str, int] = {}
@@ -2255,18 +2262,24 @@ class OrchestrationApp:
             )
 
             if self._foreground_drive_should_exit(status):
-                final_result = self._drive_status_to_loop_result(status)
-                if final_result.status in TERMINAL_DRIVE_STATUSES:
-                    self._cleanup_drive_workspaces_for_terminal_status(
-                        drive_id=drive_id,
-                        terminal_status=final_result.status,
+                if self._foreground_should_continue_after_control_consumption(
+                    status=status,
+                    last_result=last_result,
+                ):
+                    pass
+                else:
+                    final_result = self._drive_status_to_loop_result(status)
+                    if final_result.status in TERMINAL_DRIVE_STATUSES:
+                        self._cleanup_drive_workspaces_for_terminal_status(
+                            drive_id=drive_id,
+                            terminal_status=final_result.status,
+                        )
+                    self._emit_terminal_drive_progress(
+                        progress_callback=progress_callback,
+                        result=final_result,
+                        started_at=start_time,
                     )
-                self._emit_terminal_drive_progress(
-                    progress_callback=progress_callback,
-                    result=final_result,
-                    started_at=start_time,
-                )
-                return final_result
+                    return final_result
 
             if status.active_child_run_ids:
                 collected = self._collect_drive_child_runs(
@@ -2354,6 +2367,27 @@ class OrchestrationApp:
             "failed_unrecoverable",
             "stopped",
         }
+
+    @staticmethod
+    def _foreground_should_continue_after_control_consumption(
+        *,
+        status: DriveStatusResult,
+        last_result: DriveLoopResult,
+    ) -> bool:
+        """Let foreground supervision evaluate once after consuming unpause.
+
+        ``run_drive_loop`` intentionally returns immediately after applying a
+        drive control message so the consumption summary is not overwritten.
+        In foreground mode, an unpause consumed while a runtime barrier remains
+        should be followed by the next control evaluation in the same process;
+        otherwise operators must run ``vectl orch drive`` twice after unpause.
+        """
+
+        if status.status != "blocked_operator" or last_result.status != "blocked_operator":
+            return False
+        if not last_result.summary.startswith("operator unpause consumed:"):
+            return False
+        return status.summary == last_result.summary
 
     @staticmethod
     def _track_barrier_idle_result(

@@ -468,6 +468,49 @@ def _resolver_should_handle_active_barrier(record: DriveRecord) -> bool:
     return barrier.reason in {"runtime_failure", "merge_conflict", "review_failed"}
 
 
+def _auto_unblock_stale_runtime_case(case: ResolutionCase) -> ResolutionReport | None:
+    """Return a safe automatic unblock report for stale runtime barriers.
+
+    This is intentionally narrow.  It only clears runtime/unknown cases when
+    the drive already has runnable frontier work and the case has no blocked or
+    in-progress step references intersecting that frontier.  In that state the
+    barrier is stale orchestration bookkeeping, not an actionable operator
+    decision, so keeping it would deadlock otherwise runnable work.
+    """
+
+    drive = case.drive
+    if case.case_source not in {"runtime_failure", "unknown"}:
+        return None
+    if drive is None or not drive.frontier_step_ids:
+        return None
+    if drive.operator_pause_state == "paused":
+        return None
+    reason_text = f"{case.reason}\n{drive.summary}".lower()
+    if any(
+        token in reason_text
+        for token in ("retry limit", "operator_required", "operator required", "requires operator")
+    ):
+        return None
+    frontier = set(drive.frontier_step_ids)
+    if frontier.intersection(case.core.in_progress_step_ids):
+        return None
+    if frontier.intersection(case.blocked_step_ids):
+        return None
+    return ResolutionReport(
+        status="unblocked",
+        summary=(
+            "auto-unblocked stale runtime barrier: blocked refs do not "
+            "intersect runnable drive frontier"
+        ),
+        evidence_refs=(
+            f"case_id={case.case_id}",
+            f"case_source={case.case_source}",
+            f"frontier_step_ids={drive.frontier_step_ids}",
+            "auto_resolution=stale_runtime_frontier_safe",
+        ),
+    )
+
+
 def _execution_result_from_terminal_child_run(
     *,
     child_run: ChildRunRef,
@@ -1562,9 +1605,12 @@ class DriveDriver:
             artifact_refs=(),
         )
 
-        # Step 3: Invoke resolver.
+        # Step 3: Invoke resolver unless the case is a provably stale runtime
+        # barrier that can be cleared without human or agent intervention.
         # Authority: ORCHESTRATION-PLANE-INTERFACES.md section 4.4
-        report = self._resolver.resolve(case)
+        report = _auto_unblock_stale_runtime_case(case)
+        if report is None:
+            report = self._resolver.resolve(case)
 
         # Step 4: Refresh authoritative state (mandatory).
         # Authority: ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md section 6

@@ -91821,3 +91821,81 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-mcp-tooling-domain
+    name: Fix MCP tooling invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to MCP tool
+      surfaces.
+
+
+      Owned files:
+
+      - `src/vectl/mcp_core_tools.py`
+
+      - `src/vectl/mcp_project_tools.py`
+
+      - `src/vectl/mcp_render_tools.py`
+
+
+      Seed findings: shell Result boundary, shell complexity, function/file size warning,
+      dead_param, and dead_assign findings.
+
+
+      Guardrails:
+
+      - Preserve MCP tool names, argument schemas, and response shapes.
+
+      - Do not remove parameters that are part of MCP schema compatibility; rename
+      or narrowly allow when required.
+
+      - Any real behavior change must have request/response-level evidence, not only
+      unit assertions.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - MCP schema/response compatibility has targeted evidence if touched.
+
+      - Public MCP tool surfaces remain registered and compatible.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/mcp_core_tools.py — <symbols/sections read>
+
+      - src/vectl/mcp_project_tools.py — <symbols/sections read>
+
+      - src/vectl/mcp_render_tools.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | MCP compatibility rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - MCP request/response or targeted tests: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

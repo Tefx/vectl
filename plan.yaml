@@ -92091,3 +92091,79 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-small-root-support-domain
+    name: Fix small root support invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate small root-support invar findings not
+      owned by earlier domain steps.
+
+
+      Owned files:
+
+      - `src/vectl/agents_md.py`
+
+      - `src/vectl/models.py`
+
+      - `src/vectl/claim_guidance.py`
+
+
+      Seed findings: small counts of shell Result boundary, shell complexity, and
+      function/file size findings.
+
+
+      Guardrails:
+
+      - This is a residual closure step, not a license for broad cleanup elsewhere.
+
+      - Preserve public model and agents-md guidance semantics.
+
+      - If inventory maps additional files here, stop and request planner re-slicing.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - Any model/guidance behavior change has targeted regression evidence.
+
+      - No additional files are pulled into this step without planner re-slicing.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/agents_md.py — <symbols/sections read>
+
+      - src/vectl/models.py — <symbols/sections read>
+
+      - src/vectl/claim_guidance.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - Targeted tests if behavior changed: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

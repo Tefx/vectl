@@ -91899,3 +91899,83 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-io-storage-domain
+    name: Fix IO/storage support invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to IO, claims,
+      and merge-driver support.
+
+
+      Owned files:
+
+      - `src/vectl/claims.py`
+
+      - `src/vectl/io.py`
+
+      - `src/vectl/merge_driver.py`
+
+
+      Seed findings: shell Result boundary, shell complexity, function size, and one
+      dead export in claims.
+
+
+      Guardrails:
+
+      - Preserve plan IO, claims persistence, and merge-driver behavior.
+
+      - Do not remove `save_claims` or other exports unless reference search proves
+      they are not public compatibility surfaces; otherwise add a narrow dead_export
+      allow with rationale.
+
+      - State/persistence behavior requires failure-path evidence for missing files,
+      corrupt files, and merge/claim edge cases if changed.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - IO/claims/merge behavior has targeted regression/property evidence if touched.
+
+      - Export-removal decisions are backed by reference evidence or narrow compatibility
+      allows.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/claims.py — <symbols/sections read>
+
+      - src/vectl/io.py — <symbols/sections read>
+
+      - src/vectl/merge_driver.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Persistence/export rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - Targeted IO/claims/merge tests: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

@@ -90953,3 +90953,81 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-shell-boundaries
     agent: python-senior-tacit
+  - id: invar_guard_remediation.verify-full-guard
+    name: Verify full invar guard green
+    status: pending
+    description: 'As an independent verifier, run the authoritative full invar guard
+      from a fresh perspective and produce closure evidence for the remediation phase.
+
+
+      Scope: full-plan-check protecting the final gate.
+
+
+      Required command:
+
+      - `uvx invar-tools guard --all`
+
+
+      If MCP wrapper and CLI disagree, treat CLI full scan as authoritative only when
+      CLI output is pasted and the wrapper instability is documented separately.'
+    verification: '- `uvx invar-tools guard --all` exits zero.
+
+      - Doctest passes and CrossHair/property phases are not skipped due to prior
+      failures, unless the tool explicitly reports no applicable checks.
+
+      - Any remaining warning/info is either absent or has a precise non-blocking
+      disposition that will not fail the final gate.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+
+      ## Full Invar Guard Verification
+
+      **Command executed:**
+
+      ```
+
+      uvx invar-tools guard --all
+
+      ```
+
+
+      **Exit code:** <0/nonzero>
+
+
+      **Actual output:**
+
+      ```
+
+      <paste output or saved output path plus summary>
+
+      ```
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | INVAR.md Core | Core code has @pre/@post/doctest | guard + doctest | <output>
+      | PROVEN/UNPROVEN | <path> | <basis> |
+
+      | INVAR.md Shell | Shell I/O returns Result[T,E] or justified | guard | <output>
+      | PROVEN/UNPROVEN | <path> | <basis> |
+
+
+      ## Headline
+
+      - [ ] PASS: full guard green
+
+      - [ ] FAIL: blocker-class guard findings remain'
+    depends_on:
+    - invar_guard_remediation.fix-hygiene-tail
+    agent: integration-verifier-tacit

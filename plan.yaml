@@ -91064,3 +91064,80 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-run-store-domain
+    name: Fix run store invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
+      run/drive persistence.
+
+
+      Owned file:
+
+      - `src/vectl/orchestration/run_store.py`
+
+
+      Seed findings: about 45 total, including many `shell_result` findings in deserializers/coercers/sort
+      helpers/latest-run helpers, plus `shell_too_complex`, `shell_pure_logic`, and
+      file-size findings.
+
+
+      High-risk state semantics:
+
+      - Preserve JSONL append/replay behavior, legacy import behavior, latest-record
+      sorting, drive lease semantics, and malformed-record handling.
+
+      - If converting helpers to Result, update all local call sites consistently;
+      no half-Result/half-exception seam.
+
+      - If using narrow invar allows, justify why the shell boundary intentionally
+      returns domain values for an internal persistence adapter.
+
+
+      Expected-red requirement: before semantic changes, expose malformed payload
+      / legacy record behavior with property-based tests or non-vacuous contracts;
+      pure examples alone are insufficient.'
+    verification: '- Guard evidence shows no ungoverned findings remain for `run_store.py`.
+
+      - Main path: run/drive record read/write and latest lookup tests pass.
+
+      - Failure path: malformed JSONL/payload and legacy import behavior covered by
+      property/contract-backed or focused regression evidence.
+
+      - Any new/changed `**/core/**` function has @pre, @post, and doctest.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/orchestration/run_store.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste guard rows for run_store.py>
+
+
+      ## Expected-Red Proof
+
+      <failing property/contract/regression output before implementation>
+
+
+      ## Remediation Decisions
+
+      | Function | Rule(s) | Action | State-semantics rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped run_store result: <paste>
+
+      - Targeted persistence/deserializer tests: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

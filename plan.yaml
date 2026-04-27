@@ -90752,7 +90752,7 @@ phases:
     name: Verify full invar guard green
     status: pending
     description: 'As an independent verifier, run the authoritative full invar guard
-      from a fresh perspective and produce closure evidence for the remediation phase.
+      from a fresh perspective after every domain remediation step completes.
 
 
       Scope: full-plan-check protecting the final gate.
@@ -90764,65 +90764,83 @@ phases:
 
 
       If MCP wrapper and CLI disagree, treat CLI full scan as authoritative only when
-      CLI output is pasted and the wrapper instability is documented separately.'
+      CLI output is pasted and wrapper instability is documented separately.
+
+
+      This step must also confirm that the domain steps did not silently shift failures
+      into unowned files, add uncontracted Core code, or hide real defects behind
+      broad allow markers.'
     verification: '- `uvx invar-tools guard --all` exits zero.
 
       - Doctest passes and CrossHair/property phases are not skipped due to prior
       failures, unless the tool explicitly reports no applicable checks.
 
-      - Any remaining warning/info is either absent or has a precise non-blocking
-      disposition that will not fail the final gate.'
+      - No uncontracted `**/core/**` code was introduced.
+
+      - Any remaining warning/info is absent or has a precise non-blocking disposition
+      that still allows full guard to exit zero.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
-      For each ref in this step:
-
-      - AGENTS.md — key passage or "NOT READ: <reason>"
-
-      - INVAR.md — key passage or "NOT READ: <reason>"
+      - INVAR.md — <passage read>
 
 
-      ## Full Invar Guard Verification
+      ## Full Guard Command
 
-      **Command executed:**
-
-      ```
+      ```text
 
       uvx invar-tools guard --all
 
       ```
 
 
-      **Exit code:** <0/nonzero>
+      ## Actual Output
 
+      ```text
 
-      **Actual output:**
-
-      ```
-
-      <paste output or saved output path plus summary>
+      <paste full command output or artifact path plus summary>
 
       ```
 
 
-      ## Behavioral Proof Register
+      ## Closure Checks
 
-      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
-      status | closure_path | gate_decision_basis |
+      - Exit code: <0/nonzero>
 
-      |---|---|---|---|---|---|---|
+      - Doctest: <passed/failed>
 
-      | INVAR.md Core | Core code has @pre/@post/doctest | guard + doctest | <output>
-      | PROVEN/UNPROVEN | <path> | <basis> |
+      - CrossHair: <ran/skipped + reason>
 
-      | INVAR.md Shell | Shell I/O returns Result[T,E] or justified | guard | <output>
-      | PROVEN/UNPROVEN | <path> | <basis> |
+      - Property tests: <ran/skipped + reason>
+
+      - Remaining findings: <none OR exact non-blocking disposition accepted by guard>
 
 
-      ## Headline
+      ## Domain Drift Check
 
-      - [ ] PASS: full guard green
+      - Findings shifted to unowned files: <none OR list>
 
-      - [ ] FAIL: blocker-class guard findings remain'
+      - New/changed `**/core/**` without @pre/@post/doctest: <none OR list>
+
+      - Broad allow markers without specific rationale: <none OR list>'
+    refs:
+    - INVAR.md
+    depends_on:
+    - fix-plan-mutation-query-domain
+    - fix-lifecycle-duplicate-domain
+    - fix-run-store-domain
+    - fix-orch-config-projections-domain
+    - fix-orch-runtime-runners-domain
+    - fix-orch-events-control-domain
+    - fix-orch-inspection-prompt-domain
+    - fix-orch-recovery-continuity-domain
+    - fix-orch-app-driver-domain
+    - fix-cli-orchestration-domain
+    - fix-cli-plan-domain
+    - fix-cli-render-agent-domain
+    - fix-mcp-tooling-domain
+    - fix-io-storage-domain
+    - fix-plan-path-migration-domain
+    - fix-small-support-domain
     agent: integration-verifier-tacit
   - id: invar_guard_remediation.gate
     name: Gate invar guard remediation

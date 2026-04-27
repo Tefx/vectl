@@ -90840,6 +90840,8 @@ phases:
     - fix-mcp-tooling-domain
     - fix-io-storage-domain
     - fix-plan-path-migration-domain
+    - fix-small-root-support-domain
+    - fix-small-policy-archive-domain
     agent: integration-verifier-tacit
   - id: invar_guard_remediation.gate
     name: Gate invar guard remediation

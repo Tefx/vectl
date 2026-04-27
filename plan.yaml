@@ -90621,3 +90621,9 @@ phases:
 
       No product-code changes were made by this supplemental evidence step; repo-wide
       invar/static debt remains explicitly outside this non-invar gate lane.'
+- id: invar_guard_remediation
+  name: Invar Guard Remediation
+  status: pending
+  gate: Final gate requires authoritative `uvx invar-tools guard --all` green, or
+    a structured residual disposition proving any remaining finding is non-blocking
+    under invar policy.

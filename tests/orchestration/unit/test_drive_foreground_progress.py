@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from vectl.orch_app import OrchestrationApp
-from vectl.orchestration.contracts import ChildRunRef
+from vectl.orchestration.contracts import ChildRunRef, DriveBarrier
 from vectl.orchestration.driver import DriveLoopResult, DriveStatusResult
 
 
@@ -140,3 +140,24 @@ def test_foreground_drive_continues_after_unpause_control_consumption() -> None:
     assert loop_calls == ["drv-test", "drv-test"]
     terminal_events = [event for event in events if event.get("type") == "drive_blocked"]
     assert terminal_events[-1]["summary"] == "resolver requires operator: still blocked"
+
+
+def test_foreground_drive_reports_stopped_as_terminal_even_with_barrier() -> None:
+    """Stopped drives should not render as case-resolution-required blocks."""
+
+    app = object.__new__(OrchestrationApp)
+    events: list[dict[str, object]] = []
+
+    app._emit_terminal_drive_progress(
+        progress_callback=events.append,
+        result=DriveLoopResult(
+            drive_id="drv-test",
+            status="stopped",
+            barrier=DriveBarrier(reason="runtime_failure", case_ids=("case-stale",)),
+            summary="operator stop consumed: transition blocked_operator → stopped",
+        ),
+        started_at=0,
+    )
+
+    assert events[-1]["type"] == "drive_terminal"
+    assert events[-1]["status"] == "stopped"

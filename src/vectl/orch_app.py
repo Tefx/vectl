@@ -2521,7 +2521,9 @@ class OrchestrationApp:
     ) -> None:
         event_type = "drive_terminal"
         blocked_statuses = {"resolving", "replanning", "blocked_operator"}
-        if result.barrier is not None or result.status in blocked_statuses:
+        if result.status not in TERMINAL_DRIVE_STATUSES and (
+            result.barrier is not None or result.status in blocked_statuses
+        ):
             event_type = "drive_blocked"
         self._emit_drive_progress_event(
             progress_callback,

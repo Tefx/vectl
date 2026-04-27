@@ -90946,6 +90946,8 @@ phases:
     - fix-mcp-tooling-domain
     - fix-io-storage-domain
     - fix-plan-path-migration-domain
+    - fix-small-root-support-domain
+    - fix-small-policy-archive-domain
     - invar_guard_remediation.verify-full-guard
     agent: gate-reviewer-tacit
   - id: fix-plan-mutation-query-domain

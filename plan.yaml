@@ -91529,3 +91529,78 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-orch-app-driver-domain
+    name: Fix orch app and driver invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to the high-level
+      orchestration app and drive loop driver.
+
+
+      Owned files:
+
+      - `src/vectl/orch_app.py`
+
+      - `src/vectl/orchestration/driver.py`
+
+
+      Seed findings: function/file size, shell Result boundary, shell pure-logic/complexity,
+      dead_param, and dead_assign findings.
+
+
+      Guardrails:
+
+      - Preserve public CLI/app routing, active-drive behavior, planner/resolver/driver
+      recovery flow, and control request semantics.
+
+      - Avoid broad rewrites; favor bounded extraction or narrow justifications.
+
+      - Dead parameters in public callback/CLI surfaces must be renamed or allowed
+      rather than silently removed when compatibility matters.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - Driver/app routing behavior has targeted regression evidence if changed.
+
+      - Public CLI/control signatures remain compatible or changes are explicitly
+      justified.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/orch_app.py — <symbols/sections read>
+
+      - src/vectl/orchestration/driver.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | App/driver rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - Targeted app/driver tests: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

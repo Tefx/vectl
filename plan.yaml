@@ -91604,3 +91604,74 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-cli-orchestration-domain
+    name: Fix CLI orchestration invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to the orchestration
+      CLI surface.
+
+
+      Owned file:
+
+      - `src/vectl/cli_orchestration.py`
+
+
+      Seed findings: about 73 total, including `shell_result`, `shell_too_complex`,
+      shell pure-logic, file size, dead_param, and dead_assign.
+
+
+      Guardrails:
+
+      - Preserve documented `vectl orch ...` and `vectl orch drive ...` command behavior,
+      exit codes, and output formats.
+
+      - Do not remove CLI parameters without confirming Typer/click/public command
+      compatibility.
+
+      - For JSON/text output paths, verify output remains parseable and no ANSI escapes
+      leak into JSON.'
+    verification: '- Guard evidence shows no ungoverned findings remain for `cli_orchestration.py`.
+
+      - CLI behavior touched by changes has real invocation or targeted command-test
+      evidence.
+
+      - JSON/text output mode safety is preserved where applicable.
+
+      - Residual guard failures are outside owned file.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/cli_orchestration.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste guard rows for cli_orchestration.py>
+
+
+      ## Remediation Decisions
+
+      | Function | Rule(s) | Action | CLI compatibility rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped cli_orchestration result: <paste>
+
+      - CLI/command tests or real invocations: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

@@ -90627,3 +90627,83 @@ phases:
   gate: Final gate requires authoritative `uvx invar-tools guard --all` green, or
     a structured residual disposition proving any remaining finding is non-blocking
     under invar policy.
+  steps:
+  - id: invar_guard_remediation.collect-failure-inventory
+    name: Collect invar guard failure inventory
+    status: pending
+    description: 'Run the authoritative guard command and reduce the current broad
+      failure face into a stable, actionable inventory.
+
+
+      Scope:
+
+      - Command: `uvx invar-tools guard --all`
+
+      - Capture counts by rule, file, and failure family.
+
+      - Identify which findings are blocker-class for a green full guard versus warnings
+      that can be fixed or justified.
+
+      - Do not modify product code.
+
+
+      Current seed failure face from planning probe:
+
+      - `src/vectl/orchestration/run_store.py`: many `shell_result` errors for deserializers/coercers/sort
+      helpers and related shell complexity warnings.
+
+      - Project-level `shell_complexity_debt`: 193 unaddressed complexity warnings,
+      limit 5.
+
+      - Scattered `dead_param`, `dead_assign`, and `dead_export` warnings across CLI/MCP/orchestration
+      files.
+
+      - MCP invar wrapper was unstable; use CLI command above as the accepted verification
+      path.'
+    verification: '- Inventory includes exact guard command output reference.
+
+      - Inventory groups failures into remediation families with representative file:line
+      examples.
+
+      - Inventory explicitly states whether any `**/core/**` functions lack @pre/@post/doctest;
+      if none are present, say so.
+
+      - No product code changes are made in this step.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+
+      ## Guard Failure Inventory
+
+      **Command executed:** `uvx invar-tools guard --all`
+
+
+      **Raw output location or pasted summary:**
+
+      ```
+
+      <paste output path and summary counts>
+
+      ```
+
+
+      **Failure families:**
+
+      | Family | Count | Representative files/lines | Blocking for full guard? | Remediation
+      owner step |
+
+      |---|---:|---|---|---|
+
+
+      **Core contract/doctest scan:**
+
+      - Missing @pre/@post/doctest findings in `**/core/**`: <none/list>
+
+
+      **No-code-change confirmation:** <yes/no>'
+    agent: integration-verifier-tacit

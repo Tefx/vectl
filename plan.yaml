@@ -91218,3 +91218,82 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-orch-runtime-runners-domain
+    name: Fix orchestration runtime/runners invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
+      runtime and runner plumbing.
+
+
+      Owned files:
+
+      - `src/vectl/orchestration/runtime.py`
+
+      - `src/vectl/orchestration/runners.py`
+
+      - `src/vectl/orchestration/runner_registry.py`
+
+
+      Seed findings: shell Result boundary, shell pure-logic, shell complexity, function/file
+      size, and dead parameter findings.
+
+
+      Guardrails:
+
+      - Preserve worktree lifecycle, runner selection, cleanup semantics, and registry
+      behavior.
+
+      - Do not change external runner contract names or child-run status meanings.
+
+      - If a parameter is unused because of protocol compatibility, keep it with `_name`
+      or a narrow allow reason; do not silently break call signatures.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - Runtime cleanup and runner registry behavior have targeted regression evidence
+      if touched.
+
+      - Protocol/signature compatibility decisions are explicitly documented.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/orchestration/runtime.py — <symbols/sections read>
+
+      - src/vectl/orchestration/runners.py — <symbols/sections read>
+
+      - src/vectl/orchestration/runner_registry.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Runtime compatibility rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - Targeted runtime/runner tests: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

@@ -92167,3 +92167,79 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-small-policy-archive-domain
+    name: Fix small policy/archive invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate small policy/archive invar findings not
+      owned by earlier domain steps.
+
+
+      Owned files:
+
+      - `src/vectl/decide.py`
+
+      - `src/vectl/orchestration/dispatch_policy.py`
+
+      - `docs/archive/consumer_boundary_conformance_verify.py`
+
+
+      Seed findings: function/file size and archived-docs shell complexity findings.
+
+
+      Guardrails:
+
+      - Preserve decide-policy semantics and dispatch policy behavior.
+
+      - Archived verification script changes must remain behavior-preserving unless
+      the inventory proves it is dead/archive-only.
+
+      - If inventory maps additional files here, stop and request planner re-slicing.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - Any decide/dispatch behavior change has targeted regression evidence.
+
+      - No additional files are pulled into this step without planner re-slicing.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/decide.py — <symbols/sections read>
+
+      - src/vectl/orchestration/dispatch_policy.py — <symbols/sections read>
+
+      - docs/archive/consumer_boundary_conformance_verify.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - Targeted tests if behavior changed: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

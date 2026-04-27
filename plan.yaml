@@ -90631,81 +90631,122 @@ phases:
   - id: invar_guard_remediation.collect-failure-inventory
     name: Collect invar guard failure inventory
     status: pending
-    description: 'Run the authoritative guard command and reduce the current broad
-      failure face into a stable, actionable inventory.
+    description: 'Run the authoritative guard command and reduce the broad failure
+      face into a stable, actionable remediation map. Do not modify product code.
 
 
       Scope:
 
       - Command: `uvx invar-tools guard --all`
 
-      - Capture counts by rule, file, and failure family.
+      - Capture counts by rule, file, and severity.
 
-      - Identify which findings are blocker-class for a green full guard versus warnings
-      that can be fixed or justified.
+      - Produce a per-domain slice map matching the implementation steps in this phase.
 
-      - Do not modify product code.
+      - For each scoped file, list rule counts and representative file:line findings.
 
-
-      Current seed failure face from planning probe:
-
-      - `src/vectl/orchestration/run_store.py`: many `shell_result` errors for deserializers/coercers/sort
-      helpers and related shell complexity warnings.
-
-      - Project-level `shell_complexity_debt`: 193 unaddressed complexity warnings,
-      limit 5.
-
-      - Scattered `dead_param`, `dead_assign`, and `dead_export` warnings across CLI/MCP/orchestration
-      files.
-
-      - MCP invar wrapper was unstable; use CLI command above as the accepted verification
-      path.'
-    verification: '- Inventory includes exact guard command output reference.
-
-      - Inventory groups failures into remediation families with representative file:line
-      examples.
-
-      - Inventory explicitly states whether any `**/core/**` functions lack @pre/@post/doctest;
+      - Explicitly identify whether any `**/core/**` function lacks @pre/@post/doctest;
       if none are present, say so.
+
+
+      Seed failure face from planning probe:
+
+      - Full guard summary: 442 errors, 105 warnings, 193 infos.
+
+      - Rule counts: shell_result 419, shell_too_complex 193, function_size 40, dead_param
+      27, file_size 22, shell_pure_logic 19, dead_assign 9, file_size_warning 9, dead_export
+      1, shell_complexity_debt 1.
+
+      - Top files by total findings include `src/vectl/cli_orchestration.py` (73),
+      `src/vectl/core_plan_mutations.py` (49), `src/vectl/orchestration/run_store.py`
+      (45), `src/vectl/orchestration/config.py` (43), `src/vectl/cli_plan.py` (42),
+      `src/vectl/core_plan_queries.py` (40), `src/vectl/orchestration/runtime.py`
+      (38), `src/vectl/orch_app.py` (37), and `src/vectl/mcp_core_tools.py` (34).
+
+
+      Required output:
+
+      - A remediation table keyed by the domain step IDs below.
+
+      - A residual/unknown bucket if any finding does not map to a planned domain
+      step.
+
+      - A recommendation to trigger replan if any planned implementation step would
+      need to touch more than its listed file cluster.'
+    verification: '- Inventory includes exact `uvx invar-tools guard --all` output
+      reference.
+
+      - Inventory groups findings by rule, file, and planned domain step.
+
+      - Inventory explicitly states whether any `**/core/**` functions lack @pre/@post/doctest.
+
+      - Residual/unknown findings are either zero or clearly listed for planner follow-up.
 
       - No product code changes are made in this step.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
 
-      - AGENTS.md — key passage or "NOT READ: <reason>"
-
-      - INVAR.md — key passage or "NOT READ: <reason>"
+      - <filename> — key passage or "NOT READ: <reason>"
 
 
-      ## Guard Failure Inventory
-
-      **Command executed:** `uvx invar-tools guard --all`
+      If no refs were provided, state: "No refs for this step."
 
 
-      **Raw output location or pasted summary:**
+      ## Guard Command
 
-      ```
+      Command executed:
 
-      <paste output path and summary counts>
+      ```text
+
+      uvx invar-tools guard --all
 
       ```
 
 
-      **Failure families:**
+      Output artifact/reference:
 
-      | Family | Count | Representative files/lines | Blocking for full guard? | Remediation
-      owner step |
+      ```text
 
-      |---|---:|---|---|---|
+      <paste path or captured output reference>
 
-
-      **Core contract/doctest scan:**
-
-      - Missing @pre/@post/doctest findings in `**/core/**`: <none/list>
+      ```
 
 
-      **No-code-change confirmation:** <yes/no>'
+      ## Finding Counts
+
+      | Rule | Severity | Count |
+
+      | --- | --- | --- |
+
+      | <rule> | <severity> | <count> |
+
+
+      ## Domain Slice Map
+
+      | Planned Step | Files Owned | Rule Counts | Representative Findings |
+
+      | --- | --- | --- | --- |
+
+      | <step_id> | <files> | <rules/counts> | <file:line messages> |
+
+
+      ## Core Contract Scan
+
+      - `**/core/**` contract/doctest gaps: <none found OR list>
+
+
+      ## Residual/Unknown Bucket
+
+      - <zero OR exact findings requiring replan>
+
+
+      ## Product Code Changes
+
+      - Must state: none.'
+    refs:
+    - INVAR.md
+    - AGENTS.md
     agent: integration-verifier-tacit
   - id: invar_guard_remediation.verify-full-guard
     name: Verify full invar guard green

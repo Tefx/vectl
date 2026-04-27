@@ -91979,3 +91979,75 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-plan-path-migration-domain
+    name: Fix plan path and migration invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to plan path
+      and migration helpers.
+
+
+      Owned files:
+
+      - `src/vectl/plan_path.py`
+
+      - `src/vectl/migration.py`
+
+
+      Seed findings: shell Result boundary and shell complexity findings.
+
+
+      Guardrails:
+
+      - Preserve worktree/path normalization behavior and migration semantics.
+
+      - Path handling must cover absolute/relative paths, linked worktree detection,
+      missing files, and fallback behavior when touched.
+
+      - If adding core helpers, use @pre/@post/doctest before implementation.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - Path/migration behavior has targeted failure-path evidence if changed.
+
+      - No caller-visible path semantics regress.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/plan_path.py — <symbols/sections read>
+
+      - src/vectl/migration.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Path/migration rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - Targeted path/migration tests: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

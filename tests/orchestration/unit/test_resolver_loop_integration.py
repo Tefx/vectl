@@ -25,6 +25,7 @@ from vectl.orchestration.contracts import (
     DriveBarrier,
     DriveRecord,
     DriveStatus,
+    PlannerMutationBundle,
     PlannerRequest,
     ResolutionCase,
     ResolutionReport,
@@ -32,6 +33,7 @@ from vectl.orchestration.contracts import (
     RuntimeSnapshot,
 )
 from vectl.orchestration.control import ControlInputSources, PlanAwareControl
+from vectl.orchestration.core_adapter import PlannerMutationResult
 from vectl.orchestration.driver import (
     DriveDriver,
     _apply_resolution_report_to_drive,
@@ -162,6 +164,16 @@ class _FakeResolverInvocation:
             }
         self.payload_log.append(payload)
         return payload
+
+
+@dataclass
+class _FakePlannerMutationApplier:
+    result: PlannerMutationResult
+    apply_calls: list[PlannerMutationBundle]
+
+    def apply_bundle(self, bundle: PlannerMutationBundle) -> PlannerMutationResult:
+        self.apply_calls.append(bundle)
+        return self.result
 
 
 def _make_control(
@@ -691,6 +703,56 @@ class TestResolverContinuationSemantics:
         assert loop_result.barrier.reason == "planner_needed", (
             f"Expected barrier reason 'planner_needed', got {loop_result.barrier.reason}"
         )
+
+    def test_unblocked_with_planner_request_auto_applies_when_planner_wired(
+        self, tmp_path: Path
+    ) -> None:
+        """Resolver planner_request is applied in the same loop when possible."""
+        planner_request = PlannerRequest(
+            reason="Step needs prerequisite fix",
+            affected_steps=("phase.step",),
+        )
+        resolver_invocation = _FakeResolverInvocation(
+            payload_log=[],
+            return_status="unblocked",
+            return_summary="Resolved but planner needed",
+            return_planner_request=planner_request,
+        )
+        resolver = BoundResolver(
+            invocation=resolver_invocation,
+            default_role_id="blocked-case-coordinator",
+        )
+        planner_applier = _FakePlannerMutationApplier(
+            result=PlannerMutationResult(affected_step_ids=("phase.step",)),
+            apply_calls=[],
+        )
+        blocked_core = _core(blocked=("phase.step",))
+        core_adapter = _FakeCoreAdapter(blocked_core)
+        control = PlanAwareControl(
+            sources=ControlInputSources(
+                core_adapter=core_adapter,
+                roster=_FakeRosterSource(_roster()),
+                runtime=_FakeRuntimeSource(_runtime()),
+            ),
+        )
+        store = DriveStore(store_root=tmp_path)
+        driver = DriveDriver(
+            drive_store=store,
+            core_adapter=core_adapter,
+            control=control,
+            resolver=resolver,
+            planner_mutation_applier=planner_applier,
+        )
+
+        start_result = driver.start_drive(plan_path="/repo/plan.yaml")
+        loop_result = driver.run_drive_loop(start_result.drive_id)
+
+        assert loop_result.status == "running"
+        assert loop_result.barrier is None
+        assert len(planner_applier.apply_calls) == 1
+        persisted = store.replay_drive_state(start_result.drive_id)
+        assert persisted.status == "running"
+        assert persisted.barrier is None
 
     def test_waiting_stays_in_resolving(self, tmp_path: Path) -> None:
         """Resolver waiting → stay in resolving status; barrier persists."""

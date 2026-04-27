@@ -717,6 +717,42 @@ class TestPromptMaterializationContract:
         assert '"status": "unblocked|waiting|operator_required|halt"' in prompt_content
         assert "Return YAML exactly" not in prompt_content
 
+    def test_structured_review_result_output_contract_renders_json_prompt(
+        self, tmp_path: Path
+    ) -> None:
+        """Structured-review runs must not receive the generic YAML contract."""
+        artifact_root = tmp_path / "runs"
+        workspace = tmp_path / "ws"
+        artifact_root.mkdir()
+        workspace.mkdir()
+
+        paths = resolve_prompt_artifact_paths(
+            artifact_root=artifact_root,
+            run_id="review-run-1",
+            workspace=workspace,
+        )
+        bundle = PromptBundle(
+            system_prompt="Produce a StructuredReviewResult.",
+            task_prompt="Review the assigned work.",
+            messages=(),
+        )
+
+        materialize_prompt_artifacts(
+            bundle=bundle,
+            artifact_paths=paths,
+            role_id="gate-reviewer-tacit",
+            agent_id="gate-reviewer-tacit",
+            runner="opencode",
+            output_contract="structured_review_result",
+        )
+
+        prompt_content = Path(paths.runner_prompt_path).read_text(encoding="utf-8")
+        bundle_payload = json.loads(Path(paths.prompt_bundle_path).read_text(encoding="utf-8"))
+        assert bundle_payload["output_contract"] == "structured_review_result"
+        assert "Return ONLY one JSON object" in prompt_content
+        assert '"review_outcome": "pass|needs_fix|needs_replan|operator_required"' in prompt_content
+        assert "Return YAML exactly" not in prompt_content
+
     def test_materialize_creates_workspace_copy(self, tmp_path: Path) -> None:
         """materialize must create workspace-copy .vectl/orch/runner_prompt.md."""
         artifact_root = tmp_path / "runs"

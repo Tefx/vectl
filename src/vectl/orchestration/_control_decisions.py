@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
@@ -22,7 +24,9 @@ def count_active_step_runs(drive: DriveRecord) -> int:
 
 def synthetic_resolve_case_id(core: CoreSnapshot) -> str:
     """Generate a synthetic case identifier from unresolved core state."""
-    return f"unresolved:{','.join(core.unresolved_reasons)}"
+
+    digest = hashlib.sha256("\n".join(core.unresolved_reasons).encode("utf-8")).hexdigest()
+    return f"unresolved:{digest[:16]}"
 
 
 def plan_conflict_case_id(_core: CoreSnapshot) -> str:

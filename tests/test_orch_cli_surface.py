@@ -7,6 +7,7 @@ Authority:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 import pytest
@@ -59,6 +60,16 @@ class _DriveStatusResult:
     frontier_step_ids: tuple[str, ...] = ()
     blocked_case_ids: tuple[str, ...] = ()
     summary: str = "drive status"
+
+
+@dataclass(frozen=True)
+class _DriveRecoverResult:
+    drive_id: str
+    status: str = "running"
+    recovered_child_run_ids: tuple[str, ...] = ()
+    failed_child_run_ids: tuple[str, ...] = ()
+    conflict_resolutions: tuple[str, ...] = ("dry-run: no changes applied",)
+    summary: str = "dry-run: no changes applied"
 
 
 @dataclass(frozen=True)
@@ -264,6 +275,10 @@ class _FakeOrchApp:
             )
         return _DriveLoopResult(drive_id=drive_id, summary="foreground complete")
 
+    def recover_drive(self, *, drive_id: str, dry_run: bool = False) -> _DriveRecoverResult:
+        self.calls.append("recover_drive_dry_run" if dry_run else "recover_drive_apply")
+        return _DriveRecoverResult(drive_id=drive_id)
+
     def inspect_drive_status(
         self, *, drive_id: str, child_run_id: str | None = None
     ) -> _InspectResult:
@@ -334,6 +349,85 @@ class _FakeActiveDriveOrchApp(_FakeOrchApp):
         self.calls.append("start_drive")
         del agent, max_parallelism
         raise DriveAdmissionError("active drive exists", active_drive_id="drv-active")
+
+
+class _FakeRecoveringActiveDriveOrchApp(_FakeActiveDriveOrchApp):
+    def recover_drive(self, *, drive_id: str, dry_run: bool = False) -> _DriveRecoverResult:
+        self.calls.append("recover_drive_dry_run" if dry_run else "recover_drive_apply")
+        if dry_run:
+            return _DriveRecoverResult(
+                drive_id=drive_id,
+                status="recovering",
+                conflict_resolutions=("recovering drive can safely transition to running",),
+                summary="dry-run: would recover 0 child runs, fail 0 stale runs, transition to running",
+            )
+        return _DriveRecoverResult(
+            drive_id=drive_id,
+            status="running",
+            conflict_resolutions=("safe startup auto-recovery applied",),
+            summary="drive recovered; 0 child runs restored; 0 stale runs classified as failed; status=running",
+        )
+
+
+class _FakeRetryableFailedChildDriveOrchApp(_FakeActiveDriveOrchApp):
+    def recover_drive(self, *, drive_id: str, dry_run: bool = False) -> _DriveRecoverResult:
+        self.calls.append("recover_drive_dry_run" if dry_run else "recover_drive_apply")
+        if dry_run:
+            return _DriveRecoverResult(
+                drive_id=drive_id,
+                status="running",
+                failed_child_run_ids=("run-stale",),
+                conflict_resolutions=(
+                    "child run run-stale: persisted status=running but live process missing "
+                    "and no terminal artifact; classifying as stale (failed); "
+                    "scheduler may retry after claim release",
+                ),
+                summary="dry-run: would recover 0 child runs, fail 1 stale runs, transition to running",
+            )
+        return _DriveRecoverResult(
+            drive_id=drive_id,
+            status="running",
+            failed_child_run_ids=("run-stale",),
+            conflict_resolutions=("marked stale child run failed and released claim",),
+            summary="drive recovered; 0 child runs restored; 1 stale runs classified as failed; status=running",
+        )
+
+
+class _FakeUnsafeActiveDriveOrchApp(_FakeActiveDriveOrchApp):
+    def recover_drive(self, *, drive_id: str, dry_run: bool = False) -> _DriveRecoverResult:
+        self.calls.append("recover_drive_dry_run" if dry_run else "recover_drive_apply")
+        return _DriveRecoverResult(
+            drive_id=drive_id,
+            status="running",
+            failed_child_run_ids=("run-stale",),
+            conflict_resolutions=("child run run-stale: live process missing; classifying as stale",),
+            summary="dry-run: would recover 0 child runs, fail 1 stale runs, transition to running",
+        )
+
+
+class _FakeRetryLimitActiveDriveOrchApp(_FakeActiveDriveOrchApp):
+    def recover_drive(self, *, drive_id: str, dry_run: bool = False) -> _DriveRecoverResult:
+        self.calls.append("recover_drive_dry_run" if dry_run else "recover_drive_apply")
+        return _DriveRecoverResult(
+            drive_id=drive_id,
+            status="running",
+            failed_child_run_ids=("run-stale",),
+            conflict_resolutions=(
+                "operator required: retry limit reached for step.a after 3 stale child failures",
+            ),
+            summary="dry-run: would recover 0 child runs, fail 1 stale runs, transition to blocked_operator",
+        )
+
+
+class _FakeAutomationStoppedDriveApp(_FakeOrchApp):
+    def run_drive_loop(self, drive_id: str) -> _DriveLoopResult:
+        self.calls.append("run_drive_loop")
+        self.drive_loop_id = drive_id
+        return _DriveLoopResult(
+            drive_id=drive_id,
+            status="resolving",
+            summary="automation stopped: barrier did not progress after 3 passes",
+        )
 
 
 class _FakeDriveAwareOrchApp(_FakeOrchApp):
@@ -464,7 +558,7 @@ def test_orch_drive_attaches_to_active_drive_for_foreground_supervision(monkeypa
     result = runner.invoke(app, ["orch", "drive", "--json"])
 
     assert result.exit_code == 0
-    assert fake.calls == ["start_drive", "run_drive_foreground"]
+    assert fake.calls == ["start_drive", "recover_drive_dry_run", "run_drive_foreground"]
     assert fake.drive_loop_id == "drv-active"
     assert "foreground complete" in result.output
 
@@ -477,9 +571,92 @@ def test_orch_drive_once_runs_loop_for_active_drive(monkeypatch) -> None:
     result = runner.invoke(app, ["orch", "drive", "--once", "--json"])
 
     assert result.exit_code == 0
-    assert fake.calls == ["start_drive", "run_drive_loop"]
+    assert fake.calls == ["start_drive", "recover_drive_dry_run", "run_drive_loop"]
     assert fake.drive_loop_id == "drv-active"
     assert "looped" in result.output
+
+
+def test_orch_drive_auto_applies_safe_recovery_for_active_drive(monkeypatch) -> None:
+    """`vectl orch drive` auto-applies safe recovery before continuing."""
+    fake = _FakeRecoveringActiveDriveOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--once", "--json"])
+
+    assert result.exit_code == 0
+    assert fake.calls == [
+        "start_drive",
+        "recover_drive_dry_run",
+        "recover_drive_apply",
+        "run_drive_loop",
+    ]
+    payload = json.loads(result.output)
+    assert payload["auto_recovery"]["applied"] is True
+    assert payload["reason_code"] == "ok"
+
+
+def test_orch_drive_auto_retries_retryable_failed_child_run(monkeypatch) -> None:
+    """Stale failed child runs are recovered so normal scheduling can retry."""
+    fake = _FakeRetryableFailedChildDriveOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--once", "--json"])
+
+    assert result.exit_code == 0
+    assert fake.calls == [
+        "start_drive",
+        "recover_drive_dry_run",
+        "recover_drive_apply",
+        "run_drive_loop",
+    ]
+    payload = json.loads(result.output)
+    assert payload["auto_recovery"]["applied"] is True
+    assert payload["auto_recovery"]["failed_child_run_ids"] == ["run-stale"]
+    assert payload["human_required"] is False
+
+
+def test_orch_drive_stops_for_operator_recovery_when_preview_is_unsafe(monkeypatch) -> None:
+    """Unsafe recovery previews stop with structured next-action guidance."""
+    fake = _FakeUnsafeActiveDriveOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--once", "--json"])
+
+    assert result.exit_code == 4
+    assert fake.calls == ["start_drive", "recover_drive_dry_run"]
+    payload = json.loads(result.output)
+    assert payload["human_required"] is True
+    assert payload["reason_code"] == "drive_recovery_failed_children"
+    assert "drive-recover --latest --dry-run" in payload["suggested_action"]
+    assert payload["auto_recovery"]["applied"] is False
+
+
+def test_orch_drive_reports_retry_limit_as_stop_reason(monkeypatch) -> None:
+    """Retry-limit recovery previews get a specific compact stop reason."""
+    fake = _FakeRetryLimitActiveDriveOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--once", "--json"])
+
+    assert result.exit_code == 4
+    payload = json.loads(result.output)
+    assert payload["human_required"] is True
+    assert payload["reason_code"] == "retry_limit"
+    assert payload["stop_reason"].startswith("retry_limit:")
+
+
+def test_orch_drive_json_includes_compact_stop_reason(monkeypatch) -> None:
+    """Drive JSON results explain why automation stopped."""
+    fake = _FakeAutomationStoppedDriveApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--once", "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["human_required"] is True
+    assert payload["reason_code"] == "automation_stalled"
+    assert payload["stop_reason"].startswith("automation_stalled:")
 
 
 def test_orch_drive_human_mode_emits_progress_events(monkeypatch) -> None:

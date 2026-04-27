@@ -257,12 +257,26 @@ class TestConstructBundleFromRequest:
         bundle = _construct_bundle_from_request(request)
         assert "Step needs prerequisite fix" in bundle.summary
 
-    def test_bundle_mutations_empty_for_request_bundle(self) -> None:
-        """A constructed-from-request bundle has no mutations;
-        the applier is what fills those in."""
+    def test_bundle_mutations_empty_when_request_has_no_mutations(self) -> None:
+        """Intent-only planner requests do not imply hidden mutations."""
         request = PlannerRequest(reason="Replan", affected_steps=())
         bundle = _construct_bundle_from_request(request)
         assert bundle.mutations == ()
+
+    def test_bundle_preserves_request_mutations(self) -> None:
+        """Planner requests may carry concrete vectl facade mutations."""
+        mutation = PlannerMutationItem(
+            action="add-step",
+            arguments={"phase_id": "phase", "name": "Backfill evidence"},
+            reason="Gate needs supplemental evidence",
+        )
+        request = PlannerRequest(
+            reason="Replan",
+            affected_steps=("phase.gate",),
+            mutations=(mutation,),
+        )
+        bundle = _construct_bundle_from_request(request)
+        assert bundle.mutations == (mutation,)
 
 
 # ------------------------------------------------------------------

@@ -10,7 +10,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
-from vectl.orchestration.contracts import ResolutionReport
+from vectl.orchestration.contracts import (
+    PlannerMutationAction,
+    PlannerMutationItem,
+    ResolutionReport,
+)
 
 if TYPE_CHECKING:
     from vectl.orchestration.contracts import PlannerRequest
@@ -43,6 +47,19 @@ _OPTIONAL_REPORT_FIELDS: frozenset[str] = frozenset(
 )
 
 _ALLOWED_REPORT_FIELDS: frozenset[str] = _REQUIRED_REPORT_FIELDS | _OPTIONAL_REPORT_FIELDS
+
+_VALID_PLANNER_ACTIONS: frozenset[str] = frozenset(
+    {
+        "add-step",
+        "edit-step",
+        "remove-step",
+        "move-step",
+        "add-phase",
+        "edit-phase",
+        "skip-step",
+        "complete-phase",
+    }
+)
 
 
 def _validate_evidence_refs(value: object) -> None:
@@ -173,11 +190,13 @@ def parse_resolution_report_payload(payload: Mapping[str, object]) -> Resolution
         constraints: tuple[str, ...] = (
             tuple(constraints_raw) if isinstance(constraints_raw, (tuple, list)) else ()
         )
+        mutations = _parse_planner_mutations(planner_request_raw.get("mutations"))
         planner_request = PlannerRequest(
             reason=str(planner_request_raw.get("reason", "")),
             affected_steps=affected_steps,
             evidence_refs=pr_evidence_refs,
             constraints=constraints,
+            mutations=mutations,
         )
 
     return ResolutionReport(
@@ -194,3 +213,34 @@ __all__ = [
     "parse_resolution_report_payload",
     "validate_resolution_report_payload",
 ]
+
+
+def _parse_planner_mutations(raw_value: object) -> tuple[PlannerMutationItem, ...]:
+    if not isinstance(raw_value, tuple | list):
+        return ()
+
+    mutations: list[PlannerMutationItem] = []
+    for raw_item in raw_value:
+        if not isinstance(raw_item, dict):
+            continue
+        action = raw_item.get("action")
+        if action not in _VALID_PLANNER_ACTIONS:
+            continue
+        raw_arguments = raw_item.get("arguments", {})
+        arguments = raw_arguments if isinstance(raw_arguments, dict) else {}
+        reason = raw_item.get("reason", "")
+        mutations.append(
+            PlannerMutationItem(
+                action=cast(PlannerMutationAction, action),
+                arguments=dict(arguments),
+                reason=reason if isinstance(reason, str) else "",
+                safety_notes=_as_str_tuple(raw_item.get("safety_notes")),
+            )
+        )
+    return tuple(mutations)
+
+
+def _as_str_tuple(raw_value: object) -> tuple[str, ...]:
+    if not isinstance(raw_value, tuple | list):
+        return ()
+    return tuple(item for item in raw_value if isinstance(item, str))

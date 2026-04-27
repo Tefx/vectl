@@ -32,6 +32,7 @@ def validate_plan(
     *,
     check_refs: bool = False,
     base_path: Path | None = None,
+    include_completed_evidence_guard: bool = True,
 ) -> list[PlanValidationIssue]:
     """Validate plan structure, DAG, and consistency.
 
@@ -141,7 +142,148 @@ def validate_plan(
                             )
                         )
 
+    if include_completed_evidence_guard:
+        errors.extend(_completed_evidence_guard_issues(plan))
+
     return errors
+
+
+_EVIDENCE_GUARD_STEP_HINTS = (
+    "review",
+    "gate",
+    "test",
+    "verify",
+    "verification",
+    "pytest",
+    "smoke",
+    "regression",
+    "validation",
+    "acceptance",
+    "runtime non-closure",
+    "gate_open_allowed",
+    "review_outcome",
+)
+
+_EVIDENCE_FAILURE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("gate_open_allowed=false", re.compile(r"\bgate_open_allowed\s*[:=]\s*false\b", re.I)),
+    ("NEEDS_REVISION", re.compile(r"\bNEEDS_REVISION\b", re.I)),
+    (
+        "runtime non-closure: fail",
+        re.compile(r"\bruntime\s+non[- ]closure\s*:\s*fail\b", re.I),
+    ),
+    ("failed tests", re.compile(r"\b[1-9]\d*\s+failed\b", re.I)),
+    ("FAIL", re.compile(r"\bFAIL(?:ED|URE)?\b")),
+)
+
+_EVIDENCE_CLOSURE_PATTERNS = (
+    re.compile(r"\bgate_open_allowed\s*[:=]\s*true\b", re.I),
+    re.compile(r"\breview_outcome\s*[:=]\s*(?:pass|passed|approved|accepted)\b", re.I),
+    re.compile(r"\bruntime\s+non[- ]closure\s*:\s*(?:pass|closed|ok)\b", re.I),
+    re.compile(r"\b(?:green verification|retest passed|all tests pass(?:ed)?|tests PASS|PASS)\b"),
+    re.compile(r"\bOPEN\b"),
+)
+
+
+def _completed_evidence_guard_issues(plan: Plan) -> list[PlanValidationIssue]:
+    """Flag completed verification-like steps with unclosed failure evidence."""
+
+    issues: list[PlanValidationIssue] = []
+    for phase in plan.phases:
+        for index, step in enumerate(phase.steps):
+            if step.status != StepStatus.DONE or not step.evidence:
+                continue
+            if not _is_evidence_guard_candidate(step):
+                continue
+            reasons = _evidence_failure_reasons(step.evidence)
+            if not reasons:
+                continue
+            if _has_intentional_red_or_nonblocking_disposition(step):
+                continue
+            if _has_later_same_phase_closure(phase, after_index=index):
+                continue
+            issues.append(
+                PlanValidationIssue(
+                    "Completed evidence guard: "
+                    f"step '{step.id}' in phase '{phase.id}' has unclosed failure evidence "
+                    f"({', '.join(reasons)}). Add a later same-phase closure step with "
+                    "green/OPEN/gate_open_allowed=true evidence, or record expected-red/non-blocking "
+                    "owner/lifecycle/gate-intersection disposition."
+                )
+            )
+    return issues
+
+
+def _is_evidence_guard_candidate(step: Step) -> bool:
+    """Return True for completed steps whose text is verification-like."""
+
+    haystack = "\n".join(
+        (
+            step.id,
+            step.name,
+            step.description,
+            step.verification,
+            step.evidence or "",
+        )
+    ).lower()
+    return any(token in haystack for token in _EVIDENCE_GUARD_STEP_HINTS)
+
+
+def _evidence_failure_reasons(evidence: str) -> list[str]:
+    """Return unique failure tokens visible in evidence text."""
+
+    reasons: list[str] = []
+    for label, pattern in _EVIDENCE_FAILURE_PATTERNS:
+        if pattern.search(evidence) and label not in reasons:
+            reasons.append(label)
+    return reasons
+
+
+def _evidence_has_closure(evidence: str) -> bool:
+    """Return True when evidence mechanically closes a prior gate/test failure."""
+
+    if re.search(r"\bgate_open_allowed\s*[:=]\s*true\b", evidence, re.I):
+        return True
+    if _evidence_failure_reasons(evidence):
+        return False
+    return any(pattern.search(evidence) for pattern in _EVIDENCE_CLOSURE_PATTERNS)
+
+
+def _has_later_same_phase_closure(phase: Phase, *, after_index: int) -> bool:
+    """Return True when a later completed step visibly closes the blocker."""
+
+    for later in phase.steps[after_index + 1 :]:
+        if later.status == StepStatus.DONE and later.evidence and _evidence_has_closure(later.evidence):
+            return True
+    return False
+
+
+def _has_intentional_red_or_nonblocking_disposition(step: Step) -> bool:
+    """Allow explicit expected-red/non-blocking evidence with lifecycle proof."""
+
+    evidence = step.evidence or ""
+    lower = evidence.lower()
+    has_owner = bool(re.search(r"\bowner\s*[:=]|\bowned by\b", lower))
+    has_lifecycle = any(token in lower for token in ("lifecycle", "disposition", "expires", "tracked"))
+    has_gate_proof = any(
+        token in lower
+        for token in (
+            "gate-intersection proof",
+            "non-intersection",
+            "nonintersection",
+            "does not intersect",
+            "no gate intersection",
+            "outside gate",
+        )
+    )
+
+    is_expected_red = (
+        step.verify == "expected_red" or "expected-red" in lower or "expected_red" in lower
+    )
+    if is_expected_red and has_owner and has_lifecycle and has_gate_proof:
+        return True
+
+    is_nonblocking = "non-blocking" in lower or "not blocking" in lower
+    return is_nonblocking and has_owner and has_lifecycle and has_gate_proof
 
 
 def _detect_cycle(graph: dict[str, list[str]]) -> list[str] | None:

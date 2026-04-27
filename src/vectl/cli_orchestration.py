@@ -644,10 +644,89 @@ def _json_ready(value: Any) -> Any:
     return value
 
 
+def _drive_action_guidance(payload: dict[str, Any]) -> dict[str, Any]:
+    """Add operator-action guidance to drive result payloads.
+
+    This is deliberately a tiny presentation-layer helper: drive state remains
+    owned by ``OrchestrationApp``/``DriveDriver`` and the CLI only adds explicit
+    next-action fields for humans and JSON automation.
+    """
+
+    if "drive_id" not in payload or "status" not in payload:
+        return payload
+    if "reason_code" in payload and "suggested_action" in payload and "human_required" in payload:
+        return payload
+
+    status = str(payload.get("status") or "")
+    summary = str(payload.get("summary") or "")
+    summary_lower = summary.lower()
+    conflict_text = "\n".join(str(note) for note in payload.get("conflict_resolutions") or ())
+    conflict_lower = conflict_text.lower()
+    failed_child_run_ids = payload.get("failed_child_run_ids") or ()
+
+    reason_code = "ok"
+    suggested_action = "continue drive supervision"
+    human_required = False
+
+    if "retry limit" in summary_lower or "retry limit" in conflict_lower:
+        reason_code = "retry_limit"
+        suggested_action = "inspect repeated child-run failures, adjust the step, then rerun `vectl orch drive`"
+        human_required = True
+    elif "automation stopped" in summary_lower:
+        reason_code = "automation_stalled"
+        suggested_action = "inspect the unchanged barrier/case, then rerun `vectl orch drive` after fixing the blocker"
+        human_required = True
+    elif failed_child_run_ids:
+        reason_code = "drive_recovery_failed_children"
+        suggested_action = "run `vectl orch drive-recover --latest --dry-run`, inspect stale child runs, then rerun drive"
+        human_required = True
+    elif "runtime non-closure" in summary_lower:
+        reason_code = "runtime_nonclosure"
+        suggested_action = "inspect the failed child run/case, create or run the remediation step, then rerun drive"
+        human_required = True
+    elif status == "blocked_operator":
+        reason_code = "operator_required"
+        suggested_action = "inspect drive cases and respond via `vectl orch case-*` or rerun `vectl orch drive-recover --latest --dry-run`"
+        human_required = True
+    elif status in {"resolving", "replanning"}:
+        reason_code = "barrier_active"
+        suggested_action = "drive will continue through resolver/planner; if stale, run `vectl orch drive-recover --latest --dry-run`"
+    elif status == "recovering":
+        reason_code = "recovery_needed"
+        suggested_action = "rerun `vectl orch drive`; it will attempt safe recovery, or run `vectl orch drive-recover --latest --dry-run`"
+    elif status in {"halted", "failed_unrecoverable", "stopped"}:
+        reason_code = "terminal_attention_required"
+        suggested_action = "inspect drive status/logs and start a new drive only after the terminal cause is understood"
+        human_required = status != "stopped"
+    elif status == "completed":
+        reason_code = "completed"
+        suggested_action = "no action required"
+
+    enriched = dict(payload)
+    enriched.setdefault("reason_code", reason_code)
+    enriched.setdefault("suggested_action", suggested_action)
+    enriched.setdefault("human_required", human_required)
+    if human_required or reason_code not in {"ok", "completed"}:
+        stop_reason = summary or suggested_action
+        enriched.setdefault("stop_reason", f"{reason_code}: {stop_reason}"[:300])
+    return enriched
+
+
+def _drive_payload(value: Any) -> Any:
+    """Convert and enrich drive payloads with action guidance."""
+
+    payload = _json_ready(value)
+    if isinstance(payload, dict):
+        return _drive_action_guidance(payload)
+    if isinstance(payload, list):
+        return [_drive_action_guidance(item) if isinstance(item, dict) else item for item in payload]
+    return payload
+
+
 def _emit_orch_payload(value: Any, mode: OrchOutputMode) -> None:
     """Emit orchestration payload in human/json/jsonl formats."""
 
-    payload = _json_ready(value)
+    payload = _drive_payload(value)
 
     if mode == OrchOutputMode.JSON:
         typer.echo(json.dumps(payload, sort_keys=True))
@@ -1978,6 +2057,92 @@ def _validate_child_run_scope_or_die(
         _die(str(exc), code=2)
 
 
+def _drive_recovery_preview_has_work(preview: Any) -> bool:
+    """Return True when a dry-run recovery preview found recoverable work."""
+
+    if getattr(preview, "recovered_child_run_ids", ()):
+        return True
+    if getattr(preview, "failed_child_run_ids", ()):
+        return True
+    notes = tuple(getattr(preview, "conflict_resolutions", ()) or ())
+    if any(note != "dry-run: no changes applied" for note in notes):
+        return True
+    return False
+
+
+def _drive_recovery_preview_requires_operator(preview: Any) -> bool:
+    """Conservatively identify recovery previews that should not auto-apply."""
+
+    status = str(getattr(preview, "status", ""))
+    if status in {"blocked_operator", "failed_unrecoverable", "halted", "stopped"}:
+        return True
+    notes = "\n".join(str(note) for note in getattr(preview, "conflict_resolutions", ()) or ())
+    notes_lower = notes.lower()
+    if any(token in notes_lower for token in ("merge conflict", "operator", "manual")):
+        return True
+
+    failed_child_run_ids = tuple(str(run_id) for run_id in getattr(preview, "failed_child_run_ids", ()) or ())
+    if not failed_child_run_ids:
+        return False
+
+    # Auto-retry only the narrow stale-run case recover_drive can prove:
+    # persisted pending/running child, no live process, no terminal artifact.
+    # Everything else stays operator-owned.
+    return not (
+        "live process missing" in notes_lower
+        and "no terminal artifact" in notes_lower
+        and "stale" in notes_lower
+        and all(run_id.lower() in notes_lower for run_id in failed_child_run_ids)
+    )
+
+
+def _auto_recover_active_drive(app_runtime: Any, drive_id: str) -> dict[str, Any] | None:
+    """Attempt safe startup recovery for an already-active drive.
+
+    Returns a blocking payload when recovery needs operator attention.  Returns
+    ``None`` when no recovery is needed or safe recovery was applied.
+    """
+
+    preview = app_runtime.recover_drive(drive_id=drive_id, dry_run=True)
+    if not _drive_recovery_preview_has_work(preview):
+        return None
+    if _drive_recovery_preview_requires_operator(preview):
+        payload = _drive_action_guidance(_json_ready(preview))
+        payload["auto_recovery"] = {
+            "applied": False,
+            "reason": "operator_required",
+            "preview_summary": getattr(preview, "summary", ""),
+        }
+        payload["human_required"] = True
+        payload["reason_code"] = payload.get("reason_code") or "recovery_requires_operator"
+        return payload
+
+    applied = app_runtime.recover_drive(drive_id=drive_id, dry_run=False)
+    return {
+        "drive_id": drive_id,
+        "status": getattr(applied, "status", "running"),
+        "summary": getattr(applied, "summary", "drive auto-recovery applied"),
+        "auto_recovery": {
+            "applied": True,
+            "conflict_resolutions": tuple(getattr(applied, "conflict_resolutions", ()) or ()),
+            "recovered_child_run_ids": tuple(getattr(applied, "recovered_child_run_ids", ()) or ()),
+            "failed_child_run_ids": tuple(getattr(applied, "failed_child_run_ids", ()) or ()),
+        },
+    }
+
+
+def _merge_auto_recovery_notice(result: Any, notice: dict[str, Any] | None) -> Any:
+    """Attach an auto-recovery note to a drive result payload."""
+
+    if notice is None:
+        return result
+    payload = _json_ready(result)
+    if not isinstance(payload, dict):
+        return result
+    payload["auto_recovery"] = notice.get("auto_recovery", notice)
+    return payload
+
+
 def orch_drive(
     agent: str | None = OrchAgentOption,
     max_parallelism: int = OrchMaxParallelismOption,
@@ -2033,19 +2198,22 @@ def orch_drive(
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=jsonl_flag)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if max_parallelism < 1 or max_parallelism > 32:
-        _die(
-            f"max-parallelism must be between 1 and 32, got {max_parallelism}",
-            code=2,
-        )
+        _die(f"max-parallelism must be between 1 and 32, got {max_parallelism}", code=2)
     drive_id: str
+    auto_recovery_notice: dict[str, Any] | None = None
     try:
-        result = app_runtime.start_drive(
-            agent=agent or "",
-            max_parallelism=max_parallelism,
-        )
+        result = app_runtime.start_drive(agent=agent or "", max_parallelism=max_parallelism)
         drive_id = result.drive_id
     except DriveAdmissionError as exc:
         drive_id = exc.active_drive_id
+        try:
+            auto_recovery_notice = _auto_recover_active_drive(app_runtime, drive_id)
+        except Exception as recover_exc:
+            _orch_internal_error(recover_exc)
+            return
+        if auto_recovery_notice is not None and auto_recovery_notice.get("human_required"):
+            _emit_orch_payload(auto_recovery_notice, mode)
+            raise typer.Exit(4)
     except MaxParallelismError as exc:
         _die(str(exc), code=2)
         return
@@ -2082,7 +2250,7 @@ def orch_drive(
         and progress is not DriveProgressMode.NONE
     ):
         return
-    _emit_orch_payload(loop_result, mode)
+    _emit_orch_payload(_merge_auto_recovery_notice(loop_result, auto_recovery_notice), mode)
 
 
 def orch_drive_status(

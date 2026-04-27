@@ -27,11 +27,16 @@ import json
 import shutil
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
+import yaml
+
+from vectl.io import load_plan_definition
+from vectl.models import StepStatus
 from vectl.orchestration.config import (
     OrchestrationConfig,
     ResolverToolAllowlist,
@@ -51,26 +56,23 @@ from vectl.orchestration.continuity_artifacts import (
     RuntimeRecoveryRecord,
 )
 from vectl.orchestration.contracts import (
-    ControlDecision,
     ChildRunRef,
+    ControlDecision,
     CoreSnapshot,
     DispatchSpec,
     DriveBarrier,
-    DriveRecord,
     ExecutionRequest,
     ExecutionResult,
-    PromptArtifactPaths,
     PromptBundle,
     ReconcileResult,
     RecoveryAttempt,
     RecoveryContinuity,
-    RecoveredVia,
     RequestMode,
     ResolutionCase,
     ResolutionCaseSource,
     ResolutionReport,
+    ReviewOutcome,
     RosterSnapshot,
-    RunnerHandoffEnv,
     RuntimeSnapshot,
     SessionPolicy,
     StructuredReviewResult,
@@ -79,8 +81,8 @@ from vectl.orchestration.contracts import (
 from vectl.orchestration.control_channel import (
     ControlChannelMessage,
     FilesystemControlChannel,
-    send_to_control,
     send_drive_control,
+    send_to_control,
 )
 from vectl.orchestration.dispatch_policy import (
     ConfigPromptRegistry,
@@ -90,21 +92,14 @@ from vectl.orchestration.dispatch_policy import (
     normalize_parse_failure,
     normalize_review_result,
 )
-from vectl.orchestration.evidence import (
-    assess_freeform_evidence,
-    extract_runner_payload,
-    summarize_plan_evidence,
-)
 from vectl.orchestration.driver import (
-    DriveAdmissionError,
+    TERMINAL_DRIVE_STATUSES,
     DriveDriver,
     DriveLoopResult,
     DriveRecoverResult,
     DriveResumeResult,
     DriveStartResult,
     DriveStatusResult,
-    MaxParallelismError,
-    TERMINAL_DRIVE_STATUSES,
 )
 from vectl.orchestration.events import (
     EventCorruptionError,
@@ -113,29 +108,28 @@ from vectl.orchestration.events import (
     OrchestrationEventKind,
     load_event_jsonl,
 )
+from vectl.orchestration.evidence import (
+    assess_freeform_evidence,
+    extract_runner_payload,
+    summarize_plan_evidence,
+)
 from vectl.orchestration.inspection_queries import (
     CasesQueryImpl,
-    ChildRunScopeError,
     DriveInspectQuery,
     DriveInspectView,
     InspectQuery,
     RunsQueryImpl,
     query_cases,
-    query_drive_actions,
     query_drive_artifacts,
     query_drive_events,
-    query_drive_logs,
     query_drive_status,
     query_runs,
     validate_child_run_in_drive,
 )
 from vectl.orchestration.projections import replay_events_to_artifacts
 from vectl.orchestration.prompt_materialization import (
-    build_runner_handoff_env,
     materialize_prompt_artifacts,
     resolve_prompt_artifact_paths,
-    validate_prompt_artifacts_for_recovery,
-    PromptArtifactValidation,
 )
 from vectl.orchestration.recovery import (
     CutoverValidationResult,
@@ -148,6 +142,7 @@ from vectl.orchestration.recovery import (
     recovery_action_status,
     recovery_case_status,
 )
+from vectl.orchestration.resolution_reports import validate_resolution_report_payload
 from vectl.orchestration.resolver import map_payload_to_report
 from vectl.orchestration.resolver_gateway import (
     AuditedResolverGateway,
@@ -156,8 +151,6 @@ from vectl.orchestration.resolver_gateway import (
     ResolverToolMediation,
     authorize_and_invoke,
 )
-from vectl.io import load_plan_definition
-from vectl.models import StepStatus
 from vectl.orchestration.run_store import (
     CorruptJSONLError,
     DriveStore,
@@ -1173,12 +1166,11 @@ class OrchestrationApp:
         )
 
     def _parse_structured_review_result(self, raw_output: str) -> StructuredReviewResult:
-        """Parse strict JSON review output into StructuredReviewResult."""
+        """Parse runner review output into StructuredReviewResult."""
 
-        try:
-            payload = json.loads(raw_output)
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"review output is not valid JSON: {exc}") from exc
+        payload = _extract_structured_review_payload(raw_output)
+        if payload is None:
+            raise ValueError("review output is not parseable as StructuredReviewResult")
         if not isinstance(payload, dict):
             raise ValueError("review output must be a JSON object")
         review_outcome = payload.get("review_outcome")
@@ -1196,8 +1188,9 @@ class OrchestrationApp:
             isinstance(item, str) for item in evidence_refs
         ):
             raise ValueError("evidence_refs must be a list[str]")
+        typed_outcome = cast(ReviewOutcome, review_outcome)
         return StructuredReviewResult(
-            review_outcome=review_outcome,
+            review_outcome=typed_outcome,
             summary=summary,
             findings=tuple(findings),
             evidence_refs=tuple(evidence_refs),
@@ -1226,6 +1219,7 @@ class OrchestrationApp:
         # worktree path from the runtime, and use that path for prompt
         # materialization so the prompt file lands where the runner expects it.
         prompt_bundle = self._render_validated_prompt_bundle(dispatch_spec)
+        agent_id = self._agent_id_for_dispatch(dispatch_spec)
 
         # Gate: consult paused operator state and DispatchRecoveryGate
         # before dispatch to runtime.
@@ -1266,7 +1260,7 @@ class OrchestrationApp:
                 f"source_kind={dispatch_spec.source_kind}",
                 prompt_bundle_ref,
             ),
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             prompt_bundle_path="",  # placeholder; filled after prepare()
             runner_prompt_path="",  # placeholder; filled after prepare()
             request_mode=request_mode,
@@ -1289,7 +1283,7 @@ class OrchestrationApp:
             bundle=prompt_bundle,
             artifact_paths=artifact_paths,
             role_id=dispatch_spec.role_id,
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             runner=dispatch_spec.runner,
             output_contract=dispatch_spec.output_contract,
         )
@@ -1300,7 +1294,7 @@ class OrchestrationApp:
             role=dispatch_spec.role_id,
             runner=dispatch_spec.runner,
             work_refs=request.work_refs,
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             prompt_bundle_path=artifact_paths.prompt_bundle_path,
             runner_prompt_path=artifact_paths.runner_prompt_path,
             request_mode=request_mode,
@@ -1322,6 +1316,7 @@ class OrchestrationApp:
         """Start a drive-scoped step child run through the real runtime."""
 
         prompt_bundle = self._render_validated_prompt_bundle(dispatch_spec)
+        agent_id = self._agent_id_for_dispatch(dispatch_spec)
 
         blocked, block_reason = self._is_dispatch_blocked_by_gate()
         if blocked:
@@ -1359,7 +1354,7 @@ class OrchestrationApp:
                 f"source_kind={dispatch_spec.source_kind}",
                 prompt_bundle_ref,
             ),
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             prompt_bundle_path="",
             runner_prompt_path="",
             request_mode=request_mode,
@@ -1379,7 +1374,7 @@ class OrchestrationApp:
             bundle=prompt_bundle,
             artifact_paths=artifact_paths,
             role_id=dispatch_spec.role_id,
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             runner=dispatch_spec.runner,
             output_contract=dispatch_spec.output_contract,
         )
@@ -1389,7 +1384,7 @@ class OrchestrationApp:
             role=dispatch_spec.role_id,
             runner=dispatch_spec.runner,
             work_refs=request.work_refs,
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             prompt_bundle_path=artifact_paths.prompt_bundle_path,
             runner_prompt_path=artifact_paths.runner_prompt_path,
             request_mode=request_mode,
@@ -1426,6 +1421,11 @@ class OrchestrationApp:
                 f"{dispatch_spec.execution_context!r}"
             )
         return prompt_bundle
+
+    def _agent_id_for_dispatch(self, dispatch_spec: DispatchSpec) -> str:
+        """Return concrete runner agent/persona for a role-profile dispatch."""
+
+        return self._dispatch_coordinator.role_registry.get(dispatch_spec.role_id).agent_id
 
     def _artifact_root_for_run(self, run_id: str) -> Path:
         """Resolve the artifact root path for a run.
@@ -2123,6 +2123,7 @@ class OrchestrationApp:
         to implement the four drive-surface entry points.
         """
         from vectl.orchestration.control import PlanAwareControl
+        from vectl.orchestration.core_adapter import PlanPlannerMutationApplier
 
         if not isinstance(self._control, PlanAwareControl):
             raise TypeError(f"drive requires PlanAwareControl; got {type(self._control).__name__}")
@@ -2135,6 +2136,7 @@ class OrchestrationApp:
             control_channel=self._control_channel(),
             child_run_launcher=self._launch_drive_step_child_run,
             child_run_canceller=self._cancel_drive_child_run,
+            planner_mutation_applier=PlanPlannerMutationApplier(self._config.plan_path),
             max_parallelism=4,
         )
 
@@ -2212,6 +2214,8 @@ class OrchestrationApp:
         last_snapshot_at = 0.0
         last_child_heartbeat_at: dict[str, float] = {}
         last_workspace_change_count: dict[str, int] = {}
+        barrier_idle_key: tuple[str, str, tuple[str, ...], str] | None = None
+        barrier_idle_passes = 0
 
         initial_status = self.drive_status(drive_id=drive_id)
         self._emit_drive_progress_event(
@@ -2295,6 +2299,15 @@ class OrchestrationApp:
                         started_at=start_time,
                     )
                     return last_result
+                barrier_idle_key, barrier_idle_passes, stalled_result = (
+                    self._track_barrier_idle_result(
+                        result=last_result,
+                        prior_key=barrier_idle_key,
+                        prior_passes=barrier_idle_passes,
+                    )
+                )
+                if stalled_result is not None:
+                    return stalled_result
                 continue
 
             last_result = self.run_drive_loop(drive_id)
@@ -2310,12 +2323,20 @@ class OrchestrationApp:
                     started_at=start_time,
                 )
                 return last_result
+            barrier_idle_key, barrier_idle_passes, stalled_result = self._track_barrier_idle_result(
+                result=last_result,
+                prior_key=barrier_idle_key,
+                prior_passes=barrier_idle_passes,
+            )
+            if stalled_result is not None:
+                return stalled_result
+            if last_result.barrier is not None:
+                time.sleep(max(0.1, poll_interval_seconds))
 
     @staticmethod
     def _foreground_drive_should_exit(status: DriveStatusResult) -> bool:
         return status.status in {
             "paused",
-            "replanning",
             "blocked_operator",
             "completed",
             "halted",
@@ -2327,14 +2348,46 @@ class OrchestrationApp:
     def _foreground_loop_result_should_exit(result: DriveLoopResult) -> bool:
         return result.status in {
             "paused",
-            "resolving",
-            "replanning",
             "blocked_operator",
             "completed",
             "halted",
             "failed_unrecoverable",
             "stopped",
-        } or result.barrier is not None
+        }
+
+    @staticmethod
+    def _track_barrier_idle_result(
+        *,
+        result: DriveLoopResult,
+        prior_key: tuple[str, str, tuple[str, ...], str] | None,
+        prior_passes: int,
+    ) -> tuple[tuple[str, str, tuple[str, ...], str] | None, int, DriveLoopResult | None]:
+        if result.barrier is None or result.status not in {"resolving", "replanning"}:
+            return None, 0, None
+        key = (
+            result.status,
+            result.barrier.reason,
+            result.barrier.case_ids,
+            result.summary,
+        )
+        passes = prior_passes + 1 if key == prior_key else 1
+        if passes < 3:
+            return key, passes, None
+        return (
+            key,
+            passes,
+            DriveLoopResult(
+                drive_id=result.drive_id,
+                status=result.status,
+                completed_steps=result.completed_steps,
+                active_child_run_ids=result.active_child_run_ids,
+                barrier=result.barrier,
+                summary=(
+                    "automation stopped: barrier did not progress after "
+                    f"{passes} passes; {result.summary}"
+                ),
+            ),
+        )
 
     @staticmethod
     def _drive_status_to_loop_result(status: DriveStatusResult) -> DriveLoopResult:
@@ -4918,7 +4971,6 @@ class OrchestrationApp:
             ChildRunScopeError: If child_run_id does not belong to the drive.
             EventCorruptionError: If the event stream cannot be parsed.
         """
-        from vectl.orchestration.run_store import DriveStoreError
 
         store = self._drive_store()
         if child_run_id is not None:
@@ -5339,11 +5391,98 @@ def _iter_json_values_from_text(text: str):
         index += max(end, 1)
 
 
+_STRUCTURED_REVIEW_PROTOCOL_KEYS = frozenset(
+    {"type", "sessionID", "timestamp", "part", "parts", "message", "messages", "data"}
+)
+
+
+def _strip_runner_markdown_fence(raw_output: str) -> str:
+    stripped = raw_output.strip()
+    if not stripped.startswith("```"):
+        return stripped
+    lines = stripped.splitlines()
+    if len(lines) < 3 or not lines[-1].strip().startswith("```"):
+        return stripped
+    return "\n".join(lines[1:-1]).strip()
+
+
+def _looks_like_structured_review_payload(value: dict[str, object]) -> bool:
+    if _STRUCTURED_REVIEW_PROTOCOL_KEYS.intersection(value.keys()):
+        return False
+    if value.get("review_outcome") not in {
+        "pass",
+        "needs_fix",
+        "needs_replan",
+        "operator_required",
+    }:
+        return False
+    return isinstance(value.get("summary"), str)
+
+
+def _find_structured_review_payload(
+    value: object,
+    *,
+    parse_strings: bool = True,
+) -> dict[str, object] | None:
+    """Find a StructuredReviewResult-shaped payload inside runner values."""
+
+    if isinstance(value, dict):
+        candidate = cast(dict[str, object], value)
+        if _looks_like_structured_review_payload(candidate):
+            return candidate
+        for nested in value.values():
+            found = _find_structured_review_payload(nested, parse_strings=parse_strings)
+            if found is not None:
+                return found
+        return None
+    if isinstance(value, list | tuple):
+        for nested in value:
+            found = _find_structured_review_payload(nested, parse_strings=parse_strings)
+            if found is not None:
+                return found
+        return None
+    if isinstance(value, str) and parse_strings:
+        return _extract_structured_review_payload(value)
+    return None
+
+
+def _extract_structured_review_payload(raw_output: str) -> dict[str, object] | None:
+    """Extract a structured-review payload from JSON/YAML or OpenCode envelopes."""
+
+    candidate = _strip_runner_markdown_fence(raw_output)
+    if not candidate:
+        return None
+
+    try:
+        parsed = json.loads(candidate)
+    except json.JSONDecodeError:
+        parsed = None
+    if parsed is not None:
+        found = _find_structured_review_payload(parsed, parse_strings=False)
+        if found is not None:
+            return found
+
+    for parsed_value in _iter_json_values_from_text(candidate):
+        found = _find_structured_review_payload(parsed_value)
+        if found is not None:
+            return found
+
+    try:
+        parsed_yaml = yaml.safe_load(candidate)
+    except yaml.YAMLError:
+        return None
+    return _find_structured_review_payload(parsed_yaml, parse_strings=False)
+
+
 def _find_resolution_report_payload(value: object) -> dict[str, object] | None:
     """Find a ResolutionReport-shaped payload inside nested runner values."""
 
     if isinstance(value, dict):
-        if isinstance(value.get("status"), str) and isinstance(value.get("summary"), str):
+        try:
+            validate_resolution_report_payload(value)
+        except ValueError:
+            pass
+        else:
             return cast(dict[str, object], value)
         for nested in value.values():
             found = _find_resolution_report_payload(nested)
@@ -5463,6 +5602,7 @@ def build_orchestration_app(
                 description=self._case_description(case),
                 refs=case.artifact_refs,
             )
+            agent_id = self._dispatch_coordinator.role_registry.get(dispatch_spec.role_id).agent_id
             resolver_step_id = dispatch_spec.step_id or dispatch_spec.source_id
             resolver_run_id = f"resolver-{generate_run_id()}"
             prompt_bundle = self._dispatch_coordinator.render_prompt_bundle(dispatch_spec)
@@ -5481,7 +5621,7 @@ def build_orchestration_app(
                     f"source_kind={dispatch_spec.source_kind}",
                     *case.artifact_refs,
                 ),
-                agent_id=dispatch_spec.role_id,
+                agent_id=agent_id,
                 prompt_bundle_path="",
                 runner_prompt_path="",
                 request_mode="start",
@@ -5501,7 +5641,7 @@ def build_orchestration_app(
                     bundle=prompt_bundle,
                     artifact_paths=artifact_paths,
                     role_id=dispatch_spec.role_id,
-                    agent_id=dispatch_spec.role_id,
+                    agent_id=agent_id,
                     runner=dispatch_spec.runner,
                     output_contract=dispatch_spec.output_contract,
                 )
@@ -5510,7 +5650,7 @@ def build_orchestration_app(
                     role=dispatch_spec.role_id,
                     runner=dispatch_spec.runner,
                     work_refs=request.work_refs,
-                    agent_id=dispatch_spec.role_id,
+                    agent_id=agent_id,
                     prompt_bundle_path=artifact_paths.prompt_bundle_path,
                     runner_prompt_path=artifact_paths.runner_prompt_path,
                     request_mode="start",

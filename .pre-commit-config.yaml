@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: invar-guard
+        name: invar guard
+        entry: uv run invar guard
+        language: system
+        pass_filenames: false
+        always_run: true

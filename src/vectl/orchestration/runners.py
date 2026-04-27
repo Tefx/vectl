@@ -6,6 +6,8 @@ Authority: docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md sections 8-10
 from __future__ import annotations
 
 import json
+import os
+import sqlite3
 import subprocess
 import uuid
 from dataclasses import dataclass, field
@@ -13,10 +15,10 @@ from pathlib import Path
 from typing import Literal, Protocol
 
 from vectl.orchestration.contracts import (
+    _RUNNER_PROMPT_WORKSPACE_RELATIVE,
     ExecutionRequest,
     OpenCodeLaunchConfig,
     PromptArtifactPaths,
-    _RUNNER_PROMPT_WORKSPACE_RELATIVE,
 )
 from vectl.orchestration.prompt_materialization import (
     build_opencode_launch_argv,
@@ -24,9 +26,10 @@ from vectl.orchestration.prompt_materialization import (
     build_runner_handoff_env,
     resolve_prompt_artifact_paths,
 )
-
+from vectl.orchestration.resolution_reports import validate_resolution_report_payload
 
 _OPENCODE_STDOUT_SUMMARY_LIMIT = 5000
+_STRUCTURED_REVIEW_OUTCOMES = {"pass", "needs_fix", "needs_replan", "operator_required"}
 
 
 @dataclass(frozen=True)
@@ -288,41 +291,148 @@ def _append_opencode_text_parts(value: object, sink: list[str]) -> None:
             _append_opencode_text_parts(item, sink)
 
 
-def _append_resolution_report_payloads(value: object, sink: list[dict[str, object]]) -> None:
-    """Collect ResolutionReport-shaped JSON payloads from arbitrary event values."""
+def _looks_like_structured_review_payload(value: dict[str, object]) -> bool:
+    if {"type", "sessionID", "timestamp", "part"}.intersection(value.keys()):
+        return False
+    return value.get("review_outcome") in _STRUCTURED_REVIEW_OUTCOMES and isinstance(
+        value.get("summary"), str
+    )
+
+
+def _append_machine_result_payloads(value: object, sink: list[dict[str, object]]) -> None:
+    """Collect machine-result JSON payloads from arbitrary event values."""
 
     if isinstance(value, dict):
-        if isinstance(value.get("status"), str) and isinstance(value.get("summary"), str):
+        try:
+            validate_resolution_report_payload(value)
+        except ValueError:
+            if _looks_like_structured_review_payload(value):
+                sink.append(value)
+        else:
             sink.append(value)
         for nested in value.values():
-            _append_resolution_report_payloads(nested, sink)
+            _append_machine_result_payloads(nested, sink)
         return
     if isinstance(value, list | tuple):
         for nested in value:
-            _append_resolution_report_payloads(nested, sink)
+            _append_machine_result_payloads(nested, sink)
         return
     if isinstance(value, str):
         for nested in _iter_json_values_from_text(value):
-            _append_resolution_report_payloads(nested, sink)
+            _append_machine_result_payloads(nested, sink)
+
+
+def _find_opencode_session_id(value: object) -> str | None:
+    if isinstance(value, dict):
+        for key in ("sessionID", "session_id"):
+            item = value.get(key)
+            if isinstance(item, str) and item.strip():
+                return item.strip()
+        for nested in value.values():
+            found = _find_opencode_session_id(nested)
+            if found is not None:
+                return found
+        return None
+    if isinstance(value, list | tuple):
+        for nested in value:
+            found = _find_opencode_session_id(nested)
+            if found is not None:
+                return found
+    return None
+
+
+def _opencode_session_id_from_stdout(stdout: str) -> str | None:
+    session_id: str | None = None
+    for value in _iter_json_values_from_text(stdout):
+        found = _find_opencode_session_id(value)
+        if found is not None:
+            session_id = found
+    return session_id
+
+
+def _opencode_db_path() -> Path:
+    data_home = os.environ.get("XDG_DATA_HOME")
+    if data_home:
+        return Path(data_home) / "opencode" / "opencode.db"
+    return Path.home() / ".local" / "share" / "opencode" / "opencode.db"
+
+
+def _summarize_opencode_session_db(session_id: str) -> str | None:
+    db_path = _opencode_db_path()
+    if not db_path.exists():
+        return None
+
+    machine_payloads: list[dict[str, object]] = []
+    text_parts: list[str] = []
+    try:
+        connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return None
+    try:
+        rows = connection.execute(
+            "select data from part where session_id=? order by time_created, id",
+            (session_id,),
+        )
+        for (raw_data,) in rows:
+            try:
+                value = json.loads(raw_data)
+            except (TypeError, json.JSONDecodeError):
+                continue
+            _append_machine_result_payloads(value, machine_payloads)
+            _append_opencode_text_parts(value, text_parts)
+    except sqlite3.Error:
+        return None
+    finally:
+        connection.close()
+
+    if machine_payloads:
+        return json.dumps(machine_payloads[-1], separators=(",", ":"))
+    if text_parts:
+        return text_parts[-1].strip()
+    return None
 
 
 def _summarize_opencode_stdout(stdout: str) -> str:
     """Return runner-visible text from OpenCode JSON stdout when possible."""
 
-    report_payloads: list[dict[str, object]] = []
+    machine_payloads: list[dict[str, object]] = []
     text_parts: list[str] = []
     saw_json_event = False
+    session_id: str | None = None
     for value in _iter_json_values_from_text(stdout):
         saw_json_event = True
-        _append_resolution_report_payloads(value, report_payloads)
+        found_session_id = _find_opencode_session_id(value)
+        if found_session_id is not None:
+            session_id = found_session_id
+        _append_machine_result_payloads(value, machine_payloads)
         _append_opencode_text_parts(value, text_parts)
-    if report_payloads:
-        return json.dumps(report_payloads[-1], separators=(",", ":"))
+    if machine_payloads:
+        return json.dumps(machine_payloads[-1], separators=(",", ":"))
     if text_parts:
         return text_parts[-1].strip()
+    if saw_json_event and session_id is not None:
+        db_summary = _summarize_opencode_session_db(session_id)
+        if db_summary:
+            return db_summary
     if saw_json_event:
         return "OpenCode emitted JSON event stream without final text"
     return stdout.strip()
+
+
+def _is_machine_result_summary(value: str) -> bool:
+    """Return whether a stdout summary is a parser-critical machine payload."""
+
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(parsed, dict):
+        return False
+    try:
+        validate_resolution_report_payload(parsed)
+    except ValueError:
+        return _looks_like_structured_review_payload(parsed)
+    return True
 
 
 @dataclass
@@ -781,6 +891,7 @@ class OpenCodeRunner:
             evidence_refs.append(f"stdout:{len(stdout)} chars")
         if stderr:
             evidence_refs.append(f"stderr:{len(stderr)} chars")
+        stdout_session_id = _opencode_session_id_from_stdout(stdout) if stdout else None
 
         if returncode == 0:
             status: Literal["success", "fail", "stall", "transport_error"] = "success"
@@ -796,15 +907,20 @@ class OpenCodeRunner:
             summary = f"{summary}; stderr={stderr.strip()[:500]}"
         elif stdout and status == "success":
             stdout_summary = _summarize_opencode_stdout(stdout)
+            stdout_payload = (
+                stdout_summary
+                if _is_machine_result_summary(stdout_summary)
+                else stdout_summary[:_OPENCODE_STDOUT_SUMMARY_LIMIT]
+            )
             summary = (
                 f"{summary}; "
-                f"stdout={stdout_summary[:_OPENCODE_STDOUT_SUMMARY_LIMIT]}"
+                f"stdout={stdout_payload}"
             )
 
         return RunnerPollResult(
             status=status,
             output_summary=summary,
-            session_id=handle.session_id,
+            session_id=stdout_session_id or handle.session_id,
             evidence_refs=tuple(evidence_refs),
         )
 

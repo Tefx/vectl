@@ -560,12 +560,16 @@ class PlannerRequest:
         affected_steps: Step identifiers that motivated the replan request.
         evidence_refs: Artifact references supporting this request.
         constraints: Bounded operational constraints the planner must respect.
+        mutations: Optional approved facade mutations to apply. Empty means
+            the planner request records intent only and must not imply a plan
+            edit.
     """
 
     reason: str
     affected_steps: tuple[str, ...] = ()
     evidence_refs: tuple[str, ...] = ()
     constraints: tuple[str, ...] = ()
+    mutations: tuple["PlannerMutationItem", ...] = ()
 
 
 @dataclass(frozen=True)

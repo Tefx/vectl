@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from vectl.io import load_plan_definition, save_plan
-from vectl.models import IsolationMode, Phase, Plan, Step
+from vectl.models import IsolationMode, Phase, PhaseStatus, Plan, Step, StepStatus
 from vectl.orchestration.core_adapter import PlanCoreAdapter
 
 
@@ -41,6 +41,45 @@ def test_snapshot_uses_authoritative_core_reads(tmp_path: Path) -> None:
     assert snapshot.claimable_step_ids == ("core.ready",)
     assert snapshot.in_progress_step_ids == ()
     assert snapshot.blocked_step_ids == ("core.blocked",)
+    assert snapshot.unresolved_reasons == ()
+
+
+def test_snapshot_does_not_turn_evidence_guard_debt_into_scheduler_blocker(
+    tmp_path: Path,
+) -> None:
+    """Evidence guard debt belongs to validation/gates, not frontier scheduling."""
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(
+        Plan(
+            project="evidence-guard-scheduler-scope",
+            phases=[
+                Phase(
+                    id="historical",
+                    name="Historical",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="historical.gate",
+                            name="Historical gate",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false\nreview_outcome=NEEDS_REVISION",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="active",
+                    name="Active",
+                    steps=[Step(id="active.next", name="Next")],
+                ),
+            ],
+        ),
+        plan_path,
+    )
+    adapter = PlanCoreAdapter(plan_path)
+
+    snapshot = adapter.snapshot()
+
+    assert snapshot.claimable_step_ids == ("active.next",)
     assert snapshot.unresolved_reasons == ()
 
 

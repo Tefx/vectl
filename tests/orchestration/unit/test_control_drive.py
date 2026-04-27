@@ -1139,6 +1139,8 @@ class TestSyntheticCaseIds:
         assert decision.kind == "resolve"
         assert decision.case_ids  # non-empty
         assert "unresolved:" in decision.case_ids[0]
+        assert "claim conflict" not in decision.case_ids[0]
+        assert len(decision.case_ids[0]) <= 32
 
     def test_blocked_steps_have_synthetic_case_id(self):
         control = _make_control(core=_core(blocked=("s1",)))

@@ -22,20 +22,20 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from vectl.orchestration.contracts import (
-    OpenCodeLaunchConfig,
-    PromptArtifactPaths,
-    PromptBundle,
-    RunnerHandoffEnv,
     _PROMPT_BUNDLE_FILENAME,
     _RUNNER_PROMPT_FILENAME,
     _RUNNER_PROMPT_WORKSPACE_RELATIVE,
     _RUNS_INPUT_DIR,
     _WORKSPACE_ORCH_DIR,
+    OpenCodeLaunchConfig,
+    PromptArtifactPaths,
+    PromptBundle,
+    RunnerHandoffEnv,
 )
 
 if TYPE_CHECKING:
@@ -309,9 +309,47 @@ def _output_contract_lines(output_contract: str) -> list[str]:
             '  "status": "unblocked|waiting|operator_required|halt",',
             '  "summary": "non-empty human-readable summary",',
             '  "evidence_refs": ["evidence reference strings"],',
-            '  "operator_message": null',
+            '  "operator_message": null,',
+            '  "planner_request": null | {',
+            '    "reason": "why plan mutation is required",',
+            '    "affected_steps": ["step ids"],',
+            '    "evidence_refs": ["evidence refs"],',
+            '    "constraints": ["bounded constraints"],',
+            '    "mutations": [',
+            (
+                '      {"action": "add-step|edit-step|remove-step|move-step|add-phase|'
+                'edit-phase|skip-step|complete-phase", "arguments": {}, "reason": "why"}'
+            ),
+            "    ]",
+            "  }",
             "}",
             "Use status=operator_required when automatic closure is unsafe or unverifiable.",
+        ]
+
+    if output_contract == "structured_review_result":
+        return [
+            "Return ONLY one JSON object. Do not include Markdown, prose, or code fences.",
+            "Schema:",
+            "{",
+            '  "review_outcome": "pass|needs_fix|needs_replan|operator_required",',
+            '  "summary": "non-empty human-readable summary",',
+            '  "findings": ["finding strings"],',
+            '  "evidence_refs": ["evidence reference strings"],',
+            '  "planner_request": null | {',
+            '    "reason": "required only when review_outcome is needs_replan",',
+            '    "affected_steps": ["step ids"],',
+            '    "evidence_refs": ["evidence refs"],',
+            '    "constraints": ["bounded constraints"],',
+            '    "mutations": [',
+            (
+                '      {"action": "add-step|edit-step|remove-step|move-step|add-phase|'
+                'edit-phase|skip-step|complete-phase", "arguments": {}, "reason": "why"}'
+            ),
+            "    ]",
+            "  }",
+            "}",
+            "Use review_outcome=needs_replan when passing the gate requires adding, "
+            "editing, or skipping plan work.",
         ]
 
     return [

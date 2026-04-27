@@ -1298,6 +1298,7 @@ _DRIVE_STORE_DIR = "drives"
 _DRIVES_INDEX_FILENAME = "drives.jsonl"
 _CHILD_RUNS_INDEX_FILENAME = "child_runs.jsonl"
 _LEASES_INDEX_FILENAME = "leases.jsonl"
+_RETRY_LEDGER_FILENAME = "retry_ledger.jsonl"
 _DRIVE_CONFIG_FILENAME = "drive_config.json"
 
 TERMINAL_DRIVE_STATUSES: frozenset[DriveStatus] = frozenset(
@@ -1455,6 +1456,18 @@ def _deserialize_drive_config_frozen(payload: dict[str, object]) -> DriveConfigF
     )
 
 
+@dataclass(frozen=True)
+class DriveRetryLedgerEntry:
+    """Durable per-step retry fact for drive-owned child failures."""
+
+    drive_id: str
+    step_id: str
+    run_id: str
+    failure_class: str
+    summary: str = ""
+    created_at: float = 0.0
+
+
 def _drive_sort_key(record: DriveRecord) -> tuple[float, str]:
     """Sort key for DriveRecord: (updated_at, drive_id)."""
     return (record.updated_at, record.drive_id)
@@ -1521,6 +1534,7 @@ class DriveStore:
         self._drives_path = self._store_root / _DRIVES_INDEX_FILENAME
         self._child_runs_path = self._store_root / _CHILD_RUNS_INDEX_FILENAME
         self._leases_path = self._store_root / _LEASES_INDEX_FILENAME
+        self._retry_ledger_path = self._store_root / _RETRY_LEDGER_FILENAME
         self._max_append_retries = max_append_retries
         self._append_retry_delay_seconds = append_retry_delay_seconds
         self._append_retry_observer = append_retry_observer
@@ -1983,6 +1997,59 @@ class DriveStore:
         return tuple(invalidated)
 
     # -----------------------------------------------------------------
+    # Retry ledger (bounded autonomy across process restarts)
+    # -----------------------------------------------------------------
+
+    def record_retry_attempt(
+        self,
+        *,
+        drive_id: str,
+        step_id: str,
+        run_id: str,
+        failure_class: str,
+        summary: str = "",
+    ) -> None:
+        """Append one durable retry/failure fact for a drive-owned step."""
+
+        entry = DriveRetryLedgerEntry(
+            drive_id=drive_id,
+            step_id=step_id,
+            run_id=run_id,
+            failure_class=failure_class,
+            summary=summary,
+            created_at=_current_timestamp(),
+        )
+        _append_jsonl_with_retry(
+            self._retry_ledger_path,
+            asdict(entry),
+            max_retries=self._max_append_retries,
+            retry_delay_seconds=self._append_retry_delay_seconds,
+            retry_observer=self._append_retry_observer,
+        )
+
+    def retry_attempt_count(
+        self,
+        *,
+        drive_id: str,
+        step_id: str,
+        failure_class: str | None = None,
+    ) -> int:
+        """Return durable retry attempts for one drive step."""
+
+        if not self._retry_ledger_path.exists():
+            return 0
+        count = 0
+        for payload in _read_jsonl(self._retry_ledger_path):
+            if str(payload.get("drive_id", "")) != drive_id:
+                continue
+            if str(payload.get("step_id", "")) != step_id:
+                continue
+            if failure_class is not None and str(payload.get("failure_class", "")) != failure_class:
+                continue
+            count += 1
+        return count
+
+    # -----------------------------------------------------------------
     # Frozen drive config persistence
     # -----------------------------------------------------------------
     # Authority: docs/RFC-orch-drive.md sections 8.1, 15.1, 15.2
@@ -2409,6 +2476,7 @@ __all__ = [
     "latest_run",
     # Drive store types
     "DriveStore",
+    "DriveRetryLedgerEntry",
     "DriveStoreError",
     "DriveAdmissionConflictError",
     "MaxParallelismError",

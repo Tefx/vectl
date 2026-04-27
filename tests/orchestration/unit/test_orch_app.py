@@ -21,6 +21,7 @@ from vectl.models import IsolationMode, Phase, Plan, Step
 from vectl.orch_app import (
     AppConfig,
     CaseRuntimeToolMediationSource,
+    OrchestrationApp,
     OrchestrationResult,
     build_orchestration_app,
     build_resolution_case,
@@ -39,6 +40,7 @@ from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
     DispatchSpec,
+    DriveBarrier,
     DriveRecord,
     ExecutionResult,
     ReconcileResult,
@@ -57,6 +59,7 @@ from vectl.orchestration.dispatch_policy import (
     DispatchCoordinator,
 )
 from vectl.orchestration.events import load_event_jsonl
+from vectl.orchestration.driver import DriveLoopResult, DriveStatusResult
 from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.orchestration.resolver_gateway import GatewayInvocationResult, ResolverToolCall
 from vectl.orchestration.runtime import WorktreeError
@@ -218,6 +221,37 @@ def _write_plan(plan_path: Path) -> None:
         ],
     )
     save_plan(plan, plan_path)
+
+
+def test_foreground_supervisor_continues_resolver_and_planner_barriers() -> None:
+    """Foreground drive supervision should not stop at automatable barriers."""
+    barrier = DriveBarrier(reason="runtime_failure", case_ids=("case-a",))
+    resolving = DriveLoopResult(
+        drive_id="drv-a",
+        status="resolving",
+        barrier=barrier,
+        summary="resolver waiting",
+    )
+
+    assert OrchestrationApp._foreground_loop_result_should_exit(resolving) is False
+    status = DriveStatusResult(drive_id="drv-a", status="replanning")
+    assert OrchestrationApp._foreground_drive_should_exit(status=status) is False
+    _, passes, stalled = OrchestrationApp._track_barrier_idle_result(
+        result=resolving,
+        prior_key=None,
+        prior_passes=0,
+    )
+    assert passes == 1
+    assert stalled is None
+    key, passes, stalled = OrchestrationApp._track_barrier_idle_result(
+        result=resolving,
+        prior_key=("resolving", "runtime_failure", ("case-a",), "resolver waiting"),
+        prior_passes=2,
+    )
+    assert key is not None
+    assert passes == 3
+    assert stalled is not None
+    assert "automation stopped" in stalled.summary
 
 
 def _build_app(tmp_path: Path):
@@ -1049,6 +1083,66 @@ def test_resolve_case_ignores_opencode_protocol_envelope(
     assert report.operator_message == "Review manually."
 
 
+def test_resolve_case_ignores_invalid_status_summary_envelope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Resolver must skip protocol envelopes with extra fields and parse nested reports."""
+    app = _build_app(tmp_path)
+    report_payload = {
+        "status": "operator_required",
+        "summary": "nested report is authoritative",
+        "evidence_refs": ["resolver://nested-report"],
+        "operator_message": "Review manually.",
+    }
+    opencode_event = {
+        "type": "message",
+        "sessionID": "ses_123",
+        "timestamp": "2026-04-26T00:00:00Z",
+        "status": "unblocked",
+        "summary": "protocol summary, not a ResolutionReport",
+        "part": {"type": "text", "text": json.dumps(report_payload)},
+    }
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-event")
+    monkeypatch.setattr(
+        app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-event",
+    )
+    monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-event")
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-event",
+            status="success",
+            output_summary=(
+                "OpenCode completed successfully (exit 0); stdout="
+                f"{json.dumps(opencode_event)}"
+            ),
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-event",
+            case_source="runtime_failure",
+            reason="Blocked steps require resolution: core.ready",
+            summary="repair the blocked step",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+        )
+    )
+
+    assert report.status == "operator_required"
+    assert report.summary.endswith("nested report is authoritative")
+    assert "resolver://nested-report" in report.evidence_refs
+    assert report.operator_message == "Review manually."
+
+
 def test_resolve_case_supports_explicit_tacit_resolver_config_selection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1482,6 +1576,55 @@ def test_start_runtime_execution_renders_prompt_bundle_before_runtime_launch(
     assert any(ref.startswith("prompt_bundle_sha256=") for ref in captured_work_refs[0])
 
 
+def test_start_runtime_execution_uses_profile_agent_id_for_runner_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    _write_plan(plan_path)
+    role_profiles = tuple(
+        replace(profile, agent_id="python-executor-tacit")
+        if profile.role_id == "python-executor"
+        else profile
+        for profile in default_role_profiles()
+    )
+    app = build_orchestration_app(
+        AppConfig(
+            plan_path=plan_path,
+            orchestration_config=OrchestrationConfig(
+                plan_path=plan_path,
+                role_profiles=role_profiles,
+            ),
+            run_store_root=tmp_path / "runs",
+        )
+    )
+    orch = cast(Any, app)
+    fake_worktree = tmp_path / "fake-worktree"
+    fake_worktree.mkdir()
+    captured_agent_ids: list[str] = []
+
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-agent")
+    monkeypatch.setattr(app._runtime, "workspace_worktree_path", lambda workspace: fake_worktree)
+
+    def probe_start(*, request: Any, workspace: str) -> str:
+        _ = workspace
+        captured_agent_ids.append(request.agent_id)
+        return "exec-agent"
+
+    monkeypatch.setattr(app._runtime, "start", probe_start)
+
+    dispatch_spec = app.build_dispatch_spec(step_id="core.ready", role_hint="python-executor")
+    workspace, execution_id = orch._start_runtime_execution(
+        run_id="run-agent",
+        step_id="core.ready",
+        dispatch_spec=dispatch_spec,
+        mode="start",
+    )
+
+    assert (workspace, execution_id) == ("ws-agent", "exec-agent")
+    assert dispatch_spec.role_id == "python-executor"
+    assert captured_agent_ids == ["python-executor-tacit"]
+
+
 def test_start_runtime_execution_fails_closed_when_prompt_registry_lacks_role_support(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1645,6 +1788,49 @@ def test_route_terminal_execution_hard_gates_non_closing_reconcile_status(
     assert case is not None
     assert case.case_source == "runtime_failure"
     assert completed == []
+
+
+def test_parse_structured_review_result_accepts_yaml_fence(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    parsed = app._parse_structured_review_result(
+        """```yaml
+review_outcome: pass
+summary: review passed
+findings: []
+evidence_refs:
+  - review://ok
+```"""
+    )
+
+    assert parsed.review_outcome == "pass"
+    assert parsed.summary == "review passed"
+    assert parsed.evidence_refs == ("review://ok",)
+
+
+def test_parse_structured_review_result_accepts_nested_opencode_text(
+    tmp_path: Path,
+) -> None:
+    app = _build_app(tmp_path)
+    payload = {
+        "review_outcome": "needs_fix",
+        "summary": "review found blocker",
+        "findings": ["blocker"],
+        "evidence_refs": ["review://blocker"],
+    }
+    event = {
+        "type": "message",
+        "sessionID": "ses_123",
+        "part": {"type": "text", "text": json.dumps(payload)},
+    }
+
+    parsed = app._parse_structured_review_result(
+        "OpenCode completed successfully (exit 0); stdout=" + json.dumps(event)
+    )
+
+    assert parsed.review_outcome == "needs_fix"
+    assert parsed.summary == "review found blocker"
+    assert parsed.findings == ("blocker",)
+    assert parsed.evidence_refs == ("review://blocker",)
 
 
 def test_route_terminal_execution_blocks_freeform_failure_evidence(

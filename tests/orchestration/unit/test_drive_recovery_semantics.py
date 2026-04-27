@@ -19,8 +19,9 @@ These tests verify that resume/recover:
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -170,6 +171,7 @@ def _make_driver(
     tmp_path: Path,
     core: CoreSnapshot | None = None,
     max_parallelism: int = 4,
+    child_run_launcher: Any | None = None,
 ) -> DriveDriver:
     store = DriveStore(store_root=tmp_path)
     control = _make_control(core)
@@ -177,6 +179,7 @@ def _make_driver(
         drive_store=store,
         core_adapter=control.sources.core_adapter,
         control=control,
+        child_run_launcher=child_run_launcher,
         max_parallelism=max_parallelism,
     )
 
@@ -212,6 +215,61 @@ class TestBarrierStatusMapping:
 
     def test_recovery_gate_maps_to_resolving(self) -> None:
         assert _barrier_status("recovery_gate") == "resolving"
+
+
+class TestDriveLaunchFailureBarrier:
+    """Dispatch launch failures become bounded resolver/operator work."""
+
+    def test_launch_failure_records_runtime_case_and_releases_claim(self, tmp_path: Path) -> None:
+        def launcher(drive_id: str, step_id: str, role_id: str) -> ChildRunRef:
+            _ = drive_id, step_id, role_id
+            raise RuntimeError("runner binary missing")
+
+        driver = _make_driver(
+            tmp_path,
+            core=_core(claimable=("step.b",), in_progress=("step.b",)),
+            child_run_launcher=launcher,
+        )
+        drive_id = _start_drive(driver)
+
+        result = driver.run_drive_loop(drive_id)
+        persisted = driver._drive_store.replay_drive_state(drive_id)
+
+        assert result.status == "resolving"
+        assert result.barrier is not None
+        assert result.barrier.reason == "runtime_failure"
+        assert persisted is not None
+        assert persisted.blocked_case_ids == result.barrier.case_ids
+        assert "step.b" in driver._core_adapter.deferred_steps
+        assert driver._drive_store.retry_attempt_count(
+            drive_id=drive_id,
+            step_id="step.b",
+            failure_class="launch_failure",
+        ) == 1
+
+    def test_launch_failure_retry_limit_blocks_operator(self, tmp_path: Path) -> None:
+        def launcher(drive_id: str, step_id: str, role_id: str) -> ChildRunRef:
+            _ = drive_id, step_id, role_id
+            raise RuntimeError("runner binary missing")
+
+        driver = _make_driver(
+            tmp_path,
+            core=_core(claimable=("step.b",), in_progress=("step.b",)),
+            child_run_launcher=launcher,
+        )
+        drive_id = _start_drive(driver)
+
+        result = driver.run_drive_loop(drive_id)
+        for _ in range(2):
+            persisted = driver._drive_store.replay_drive_state(drive_id)
+            assert persisted is not None
+            driver._drive_store.save_drive(
+                replace(persisted, status="running", barrier=None, blocked_case_ids=())
+            )
+            result = driver.run_drive_loop(drive_id)
+
+        assert result.status == "blocked_operator"
+        assert "retry limit" in result.summary
 
 
 # ------------------------------------------------------------------
@@ -518,7 +576,7 @@ class TestRecoverStaleRunningState:
         This tests the core logic path by injecting a mock that returns
         stale liveness for a specific run ID.
         """
-        driver = _make_driver(tmp_path)
+        driver = _make_driver(tmp_path, core=_core(in_progress=("step.b",)))
         drive_id = _start_drive(driver)
 
         store = driver._drive_store
@@ -552,6 +610,64 @@ class TestRecoverStaleRunningState:
 
         # There should be a conflict note about this.
         assert any("stale" in note.lower() for note in result.conflict_resolutions)
+
+        persisted_child = store.child_run_by_id("run_stale_002")
+        assert persisted_child is not None
+        assert persisted_child.status == "fail"
+        assert store.retry_attempt_count(
+            drive_id=drive_id,
+            step_id="step.b",
+            failure_class="stale_child",
+        ) == 1
+        replayed = store.replay_drive_state(drive_id)
+        assert "run_stale_002" not in replayed.active_child_run_ids
+        assert "step.b" in driver._core_adapter.deferred_steps
+
+    def test_recover_blocks_operator_after_repeated_stale_child_failures(
+        self, tmp_path: Path
+    ) -> None:
+        """Repeated stale child failures stop auto-retry before infinite loops."""
+        driver = _make_driver(tmp_path, core=_core(in_progress=("step.b",)))
+        drive_id = _start_drive(driver)
+        store = driver._drive_store
+
+        for index in range(2):
+            store.save_child_run(
+                ChildRunRef(
+                    run_id=f"run_prior_fail_{index}",
+                    drive_id=drive_id,
+                    kind="step",
+                    step_id="step.b",
+                    status="fail",
+                    workspace=f".vectl/worktrees/step.b-{index}",
+                )
+            )
+        store.save_child_run(
+            ChildRunRef(
+                run_id="run_stale_003",
+                drive_id=drive_id,
+                kind="step",
+                step_id="step.b",
+                status="running",
+                workspace=".vectl/worktrees/step.b-3",
+            )
+        )
+
+        def mock_liveness(run_id: str, *, stale_threshold_seconds: float = 90.0) -> str:
+            _ = stale_threshold_seconds
+            return "stale" if run_id == "run_stale_003" else "unknown"
+
+        driver._check_child_run_liveness = mock_liveness  # type: ignore[assignment]
+
+        result = driver.recover_drive(drive_id)
+
+        assert result.status == "blocked_operator"
+        assert "run_stale_003" in result.failed_child_run_ids
+        assert any("retry limit" in note.lower() for note in result.conflict_resolutions)
+        persisted_child = store.child_run_by_id("run_stale_003")
+        assert persisted_child is not None
+        assert persisted_child.status == "fail"
+        assert "step.b" in driver._core_adapter.deferred_steps
 
 
 # ------------------------------------------------------------------

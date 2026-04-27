@@ -91374,3 +91374,79 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-orch-inspection-prompt-domain
+    name: Fix orchestration inspection/prompt invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
+      inspection and prompt materialization.
+
+
+      Owned files:
+
+      - `src/vectl/orchestration/inspection_queries.py`
+
+      - `src/vectl/orchestration/prompt_materialization.py`
+
+      - `src/vectl/orchestration/core_adapter.py`
+
+
+      Seed findings: shell Result boundary, shell complexity, file/function size warnings.
+
+
+      Guardrails:
+
+      - Preserve inspection query outputs and prompt contract/resource semantics exactly.
+
+      - Do not change user/model-visible prompt text unless required by invar remediation
+      and covered by tests/docs.
+
+      - If allows are used, they must identify adapter/presenter rationale precisely.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - Inspection/prompt output behavior has targeted regression evidence if changed.
+
+      - User/model-visible output drift is absent or explicitly documented.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/orchestration/inspection_queries.py — <symbols/sections read>
+
+      - src/vectl/orchestration/prompt_materialization.py — <symbols/sections read>
+
+      - src/vectl/orchestration/core_adapter.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Inspection/prompt rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - Targeted inspection/prompt tests: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

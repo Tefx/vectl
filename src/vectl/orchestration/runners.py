@@ -408,12 +408,15 @@ def _summarize_opencode_stdout(stdout: str) -> str:
         _append_opencode_text_parts(value, text_parts)
     if machine_payloads:
         return json.dumps(machine_payloads[-1], separators=(",", ":"))
-    if text_parts:
-        return text_parts[-1].strip()
+    db_summary = None
     if saw_json_event and session_id is not None:
         db_summary = _summarize_opencode_session_db(session_id)
-        if db_summary:
+        if db_summary and _is_machine_result_summary(db_summary):
             return db_summary
+    if text_parts:
+        return text_parts[-1].strip()
+    if db_summary:
+        return db_summary
     if saw_json_event:
         return "OpenCode emitted JSON event stream without final text"
     return stdout.strip()

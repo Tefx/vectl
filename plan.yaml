@@ -91450,3 +91450,82 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-orch-recovery-continuity-domain
+    name: Fix orchestration recovery/continuity invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to recovery,
+      fallback, and continuity artifact logic.
+
+
+      Owned files:
+
+      - `src/vectl/orchestration/recovery_fallback.py`
+
+      - `src/vectl/orchestration/recovery.py`
+
+      - `src/vectl/orchestration/continuity_artifacts.py`
+
+
+      Seed findings: shell Result boundary, shell complexity, file/function size,
+      and dead parameter findings.
+
+
+      Guardrails:
+
+      - Preserve legacy recovery/import, continuity artifact classification/quarantine,
+      and fallback behavior.
+
+      - Do not remove parameters that are externally/protocol significant; rename
+      to `_param` or narrowly allow when compatibility requires.
+
+      - Add regression/property evidence for any changed recovery decision logic.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - Recovery/fallback/continuity behavior has targeted regression evidence if
+      touched.
+
+      - Compatibility parameter decisions are explicit.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/orchestration/recovery_fallback.py — <symbols/sections read>
+
+      - src/vectl/orchestration/recovery.py — <symbols/sections read>
+
+      - src/vectl/orchestration/continuity_artifacts.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Recovery/compatibility rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - Targeted recovery/continuity tests: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

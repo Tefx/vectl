@@ -91743,3 +91743,81 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-cli-render-agent-domain
+    name: Fix CLI render/agents invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to CLI rendering
+      and agents-md surfaces.
+
+
+      Owned files:
+
+      - `src/vectl/cli_render.py`
+
+      - `src/vectl/cli_agents_md.py`
+
+      - `src/vectl/cli.py`
+
+
+      Seed findings: shell Result boundary, shell complexity, file size warnings,
+      and dead assignment findings.
+
+
+      Guardrails:
+
+      - Preserve CLI rendering output, markdown/agents instruction generation, and
+      top-level CLI registration.
+
+      - For output changes, verify representative text/JSON paths and avoid ANSI leakage
+      in machine-readable output.
+
+      - Do not touch orchestration CLI logic owned by separate steps.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - Representative rendering/agents CLI outputs are verified if changed.
+
+      - No output-format regression is introduced.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/cli_render.py — <symbols/sections read>
+
+      - src/vectl/cli_agents_md.py — <symbols/sections read>
+
+      - src/vectl/cli.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Output/CLI rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - Representative output/CLI tests: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

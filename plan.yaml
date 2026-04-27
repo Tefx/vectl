@@ -90707,117 +90707,6 @@ phases:
 
       **No-code-change confirmation:** <yes/no>'
     agent: integration-verifier-tacit
-  - id: invar_guard_remediation.fix-hygiene-tail
-    name: Fix invar hygiene tail
-    status: pending
-    description: 'Implement and verify the remaining non-boundary invar findings after
-      shell/core blocker repair.
-
-
-      Target inventory:
-
-      - Project-level `shell_complexity_debt` by either reducing branch complexity
-      or adding precise `@shell_complexity:` / `@shell_orchestration:` justifications
-      where shell orchestration is intentional.
-
-      - `dead_param`, `dead_assign`, and `dead_export` findings by removing unused
-      code, renaming intentionally unused parameters, or adding narrow invar allow
-      comments only where external API compatibility requires it.
-
-
-      Expected-red proof requirement:
-
-      1. Use the inventory/focused guard output from prior steps as the red baseline.
-
-      2. Before cleanup implementation, add or identify a targeted regression/property
-      check for any behavior-preserving refactor that touches runtime logic.
-
-      3. Paste the red baseline and then the green focused output after cleanup.
-
-
-      Guardrails:
-
-      - Preserve public CLI/MCP signatures unless the inventory proves the parameter
-      is internal-only.
-
-      - For public parameters kept for compatibility, prefer `_param` naming or a
-      narrow allow comment with a real reason.
-
-      - Do not hide real complexity with broad blanket allows; each marker must explain
-      why shell ownership is correct.
-
-
-      Completion Criteria (stub exclusion):
-
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; deletions/renames/markers
-      must preserve runtime behavior or document compatibility rationale.'
-    verification: '- Main path: focused guard output shows hygiene families reduced
-      to zero or to explicitly justified allowed cases.
-
-      - Failure path: behavior-preserving changes have targeted regression/property
-      evidence where runtime behavior could change.
-
-      - Compatibility proof: public CLI/MCP/API parameters are not silently removed.
-
-      - Full guard is ready for `invar_guard_remediation.verify-full-guard` with no
-      known blocker-class residuals.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-      For each ref in this step:
-
-      - AGENTS.md — key passage or "NOT READ: <reason>"
-
-      - INVAR.md — key passage or "NOT READ: <reason>"
-
-
-      ## Expected-Red / Baseline Proof (MANDATORY)
-
-      **Baseline guard family output before cleanup:**
-
-      ```
-
-      <paste focused failure output or inventory excerpt>
-
-      ```
-
-
-      ## Cleanup Summary
-
-      | Family | Action | Files | Compatibility rationale |
-
-      |---|---|---|---|
-
-
-      ## Marker Discipline
-
-      - `@shell_complexity` / `@shell_orchestration` markers added: <count and reasons>
-
-      - Broad blanket allows avoided? <yes/no>
-
-
-      ## Verification Output
-
-      **Focused command(s):**
-
-      ```
-
-      <paste commands>
-
-      ```
-
-      **Actual output:**
-
-      ```
-
-      <paste output>
-
-      ```
-
-
-      ## Residuals
-
-      - Remaining findings, if any, and why they do not block full guard: <list/none>'
-    agent: python-senior-tacit
   - id: invar_guard_remediation.verify-full-guard
     name: Verify full invar guard green
     status: pending
@@ -90893,8 +90782,6 @@ phases:
       - [ ] PASS: full guard green
 
       - [ ] FAIL: blocker-class guard findings remain'
-    depends_on:
-    - invar_guard_remediation.fix-hygiene-tail
     agent: integration-verifier-tacit
   - id: invar_guard_remediation.gate
     name: Gate invar guard remediation
@@ -90976,6 +90863,5 @@ phases:
       **Required actions if BLOCKED:** <list>'
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
-    - invar_guard_remediation.fix-hygiene-tail
     - invar_guard_remediation.verify-full-guard
     agent: gate-reviewer-tacit

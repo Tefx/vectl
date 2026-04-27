@@ -90988,3 +90988,79 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-lifecycle-duplicate-domain
+    name: Fix lifecycle and duplicate-ID invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to lifecycle
+      and duplicate-step-ID domain logic.
+
+
+      Owned files:
+
+      - `src/vectl/lifecycle.py`
+
+      - `src/vectl/core_duplicate_step_id.py`
+
+
+      Seed findings: shell Result boundary, shell complexity, shell pure-logic, and
+      file-size-warning findings.
+
+
+      Guardrails:
+
+      - Preserve lifecycle state-transition semantics and duplicate-ID migration semantics
+      exactly.
+
+      - Do not remove exported behavior unless static references and tests prove it
+      is internal-only.
+
+      - If extracting pure logic into `**/core/**`, write @pre/@post/doctest first.
+
+
+      Out of scope: plan mutation/query modules and CLI/MCP callers.'
+    verification: '- Guard evidence shows no ungoverned invar findings remain for
+      the owned files.
+
+      - State-transition and duplicate-ID behavior has targeted regression/property
+      evidence when logic changes.
+
+      - Any residual full-guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/lifecycle.py — <symbols/sections read>
+
+      - src/vectl/core_duplicate_step_id.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic fix OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped result for owned files: <paste>
+
+      - Targeted tests/contracts: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

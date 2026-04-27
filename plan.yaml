@@ -91141,3 +91141,80 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-orch-config-projections-domain
+    name: Fix orchestration config/projections invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
+      configuration loading and projection logic.
+
+
+      Owned files:
+
+      - `src/vectl/orchestration/config.py`
+
+      - `src/vectl/orchestration/projections.py`
+
+
+      Seed findings: about 70 total across these files, mostly `shell_result`, `shell_too_complex`,
+      function/file size, and one dead assignment.
+
+
+      Guardrails:
+
+      - Preserve config precedence, defaulting, frozen config semantics, and projection
+      replay outputs.
+
+      - Do not silently change public config fields or event/projection formats.
+
+      - If pure parsing/normalization logic moves to Core, add @pre/@post/doctest
+      before implementation and include spec-exact fixtures.'
+    verification: '- Guard evidence shows no ungoverned findings remain for owned
+      files.
+
+      - Config precedence/default behavior and projection replay have targeted regression/property
+      evidence if touched.
+
+      - Spec-exact fixtures are used for any changed external config format.
+
+      - Residual guard failures are outside owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/orchestration/config.py — <symbols/sections read>
+
+      - src/vectl/orchestration/projections.py — <symbols/sections read>
+
+      - docs/RFC-orch-drive.md — <relevant passage or NOT READ reason>
+
+
+      ## Scoped Red Baseline
+
+      <paste inventory rows for owned files>
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Compatibility rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Fixture Proof
+
+      <failing output or spec-fixture evidence before semantic change>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped owned-file result: <paste>
+
+      - Targeted config/projection tests: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

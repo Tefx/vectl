@@ -27,11 +27,16 @@ import json
 import shutil
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
+import yaml
+
+from vectl.io import load_plan_definition
+from vectl.models import StepStatus
 from vectl.orchestration.config import (
     OrchestrationConfig,
     ResolverToolAllowlist,
@@ -51,26 +56,23 @@ from vectl.orchestration.continuity_artifacts import (
     RuntimeRecoveryRecord,
 )
 from vectl.orchestration.contracts import (
-    ControlDecision,
     ChildRunRef,
+    ControlDecision,
     CoreSnapshot,
     DispatchSpec,
     DriveBarrier,
-    DriveRecord,
     ExecutionRequest,
     ExecutionResult,
-    PromptArtifactPaths,
     PromptBundle,
     ReconcileResult,
     RecoveryAttempt,
     RecoveryContinuity,
-    RecoveredVia,
     RequestMode,
     ResolutionCase,
     ResolutionCaseSource,
     ResolutionReport,
+    ReviewOutcome,
     RosterSnapshot,
-    RunnerHandoffEnv,
     RuntimeSnapshot,
     SessionPolicy,
     StructuredReviewResult,
@@ -79,8 +81,8 @@ from vectl.orchestration.contracts import (
 from vectl.orchestration.control_channel import (
     ControlChannelMessage,
     FilesystemControlChannel,
-    send_to_control,
     send_drive_control,
+    send_to_control,
 )
 from vectl.orchestration.dispatch_policy import (
     ConfigPromptRegistry,
@@ -91,14 +93,13 @@ from vectl.orchestration.dispatch_policy import (
     normalize_review_result,
 )
 from vectl.orchestration.driver import (
-    DriveAdmissionError,
+    TERMINAL_DRIVE_STATUSES,
     DriveDriver,
     DriveLoopResult,
     DriveRecoverResult,
     DriveResumeResult,
     DriveStartResult,
     DriveStatusResult,
-    MaxParallelismError,
 )
 from vectl.orchestration.events import (
     EventCorruptionError,
@@ -107,29 +108,28 @@ from vectl.orchestration.events import (
     OrchestrationEventKind,
     load_event_jsonl,
 )
+from vectl.orchestration.evidence import (
+    assess_freeform_evidence,
+    extract_runner_payload,
+    summarize_plan_evidence,
+)
 from vectl.orchestration.inspection_queries import (
     CasesQueryImpl,
-    ChildRunScopeError,
     DriveInspectQuery,
     DriveInspectView,
     InspectQuery,
     RunsQueryImpl,
     query_cases,
-    query_drive_actions,
     query_drive_artifacts,
     query_drive_events,
-    query_drive_logs,
     query_drive_status,
     query_runs,
     validate_child_run_in_drive,
 )
 from vectl.orchestration.projections import replay_events_to_artifacts
 from vectl.orchestration.prompt_materialization import (
-    build_runner_handoff_env,
     materialize_prompt_artifacts,
     resolve_prompt_artifact_paths,
-    validate_prompt_artifacts_for_recovery,
-    PromptArtifactValidation,
 )
 from vectl.orchestration.recovery import (
     CutoverValidationResult,
@@ -142,6 +142,7 @@ from vectl.orchestration.recovery import (
     recovery_action_status,
     recovery_case_status,
 )
+from vectl.orchestration.resolution_reports import validate_resolution_report_payload
 from vectl.orchestration.resolver import map_payload_to_report
 from vectl.orchestration.resolver_gateway import (
     AuditedResolverGateway,
@@ -150,8 +151,6 @@ from vectl.orchestration.resolver_gateway import (
     ResolverToolMediation,
     authorize_and_invoke,
 )
-from vectl.io import load_plan_definition
-from vectl.models import StepStatus
 from vectl.orchestration.run_store import (
     CorruptJSONLError,
     DriveStore,
@@ -1050,6 +1049,16 @@ class OrchestrationApp:
         if review_case is not None:
             return review_case
 
+        freeform_failure_case = self._normalize_freeform_evidence_case(
+            step_id=step_id,
+            raw_output=execution_result.output_summary,
+            role_id=dispatch_spec.role_id,
+            output_contract=dispatch_spec.output_contract,
+            snapshots=snapshots,
+        )
+        if freeform_failure_case is not None:
+            return freeform_failure_case
+
         # Second gate: re-check after reconcile/resolve paths, because
         # paused state might have been set during reconcile processing.
         complete_blocked_2, complete_reason_2 = self._is_complete_blocked_by_gate()
@@ -1067,7 +1076,7 @@ class OrchestrationApp:
             raise ValueError("Reconcile disposition missing despite completion gate approval")
         self._core_adapter.complete_step(
             step_id,
-            execution_result.output_summary,
+            summarize_plan_evidence(execution_result.output_summary),
             reconcile_disposition=reconcile_disposition,
         )
         return None
@@ -1104,8 +1113,9 @@ class OrchestrationApp:
     ) -> ResolutionCase | None:
         if output_contract != "structured_review_result":
             return None
+        payload = extract_runner_payload(raw_output)
         try:
-            parsed = self._parse_structured_review_result(raw_output)
+            parsed = self._parse_structured_review_result(payload)
         except ValueError:
             return build_review_parse_failure_case(
                 raw_output=raw_output,
@@ -1123,13 +1133,44 @@ class OrchestrationApp:
             runtime=snapshots.runtime,
         )
 
-    def _parse_structured_review_result(self, raw_output: str) -> StructuredReviewResult:
-        """Parse strict JSON review output into StructuredReviewResult."""
+    def _normalize_freeform_evidence_case(
+        self,
+        *,
+        step_id: str,
+        raw_output: str,
+        role_id: str,
+        output_contract: str,
+        snapshots: SnapshotBundle,
+    ) -> ResolutionCase | None:
+        """Block completion when freeform evidence explicitly reports failure."""
 
-        try:
-            payload = json.loads(raw_output)
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"review output is not valid JSON: {exc}") from exc
+        if output_contract != "freeform_evidence":
+            return None
+        assessment = assess_freeform_evidence(raw_output)
+        if not assessment.failed:
+            return None
+        return ResolutionCase(
+            case_id=f"case-{generate_run_id()}",
+            case_source="review_failed",
+            reason=f"freeform evidence failure: {assessment.reason}",
+            summary=assessment.summary,
+            core=snapshots.core,
+            roster=snapshots.roster,
+            runtime=snapshots.runtime,
+            blocked_step_ids=(step_id,),
+            artifact_refs=(
+                f"role_id={role_id}",
+                f"output_contract={output_contract}",
+                "freeform_evidence_failure",
+            ),
+        )
+
+    def _parse_structured_review_result(self, raw_output: str) -> StructuredReviewResult:
+        """Parse runner review output into StructuredReviewResult."""
+
+        payload = _extract_structured_review_payload(raw_output)
+        if payload is None:
+            raise ValueError("review output is not parseable as StructuredReviewResult")
         if not isinstance(payload, dict):
             raise ValueError("review output must be a JSON object")
         review_outcome = payload.get("review_outcome")
@@ -1147,8 +1188,9 @@ class OrchestrationApp:
             isinstance(item, str) for item in evidence_refs
         ):
             raise ValueError("evidence_refs must be a list[str]")
+        typed_outcome = cast(ReviewOutcome, review_outcome)
         return StructuredReviewResult(
-            review_outcome=review_outcome,
+            review_outcome=typed_outcome,
             summary=summary,
             findings=tuple(findings),
             evidence_refs=tuple(evidence_refs),
@@ -1177,6 +1219,7 @@ class OrchestrationApp:
         # worktree path from the runtime, and use that path for prompt
         # materialization so the prompt file lands where the runner expects it.
         prompt_bundle = self._render_validated_prompt_bundle(dispatch_spec)
+        agent_id = self._agent_id_for_dispatch(dispatch_spec)
 
         # Gate: consult paused operator state and DispatchRecoveryGate
         # before dispatch to runtime.
@@ -1217,7 +1260,7 @@ class OrchestrationApp:
                 f"source_kind={dispatch_spec.source_kind}",
                 prompt_bundle_ref,
             ),
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             prompt_bundle_path="",  # placeholder; filled after prepare()
             runner_prompt_path="",  # placeholder; filled after prepare()
             request_mode=request_mode,
@@ -1240,7 +1283,7 @@ class OrchestrationApp:
             bundle=prompt_bundle,
             artifact_paths=artifact_paths,
             role_id=dispatch_spec.role_id,
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             runner=dispatch_spec.runner,
             output_contract=dispatch_spec.output_contract,
         )
@@ -1251,7 +1294,7 @@ class OrchestrationApp:
             role=dispatch_spec.role_id,
             runner=dispatch_spec.runner,
             work_refs=request.work_refs,
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             prompt_bundle_path=artifact_paths.prompt_bundle_path,
             runner_prompt_path=artifact_paths.runner_prompt_path,
             request_mode=request_mode,
@@ -1273,6 +1316,7 @@ class OrchestrationApp:
         """Start a drive-scoped step child run through the real runtime."""
 
         prompt_bundle = self._render_validated_prompt_bundle(dispatch_spec)
+        agent_id = self._agent_id_for_dispatch(dispatch_spec)
 
         blocked, block_reason = self._is_dispatch_blocked_by_gate()
         if blocked:
@@ -1310,7 +1354,7 @@ class OrchestrationApp:
                 f"source_kind={dispatch_spec.source_kind}",
                 prompt_bundle_ref,
             ),
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             prompt_bundle_path="",
             runner_prompt_path="",
             request_mode=request_mode,
@@ -1330,7 +1374,7 @@ class OrchestrationApp:
             bundle=prompt_bundle,
             artifact_paths=artifact_paths,
             role_id=dispatch_spec.role_id,
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             runner=dispatch_spec.runner,
             output_contract=dispatch_spec.output_contract,
         )
@@ -1340,7 +1384,7 @@ class OrchestrationApp:
             role=dispatch_spec.role_id,
             runner=dispatch_spec.runner,
             work_refs=request.work_refs,
-            agent_id=dispatch_spec.role_id,
+            agent_id=agent_id,
             prompt_bundle_path=artifact_paths.prompt_bundle_path,
             runner_prompt_path=artifact_paths.runner_prompt_path,
             request_mode=request_mode,
@@ -1377,6 +1421,11 @@ class OrchestrationApp:
                 f"{dispatch_spec.execution_context!r}"
             )
         return prompt_bundle
+
+    def _agent_id_for_dispatch(self, dispatch_spec: DispatchSpec) -> str:
+        """Return concrete runner agent/persona for a role-profile dispatch."""
+
+        return self._dispatch_coordinator.role_registry.get(dispatch_spec.role_id).agent_id
 
     def _artifact_root_for_run(self, run_id: str) -> Path:
         """Resolve the artifact root path for a run.
@@ -2074,6 +2123,7 @@ class OrchestrationApp:
         to implement the four drive-surface entry points.
         """
         from vectl.orchestration.control import PlanAwareControl
+        from vectl.orchestration.core_adapter import PlanPlannerMutationApplier
 
         if not isinstance(self._control, PlanAwareControl):
             raise TypeError(f"drive requires PlanAwareControl; got {type(self._control).__name__}")
@@ -2086,6 +2136,7 @@ class OrchestrationApp:
             control_channel=self._control_channel(),
             child_run_launcher=self._launch_drive_step_child_run,
             child_run_canceller=self._cancel_drive_child_run,
+            planner_mutation_applier=PlanPlannerMutationApplier(self._config.plan_path),
             max_parallelism=4,
         )
 
@@ -2131,7 +2182,13 @@ class OrchestrationApp:
         Returns:
             DriveLoopResult capturing the terminal or paused state.
         """
-        return self._drive_driver().run_drive_loop(drive_id)
+        result = self._drive_driver().run_drive_loop(drive_id)
+        if result.status in TERMINAL_DRIVE_STATUSES:
+            self._cleanup_drive_workspaces_for_terminal_status(
+                drive_id=drive_id,
+                terminal_status=result.status,
+            )
+        return result
 
     def run_drive_foreground(
         self,
@@ -2153,10 +2210,20 @@ class OrchestrationApp:
         """
 
         start_time = time.time()
-        known_child_run_ids: set[str] = set()
+        # Foreground supervision may attach to an already-active drive.  Seed
+        # the progress cursor with persisted child runs so resumed supervision
+        # does not replay historical runs as fresh ``child_dispatched`` events.
+        # Any child launched by the first loop pass below will not be in this
+        # set yet and will still be reported normally.
+        known_child_run_ids: set[str] = {
+            child.run_id for child in self.drive_runs(drive_id=drive_id)
+        }
         last_snapshot_at = 0.0
         last_child_heartbeat_at: dict[str, float] = {}
         last_workspace_change_count: dict[str, int] = {}
+        barrier_idle_key: tuple[str, str, tuple[str, ...], str] | None = None
+        barrier_idle_passes = 0
+        agent_recovery_attempted_keys: set[tuple[str, str, tuple[str, ...], str]] = set()
 
         initial_status = self.drive_status(drive_id=drive_id)
         self._emit_drive_progress_event(
@@ -2196,13 +2263,31 @@ class OrchestrationApp:
             )
 
             if self._foreground_drive_should_exit(status):
-                final_result = self._drive_status_to_loop_result(status)
-                self._emit_terminal_drive_progress(
-                    progress_callback=progress_callback,
-                    result=final_result,
-                    started_at=start_time,
-                )
-                return final_result
+                agent_recovery_key = self._foreground_agent_recovery_key(last_result)
+                if (
+                    agent_recovery_key is not None
+                    and agent_recovery_key not in agent_recovery_attempted_keys
+                ):
+                    agent_recovery_attempted_keys.add(agent_recovery_key)
+                    pass
+                elif self._foreground_should_continue_after_control_consumption(
+                    status=status,
+                    last_result=last_result,
+                ):
+                    pass
+                else:
+                    final_result = self._drive_status_to_loop_result(status)
+                    if final_result.status in TERMINAL_DRIVE_STATUSES:
+                        self._cleanup_drive_workspaces_for_terminal_status(
+                            drive_id=drive_id,
+                            terminal_status=final_result.status,
+                        )
+                    self._emit_terminal_drive_progress(
+                        progress_callback=progress_callback,
+                        result=final_result,
+                        started_at=start_time,
+                    )
+                    return final_result
 
             if status.active_child_run_ids:
                 collected = self._collect_drive_child_runs(
@@ -2224,28 +2309,69 @@ class OrchestrationApp:
                 time.sleep(max(0.1, poll_interval_seconds))
                 last_result = self.run_drive_loop(drive_id)
                 if self._foreground_loop_result_should_exit(last_result):
+                    agent_recovery_key = self._foreground_agent_recovery_key(last_result)
+                    if (
+                        agent_recovery_key is not None
+                        and agent_recovery_key not in agent_recovery_attempted_keys
+                    ):
+                        agent_recovery_attempted_keys.add(agent_recovery_key)
+                        continue
+                    if last_result.status in TERMINAL_DRIVE_STATUSES:
+                        self._cleanup_drive_workspaces_for_terminal_status(
+                            drive_id=drive_id,
+                            terminal_status=last_result.status,
+                        )
                     self._emit_terminal_drive_progress(
                         progress_callback=progress_callback,
                         result=last_result,
                         started_at=start_time,
                     )
                     return last_result
+                barrier_idle_key, barrier_idle_passes, stalled_result = (
+                    self._track_barrier_idle_result(
+                        result=last_result,
+                        prior_key=barrier_idle_key,
+                        prior_passes=barrier_idle_passes,
+                    )
+                )
+                if stalled_result is not None:
+                    return stalled_result
                 continue
 
             last_result = self.run_drive_loop(drive_id)
             if self._foreground_loop_result_should_exit(last_result):
+                agent_recovery_key = self._foreground_agent_recovery_key(last_result)
+                if (
+                    agent_recovery_key is not None
+                    and agent_recovery_key not in agent_recovery_attempted_keys
+                ):
+                    agent_recovery_attempted_keys.add(agent_recovery_key)
+                    continue
+                if last_result.status in TERMINAL_DRIVE_STATUSES:
+                    self._cleanup_drive_workspaces_for_terminal_status(
+                        drive_id=drive_id,
+                        terminal_status=last_result.status,
+                    )
                 self._emit_terminal_drive_progress(
                     progress_callback=progress_callback,
                     result=last_result,
                     started_at=start_time,
                 )
                 return last_result
+            barrier_idle_key, barrier_idle_passes, stalled_result = self._track_barrier_idle_result(
+                result=last_result,
+                prior_key=barrier_idle_key,
+                prior_passes=barrier_idle_passes,
+            )
+            if stalled_result is not None:
+                return stalled_result
+            if last_result.barrier is not None:
+                time.sleep(max(0.1, poll_interval_seconds))
 
     @staticmethod
     def _foreground_drive_should_exit(status: DriveStatusResult) -> bool:
         return status.status in {
             "paused",
-            "replanning",
             "blocked_operator",
             "completed",
             "halted",
@@ -2257,14 +2383,99 @@ class OrchestrationApp:
     def _foreground_loop_result_should_exit(result: DriveLoopResult) -> bool:
         return result.status in {
             "paused",
-            "resolving",
-            "replanning",
             "blocked_operator",
             "completed",
             "halted",
             "failed_unrecoverable",
             "stopped",
-        } or result.barrier is not None
+        }
+
+    @staticmethod
+    def _foreground_should_continue_after_control_consumption(
+        *,
+        status: DriveStatusResult,
+        last_result: DriveLoopResult,
+    ) -> bool:
+        """Let foreground supervision evaluate once after consuming unpause.
+
+        ``run_drive_loop`` intentionally returns immediately after applying a
+        drive control message so the consumption summary is not overwritten.
+        In foreground mode, an unpause consumed while a runtime barrier remains
+        should be followed by the next control evaluation in the same process;
+        otherwise operators must run ``vectl orch drive`` twice after unpause.
+        """
+
+        if status.status != "blocked_operator" or last_result.status != "blocked_operator":
+            return False
+        if not last_result.summary.startswith("operator unpause consumed:"):
+            return False
+        return status.summary == last_result.summary
+
+    @staticmethod
+    def _foreground_agent_recovery_key(
+        result: DriveLoopResult,
+    ) -> tuple[str, str, tuple[str, ...], str] | None:
+        """Return a one-shot key when a blocked drive should get resolver help."""
+
+        if result.status != "blocked_operator":
+            return None
+        if result.barrier is None or not result.barrier.case_ids:
+            return None
+        if result.barrier.reason == "operator_pause":
+            return None
+        summary_lower = result.summary.lower()
+        if any(
+            token in summary_lower
+            for token in (
+                "resolver requires operator",
+                "planner requires operator intervention",
+                "operator pause consumed",
+                "operator stop consumed",
+                "agent-assisted recovery skipped",
+                "agent-assisted recovery unavailable",
+            )
+        ):
+            return None
+        return (
+            result.status,
+            result.barrier.reason,
+            result.barrier.case_ids,
+            result.summary[:160],
+        )
+
+    @staticmethod
+    def _track_barrier_idle_result(
+        *,
+        result: DriveLoopResult,
+        prior_key: tuple[str, str, tuple[str, ...], str] | None,
+        prior_passes: int,
+    ) -> tuple[tuple[str, str, tuple[str, ...], str] | None, int, DriveLoopResult | None]:
+        if result.barrier is None or result.status not in {"resolving", "replanning"}:
+            return None, 0, None
+        key = (
+            result.status,
+            result.barrier.reason,
+            result.barrier.case_ids,
+            result.summary,
+        )
+        passes = prior_passes + 1 if key == prior_key else 1
+        if passes < 3:
+            return key, passes, None
+        return (
+            key,
+            passes,
+            DriveLoopResult(
+                drive_id=result.drive_id,
+                status=result.status,
+                completed_steps=result.completed_steps,
+                active_child_run_ids=result.active_child_run_ids,
+                barrier=result.barrier,
+                summary=(
+                    "automation stopped: barrier did not progress after "
+                    f"{passes} passes; {result.summary}"
+                ),
+            ),
+        )
 
     @staticmethod
     def _drive_status_to_loop_result(status: DriveStatusResult) -> DriveLoopResult:
@@ -2364,7 +2575,9 @@ class OrchestrationApp:
     ) -> None:
         event_type = "drive_terminal"
         blocked_statuses = {"resolving", "replanning", "blocked_operator"}
-        if result.barrier is not None or result.status in blocked_statuses:
+        if result.status not in TERMINAL_DRIVE_STATUSES and (
+            result.barrier is not None or result.status in blocked_statuses
+        ):
             event_type = "drive_blocked"
         self._emit_drive_progress_event(
             progress_callback,
@@ -2495,11 +2708,15 @@ class OrchestrationApp:
 
         context = self._drive_child_run_contexts.get(child_run_id)
         if context is None:
+            snapshots = self.refresh_snapshots(agent=self._config.default_agent)
             resolution_case = ResolutionCase(
                 case_id=f"case-{generate_run_id()}",
                 case_source="runtime_failure",
                 reason="drive child finalization context missing",
                 summary=execution_result.output_summary,
+                core=snapshots.core,
+                roster=snapshots.roster,
+                runtime=snapshots.runtime,
                 blocked_step_ids=(execution_result.step_id,),
             )
             self._emit_drive_progress_event(
@@ -2622,14 +2839,68 @@ class OrchestrationApp:
             )
         )
         child_ref = store.child_run_by_id(child_run_id)
-        if child_ref is not None and child_ref.workspace:
-            try:
-                self._runtime.cleanup_child_run(child_ref.workspace, force=False)
-            except Exception as exc:
-                self._append_log(
-                    f"drive_id={drive_id} run_id={child_run_id} "
-                    f"workspace_cleanup_skipped reason={exc}"
-                )
+        if child_ref is not None:
+            self._cleanup_child_run_worktree(child_ref=child_ref, force=False)
+
+    def _cleanup_drive_workspaces_for_terminal_status(
+        self,
+        *,
+        drive_id: str,
+        terminal_status: str,
+    ) -> None:
+        """Sweep child-run worktrees when a drive reaches a terminal state."""
+
+        policy = self._effective_orchestration_config().runtime.cleanup_policy
+        if policy == "never":
+            return
+        store = self._drive_store()
+        for child_ref in store.child_runs_for_drive(drive_id):
+            if child_ref.status in {"pending", "running"}:
+                continue
+            if policy == "on-success" and child_ref.status != "success":
+                continue
+            self._cleanup_child_run_worktree(
+                child_ref=child_ref,
+                force=(policy == "always"),
+                terminal_status=terminal_status,
+            )
+
+    def _cleanup_child_run_worktree(
+        self,
+        *,
+        child_ref: ChildRunRef,
+        force: bool,
+        terminal_status: str | None = None,
+    ) -> None:
+        """Clean a child worktree by live workspace id, falling back to persisted path."""
+
+        if not child_ref.workspace and not child_ref.artifact_root:
+            return
+        try:
+            if child_ref.workspace:
+                self._runtime.cleanup_child_run(child_ref.workspace, force=force)
+                return
+        except Exception as exc:
+            self._append_log(
+                f"drive_id={child_ref.drive_id} run_id={child_ref.run_id} "
+                f"workspace_cleanup_by_id_skipped reason={exc}"
+            )
+            if not force and "not found" not in str(exc).lower():
+                return
+        if not child_ref.artifact_root:
+            return
+        try:
+            self._runtime.cleanup_worktree_path(
+                step_id=child_ref.step_id or child_ref.run_id,
+                worktree_path=Path(child_ref.artifact_root),
+                force=force,
+            )
+        except Exception as exc:
+            suffix = f" terminal_status={terminal_status}" if terminal_status else ""
+            self._append_log(
+                f"drive_id={child_ref.drive_id} run_id={child_ref.run_id} "
+                f"workspace_cleanup_by_path_skipped{suffix} reason={exc}"
+            )
 
     def _record_drive_child_failure(
         self,
@@ -2694,6 +2965,21 @@ class OrchestrationApp:
             DriveRecoverResult with recovery outcomes.
         """
         return self._drive_driver().recover_drive(drive_id, dry_run=dry_run)
+
+    def attempt_agent_assisted_drive_recovery(
+        self,
+        drive_id: str,
+        *,
+        reason: str = "",
+        max_attempts: int = 2,
+    ) -> DriveLoopResult:
+        """Try resolver/planner automation before surfacing a human stop."""
+
+        return self._drive_driver().attempt_agent_assisted_recovery(
+            drive_id,
+            reason=reason,
+            max_attempts=max_attempts,
+        )
 
     def drive_status(self, drive_id: str) -> DriveStatusResult:
         """Inspect current drive status.
@@ -4202,7 +4488,7 @@ class OrchestrationApp:
                     run_id=record.run_id,
                     step_id=record.step_id,
                     status=record.status,
-                    output_summary=record.output_summary,
+                    output_summary=summarize_plan_evidence(record.output_summary),
                     source=record.source,
                     legacy_run_id=record.legacy_run_id,
                     legacy_migration_state=record.legacy_migration_state,
@@ -4790,7 +5076,6 @@ class OrchestrationApp:
             ChildRunScopeError: If child_run_id does not belong to the drive.
             EventCorruptionError: If the event stream cannot be parsed.
         """
-        from vectl.orchestration.run_store import DriveStoreError
 
         store = self._drive_store()
         if child_run_id is not None:
@@ -5211,11 +5496,98 @@ def _iter_json_values_from_text(text: str):
         index += max(end, 1)
 
 
+_STRUCTURED_REVIEW_PROTOCOL_KEYS = frozenset(
+    {"type", "sessionID", "timestamp", "part", "parts", "message", "messages", "data"}
+)
+
+
+def _strip_runner_markdown_fence(raw_output: str) -> str:
+    stripped = raw_output.strip()
+    if not stripped.startswith("```"):
+        return stripped
+    lines = stripped.splitlines()
+    if len(lines) < 3 or not lines[-1].strip().startswith("```"):
+        return stripped
+    return "\n".join(lines[1:-1]).strip()
+
+
+def _looks_like_structured_review_payload(value: dict[str, object]) -> bool:
+    if _STRUCTURED_REVIEW_PROTOCOL_KEYS.intersection(value.keys()):
+        return False
+    if value.get("review_outcome") not in {
+        "pass",
+        "needs_fix",
+        "needs_replan",
+        "operator_required",
+    }:
+        return False
+    return isinstance(value.get("summary"), str)
+
+
+def _find_structured_review_payload(
+    value: object,
+    *,
+    parse_strings: bool = True,
+) -> dict[str, object] | None:
+    """Find a StructuredReviewResult-shaped payload inside runner values."""
+
+    if isinstance(value, dict):
+        candidate = cast(dict[str, object], value)
+        if _looks_like_structured_review_payload(candidate):
+            return candidate
+        for nested in value.values():
+            found = _find_structured_review_payload(nested, parse_strings=parse_strings)
+            if found is not None:
+                return found
+        return None
+    if isinstance(value, list | tuple):
+        for nested in value:
+            found = _find_structured_review_payload(nested, parse_strings=parse_strings)
+            if found is not None:
+                return found
+        return None
+    if isinstance(value, str) and parse_strings:
+        return _extract_structured_review_payload(value)
+    return None
+
+
+def _extract_structured_review_payload(raw_output: str) -> dict[str, object] | None:
+    """Extract a structured-review payload from JSON/YAML or OpenCode envelopes."""
+
+    candidate = _strip_runner_markdown_fence(raw_output)
+    if not candidate:
+        return None
+
+    try:
+        parsed = json.loads(candidate)
+    except json.JSONDecodeError:
+        parsed = None
+    if parsed is not None:
+        found = _find_structured_review_payload(parsed, parse_strings=False)
+        if found is not None:
+            return found
+
+    for parsed_value in _iter_json_values_from_text(candidate):
+        found = _find_structured_review_payload(parsed_value)
+        if found is not None:
+            return found
+
+    try:
+        parsed_yaml = yaml.safe_load(candidate)
+    except yaml.YAMLError:
+        return None
+    return _find_structured_review_payload(parsed_yaml, parse_strings=False)
+
+
 def _find_resolution_report_payload(value: object) -> dict[str, object] | None:
     """Find a ResolutionReport-shaped payload inside nested runner values."""
 
     if isinstance(value, dict):
-        if isinstance(value.get("status"), str) and isinstance(value.get("summary"), str):
+        try:
+            validate_resolution_report_payload(value)
+        except ValueError:
+            pass
+        else:
             return cast(dict[str, object], value)
         for nested in value.values():
             found = _find_resolution_report_payload(nested)
@@ -5335,6 +5707,7 @@ def build_orchestration_app(
                 description=self._case_description(case),
                 refs=case.artifact_refs,
             )
+            agent_id = self._dispatch_coordinator.role_registry.get(dispatch_spec.role_id).agent_id
             resolver_step_id = dispatch_spec.step_id or dispatch_spec.source_id
             resolver_run_id = f"resolver-{generate_run_id()}"
             prompt_bundle = self._dispatch_coordinator.render_prompt_bundle(dispatch_spec)
@@ -5353,7 +5726,7 @@ def build_orchestration_app(
                     f"source_kind={dispatch_spec.source_kind}",
                     *case.artifact_refs,
                 ),
-                agent_id=dispatch_spec.role_id,
+                agent_id=agent_id,
                 prompt_bundle_path="",
                 runner_prompt_path="",
                 request_mode="start",
@@ -5373,7 +5746,7 @@ def build_orchestration_app(
                     bundle=prompt_bundle,
                     artifact_paths=artifact_paths,
                     role_id=dispatch_spec.role_id,
-                    agent_id=dispatch_spec.role_id,
+                    agent_id=agent_id,
                     runner=dispatch_spec.runner,
                     output_contract=dispatch_spec.output_contract,
                 )
@@ -5382,7 +5755,7 @@ def build_orchestration_app(
                     role=dispatch_spec.role_id,
                     runner=dispatch_spec.runner,
                     work_refs=request.work_refs,
-                    agent_id=dispatch_spec.role_id,
+                    agent_id=agent_id,
                     prompt_bundle_path=artifact_paths.prompt_bundle_path,
                     runner_prompt_path=artifact_paths.runner_prompt_path,
                     request_mode="start",
@@ -5405,6 +5778,7 @@ def build_orchestration_app(
                     time.sleep(0.01)
                     continue
                 return self._result_to_payload(
+                    case=case,
                     result=result,
                     execution_id=execution_id,
                     role_id=dispatch_spec.role_id,
@@ -5432,6 +5806,7 @@ def build_orchestration_app(
         def _result_to_payload(
             self,
             *,
+            case: ResolutionCase,
             result: ExecutionResult,
             execution_id: str,
             role_id: str,
@@ -5452,6 +5827,13 @@ def build_orchestration_app(
 
             payload = _extract_resolution_report_payload(result.output_summary)
             if payload is None:
+                fallback = self._fallback_unstructured_success_payload(
+                    case=case,
+                    execution_id=execution_id,
+                    role_id=role_id,
+                )
+                if fallback is not None:
+                    return fallback
                 return {
                     "status": "operator_required",
                     "summary": (
@@ -5478,6 +5860,45 @@ def build_orchestration_app(
                     "operator_message": "Review resolver output formatting and retry.",
                 }
             return payload
+
+        def _fallback_unstructured_success_payload(
+            self,
+            *,
+            case: ResolutionCase,
+            execution_id: str,
+            role_id: str,
+        ) -> dict[str, object] | None:
+            """Unblock stale drive cases when resolver exits cleanly without JSON.
+
+            This is intentionally narrow: it only applies to runtime-failure
+            cases that have no blocked step references and whose drive already
+            has runnable frontier work. In that state, keeping the barrier would
+            deadlock normal drive progress behind an unstructured resolver reply.
+            """
+
+            drive = case.drive
+            if case.case_source not in {"runtime_failure", "unknown"}:
+                return None
+            if drive is None or not drive.frontier_step_ids:
+                return None
+            if set(case.core.in_progress_step_ids).intersection(drive.frontier_step_ids):
+                return None
+            if set(case.blocked_step_ids).intersection(drive.frontier_step_ids):
+                return None
+            return {
+                "status": "unblocked",
+                "summary": (
+                    "Resolver produced unstructured output for a stale runtime case; "
+                    "blocked refs do not intersect the runnable drive frontier."
+                ),
+                "evidence_refs": (
+                    f"resolver_execution_id={execution_id}",
+                    f"resolver_role_id={role_id}",
+                    f"case_id={case.case_id}",
+                    f"frontier_step_ids={drive.frontier_step_ids}",
+                ),
+                "operator_message": None,
+            }
 
     class GatewayEnforcedResolverInvocation(ResolverInvocationSurface):
         def __init__(

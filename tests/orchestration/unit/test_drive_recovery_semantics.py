@@ -19,8 +19,9 @@ These tests verify that resume/recover:
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -99,11 +100,23 @@ def _runtime(
 class _FakeCoreAdapter:
     snapshot_value: CoreSnapshot
     calls: int = 0
+    deferred_steps: tuple[str, ...] = ()
 
     def snapshot(self, agent: str | None = None) -> CoreSnapshot:
         _ = agent
         self.calls += 1
-        return self.snapshot_value
+        deferred = set(self.deferred_steps)
+        return CoreSnapshot(
+            plan_complete=self.snapshot_value.plan_complete,
+            claimable_step_ids=tuple(
+                dict.fromkeys((*self.snapshot_value.claimable_step_ids, *self.deferred_steps))
+            ),
+            in_progress_step_ids=tuple(
+                sid for sid in self.snapshot_value.in_progress_step_ids if sid not in deferred
+            ),
+            blocked_step_ids=self.snapshot_value.blocked_step_ids,
+            unresolved_reasons=self.snapshot_value.unresolved_reasons,
+        )
 
     def step_isolation(self, step_id: str):
         raise NotImplementedError(f"test double: step_isolation not implemented: {step_id}")
@@ -123,7 +136,7 @@ class _FakeCoreAdapter:
         )
 
     def defer_step(self, step_id: str) -> None:
-        raise NotImplementedError(f"test double: defer_step not implemented: {step_id}")
+        self.deferred_steps = (*self.deferred_steps, step_id)
 
 
 @dataclass
@@ -158,6 +171,7 @@ def _make_driver(
     tmp_path: Path,
     core: CoreSnapshot | None = None,
     max_parallelism: int = 4,
+    child_run_launcher: Any | None = None,
 ) -> DriveDriver:
     store = DriveStore(store_root=tmp_path)
     control = _make_control(core)
@@ -165,6 +179,7 @@ def _make_driver(
         drive_store=store,
         core_adapter=control.sources.core_adapter,
         control=control,
+        child_run_launcher=child_run_launcher,
         max_parallelism=max_parallelism,
     )
 
@@ -200,6 +215,61 @@ class TestBarrierStatusMapping:
 
     def test_recovery_gate_maps_to_resolving(self) -> None:
         assert _barrier_status("recovery_gate") == "resolving"
+
+
+class TestDriveLaunchFailureBarrier:
+    """Dispatch launch failures become bounded resolver/operator work."""
+
+    def test_launch_failure_records_runtime_case_and_releases_claim(self, tmp_path: Path) -> None:
+        def launcher(drive_id: str, step_id: str, role_id: str) -> ChildRunRef:
+            _ = drive_id, step_id, role_id
+            raise RuntimeError("runner binary missing")
+
+        driver = _make_driver(
+            tmp_path,
+            core=_core(claimable=("step.b",), in_progress=("step.b",)),
+            child_run_launcher=launcher,
+        )
+        drive_id = _start_drive(driver)
+
+        result = driver.run_drive_loop(drive_id)
+        persisted = driver._drive_store.replay_drive_state(drive_id)
+
+        assert result.status == "resolving"
+        assert result.barrier is not None
+        assert result.barrier.reason == "runtime_failure"
+        assert persisted is not None
+        assert persisted.blocked_case_ids == result.barrier.case_ids
+        assert "step.b" in driver._core_adapter.deferred_steps
+        assert driver._drive_store.retry_attempt_count(
+            drive_id=drive_id,
+            step_id="step.b",
+            failure_class="launch_failure",
+        ) == 1
+
+    def test_launch_failure_retry_limit_blocks_operator(self, tmp_path: Path) -> None:
+        def launcher(drive_id: str, step_id: str, role_id: str) -> ChildRunRef:
+            _ = drive_id, step_id, role_id
+            raise RuntimeError("runner binary missing")
+
+        driver = _make_driver(
+            tmp_path,
+            core=_core(claimable=("step.b",), in_progress=("step.b",)),
+            child_run_launcher=launcher,
+        )
+        drive_id = _start_drive(driver)
+
+        result = driver.run_drive_loop(drive_id)
+        for _ in range(2):
+            persisted = driver._drive_store.replay_drive_state(drive_id)
+            assert persisted is not None
+            driver._drive_store.save_drive(
+                replace(persisted, status="running", barrier=None, blocked_case_ids=())
+            )
+            result = driver.run_drive_loop(drive_id)
+
+        assert result.status == "blocked_operator"
+        assert "retry limit" in result.summary
 
 
 # ------------------------------------------------------------------
@@ -506,7 +576,7 @@ class TestRecoverStaleRunningState:
         This tests the core logic path by injecting a mock that returns
         stale liveness for a specific run ID.
         """
-        driver = _make_driver(tmp_path)
+        driver = _make_driver(tmp_path, core=_core(in_progress=("step.b",)))
         drive_id = _start_drive(driver)
 
         store = driver._drive_store
@@ -540,6 +610,64 @@ class TestRecoverStaleRunningState:
 
         # There should be a conflict note about this.
         assert any("stale" in note.lower() for note in result.conflict_resolutions)
+
+        persisted_child = store.child_run_by_id("run_stale_002")
+        assert persisted_child is not None
+        assert persisted_child.status == "fail"
+        assert store.retry_attempt_count(
+            drive_id=drive_id,
+            step_id="step.b",
+            failure_class="stale_child",
+        ) == 1
+        replayed = store.replay_drive_state(drive_id)
+        assert "run_stale_002" not in replayed.active_child_run_ids
+        assert "step.b" in driver._core_adapter.deferred_steps
+
+    def test_recover_blocks_operator_after_repeated_stale_child_failures(
+        self, tmp_path: Path
+    ) -> None:
+        """Repeated stale child failures stop auto-retry before infinite loops."""
+        driver = _make_driver(tmp_path, core=_core(in_progress=("step.b",)))
+        drive_id = _start_drive(driver)
+        store = driver._drive_store
+
+        for index in range(2):
+            store.save_child_run(
+                ChildRunRef(
+                    run_id=f"run_prior_fail_{index}",
+                    drive_id=drive_id,
+                    kind="step",
+                    step_id="step.b",
+                    status="fail",
+                    workspace=f".vectl/worktrees/step.b-{index}",
+                )
+            )
+        store.save_child_run(
+            ChildRunRef(
+                run_id="run_stale_003",
+                drive_id=drive_id,
+                kind="step",
+                step_id="step.b",
+                status="running",
+                workspace=".vectl/worktrees/step.b-3",
+            )
+        )
+
+        def mock_liveness(run_id: str, *, stale_threshold_seconds: float = 90.0) -> str:
+            _ = stale_threshold_seconds
+            return "stale" if run_id == "run_stale_003" else "unknown"
+
+        driver._check_child_run_liveness = mock_liveness  # type: ignore[assignment]
+
+        result = driver.recover_drive(drive_id)
+
+        assert result.status == "blocked_operator"
+        assert "run_stale_003" in result.failed_child_run_ids
+        assert any("retry limit" in note.lower() for note in result.conflict_resolutions)
+        persisted_child = store.child_run_by_id("run_stale_003")
+        assert persisted_child is not None
+        assert persisted_child.status == "fail"
+        assert "step.b" in driver._core_adapter.deferred_steps
 
 
 # ------------------------------------------------------------------
@@ -696,6 +824,122 @@ class TestRecoverFrontierRecompute:
         assert updated is not None
         assert "step.c" not in updated.frontier_step_ids
         assert "step.a" in updated.frontier_step_ids
+
+    def test_recover_releases_orphaned_drive_claim(self, tmp_path: Path) -> None:
+        """Recovery releases claimed drive steps with no active child left."""
+        driver = _make_driver(tmp_path, core=_core(in_progress=("step.claimed",)))
+        drive_id = _start_drive(driver)
+
+        store = driver._drive_store
+        record = store.replay_drive_state(drive_id)
+        assert record is not None
+        store.save_drive(
+            DriveRecord(
+                drive_id=record.drive_id,
+                plan_path=record.plan_path,
+                status="running",
+                started_at=record.started_at,
+                updated_at=record.updated_at,
+                agent=record.agent,
+                max_parallelism=record.max_parallelism,
+                active_child_run_ids=(),
+                frontier_step_ids=("step.claimed",),
+                blocked_case_ids=(),
+                barrier=None,
+                operator_pause_state="active",
+                summary="claimed without active child",
+            )
+        )
+        store.save_child_run(
+            ChildRunRef(
+                run_id="run_done_but_unclosed",
+                drive_id=drive_id,
+                kind="step",
+                step_id="step.claimed",
+                status="transport_error",
+                workspace=".vectl/worktrees/step.claimed",
+            )
+        )
+
+        result = driver.recover_drive(drive_id)
+
+        assert "step.claimed" in driver._core_adapter.deferred_steps
+        assert any("orphaned drive claim" in note for note in result.conflict_resolutions)
+        updated = store.load_drive(drive_id)
+        assert updated is not None
+        assert "step.claimed" in updated.frontier_step_ids
+
+    def test_recover_releases_historical_orphaned_drive_claim(self, tmp_path: Path) -> None:
+        """Recovery releases claimed drive-owned steps missing from stale frontier."""
+        driver = _make_driver(tmp_path, core=_core(in_progress=("step.historical",)))
+        drive_id = _start_drive(driver)
+
+        store = driver._drive_store
+        record = store.replay_drive_state(drive_id)
+        assert record is not None
+        store.save_drive(
+            DriveRecord(
+                drive_id=record.drive_id,
+                plan_path=record.plan_path,
+                status="running",
+                started_at=record.started_at,
+                updated_at=record.updated_at,
+                agent=record.agent,
+                max_parallelism=record.max_parallelism,
+                active_child_run_ids=(),
+                frontier_step_ids=("step.next",),
+                blocked_case_ids=(),
+                barrier=None,
+                operator_pause_state="active",
+                summary="historical claimed child without active run",
+            )
+        )
+        store.save_child_run(
+            ChildRunRef(
+                run_id="run_historical_done_but_unclosed",
+                drive_id=drive_id,
+                kind="step",
+                step_id="step.historical",
+                status="success",
+                workspace=".vectl/worktrees/step.historical",
+            )
+        )
+
+        result = driver.recover_drive(drive_id)
+
+        assert "step.historical" in driver._core_adapter.deferred_steps
+        assert any("step.historical" in note for note in result.conflict_resolutions)
+
+    def test_recover_releases_claim_persisted_before_child_ref(self, tmp_path: Path) -> None:
+        """Recovery releases a drive-agent claim even when no child ref was saved."""
+        driver = _make_driver(tmp_path, core=_core(in_progress=("step.pre_child_ref",)))
+        drive_id = _start_drive(driver)
+
+        store = driver._drive_store
+        record = store.replay_drive_state(drive_id)
+        assert record is not None
+        store.save_drive(
+            DriveRecord(
+                drive_id=record.drive_id,
+                plan_path=record.plan_path,
+                status="running",
+                started_at=record.started_at,
+                updated_at=record.updated_at,
+                agent=record.agent,
+                max_parallelism=record.max_parallelism,
+                active_child_run_ids=(),
+                frontier_step_ids=("step.already.done",),
+                blocked_case_ids=(),
+                barrier=None,
+                operator_pause_state="active",
+                summary="claim persisted before child ref",
+            )
+        )
+
+        result = driver.recover_drive(drive_id)
+
+        assert "step.pre_child_ref" in driver._core_adapter.deferred_steps
+        assert any("step.pre_child_ref" in note for note in result.conflict_resolutions)
 
 
 # ------------------------------------------------------------------

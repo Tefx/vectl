@@ -41,6 +41,7 @@ from vectl.orchestration.contracts import (
     RosterSnapshot,
     RuntimeSnapshot,
 )
+from vectl.orchestration.core_adapter import PlannerMutationResult
 from vectl.orchestration.driver import (
     DriveDriver,
     validate_drive_transition,
@@ -406,6 +407,32 @@ class TestDefaultReviewGate:
         assert result.planner_request.reason == "add prerequisite"
         assert result.planner_request.affected_steps == ("step.a", "step.pre")
 
+    def test_needs_replan_preserves_planner_mutations(self) -> None:
+        """Gate failure can carry concrete vectl facade mutations for replan."""
+        gate = DefaultReviewGate()
+        result = gate.evaluate(
+            step_id="phase.gate",
+            execution_result=ExecutionResult(
+                step_id="phase.gate",
+                status="success",
+                output_summary=(
+                    '{"review_outcome":"needs_replan","summary":"missing evidence step",'
+                    '"planner_request":{"reason":"add evidence backfill",'
+                    '"affected_steps":["phase.gate"],'
+                    '"mutations":[{"action":"add-step","reason":"backfill proof",'
+                    '"arguments":{"phase_id":"phase","step_id":"phase.backfill",'
+                    '"name":"Backfill gate evidence"}}]}}'
+                ),
+            ),
+        )
+
+        assert result.status == "needs_replan"
+        assert result.planner_request is not None
+        assert len(result.planner_request.mutations) == 1
+        mutation = result.planner_request.mutations[0]
+        assert mutation.action == "add-step"
+        assert mutation.arguments["step_id"] == "phase.backfill"
+
 
 class TestReviewOutcomeBarrierRecovery:
     """Test that barrier recovery after review outcomes follows RFC rules.
@@ -558,6 +585,80 @@ class TestReviewOutcomeWithDriverIntegration:
         assert saved_drive.summary.startswith(
             "post-execution review passed and step completed"
         )
+
+    def test_terminal_needs_replan_applies_planner_mutation(self) -> None:
+        """A failed gate with planner_request must enter the planner path, not stop."""
+        store = MagicMock()
+        core_adapter = MagicMock()
+        control = MagicMock()
+        run_registry = MagicMock()
+        child_run = ChildRunRef(
+            run_id="run_review_replan",
+            drive_id="drv_test",
+            kind="step",
+            status="success",
+            step_id="phase.gate",
+            artifact_root="artifacts/run_review_replan",
+        )
+
+        class FakePlannerMutationApplier:
+            def __init__(self) -> None:
+                self.apply_calls = []
+
+            def apply_bundle(self, bundle):
+                self.apply_calls.append(bundle)
+                return PlannerMutationResult(
+                    applied_count=1,
+                    applied_actions=("add-step: phase=phase step=phase.backfill",),
+                    affected_step_ids=("phase.backfill",),
+                )
+
+        planner_applier = FakePlannerMutationApplier()
+        store.replay_drive_state.return_value = _make_drive(
+            active_child_run_ids=(child_run.run_id,)
+        )
+        store.child_run_by_id.return_value = child_run
+        store.invalidate_leases_for_step.return_value = ()
+        core_adapter.snapshot.return_value = _make_core()
+        control.sources.roster.snapshot.return_value = _make_roster()
+        control.sources.runtime.snapshot.return_value = _make_runtime()
+        control.apply_planner_result.return_value = ControlDecision(
+            kind="wait",
+            reason="planner applied; waiting for refreshed frontier",
+        )
+        run_registry.by_id.return_value = RunRecord(
+            run_id=child_run.run_id,
+            step_id="phase.gate",
+            status="success",
+            artifact_root="artifacts/run_review_replan",
+            output_summary=(
+                '{"review_outcome":"needs_replan","summary":"missing gate proof",'
+                '"planner_request":{"reason":"add backfill evidence step",'
+                '"affected_steps":["phase.gate"],'
+                '"mutations":[{"action":"add-step","reason":"backfill proof",'
+                '"arguments":{"phase_id":"phase","step_id":"phase.backfill",'
+                '"name":"Backfill gate evidence"}}]}}'
+            ),
+        )
+
+        driver = DriveDriver(
+            drive_store=store,
+            core_adapter=core_adapter,
+            control=control,
+            run_registry=run_registry,
+            planner_mutation_applier=planner_applier,
+        )
+
+        result = driver.run_drive_loop("drv_test")
+
+        assert result.status == "running"
+        assert result.barrier is None
+        assert result.active_child_run_ids == ()
+        assert len(planner_applier.apply_calls) == 1
+        bundle = planner_applier.apply_calls[0]
+        assert bundle.mutations[0].action == "add-step"
+        assert bundle.mutations[0].arguments["step_id"] == "phase.backfill"
+        control.evaluate.assert_not_called()
 
     def test_control_resolve_from_review_triggers_barrier(self) -> None:
         """When review fails and control decides resolve, the driver

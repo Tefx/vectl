@@ -9,10 +9,9 @@ Authority: docs/RFC-orch-drive.md sections 8, 9, 12, 13
 Step: orch_drive_contracts.drive-types-lock
 """
 
-from dataclasses import MISSING, fields, is_dataclass
-from typing import Literal, get_args, get_origin
-
 import dataclasses
+from dataclasses import fields, is_dataclass
+from typing import Literal, Protocol, get_args, get_origin, get_type_hints
 
 import pytest
 
@@ -32,7 +31,7 @@ from vectl.orchestration.contracts import (
     PlannerRequest,
     ResolutionReport,
 )
-
+from vectl.orchestration.interfaces import PlannerAdapter
 
 # ------------------------------------------------------------------
 # DriveStatus type alias
@@ -160,6 +159,7 @@ class TestPlannerRequest:
             "affected_steps",
             "evidence_refs",
             "constraints",
+            "mutations",
         }
         actual_fields = {f.name for f in fields(PlannerRequest)}
         assert actual_fields == expected_fields, (
@@ -178,6 +178,7 @@ class TestPlannerRequest:
         assert req.affected_steps == ()
         assert req.evidence_refs == ()
         assert req.constraints == ()
+        assert req.mutations == ()
 
     def test_planner_request_full_construction(self):
         req = PlannerRequest(
@@ -185,11 +186,13 @@ class TestPlannerRequest:
             affected_steps=("core.verify",),
             evidence_refs=("artifact://review/gate_output.json",),
             constraints=("Preserve completed steps", "Do not widen scope"),
+            mutations=(PlannerMutationItem(action="add-step"),),
         )
         assert req.reason == "verification step needs a prerequisite fix"
         assert req.affected_steps == ("core.verify",)
         assert req.evidence_refs == ("artifact://review/gate_output.json",)
         assert req.constraints == ("Preserve completed steps", "Do not widen scope")
+        assert req.mutations[0].action == "add-step"
 
 
 # ------------------------------------------------------------------
@@ -283,7 +286,10 @@ class TestPlannerMutationBundle:
                         "name": "Repair generated artifact",
                         "description": "Rewrite artifact.txt with VERSION=2 and commit it.",
                     },
-                    reason="The current frontier needs an intermediate repair before verification can pass.",
+                    reason=(
+                        "The current frontier needs an intermediate repair before "
+                        "verification can pass."
+                    ),
                     safety_notes=("Do not delete existing completed steps.",),
                 ),
                 PlannerMutationItem(
@@ -739,36 +745,18 @@ class TestPlannerAdapterProtocol:
     """Test PlannerAdapter protocol (RFC-orch-drive sections 12, 13)."""
 
     def test_planner_adapter_is_protocol(self):
-        from vectl.orchestration.interfaces import PlannerAdapter
-
-        from typing import Protocol
-
         assert issubclass(PlannerAdapter, Protocol)
 
     def test_planner_adapter_has_invoke_method(self):
-        from vectl.orchestration.interfaces import PlannerAdapter
-
         assert hasattr(PlannerAdapter, "invoke")
 
     def test_planner_adapter_has_apply_method(self):
-        from vectl.orchestration.interfaces import PlannerAdapter
-
         assert hasattr(PlannerAdapter, "apply")
 
     def test_planner_adapter_invoke_return_type(self):
-        from vectl.orchestration.interfaces import PlannerAdapter
-        from vectl.orchestration.contracts import PlannerMutationBundle
-
-        from typing import get_type_hints
-
         hints = get_type_hints(PlannerAdapter.invoke)
         assert hints.get("return") is PlannerMutationBundle
 
     def test_planner_adapter_invoke_parameter_type(self):
-        from vectl.orchestration.interfaces import PlannerAdapter
-        from vectl.orchestration.contracts import PlannerRequest
-
-        from typing import get_type_hints
-
         hints = get_type_hints(PlannerAdapter.invoke)
         assert hints.get("request") is PlannerRequest

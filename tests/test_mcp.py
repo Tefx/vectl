@@ -1519,6 +1519,10 @@ class TestVectlMcpLinkedWorktreeImplicitResolution:
             "vectl.mcp_server.resolve_plan_path",
             lambda: plan_file,
         )
+        monkeypatch.setattr(
+            "vectl.mcp_core_tools.resolve_plan_path",
+            lambda: plan_file,
+        )
 
         return plan_file, linked_root
 

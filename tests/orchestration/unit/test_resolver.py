@@ -80,6 +80,37 @@ def test_parse_resolution_report_payload_returns_bounded_report() -> None:
     assert report.operator_message is None
 
 
+def test_parse_resolution_report_payload_preserves_planner_mutations() -> None:
+    payload: dict[str, object] = {
+        "status": "unblocked",
+        "summary": "planner should add evidence backfill",
+        "planner_request": {
+            "reason": "gate proof is missing",
+            "affected_steps": ["phase.gate"],
+            "mutations": [
+                {
+                    "action": "add-step",
+                    "arguments": {
+                        "phase_id": "phase",
+                        "step_id": "phase.backfill",
+                        "name": "Backfill gate evidence",
+                    },
+                    "reason": "make gate evidence auditable",
+                }
+            ],
+        },
+    }
+
+    report = parse_resolution_report_payload(payload)
+
+    assert report.planner_request is not None
+    assert report.planner_request.reason == "gate proof is missing"
+    assert len(report.planner_request.mutations) == 1
+    mutation = report.planner_request.mutations[0]
+    assert mutation.action == "add-step"
+    assert mutation.arguments["step_id"] == "phase.backfill"
+
+
 def test_parse_resolution_report_payload_rejects_unknown_fields() -> None:
     payload: dict[str, object] = {
         "status": "unblocked",

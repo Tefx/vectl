@@ -19,6 +19,7 @@ Intent: runner_level_tests
 from __future__ import annotations
 
 import json
+import sqlite3
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -498,6 +499,8 @@ class TestOpenCodeRunnerLaunch:
         assert call_args[1]["stdout"] == subprocess.PIPE
         assert call_args[1]["stderr"] == subprocess.PIPE
         assert call_args[1]["text"] is True
+        assert call_args[1]["encoding"] == "utf-8"
+        assert call_args[1]["errors"] == "replace"
 
     @patch("vectl.orchestration.runners.subprocess.Popen")
     def test_launch_raises_on_oserror(self, mock_popen: MagicMock) -> None:
@@ -674,6 +677,31 @@ class TestOpenCodeRunnerResume:
 class TestOpenCodeRunnerPoll:
     """Verify OpenCodeRunner.poll() correctly handles subprocess states."""
 
+    def _write_opencode_text_part(self, data_home: Path, session_id: str, text: str) -> None:
+        db_dir = data_home / "opencode"
+        db_dir.mkdir(parents=True)
+        connection = sqlite3.connect(db_dir / "opencode.db")
+        try:
+            connection.execute(
+                "create table part ("
+                "id text primary key, message_id text, session_id text, "
+                "time_created integer, time_updated integer, data text)"
+            )
+            connection.execute(
+                "insert into part values (?, ?, ?, ?, ?, ?)",
+                (
+                    "prt-final",
+                    "msg-final",
+                    session_id,
+                    1,
+                    1,
+                    json.dumps({"type": "text", "text": text}),
+                ),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+
     def _make_request(
         self,
         *,
@@ -763,6 +791,272 @@ class TestOpenCodeRunnerPoll:
             poll_result.output_summary
         )
         assert "sessionID" not in poll_result.output_summary
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_prefers_final_opencode_text_event(
+        self, mock_popen: MagicMock
+    ) -> None:
+        """poll() keeps final answer text instead of earlier progress text."""
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        progress_event = {
+            "type": "text",
+            "part": {"type": "text", "text": "I will inspect the case first."},
+        }
+        final_event = {
+            "type": "text",
+            "part": {
+                "type": "text",
+                "text": '{"status":"unblocked","summary":"done"}',
+            },
+        }
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = "\n".join(
+            [json.dumps(progress_event), json.dumps(final_event)]
+        )
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        assert poll_result.status == "success"
+        assert 'stdout={"status":"unblocked","summary":"done"}' in (
+            poll_result.output_summary
+        )
+        assert "I will inspect" not in poll_result.output_summary
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_extracts_report_from_long_opencode_event_stream(
+        self, mock_popen: MagicMock
+    ) -> None:
+        """poll() finds report JSON even after large tool-output events."""
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        large_tool_event = {
+            "type": "tool_use",
+            "part": {
+                "type": "tool",
+                "state": {"output": "x" * 6000},
+            },
+        }
+        final_event = {
+            "type": "text",
+            "part": {
+                "type": "text",
+                "text": '{"status":"unblocked","summary":"after tools"}',
+            },
+        }
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = "\n".join(
+            [json.dumps(large_tool_event), json.dumps(final_event)]
+        )
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        assert poll_result.status == "success"
+        assert 'stdout={"status":"unblocked","summary":"after tools"}' in (
+            poll_result.output_summary
+        )
+        assert "x" * 100 not in poll_result.output_summary
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_extracts_structured_review_payload_from_event_stream(
+        self, mock_popen: MagicMock
+    ) -> None:
+        """poll() finds StructuredReviewResult payloads as machine output."""
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        final_event = {
+            "type": "message",
+            "part": {
+                "review_outcome": "pass",
+                "summary": "review passed",
+                "findings": [],
+                "evidence_refs": ["review://ok"],
+            },
+        }
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = json.dumps(final_event)
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        assert poll_result.status == "success"
+        assert 'stdout={"review_outcome":"pass","summary":"review passed"' in (
+            poll_result.output_summary
+        )
+        assert "sessionID" not in poll_result.output_summary
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_falls_back_to_opencode_db_when_stdout_lacks_final_text(
+        self, mock_popen: MagicMock, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """OpenCode sometimes stores final assistant text only in its session DB."""
+        data_home = tmp_path / "xdg-data"
+        monkeypatch.setenv("XDG_DATA_HOME", str(data_home))
+        payload = {
+            "review_outcome": "pass",
+            "summary": "review passed from db",
+            "findings": [],
+            "evidence_refs": ["review://db"],
+        }
+        self._write_opencode_text_part(data_home, "ses_db", json.dumps(payload))
+
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = json.dumps(
+            {"type": "step_finish", "sessionID": "ses_db", "part": {"type": "step-finish"}}
+        )
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        assert poll_result.status == "success"
+        assert 'stdout={"review_outcome":"pass","summary":"review passed from db"' in (
+            poll_result.output_summary
+        )
+        assert poll_result.session_id == "ses_db"
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_prefers_db_machine_payload_over_stdout_prose(
+        self, mock_popen: MagicMock, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A stale stdout text part must not mask a final DB machine result."""
+        data_home = tmp_path / "xdg-data"
+        monkeypatch.setenv("XDG_DATA_HOME", str(data_home))
+        payload = {
+            "review_outcome": "pass",
+            "summary": "review passed from final db payload",
+            "findings": [],
+            "evidence_refs": ["review://db-final"],
+        }
+        self._write_opencode_text_part(data_home, "ses_db", json.dumps(payload))
+
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = json.dumps(
+            {
+                "type": "message",
+                "sessionID": "ses_db",
+                "part": {"type": "text", "text": "Preparing final structured JSON..."},
+            }
+        )
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        assert poll_result.status == "success"
+        assert 'stdout={"review_outcome":"pass","summary":"review passed from final db payload"' in (
+            poll_result.output_summary
+        )
+        assert "Preparing final structured JSON" not in poll_result.output_summary
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_does_not_truncate_machine_payloads(
+        self, mock_popen: MagicMock
+    ) -> None:
+        """Machine contract JSON must stay parseable even when it is long."""
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        payload = {
+            "review_outcome": "needs_fix",
+            "summary": "review found long evidence",
+            "findings": ["x" * 6000],
+            "evidence_refs": ["review://long"],
+        }
+        final_event = {"type": "message", "part": {"type": "text", "text": json.dumps(payload)}}
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = json.dumps(final_event)
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        _prefix, _sep, stdout_payload = poll_result.output_summary.partition("stdout=")
+        parsed = json.loads(stdout_payload)
+        assert parsed["review_outcome"] == "needs_fix"
+        assert parsed["findings"] == ["x" * 6000]
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_omits_raw_opencode_json_when_no_final_text(
+        self, mock_popen: MagicMock, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """poll() does not persist raw event JSON when OpenCode emits no final text."""
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "empty-xdg"))
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        event = {"type": "session.updated", "sessionID": "ses_123"}
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = json.dumps(event)
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        assert poll_result.status == "success"
+        assert "stdout=OpenCode emitted JSON event stream without final text" in (
+            poll_result.output_summary
+        )
+        assert "sessionID" not in poll_result.output_summary
+
+    @patch("vectl.orchestration.runners.subprocess.Popen")
+    def test_poll_ignores_status_summary_protocol_envelope(
+        self, mock_popen: MagicMock, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """poll() must not mistake OpenCode envelope metadata for a report."""
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "empty-xdg"))
+        mock_process = MagicMock()
+        mock_process.poll.return_value = 0
+        event = {
+            "type": "message",
+            "sessionID": "ses_123",
+            "timestamp": "2026-04-26T00:00:00Z",
+            "status": "unblocked",
+            "summary": "protocol summary, not a ResolutionReport",
+        }
+        mock_process.stdout = MagicMock()
+        mock_process.stdout.read.return_value = json.dumps(event)
+        mock_process.stderr = MagicMock()
+        mock_process.stderr.read.return_value = ""
+        mock_popen.return_value = mock_process
+
+        runner = OpenCodeRunner(artifact_root=Path("/runs"))
+        launch_result = runner.launch(request=self._make_request(), workspace=Path("/ws"))
+        poll_result = runner.poll(launch_result.handle)
+
+        assert poll_result.status == "success"
+        assert "stdout=OpenCode emitted JSON event stream without final text" in (
+            poll_result.output_summary
+        )
+        assert "protocol summary" not in poll_result.output_summary
 
     @patch("vectl.orchestration.runners.subprocess.Popen")
     def test_poll_returns_fail_on_nonzero_exit(self, mock_popen: MagicMock) -> None:

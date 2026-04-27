@@ -1202,7 +1202,6 @@ class Runtime:
             ValueError: If execution is not found or not ready for reconcile.
             ReconcileError: If concurrent reconcile blocks this target ref.
         """
-        ref = self._child_run_refs.get(execution_id)
         reconcile_result = self.begin_reconcile(execution_id)
 
         if reconcile_result is None:
@@ -1326,6 +1325,23 @@ class Runtime:
         # Delegate to the existing cleanup() method which already
         # enforces the full lifecycle barrier (Rule 4, Rule 13).
         self.cleanup(workspace=workspace, force=force)
+
+    def cleanup_worktree_path(
+        self,
+        *,
+        step_id: str,
+        worktree_path: Path | str,
+        force: bool = True,
+    ) -> None:
+        """Clean a persisted worktree path when workspace state is no longer live."""
+
+        cleanup_result = _run_cleanup(
+            step_id=step_id,
+            worktree_path=str(worktree_path),
+            force=force,
+        )
+        if isinstance(cleanup_result, Failure):
+            raise cleanup_result.error
 
     # -----------------------------------------------------------------
     # Drive-aware parallel child-run support
@@ -1618,7 +1634,7 @@ def _perform_reconcile(
     workspace_path = Path(binding.worktree_path)
     _validate_worktree_integrity(binding=binding, workspace_path=workspace_path)
     integration_root = _resolve_integration_root(workspace_path)
-    _validate_integration_context(integration_root)
+    integration_dirty_paths = _validate_integration_context(integration_root)
 
     changed_paths = _list_changed_paths(
         workspace_path=workspace_path,
@@ -1646,6 +1662,29 @@ def _perform_reconcile(
             artifact_refs=tuple(artifact_refs),
         )
 
+    untracked_conflicts, adopted_untracked, backed_up_untracked = _resolve_untracked_collisions(
+        execution_id=execution_id,
+        integration_root=integration_root,
+        workspace_path=workspace_path,
+        paths=effective_paths,
+    )
+    if adopted_untracked:
+        adopted = ",".join(adopted_untracked)
+        artifact_refs.append(f"untracked_collisions_adopted:{adopted}")
+    artifact_refs.extend(f"untracked_collision_backup:{ref}" for ref in backed_up_untracked)
+    if untracked_conflicts:
+        return ReconcileResult(
+            execution_id=execution_id,
+            workspace_id=workspace_id,
+            status="merge_conflict",
+            summary=(
+                "Reconcile detected untracked integration collisions; "
+                "operator resolution required"
+            ),
+            conflict_files=untracked_conflicts,
+            artifact_refs=tuple(artifact_refs),
+        )
+
     _commit_workspace_changes(
         workspace_path=workspace_path,
         paths=effective_paths,
@@ -1653,22 +1692,27 @@ def _perform_reconcile(
     )
 
     workspace_head = _git_stdout(["rev-parse", "HEAD"], cwd=workspace_path)
-    merge_result = _run_git(
-        ["merge", "--no-ff", "--no-edit", workspace_head],
-        cwd=integration_root,
-    )
+    merge_args = ["merge", "--squash"]
+    if integration_dirty_paths:
+        merge_args.append("--autostash")
+    merge_result = _run_git([*merge_args, workspace_head], cwd=integration_root)
     if merge_result.returncode == 0:
         if "Already up to date." in (merge_result.stdout or ""):
             status: Literal["merged", "noop", "merge_conflict", "aborted"] = "noop"
             summary = "Reconcile noop: integration target already up to date"
-        else:
-            status = "merged"
-            summary = "Reconcile merged workspace changes into integration context"
-        return ReconcileResult(
+            return ReconcileResult(
+                execution_id=execution_id,
+                workspace_id=workspace_id,
+                status=status,
+                summary=summary,
+                artifact_refs=tuple(artifact_refs),
+            )
+        return _commit_squash_merge_result(
             execution_id=execution_id,
             workspace_id=workspace_id,
-            status=status,
-            summary=summary,
+            integration_root=integration_root,
+            effective_paths=effective_paths,
+            integration_dirty_paths=integration_dirty_paths,
             artifact_refs=tuple(artifact_refs),
         )
 
@@ -1718,16 +1762,16 @@ def _validate_worktree_integrity(*, binding: WorktreeBinding, workspace_path: Pa
         )
 
 
-def _validate_integration_context(repo_root: Path) -> None:
+def _validate_integration_context(repo_root: Path) -> tuple[str, ...]:
     """Validate main integration context safety preflight.
 
     Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 9,
-    reconcile requires a clean integration context.  However, files that
-    are part of the protected-paths set (currently ``plan.yaml``) are
-    expected to be modified by the orchestration flow itself (claim/complete
-    operations).  Those files are restored to their pre-worktree state by
-    ``_restore_protected_paths`` before the actual merge, so their presence
-    in the dirty list is not a safety violation.
+    reconcile rejects active git operations, and reports local tracked
+    mutations to the caller.  The caller may use git autostash for these
+    pre-existing local mutations so foreground drive supervision can continue
+    without requiring an operator commit.  Files that are part of the
+    protected-paths set (currently ``plan.yaml``) are expected to be modified
+    by the orchestration flow itself and are not returned here.
     """
 
     git_dir = Path(_git_stdout(["rev-parse", "--git-dir"], cwd=repo_root))
@@ -1760,11 +1804,8 @@ def _validate_integration_context(repo_root: Path) -> None:
         unprotected_dirty = tuple(
             path for path in dirty_paths if path not in _PROTECTED_RECONCILE_PATHS
         )
-        if unprotected_dirty:
-            raise ReconcileError(
-                "Integration-context preflight failed: "
-                "local tracked mutations make reconcile unsafe"
-            )
+        return unprotected_dirty
+    return ()
 
 
 def _list_changed_paths(*, workspace_path: Path, base_ref: str) -> tuple[str, ...]:
@@ -1816,6 +1857,74 @@ def _commit_workspace_changes(
         raise ReconcileError(f"Reconcile aborted: failed to commit workspace changes: {detail}")
 
 
+def _commit_squash_merge_result(
+    *,
+    execution_id: str,
+    workspace_id: str,
+    integration_root: Path,
+    effective_paths: tuple[str, ...],
+    integration_dirty_paths: tuple[str, ...],
+    artifact_refs: tuple[str, ...],
+) -> ReconcileResult:
+    """Commit staged squash-merge changes without absorbing ambient staged work."""
+
+    staged_paths = tuple(
+        line.strip()
+        for line in _git_stdout(["diff", "--cached", "--name-only"], cwd=integration_root)
+        .strip()
+        .splitlines()
+        if line.strip()
+    )
+    effective_path_set = set(effective_paths)
+    unrelated_staged = tuple(path for path in staged_paths if path not in effective_path_set)
+    if unrelated_staged:
+        _git_stdout(["restore", "--staged", "--", *unrelated_staged], cwd=integration_root)
+
+    staged_child_diff = _run_git(
+        ["diff", "--cached", "--quiet", "--", *effective_paths],
+        cwd=integration_root,
+    )
+    if staged_child_diff.returncode == 0:
+        _clear_squash_metadata(integration_root)
+        return ReconcileResult(
+            execution_id=execution_id,
+            workspace_id=workspace_id,
+            status="noop",
+            summary="Reconcile noop: integration target already contains workspace changes",
+            artifact_refs=artifact_refs,
+        )
+    if staged_child_diff.returncode not in (0, 1):
+        detail = (
+            staged_child_diff.stderr.strip()
+            or staged_child_diff.stdout.strip()
+            or "unknown git diff failure"
+        )
+        raise ReconcileError(f"Reconcile aborted: failed to inspect squash merge result: {detail}")
+
+    commit_result = _run_git(
+        ["commit", "-m", f"vectl child run {execution_id}"],
+        cwd=integration_root,
+    )
+    if commit_result.returncode != 0:
+        detail = (
+            commit_result.stderr.strip()
+            or commit_result.stdout.strip()
+            or "unknown git commit failure"
+        )
+        raise ReconcileError(f"Reconcile aborted: failed to commit squash merge: {detail}")
+
+    summary = "Reconcile squash-merged workspace changes into integration context"
+    if integration_dirty_paths:
+        summary += " with git autostash for pre-existing local mutations"
+    return ReconcileResult(
+        execution_id=execution_id,
+        workspace_id=workspace_id,
+        status="merged",
+        summary=summary,
+        artifact_refs=artifact_refs,
+    )
+
+
 def _protected_paths_from_changes(changed_paths: tuple[str, ...]) -> tuple[str, ...]:
     """Return changed paths that fall under runtime protected-path policy."""
 
@@ -1840,6 +1949,58 @@ def _restore_protected_paths(
     )
 
 
+def _resolve_untracked_collisions(
+    *,
+    execution_id: str,
+    integration_root: Path,
+    workspace_path: Path,
+    paths: tuple[str, ...],
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    """Clear untracked files that would block git merge.
+
+    Failed foreground runs can leave files in the integration worktree as
+    untracked copies of files later produced by a retried workspace commit.
+    Git's merge autostash does not include untracked files, so an otherwise
+    safe retry aborts with "untracked working tree files would be overwritten".
+    If the untracked file is byte-identical to the workspace version, adopting
+    the incoming tracked file is lossless: remove the untracked copy and let the
+    merge add the tracked file.  Non-identical file collisions are first backed
+    up under ``.vectl/reconcile-untracked/`` and then removed so the incoming
+    tracked file can merge without losing operator data.
+    """
+
+    untracked_output = _git_stdout(
+        ["ls-files", "--others", "--exclude-standard"],
+        cwd=integration_root,
+    )
+    untracked = {line.strip() for line in untracked_output.splitlines() if line.strip()}
+    conflicts: list[str] = []
+    adopted: list[str] = []
+    backed_up: list[str] = []
+    for path in paths:
+        normalized = path.lstrip("./")
+        if normalized not in untracked:
+            continue
+        integration_file = integration_root / normalized
+        workspace_file = workspace_path / normalized
+        if not integration_file.is_file() or not workspace_file.is_file():
+            conflicts.append(normalized)
+            continue
+        if integration_file.read_bytes() == workspace_file.read_bytes():
+            integration_file.unlink()
+            adopted.append(normalized)
+            continue
+
+        backup_path = (
+            integration_root / ".vectl" / "reconcile-untracked" / execution_id / normalized
+        )
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(integration_file, backup_path)
+        integration_file.unlink()
+        backed_up.append(f"{normalized}->{backup_path.relative_to(integration_root)}")
+    return tuple(conflicts), tuple(adopted), tuple(backed_up)
+
+
 def _list_merge_conflicts(repo_root: Path) -> tuple[str, ...]:
     """List unresolved conflict files in integration context."""
 
@@ -1848,7 +2009,7 @@ def _list_merge_conflicts(repo_root: Path) -> tuple[str, ...]:
 
 
 def _abort_merge_if_needed(repo_root: Path) -> None:
-    """Abort active merge if merge metadata indicates a pending conflict state."""
+    """Abort active merge/squash state if conflict metadata is present."""
 
     git_dir = Path(_git_stdout(["rev-parse", "--git-dir"], cwd=repo_root))
     if not git_dir.is_absolute():
@@ -1856,6 +2017,20 @@ def _abort_merge_if_needed(repo_root: Path) -> None:
     merge_head = git_dir / "MERGE_HEAD"
     if merge_head.exists():
         _run_git(["merge", "--abort"], cwd=repo_root)
+        return
+    if _list_merge_conflicts(repo_root):
+        _run_git(["reset", "--merge", "HEAD"], cwd=repo_root)
+
+
+def _clear_squash_metadata(repo_root: Path) -> None:
+    """Clear stale squash metadata after a squash merge produces no staged changes."""
+
+    git_dir = Path(_git_stdout(["rev-parse", "--git-dir"], cwd=repo_root))
+    if not git_dir.is_absolute():
+        git_dir = repo_root / git_dir
+    squash_msg = git_dir / "SQUASH_MSG"
+    if squash_msg.exists():
+        squash_msg.unlink()
 
 
 def _resolve_integration_root(path: Path) -> Path:

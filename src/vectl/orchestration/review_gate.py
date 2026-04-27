@@ -20,6 +20,8 @@ import yaml
 
 from vectl.orchestration.contracts import (
     ExecutionResult,
+    PlannerMutationAction,
+    PlannerMutationItem,
     PlannerRequest,
     ReviewOutcome,
 )
@@ -27,6 +29,18 @@ from vectl.orchestration.contracts import (
 _ParsedReviewPayload: TypeAlias = dict[str, object]
 _VALID_REVIEW_OUTCOMES: frozenset[str] = frozenset(
     {"pass", "needs_fix", "needs_replan", "operator_required"}
+)
+_VALID_PLANNER_ACTIONS: frozenset[str] = frozenset(
+    {
+        "add-step",
+        "edit-step",
+        "remove-step",
+        "move-step",
+        "add-phase",
+        "edit-phase",
+        "skip-step",
+        "complete-phase",
+    }
 )
 
 
@@ -274,11 +288,13 @@ def _build_planner_request(
         affected_steps = _coerce_str_tuple(raw_request.get("affected_steps")) or (step_id,)
         request_evidence_refs = _coerce_str_tuple(raw_request.get("evidence_refs")) or evidence_refs
         constraints = _coerce_str_tuple(raw_request.get("constraints"))
+        mutations = _coerce_planner_mutations(raw_request.get("mutations"))
         return PlannerRequest(
             reason=reason,
             affected_steps=affected_steps,
             evidence_refs=request_evidence_refs,
             constraints=constraints,
+            mutations=mutations,
         )
 
     return PlannerRequest(
@@ -286,3 +302,29 @@ def _build_planner_request(
         affected_steps=(step_id,),
         evidence_refs=evidence_refs,
     )
+
+
+def _coerce_planner_mutations(raw_value: object) -> tuple[PlannerMutationItem, ...]:
+    if not isinstance(raw_value, list | tuple):
+        return ()
+
+    mutations: list[PlannerMutationItem] = []
+    for raw_item in raw_value:
+        if not isinstance(raw_item, dict):
+            continue
+        action = raw_item.get("action")
+        if action not in _VALID_PLANNER_ACTIONS:
+            continue
+        raw_arguments = raw_item.get("arguments", {})
+        arguments = raw_arguments if isinstance(raw_arguments, dict) else {}
+        raw_reason = raw_item.get("reason", "")
+        reason = raw_reason if isinstance(raw_reason, str) else ""
+        mutations.append(
+            PlannerMutationItem(
+                action=cast(PlannerMutationAction, action),
+                arguments=dict(arguments),
+                reason=reason,
+                safety_notes=_coerce_str_tuple(raw_item.get("safety_notes")),
+            )
+        )
+    return tuple(mutations)

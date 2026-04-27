@@ -67,6 +67,94 @@ class TestPhaseDAG:
         assert any("cycle" in e.message.lower() for e in errors)
 
 
+class TestCompletedEvidenceGuard:
+    def test_done_gate_failure_without_later_closure_is_blocking(self):
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="gate",
+                    name="Gate",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="gate.review",
+                            name="Gate review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false\nreview_outcome=NEEDS_REVISION",
+                        )
+                    ],
+                )
+            ]
+        )
+
+        errors = validate_plan(plan)
+
+        assert any(
+            "completed evidence guard" in error.message.lower()
+            and "gate.review" in error.message
+            and "gate_open_allowed=false" in error.message
+            for error in errors
+        )
+
+    def test_done_gate_failure_closed_by_later_retest_is_allowed(self):
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="gate",
+                    name="Gate",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="gate.review",
+                            name="Gate review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false\nreview_outcome=NEEDS_REVISION",
+                        ),
+                        Step(
+                            id="gate.retest",
+                            name="Gate retest",
+                            status=StepStatus.DONE,
+                            evidence="green verification: gate_open_allowed=true; tests PASS",
+                            depends_on=["gate.review"],
+                        ),
+                    ],
+                )
+            ]
+        )
+
+        errors = validate_plan(plan)
+
+        assert not [error for error in errors if "completed evidence guard" in error.message.lower()]
+
+    def test_intentional_expected_red_with_lifecycle_disposition_is_allowed(self):
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="gate",
+                    name="Gate",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="gate.expected-red",
+                            name="Expected-red regression test",
+                            status=StepStatus.DONE,
+                            verify="expected_red",
+                            evidence=(
+                                "pytest: FAIL (expected-red). Owner: QA. "
+                                "Lifecycle: tracked until feature lands. "
+                                "Disposition: non-intersection with release gate."
+                            ),
+                        )
+                    ],
+                )
+            ]
+        )
+
+        errors = validate_plan(plan)
+
+        assert not [error for error in errors if "completed evidence guard" in error.message.lower()]
+
+
 class TestStepDAG:
     def test_valid_step_deps(self):
         plan = _make_plan(

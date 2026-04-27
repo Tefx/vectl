@@ -21,6 +21,7 @@ from vectl.models import IsolationMode, Phase, Plan, Step
 from vectl.orch_app import (
     AppConfig,
     CaseRuntimeToolMediationSource,
+    OrchestrationApp,
     OrchestrationResult,
     build_orchestration_app,
     build_resolution_case,
@@ -35,9 +36,12 @@ from vectl.orchestration.config import (
     default_role_profiles,
 )
 from vectl.orchestration.contracts import (
+    ChildRunRef,
     ControlDecision,
     CoreSnapshot,
     DispatchSpec,
+    DriveBarrier,
+    DriveRecord,
     ExecutionResult,
     ReconcileResult,
     ResolutionCase,
@@ -55,6 +59,7 @@ from vectl.orchestration.dispatch_policy import (
     DispatchCoordinator,
 )
 from vectl.orchestration.events import load_event_jsonl
+from vectl.orchestration.driver import DriveLoopResult, DriveStatusResult
 from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.orchestration.resolver_gateway import GatewayInvocationResult, ResolverToolCall
 from vectl.orchestration.runtime import WorktreeError
@@ -218,6 +223,37 @@ def _write_plan(plan_path: Path) -> None:
     save_plan(plan, plan_path)
 
 
+def test_foreground_supervisor_continues_resolver_and_planner_barriers() -> None:
+    """Foreground drive supervision should not stop at automatable barriers."""
+    barrier = DriveBarrier(reason="runtime_failure", case_ids=("case-a",))
+    resolving = DriveLoopResult(
+        drive_id="drv-a",
+        status="resolving",
+        barrier=barrier,
+        summary="resolver waiting",
+    )
+
+    assert OrchestrationApp._foreground_loop_result_should_exit(resolving) is False
+    status = DriveStatusResult(drive_id="drv-a", status="replanning")
+    assert OrchestrationApp._foreground_drive_should_exit(status=status) is False
+    _, passes, stalled = OrchestrationApp._track_barrier_idle_result(
+        result=resolving,
+        prior_key=None,
+        prior_passes=0,
+    )
+    assert passes == 1
+    assert stalled is None
+    key, passes, stalled = OrchestrationApp._track_barrier_idle_result(
+        result=resolving,
+        prior_key=("resolving", "runtime_failure", ("case-a",), "resolver waiting"),
+        prior_passes=2,
+    )
+    assert key is not None
+    assert passes == 3
+    assert stalled is not None
+    assert "automation stopped" in stalled.summary
+
+
 def _build_app(tmp_path: Path):
     plan_path = tmp_path / "plan.yaml"
     runs_root = tmp_path / "runs"
@@ -284,6 +320,115 @@ def test_build_composes_real_collaborators_without_noop_resolver_dependency(tmp_
     assert orch._core_adapter.__class__.__name__ == "PlanCoreAdapter"
     assert orch._resolver.__class__.__name__ == "BoundResolver"
     assert orch._resolver.invocation.__class__.__name__ == "GatewayEnforcedResolverInvocation"
+
+
+def test_terminal_drive_cleanup_sweeps_success_child_by_persisted_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    store = orch._drive_store()
+    drive_id = "drv-cleanup"
+    now = time.time()
+    store.save_drive(
+        DriveRecord(
+            drive_id=drive_id,
+            plan_path=str(tmp_path / "plan.yaml"),
+            status="completed",
+            started_at=now,
+            updated_at=now,
+            active_child_run_ids=(),
+            frontier_step_ids=(),
+            blocked_case_ids=(),
+            summary="done",
+        )
+    )
+    worktree_path = tmp_path / "persisted-child-worktree"
+    worktree_path.mkdir()
+    store.save_child_run(
+        ChildRunRef(
+            run_id="child-1",
+            drive_id=drive_id,
+            kind="step",
+            status="success",
+            step_id="core.ready",
+            workspace="stale-workspace-id",
+            artifact_root=str(worktree_path),
+        )
+    )
+    cleanup_calls: list[tuple[str, str, bool]] = []
+
+    def cleanup_child_run(workspace: str, force: bool = False) -> None:
+        _ = force
+        raise ValueError(f"Workspace not found: {workspace}")
+
+    def cleanup_worktree_path(*, step_id: str, worktree_path: Path, force: bool = True) -> None:
+        cleanup_calls.append((step_id, str(worktree_path), force))
+
+    monkeypatch.setattr(app._runtime, "cleanup_child_run", cleanup_child_run)
+    monkeypatch.setattr(app._runtime, "cleanup_worktree_path", cleanup_worktree_path)
+
+    orch._cleanup_drive_workspaces_for_terminal_status(
+        drive_id=drive_id,
+        terminal_status="completed",
+    )
+
+    assert cleanup_calls == [("core.ready", str(worktree_path), False)]
+
+
+def test_terminal_drive_cleanup_does_not_bypass_live_lifecycle_barrier(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    store = orch._drive_store()
+    drive_id = "drv-cleanup-blocked"
+    now = time.time()
+    store.save_drive(
+        DriveRecord(
+            drive_id=drive_id,
+            plan_path=str(tmp_path / "plan.yaml"),
+            status="completed",
+            started_at=now,
+            updated_at=now,
+            active_child_run_ids=(),
+            frontier_step_ids=(),
+            blocked_case_ids=(),
+            summary="done",
+        )
+    )
+    worktree_path = tmp_path / "blocked-child-worktree"
+    worktree_path.mkdir()
+    store.save_child_run(
+        ChildRunRef(
+            run_id="child-blocked",
+            drive_id=drive_id,
+            kind="step",
+            status="success",
+            step_id="core.ready",
+            workspace="live-workspace-id",
+            artifact_root=str(worktree_path),
+        )
+    )
+    cleanup_calls: list[str] = []
+
+    def cleanup_child_run(workspace: str, force: bool = False) -> None:
+        _ = workspace, force
+        raise ValueError("cleanup blocked: reconcile not captured")
+
+    def cleanup_worktree_path(*, step_id: str, worktree_path: Path, force: bool = True) -> None:
+        _ = step_id, worktree_path, force
+        cleanup_calls.append("path")
+
+    monkeypatch.setattr(app._runtime, "cleanup_child_run", cleanup_child_run)
+    monkeypatch.setattr(app._runtime, "cleanup_worktree_path", cleanup_worktree_path)
+
+    orch._cleanup_drive_workspaces_for_terminal_status(
+        drive_id=drive_id,
+        terminal_status="completed",
+    )
+
+    assert cleanup_calls == []
 
 
 def test_runtime_mediation_source_narrows_allowlist_to_live_case_tools() -> None:
@@ -938,6 +1083,66 @@ def test_resolve_case_ignores_opencode_protocol_envelope(
     assert report.operator_message == "Review manually."
 
 
+def test_resolve_case_ignores_invalid_status_summary_envelope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Resolver must skip protocol envelopes with extra fields and parse nested reports."""
+    app = _build_app(tmp_path)
+    report_payload = {
+        "status": "operator_required",
+        "summary": "nested report is authoritative",
+        "evidence_refs": ["resolver://nested-report"],
+        "operator_message": "Review manually.",
+    }
+    opencode_event = {
+        "type": "message",
+        "sessionID": "ses_123",
+        "timestamp": "2026-04-26T00:00:00Z",
+        "status": "unblocked",
+        "summary": "protocol summary, not a ResolutionReport",
+        "part": {"type": "text", "text": json.dumps(report_payload)},
+    }
+
+    monkeypatch.setattr("vectl.orch_app.is_linked_worktree", lambda: (False, tmp_path))
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-event")
+    monkeypatch.setattr(
+        app._runtime,
+        "workspace_worktree_path",
+        lambda _workspace: tmp_path / "ws-event",
+    )
+    monkeypatch.setattr(app._runtime, "start", lambda *, request, workspace: "exec-event")
+    monkeypatch.setattr(
+        app._runtime,
+        "collect",
+        lambda _execution_id: ExecutionResult(
+            step_id="case-event",
+            status="success",
+            output_summary=(
+                "OpenCode completed successfully (exit 0); stdout="
+                f"{json.dumps(opencode_event)}"
+            ),
+        ),
+    )
+
+    report = app.resolve_case(
+        ResolutionCase(
+            case_id="case-event",
+            case_source="runtime_failure",
+            reason="Blocked steps require resolution: core.ready",
+            summary="repair the blocked step",
+            core=_core_snapshot(),
+            roster=_roster_snapshot(),
+            runtime=_runtime_snapshot(),
+            blocked_step_ids=("core.ready",),
+        )
+    )
+
+    assert report.status == "operator_required"
+    assert report.summary.endswith("nested report is authoritative")
+    assert "resolver://nested-report" in report.evidence_refs
+    assert report.operator_message == "Review manually."
+
+
 def test_resolve_case_supports_explicit_tacit_resolver_config_selection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1116,6 +1321,32 @@ def test_run_and_control_route_through_typed_boundaries(tmp_path: Path) -> None:
     actions = app.inspect_actions(run_id=run_result.run_id)
     assert actions.view_type == "actions"
     assert any("type=control.pause" in row for row in actions.data)
+
+
+def test_runs_summarizes_stored_opencode_event_streams(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    assert app._config.run_store_root is not None
+    registry = RunRegistry(store_root=app._config.run_store_root)
+    registry.save(
+        RunRecord(
+            run_id="run-noisy",
+            step_id="core.ready",
+            plan_path=str(app._config.plan_path),
+            status="success",
+            output_summary=(
+                'OpenCode completed successfully (exit 0); stdout={"type":"step_start"}\n'
+                '{"type":"tool_use","part":{"state":{"output":"not wired noise"}}}'
+            ),
+        )
+    )
+
+    runs = app.runs(step_id="core.ready")
+
+    assert runs[0].output_summary == (
+        "OpenCode completed successfully (exit 0); "
+        "stdout=<opencode JSON event stream omitted from plan evidence>"
+    )
+    assert "not wired" not in runs[0].output_summary
 
 
 def test_run_admission_failure_when_same_plan_already_has_active_run(tmp_path: Path) -> None:
@@ -1345,6 +1576,55 @@ def test_start_runtime_execution_renders_prompt_bundle_before_runtime_launch(
     assert any(ref.startswith("prompt_bundle_sha256=") for ref in captured_work_refs[0])
 
 
+def test_start_runtime_execution_uses_profile_agent_id_for_runner_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    _write_plan(plan_path)
+    role_profiles = tuple(
+        replace(profile, agent_id="python-executor-tacit")
+        if profile.role_id == "python-executor"
+        else profile
+        for profile in default_role_profiles()
+    )
+    app = build_orchestration_app(
+        AppConfig(
+            plan_path=plan_path,
+            orchestration_config=OrchestrationConfig(
+                plan_path=plan_path,
+                role_profiles=role_profiles,
+            ),
+            run_store_root=tmp_path / "runs",
+        )
+    )
+    orch = cast(Any, app)
+    fake_worktree = tmp_path / "fake-worktree"
+    fake_worktree.mkdir()
+    captured_agent_ids: list[str] = []
+
+    monkeypatch.setattr(app._runtime, "prepare", lambda request: "ws-agent")
+    monkeypatch.setattr(app._runtime, "workspace_worktree_path", lambda workspace: fake_worktree)
+
+    def probe_start(*, request: Any, workspace: str) -> str:
+        _ = workspace
+        captured_agent_ids.append(request.agent_id)
+        return "exec-agent"
+
+    monkeypatch.setattr(app._runtime, "start", probe_start)
+
+    dispatch_spec = app.build_dispatch_spec(step_id="core.ready", role_hint="python-executor")
+    workspace, execution_id = orch._start_runtime_execution(
+        run_id="run-agent",
+        step_id="core.ready",
+        dispatch_spec=dispatch_spec,
+        mode="start",
+    )
+
+    assert (workspace, execution_id) == ("ws-agent", "exec-agent")
+    assert dispatch_spec.role_id == "python-executor"
+    assert captured_agent_ids == ["python-executor-tacit"]
+
+
 def test_start_runtime_execution_fails_closed_when_prompt_registry_lacks_role_support(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1407,6 +1687,7 @@ def test_route_terminal_execution_completes_only_after_reconcile_allows_it(
     app = _build_app(tmp_path)
     orch = cast(Any, app)
     calls: list[str] = []
+    completed_evidence: list[str] = []
 
     def begin_reconcile(execution_id: str) -> ReconcileResult:
         calls.append(f"reconcile:{execution_id}")
@@ -1422,6 +1703,7 @@ def test_route_terminal_execution_completes_only_after_reconcile_allows_it(
         return True, "ok"
 
     def complete_step(step_id: str, evidence: str, *, reconcile_disposition: str) -> None:
+        completed_evidence.append(evidence)
         calls.append(f"complete:{step_id}:{reconcile_disposition}")
 
     monkeypatch.setattr(app._runtime, "begin_reconcile", begin_reconcile)
@@ -1444,12 +1726,19 @@ def test_route_terminal_execution_completes_only_after_reconcile_allows_it(
         execution_result=ExecutionResult(
             step_id="core.ready",
             status="success",
-            output_summary="verification passed",
+            output_summary=(
+                'OpenCode completed successfully (exit 0); stdout={"type":"step_start"}\n'
+                '{"type":"tool_use","state":{"status":"completed"}}'
+            ),
         ),
     )
 
     assert case is None
     assert calls == ["reconcile:exec-1", "can_complete:exec-1", "complete:core.ready:merged"]
+    assert completed_evidence == [
+        "OpenCode completed successfully (exit 0); "
+        "stdout=<opencode JSON event stream omitted from plan evidence>"
+    ]
 
 
 def test_route_terminal_execution_hard_gates_non_closing_reconcile_status(
@@ -1498,6 +1787,104 @@ def test_route_terminal_execution_hard_gates_non_closing_reconcile_status(
 
     assert case is not None
     assert case.case_source == "runtime_failure"
+    assert completed == []
+
+
+def test_parse_structured_review_result_accepts_yaml_fence(tmp_path: Path) -> None:
+    app = _build_app(tmp_path)
+    parsed = app._parse_structured_review_result(
+        """```yaml
+review_outcome: pass
+summary: review passed
+findings: []
+evidence_refs:
+  - review://ok
+```"""
+    )
+
+    assert parsed.review_outcome == "pass"
+    assert parsed.summary == "review passed"
+    assert parsed.evidence_refs == ("review://ok",)
+
+
+def test_parse_structured_review_result_accepts_nested_opencode_text(
+    tmp_path: Path,
+) -> None:
+    app = _build_app(tmp_path)
+    payload = {
+        "review_outcome": "needs_fix",
+        "summary": "review found blocker",
+        "findings": ["blocker"],
+        "evidence_refs": ["review://blocker"],
+    }
+    event = {
+        "type": "message",
+        "sessionID": "ses_123",
+        "part": {"type": "text", "text": json.dumps(payload)},
+    }
+
+    parsed = app._parse_structured_review_result(
+        "OpenCode completed successfully (exit 0); stdout=" + json.dumps(event)
+    )
+
+    assert parsed.review_outcome == "needs_fix"
+    assert parsed.summary == "review found blocker"
+    assert parsed.findings == ("blocker",)
+    assert parsed.evidence_refs == ("review://blocker",)
+
+
+def test_route_terminal_execution_blocks_freeform_failure_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    completed: list[str] = []
+
+    monkeypatch.setattr(
+        app._runtime,
+        "begin_reconcile",
+        lambda execution_id: ReconcileResult(
+            execution_id=execution_id,
+            workspace_id="ws-1",
+            status="noop",
+            summary="nothing to merge",
+        ),
+    )
+    monkeypatch.setattr(app._runtime, "can_complete", lambda _execution_id: (True, "ok"))
+    monkeypatch.setattr(app._runtime, "reconcile_disposition", lambda _execution_id: "noop")
+    monkeypatch.setattr(
+        app._core_adapter,
+        "complete_step",
+        lambda step_id, evidence, *, reconcile_disposition: completed.append(step_id),
+    )
+
+    case = orch.route_terminal_execution(
+        step_id="core.ready",
+        execution_id="exec-freeform-fail",
+        dispatch_spec=DispatchSpec(
+            source_kind="step",
+            source_id="core.ready",
+            role_id="python-executor",
+            role_source="default",
+            execution_context="linked_worktree",
+            runner="codex",
+            session_mode="fresh",
+            output_contract="freeform_evidence",
+        ),
+        execution_result=ExecutionResult(
+            step_id="core.ready",
+            status="success",
+            output_summary=(
+                'OpenCode completed successfully (exit 0); stdout=status: "FAIL"\n'
+                "evidence: |\n  Static: BLOCKED\nerror: verification failed"
+            ),
+        ),
+    )
+
+    assert case is not None
+    assert case.case_source == "review_failed"
+    assert case.blocked_step_ids == ("core.ready",)
+    assert "freeform evidence failure" in case.reason
     assert completed == []
 
 
@@ -1658,18 +2045,22 @@ def test_route_terminal_execution_non_pass_review_becomes_resolution_case(
         execution_result=ExecutionResult(
             step_id="core.ready",
             status="success",
-            output_summary=json.dumps(
-                {
-                    "review_outcome": "needs_fix",
-                    "summary": "defects remain",
-                    "evidence_refs": ["artifact://review"],
-                }
+            output_summary=(
+                "OpenCode completed successfully (exit 0); stdout="
+                + json.dumps(
+                    {
+                        "review_outcome": "needs_fix",
+                        "summary": "defects remain",
+                        "evidence_refs": ["artifact://review"],
+                    }
+                )
             ),
         ),
     )
 
     assert case is not None
     assert case.case_source == "review_failed"
+    assert "needs_fix" in case.reason
     assert completed == []
 
 
@@ -2256,7 +2647,6 @@ def test_prompt_materialization_uses_worktree_path_not_workspace_root(
     for prompt materialization.
     """
     app = _build_app(tmp_path)
-    orch = cast(Any, app)
 
     # Track the actual worktree path used by runtime.prepare/start.
     prepared_workspace_ids: list[str] = []
@@ -2304,7 +2694,6 @@ def test_prompt_materialization_resume_path_uses_worktree(
     path also uses the worktree correctly.
     """
     app = _build_app(tmp_path)
-    orch = cast(Any, app)
 
     # Run a step first so we can resume it.
     started = app.run(step_id="core.ready", agent="python-executor")

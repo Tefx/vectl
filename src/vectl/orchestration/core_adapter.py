@@ -134,7 +134,9 @@ class PlanCoreAdapter:
         )
 
         unresolved_reasons = tuple(
-            issue.message for issue in core.validate_plan(plan) if not issue.is_warning
+            issue.message
+            for issue in core.validate_plan(plan, include_completed_evidence_guard=False)
+            if not issue.is_warning
         )
 
         return CoreSnapshot(

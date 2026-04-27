@@ -204,6 +204,22 @@ class MaxParallelismError(ValueError):
         self.value = value
 
 
+class DriveChildLaunchError(RuntimeError):
+    """Raised when a child launch fails after zero or more admissions."""
+
+    def __init__(
+        self,
+        *,
+        step_id: str,
+        launched_refs: tuple[ChildRunRef, ...],
+        original_error: Exception,
+    ) -> None:
+        super().__init__(f"child launch failed for {step_id}: {original_error}")
+        self.step_id = step_id
+        self.launched_refs = launched_refs
+        self.original_error = original_error
+
+
 # ---------------------------------------------------------------------
 # Valid transition enforcement
 # ---------------------------------------------------------------------
@@ -222,6 +238,7 @@ DRIVE_TRANSITIONS: dict[tuple[DriveStatus, DriveStatus], str] = {
     ("running", "completed"): "all phases closed",
     ("running", "halted"): "hard halt decision",
     ("running", "failed_unrecoverable"): "unrecoverable invariant break",
+    ("running", "blocked_operator"): "runtime retry limit reached",
     ("running", "stopped"): "operator stop",
     ("paused", "running"): "operator unpause",
     ("paused", "stopped"): "operator stop",
@@ -271,6 +288,9 @@ DRIVE_DEFAULTS = {
 
 Authority: docs/RFC-orch-drive.md section 10.4
 """
+
+_MAX_STALE_CHILD_FAILURES_PER_STEP = 3
+"""Maximum stale child-run failures for one step before operator stop."""
 
 
 # ---------------------------------------------------------------------
@@ -326,6 +346,20 @@ def _generate_drive_id() -> str:
         A string of the form ``drv_<uuid4_hex>``.
     """
     return f"drv_{uuid.uuid4().hex}"
+
+
+def _merge_ids(*groups: tuple[str, ...]) -> tuple[str, ...]:
+    """Merge identifier tuples while preserving first-seen order."""
+
+    merged: list[str] = []
+    seen: set[str] = set()
+    for group in groups:
+        for value in group:
+            if value in seen:
+                continue
+            seen.add(value)
+            merged.append(value)
+    return tuple(merged)
 
 
 def _barrier_status(reason: BarrierReason) -> DriveStatus:
@@ -432,6 +466,69 @@ def _resolver_should_handle_active_barrier(record: DriveRecord) -> bool:
     if barrier.pending_resolver_run_id is not None:
         return False
     return barrier.reason in {"runtime_failure", "merge_conflict", "review_failed"}
+
+
+def _auto_unblock_stale_runtime_case(case: ResolutionCase) -> ResolutionReport | None:
+    """Return a safe automatic unblock report for stale runtime barriers.
+
+    This is intentionally narrow.  It only clears runtime/unknown cases when
+    the drive already has runnable frontier work and the case has no blocked or
+    in-progress step references intersecting that frontier.  In that state the
+    barrier is stale orchestration bookkeeping, not an actionable operator
+    decision, so keeping it would deadlock otherwise runnable work.
+    """
+
+    drive = case.drive
+    if case.case_source not in {"runtime_failure", "unknown"}:
+        return None
+    if drive is None or not drive.frontier_step_ids:
+        return None
+    if drive.status != "blocked_operator":
+        return None
+    if drive.operator_pause_state == "paused":
+        return None
+    reason_text = f"{case.reason}\n{drive.summary}".lower()
+    if any(
+        token in reason_text
+        for token in ("retry limit", "operator_required", "operator required", "requires operator")
+    ):
+        return None
+    frontier = set(drive.frontier_step_ids)
+    if frontier.intersection(case.core.in_progress_step_ids):
+        return None
+    if frontier.intersection(case.blocked_step_ids):
+        return None
+    return ResolutionReport(
+        status="unblocked",
+        summary=(
+            "auto-unblocked stale runtime barrier: blocked refs do not "
+            "intersect runnable drive frontier"
+        ),
+        evidence_refs=(
+            f"case_id={case.case_id}",
+            f"case_source={case.case_source}",
+            f"frontier_step_ids={drive.frontier_step_ids}",
+            "auto_resolution=stale_runtime_frontier_safe",
+        ),
+    )
+
+
+def _agent_recovery_case_id(record: DriveRecord) -> str:
+    """Build a stable-enough case identifier for agent-assisted recovery."""
+
+    return f"agent_recovery_{record.drive_id}_{uuid.uuid4().hex}"
+
+
+def _should_skip_agent_assisted_recovery(record: DriveRecord) -> str | None:
+    """Return a skip reason when agent-assisted recovery must not run."""
+
+    if record.status in TERMINAL_DRIVE_STATUSES:
+        return f"drive is terminal: {record.status}"
+    if record.operator_pause_state == "paused" or record.status == "paused":
+        return "drive is explicitly operator-paused"
+    if record.barrier is not None and record.barrier.reason == "operator_pause":
+        return "drive barrier is an explicit operator pause"
+    return None
 
 
 def _execution_result_from_terminal_child_run(
@@ -689,7 +786,7 @@ def _construct_bundle_from_request(
     return PlannerMutationBundle(
         status="applyable",
         summary=f"Planner request: {planner_request.reason}",
-        mutations=(),
+        mutations=planner_request.mutations,
         affected_steps=planner_request.affected_steps,
         evidence_refs=planner_request.evidence_refs,
         safety_notes=planner_request.constraints,
@@ -826,6 +923,101 @@ class DriveDriver:
         self._child_run_launcher = child_run_launcher
         self._child_run_canceller = child_run_canceller
         self._max_parallelism = max(1, min(32, max_parallelism))
+
+    def attempt_agent_assisted_recovery(
+        self,
+        drive_id: str,
+        *,
+        reason: str = "",
+        max_attempts: int = 2,
+    ) -> DriveLoopResult:
+        """Give the resolver agent a bounded chance before human handoff.
+
+        This is the last automatic recovery tier for cases that are not
+        mechanically safe to clear.  It preserves explicit human controls
+        (pause/stop/terminal states), creates an auditable resolution case when
+        needed, and then runs the normal drive loop so the existing resolver and
+        planner contracts own any mutations.
+        """
+
+        from vectl.orchestration.run_store import DriveStoreError
+
+        record = self._drive_store.replay_drive_state(drive_id)
+        if record is None:
+            raise DriveStoreError(f"no DriveRecord found for drive_id={drive_id!r}")
+
+        skip_reason = _should_skip_agent_assisted_recovery(record)
+        if skip_reason is not None:
+            return DriveLoopResult(
+                drive_id=drive_id,
+                status=record.status,
+                active_child_run_ids=record.active_child_run_ids,
+                barrier=record.barrier,
+                summary=f"agent-assisted recovery skipped: {skip_reason}",
+            )
+
+        if self._resolver is None:
+            return DriveLoopResult(
+                drive_id=drive_id,
+                status=record.status,
+                active_child_run_ids=record.active_child_run_ids,
+                barrier=record.barrier,
+                summary="agent-assisted recovery unavailable: resolver not wired",
+            )
+
+        self._ensure_agent_recovery_case(record=record, reason=reason)
+        attempts = max(1, max_attempts)
+        result: DriveLoopResult | None = None
+        for _ in range(attempts):
+            result = self.run_drive_loop(drive_id)
+            if result.status not in {"resolving", "replanning"}:
+                break
+            if result.summary.startswith("automation stopped:"):
+                break
+        assert result is not None
+        return result
+
+    def _ensure_agent_recovery_case(self, *, record: DriveRecord, reason: str) -> None:
+        if record.barrier is not None and record.blocked_case_ids:
+            return
+
+        decision = ControlDecision(
+            kind="resolve",
+            reason=reason or record.summary or "agent-assisted recovery requested",
+            case_ids=record.blocked_case_ids or (_agent_recovery_case_id(record),),
+        )
+        source = _infer_case_source(decision)
+        barrier_reason = _barrier_reason_for_case_source(source)
+        case_ids = decision.case_ids
+        barrier = DriveBarrier(
+            reason=barrier_reason,
+            entered_at=time.time(),
+            case_ids=case_ids,
+            pending_resolver_run_id=None,
+            pending_planner_run_id=None,
+            active_child_run_ids_at_entry=record.active_child_run_ids,
+        )
+        new_status = record.status
+        if record.status in {"running", "recovering"}:
+            candidate = _barrier_status(barrier_reason)
+            try:
+                validate_drive_transition(record.status, candidate)
+                new_status = candidate
+            except InvalidDriveTransitionError:
+                new_status = record.status
+        self._drive_store.save_drive(
+            replace(
+                record,
+                status=new_status,
+                updated_at=time.time(),
+                blocked_case_ids=case_ids,
+                barrier=barrier,
+                summary=(
+                    "agent-assisted recovery case opened: "
+                    f"{decision.reason}; case_ids={case_ids}"
+                ),
+            )
+        )
 
     # ------------------------------------------------------------------
     # start_drive
@@ -1003,9 +1195,13 @@ class DriveDriver:
         runtime_snap = self._control.sources.runtime.snapshot()
 
         if _resolver_should_handle_active_barrier(record) and self._resolver is not None:
+            barrier_reason = (
+                record.barrier.reason if record.barrier is not None else "runtime_failure"
+            )
+            reason = f"Open {barrier_reason} cases require resolution: {', '.join(open_case_ids)}"
             decision = ControlDecision(
                 kind="resolve",
-                reason=f"Open cases require resolution: {', '.join(open_case_ids)}",
+                reason=reason,
                 case_ids=open_case_ids,
             )
             return self._handle_resolve_decision(
@@ -1058,23 +1254,34 @@ class DriveDriver:
         barrier = record.barrier
         summary = f"loop pass: decision={decision.kind}"
         launched_refs: tuple[ChildRunRef, ...] = ()
+        blocked_case_ids = record.blocked_case_ids
 
         if decision.kind == "dispatch_batch":
-            launched_refs = self._launch_child_runs_for_decision(record, decision)
-            summary = (
-                f"dispatch_batch: steps={decision.step_ids} "
-                f"capacity_used={decision.capacity_used} "
-                f"capacity_remaining={decision.capacity_remaining}"
-            )
-            if launched_refs:
-                child_ids = tuple(ref.run_id for ref in launched_refs)
-                summary += f" child_runs={child_ids}"
+            try:
+                launched_refs = self._launch_child_runs_for_decision(record, decision)
+                summary = (
+                    f"dispatch_batch: steps={decision.step_ids} "
+                    f"capacity_used={decision.capacity_used} "
+                    f"capacity_remaining={decision.capacity_remaining}"
+                )
+                if launched_refs:
+                    child_ids = tuple(ref.run_id for ref in launched_refs)
+                    summary += f" child_runs={child_ids}"
+            except DriveChildLaunchError as exc:
+                launched_refs = exc.launched_refs
+                new_status, barrier, summary = self._launch_failure_barrier(record, exc)
+                blocked_case_ids = _merge_ids(record.blocked_case_ids, barrier.case_ids)
         elif decision.kind == "dispatch":
-            launched_refs = self._launch_child_runs_for_decision(record, decision)
-            summary = f"dispatch: step={decision.step_ids}"
-            if launched_refs:
-                child_ids = tuple(ref.run_id for ref in launched_refs)
-                summary += f" child_runs={child_ids}"
+            try:
+                launched_refs = self._launch_child_runs_for_decision(record, decision)
+                summary = f"dispatch: step={decision.step_ids}"
+                if launched_refs:
+                    child_ids = tuple(ref.run_id for ref in launched_refs)
+                    summary += f" child_runs={child_ids}"
+            except DriveChildLaunchError as exc:
+                launched_refs = exc.launched_refs
+                new_status, barrier, summary = self._launch_failure_barrier(record, exc)
+                blocked_case_ids = _merge_ids(record.blocked_case_ids, barrier.case_ids)
         elif decision.kind == "done":
             new_status = "completed"
             summary = "all phases closed; drive complete"
@@ -1097,6 +1304,8 @@ class DriveDriver:
             barrier=barrier,
             summary=summary,
         )
+        if blocked_case_ids != updated.blocked_case_ids:
+            updated = replace(updated, blocked_case_ids=blocked_case_ids)
         if launched_refs:
             active_child_run_ids = tuple(
                 dict.fromkeys(
@@ -1147,10 +1356,63 @@ class DriveDriver:
         launched: list[ChildRunRef] = []
         for step_id in decision.step_ids:
             role_id = decision.role_bindings.get(step_id, record.agent or "default")
-            ref = self._child_run_launcher(record.drive_id, step_id, role_id)
+            try:
+                ref = self._child_run_launcher(record.drive_id, step_id, role_id)
+            except Exception as exc:
+                raise DriveChildLaunchError(
+                    step_id=step_id,
+                    launched_refs=tuple(launched),
+                    original_error=exc,
+                ) from exc
             self._drive_store.save_child_run(ref)
             launched.append(ref)
         return tuple(launched)
+
+    def _launch_failure_barrier(
+        self,
+        record: DriveRecord,
+        exc: DriveChildLaunchError,
+    ) -> tuple[DriveStatus, DriveBarrier, str]:
+        case_id = f"runtime_{uuid.uuid4().hex}"
+        active_child_run_ids = _merge_ids(
+            record.active_child_run_ids,
+            tuple(ref.run_id for ref in exc.launched_refs),
+        )
+        barrier = DriveBarrier(
+            reason="runtime_failure",
+            entered_at=time.time(),
+            case_ids=(case_id,),
+            active_child_run_ids_at_entry=active_child_run_ids,
+        )
+        self._drive_store.record_retry_attempt(
+            drive_id=record.drive_id,
+            step_id=exc.step_id,
+            run_id=f"launch_{uuid.uuid4().hex}",
+            failure_class="launch_failure",
+            summary=str(exc.original_error),
+        )
+        attempt_count = self._drive_store.retry_attempt_count(
+            drive_id=record.drive_id,
+            step_id=exc.step_id,
+            failure_class="launch_failure",
+        )
+        release_note = ""
+        try:
+            self._core_adapter.defer_step(exc.step_id)
+            release_note = "; claim released for retry"
+        except Exception as release_exc:
+            release_note = f"; claim release failed: {release_exc}"
+        limit_note = ""
+        new_status: DriveStatus = "resolving"
+        if attempt_count >= _MAX_STALE_CHILD_FAILURES_PER_STEP:
+            limit_note = "; retry limit reached"
+            new_status = "blocked_operator"
+        return (
+            new_status,
+            barrier,
+            f"child launch failed for step={exc.step_id} attempt={attempt_count}: "
+            f"{exc.original_error}; case_id={case_id}{release_note}{limit_note}",
+        )
 
     def _review_terminal_child_run(self, record: DriveRecord) -> DriveLoopResult | None:
         """Route one terminal step child-run fact through post-execution review.
@@ -1190,6 +1452,42 @@ class DriveDriver:
                 execution_result=execution_result,
                 artifact_refs=_artifact_refs_for_review(child_run=child_run, run_record=run_record),
             )
+
+            if (
+                review_result.status == "needs_replan"
+                and review_result.planner_request is not None
+                and self._planner_mutation_applier is not None
+            ):
+                active_child_run_ids = tuple(
+                    run_id for run_id in record.active_child_run_ids if run_id != child_run.run_id
+                )
+                case_id = f"review_{child_run.run_id}"
+                replan_record = replace(
+                    record,
+                    updated_at=time.time(),
+                    active_child_run_ids=active_child_run_ids,
+                    blocked_case_ids=(case_id,),
+                    summary=(
+                        f"post-execution review needs_replan for step={child_run.step_id}: "
+                        f"{review_result.summary}"
+                    ),
+                )
+                decision = ControlDecision(
+                    kind="replan",
+                    reason=review_result.summary,
+                    planner_request=review_result.planner_request,
+                    case_ids=(case_id,),
+                    barrier_required=True,
+                )
+                return self._handle_replan_decision(
+                    drive_id=record.drive_id,
+                    record=replan_record,
+                    core=self._core_adapter.snapshot(agent=record.agent or "default"),
+                    roster=self._control.sources.roster.snapshot(),
+                    runtime=self._control.sources.runtime.snapshot(),
+                    decision=decision,
+                )
+
             authoritative_completion = False
             if review_result.status == "pass":
                 reconcile_disposition = _reconcile_disposition_from_run_record(run_record)
@@ -1407,13 +1705,27 @@ class DriveDriver:
             roster=roster,
             runtime=runtime,
             drive=record,
-            blocked_step_ids=tuple(sid for sid in core.blocked_step_ids),
+            blocked_step_ids=tuple(
+                dict.fromkeys(
+                    (
+                        *core.blocked_step_ids,
+                        *(
+                            sid
+                            for sid in core.in_progress_step_ids
+                            if sid in record.frontier_step_ids
+                        ),
+                    )
+                )
+            ),
             artifact_refs=(),
         )
 
-        # Step 3: Invoke resolver.
+        # Step 3: Invoke resolver unless the case is a provably stale runtime
+        # barrier that can be cleared without human or agent intervention.
         # Authority: ORCHESTRATION-PLANE-INTERFACES.md section 4.4
-        report = self._resolver.resolve(case)
+        report = _auto_unblock_stale_runtime_case(case)
+        if report is None:
+            report = self._resolver.resolve(case)
 
         # Step 4: Refresh authoritative state (mandatory).
         # Authority: ORCHESTRATION-PLANE-RESOLUTION-CONTRACT.md section 6
@@ -1453,6 +1765,26 @@ class DriveDriver:
         if resolved_barrier is None:
             updated = replace(updated, blocked_case_ids=())
         self._drive_store.save_drive(updated)
+
+        if (
+            report.status == "unblocked"
+            and report.planner_request is not None
+            and self._planner_mutation_applier is not None
+        ):
+            planner_decision = ControlDecision(
+                kind="replan",
+                reason=report.planner_request.reason,
+                planner_request=report.planner_request,
+                case_ids=resolved_barrier.case_ids if resolved_barrier is not None else (),
+            )
+            return self._handle_replan_decision(
+                drive_id=drive_id,
+                record=updated,
+                core=refreshed_core,
+                roster=refreshed_roster,
+                runtime=refreshed_runtime,
+                decision=planner_decision,
+            )
 
         return DriveLoopResult(
             drive_id=drive_id,
@@ -2142,6 +2474,7 @@ class DriveDriver:
 
         recovered_ids: list[str] = []
         failed_ids: list[str] = []
+        retry_limited_step_ids: list[str] = []
         conflict_notes: list[str] = []
 
         for ref in all_child_runs:
@@ -2174,12 +2507,39 @@ class DriveDriver:
                 if liveness == "stale":
                     # Stale persisted running state with no live process.
                     # The process is gone; persisted running state is stale.
-                    # Classify as failed rather than recovered.
+                    # Classify as failed rather than recovered.  Recovery will
+                    # persist this terminal fact below so replay does not
+                    # resurrect the dead run, then release the core claim so
+                    # normal scheduling can retry the step without bypassing
+                    # control authority.
                     conflict_notes.append(
                         f"child run {ref.run_id}: persisted status={ref.status} but "
                         f"live process missing and no terminal artifact; "
-                        f"classifying as stale (failed)"
+                        f"classifying as stale (failed); scheduler may retry after claim release"
                     )
+                    step_label = ref.step_id or ref.run_id
+                    historical_failures_for_step = sum(
+                        1
+                        for prior in all_child_runs
+                        if prior.run_id != ref.run_id
+                        and prior.step_id == ref.step_id
+                        and prior.status in ("fail", "stall", "transport_error")
+                    )
+                    prior_retry_count = self._drive_store.retry_attempt_count(
+                        drive_id=drive_id,
+                        step_id=step_label,
+                        failure_class="stale_child",
+                    )
+                    failed_count_for_step = max(
+                        historical_failures_for_step,
+                        prior_retry_count,
+                    ) + 1
+                    if failed_count_for_step >= _MAX_STALE_CHILD_FAILURES_PER_STEP:
+                        retry_limited_step_ids.append(step_label)
+                        conflict_notes.append(
+                            f"operator required: retry limit reached for {step_label} "
+                            f"after {failed_count_for_step} stale child failures"
+                        )
                     failed_ids.append(ref.run_id)
                     continue
 
@@ -2206,6 +2566,47 @@ class DriveDriver:
                 + [rid for rid in recovered_ids if rid not in {r.run_id for r in active_runs}]
             )
         )
+
+        # If a previous supervisor died after a child run reached a terminal
+        # state but before authoritative completion/defer, the plan can be left
+        # with a claimed step and no active drive child.  In drive recovery that
+        # claim is an orchestration-owned orphan: keeping it makes control see
+        # "Execution already in progress" forever while the drive has no live
+        # child to collect.  Release only steps owned by this drive (current
+        # frontier, historical child-run refs, or the drive agent's live
+        # in-progress snapshot when there are no recoverable active child runs)
+        # whose child facts are absent from the recovered active set.
+        core = self._core_adapter.snapshot(agent=record.agent or "default")
+        recovered_active_set = set(recovered_active_ids)
+        refs_by_step: dict[str, list[ChildRunRef]] = {}
+        for ref in all_child_runs:
+            if ref.step_id is None:
+                continue
+            refs_by_step.setdefault(ref.step_id, []).append(ref)
+        drive_owned_step_ids = set(record.frontier_step_ids) | set(refs_by_step)
+        if not recovered_active_set:
+            # A crash can happen after core claim succeeds but before the child
+            # run ref is persisted.  In that state the step is absent from both
+            # the stale frontier cache and child-run history, yet control will
+            # keep returning "Execution already in progress" forever.  The
+            # snapshot is already scoped to ``record.agent`` by CoreAdapter, so
+            # these in-progress IDs are drive-agent-owned candidates.
+            drive_owned_step_ids.update(core.in_progress_step_ids)
+        orphaned_claim_step_ids: list[str] = []
+        for step_id in core.in_progress_step_ids:
+            if step_id not in drive_owned_step_ids:
+                continue
+            step_refs = refs_by_step.get(step_id, [])
+            if any(ref.run_id in recovered_active_set for ref in step_refs):
+                continue
+            orphaned_claim_step_ids.append(step_id)
+
+        for step_id in orphaned_claim_step_ids:
+            conflict_notes.append(
+                f"released orphaned drive claim for {step_id}: no active child run remains"
+            )
+            if not dry_run:
+                self._core_adapter.defer_step(step_id)
 
         # Step 4: Re-enter barrier if persisted state requires it.
         # Authority: RFC-orch-drive.md section 15.3.1
@@ -2238,6 +2639,8 @@ class DriveDriver:
             new_status = _barrier_status(barrier.reason)
         else:
             new_status = "running"
+        if retry_limited_step_ids:
+            new_status = "blocked_operator"
 
         # Validate the transition through "recovering" if needed.
         # Authority: RFC-orch-drive.md section 8.2.1
@@ -2291,7 +2694,27 @@ class DriveDriver:
                 ),
             )
 
-        # Apply recovery: persist the updated drive state.
+        # Apply recovery: first persist failed child-run terminal facts.
+        # Without this, replay_drive_state() would rebuild active_child_run_ids
+        # from stale pending/running child refs and resurrect the dead run.
+        failed_id_set = set(failed_ids)
+        for ref in all_child_runs:
+            if ref.run_id not in failed_id_set or ref.status not in ("pending", "running"):
+                continue
+            step_label = ref.step_id or ref.run_id
+            self._drive_store.record_retry_attempt(
+                drive_id=drive_id,
+                step_id=step_label,
+                run_id=ref.run_id,
+                failure_class="stale_child",
+                summary="live process missing and no terminal artifact",
+            )
+            self._drive_store.save_child_run(replace(ref, status="fail"))
+            released_lease = self._drive_store.invalidate_lease(ref.run_id, reason="invalidated")
+            if released_lease is not None:
+                conflict_notes.append(f"released stale child lease for {ref.step_id}: {ref.run_id}")
+
+        # Persist the updated drive state.
         now = time.time()
         updated = DriveRecord(
             drive_id=record.drive_id,

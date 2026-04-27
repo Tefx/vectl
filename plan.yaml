@@ -90906,3 +90906,85 @@ phases:
     - invar_guard_remediation.collect-failure-inventory
     - invar_guard_remediation.verify-full-guard
     agent: gate-reviewer-tacit
+  - id: fix-plan-mutation-query-domain
+    name: Fix plan mutation/query invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to plan mutation/query
+      logic.
+
+
+      Owned files:
+
+      - `src/vectl/core_plan_mutations.py`
+
+      - `src/vectl/core_plan_queries.py`
+
+
+      Seed findings: about 89 total across these files, mostly `shell_result`, `shell_too_complex`,
+      plus file/function size and one `dead_assign`.
+
+
+      Allowed decisions:
+
+      - Convert true shell boundaries to `Result[T,E]` only when callers can honestly
+      handle Result.
+
+      - Move pure, reusable logic into an actual `**/core/**` module only with @pre/@post/doctest
+      written before implementation.
+
+      - Use narrow `# @invar:allow ...` / `# @shell_complexity:` only when the file
+      is intentionally a compatibility shell/adapter and the reason is specific.
+
+
+      Out of scope: CLI/MCP surfaces, orchestration runtime files, and broad dead-code
+      cleanup outside the two owned files.'
+    verification: '- Scoped `uvx invar-tools guard --all` evidence shows no ungoverned
+      findings remain for the two owned files.
+
+      - If behavior changes, expected-red test/contract output is shown before the
+      implementation and green targeted tests after.
+
+      - Any new/changed `**/core/**` function has @pre, @post, and doctest.
+
+      - Residual guard failures, if any, are outside this step''s owned files.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/core_plan_mutations.py — <symbols/sections read>
+
+      - src/vectl/core_plan_queries.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      Paste inventory rows for the owned files.
+
+
+      ## Remediation Decisions
+
+      | File:Line | Rule | Action | Rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      - <failing test/contract before implementation OR why no behavior change required>
+
+
+      ## Verification
+
+      Commands run and outputs:
+
+      - `uvx invar-tools guard --all` — <scoped result for owned files>
+
+      - <targeted tests/contracts> — <result>
+
+
+      ## Residuals
+
+      - <none in owned files OR exact residual with disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

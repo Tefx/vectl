@@ -91675,3 +91675,71 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-cli-plan-domain
+    name: Fix CLI plan invar domain
+    status: pending
+    description: 'IMPLEMENTATION. Remediate invar findings scoped only to the plan-management
+      CLI surface.
+
+
+      Owned file:
+
+      - `src/vectl/cli_plan.py`
+
+
+      Seed findings: about 42 total, including `shell_result`, `shell_too_complex`,
+      function/file size, dead_param, and dead_assign.
+
+
+      Guardrails:
+
+      - Preserve claim/complete/mutate/review/recover CLI semantics and output formats.
+
+      - Do not break command signatures used by tests or users.
+
+      - Rename intentionally unused public parameters or apply narrow allows rather
+      than deleting compatibility surfaces.'
+    verification: '- Guard evidence shows no ungoverned findings remain for `cli_plan.py`.
+
+      - Touched CLI commands have targeted tests or real invocation evidence.
+
+      - Public command signatures remain compatible or changes are justified.
+
+      - Residual guard failures are outside owned file.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - INVAR.md — <passage read>
+
+      - src/vectl/cli_plan.py — <symbols/sections read>
+
+
+      ## Scoped Red Baseline
+
+      <paste guard rows for cli_plan.py>
+
+
+      ## Remediation Decisions
+
+      | Function | Rule(s) | Action | CLI compatibility rationale |
+
+      | --- | --- | --- | --- |
+
+
+      ## Expected-Red / Safety Proof
+
+      <failing output before semantic change OR no-behavior-change justification>
+
+
+      ## Verification
+
+      - `uvx invar-tools guard --all` scoped cli_plan result: <paste>
+
+      - CLI/command tests or real invocations: <paste>
+
+
+      ## Residuals
+
+      <none or exact disposition>'
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit

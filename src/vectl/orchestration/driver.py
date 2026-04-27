@@ -483,6 +483,8 @@ def _auto_unblock_stale_runtime_case(case: ResolutionCase) -> ResolutionReport |
         return None
     if drive is None or not drive.frontier_step_ids:
         return None
+    if drive.status != "blocked_operator":
+        return None
     if drive.operator_pause_state == "paused":
         return None
     reason_text = f"{case.reason}\n{drive.summary}".lower()
@@ -509,6 +511,24 @@ def _auto_unblock_stale_runtime_case(case: ResolutionCase) -> ResolutionReport |
             "auto_resolution=stale_runtime_frontier_safe",
         ),
     )
+
+
+def _agent_recovery_case_id(record: DriveRecord) -> str:
+    """Build a stable-enough case identifier for agent-assisted recovery."""
+
+    return f"agent_recovery_{record.drive_id}_{uuid.uuid4().hex}"
+
+
+def _should_skip_agent_assisted_recovery(record: DriveRecord) -> str | None:
+    """Return a skip reason when agent-assisted recovery must not run."""
+
+    if record.status in TERMINAL_DRIVE_STATUSES:
+        return f"drive is terminal: {record.status}"
+    if record.operator_pause_state == "paused" or record.status == "paused":
+        return "drive is explicitly operator-paused"
+    if record.barrier is not None and record.barrier.reason == "operator_pause":
+        return "drive barrier is an explicit operator pause"
+    return None
 
 
 def _execution_result_from_terminal_child_run(
@@ -903,6 +923,101 @@ class DriveDriver:
         self._child_run_launcher = child_run_launcher
         self._child_run_canceller = child_run_canceller
         self._max_parallelism = max(1, min(32, max_parallelism))
+
+    def attempt_agent_assisted_recovery(
+        self,
+        drive_id: str,
+        *,
+        reason: str = "",
+        max_attempts: int = 2,
+    ) -> DriveLoopResult:
+        """Give the resolver agent a bounded chance before human handoff.
+
+        This is the last automatic recovery tier for cases that are not
+        mechanically safe to clear.  It preserves explicit human controls
+        (pause/stop/terminal states), creates an auditable resolution case when
+        needed, and then runs the normal drive loop so the existing resolver and
+        planner contracts own any mutations.
+        """
+
+        from vectl.orchestration.run_store import DriveStoreError
+
+        record = self._drive_store.replay_drive_state(drive_id)
+        if record is None:
+            raise DriveStoreError(f"no DriveRecord found for drive_id={drive_id!r}")
+
+        skip_reason = _should_skip_agent_assisted_recovery(record)
+        if skip_reason is not None:
+            return DriveLoopResult(
+                drive_id=drive_id,
+                status=record.status,
+                active_child_run_ids=record.active_child_run_ids,
+                barrier=record.barrier,
+                summary=f"agent-assisted recovery skipped: {skip_reason}",
+            )
+
+        if self._resolver is None:
+            return DriveLoopResult(
+                drive_id=drive_id,
+                status=record.status,
+                active_child_run_ids=record.active_child_run_ids,
+                barrier=record.barrier,
+                summary="agent-assisted recovery unavailable: resolver not wired",
+            )
+
+        self._ensure_agent_recovery_case(record=record, reason=reason)
+        attempts = max(1, max_attempts)
+        result: DriveLoopResult | None = None
+        for _ in range(attempts):
+            result = self.run_drive_loop(drive_id)
+            if result.status not in {"resolving", "replanning"}:
+                break
+            if result.summary.startswith("automation stopped:"):
+                break
+        assert result is not None
+        return result
+
+    def _ensure_agent_recovery_case(self, *, record: DriveRecord, reason: str) -> None:
+        if record.barrier is not None and record.blocked_case_ids:
+            return
+
+        decision = ControlDecision(
+            kind="resolve",
+            reason=reason or record.summary or "agent-assisted recovery requested",
+            case_ids=record.blocked_case_ids or (_agent_recovery_case_id(record),),
+        )
+        source = _infer_case_source(decision)
+        barrier_reason = _barrier_reason_for_case_source(source)
+        case_ids = decision.case_ids
+        barrier = DriveBarrier(
+            reason=barrier_reason,
+            entered_at=time.time(),
+            case_ids=case_ids,
+            pending_resolver_run_id=None,
+            pending_planner_run_id=None,
+            active_child_run_ids_at_entry=record.active_child_run_ids,
+        )
+        new_status = record.status
+        if record.status in {"running", "recovering"}:
+            candidate = _barrier_status(barrier_reason)
+            try:
+                validate_drive_transition(record.status, candidate)
+                new_status = candidate
+            except InvalidDriveTransitionError:
+                new_status = record.status
+        self._drive_store.save_drive(
+            replace(
+                record,
+                status=new_status,
+                updated_at=time.time(),
+                blocked_case_ids=case_ids,
+                barrier=barrier,
+                summary=(
+                    "agent-assisted recovery case opened: "
+                    f"{decision.reason}; case_ids={case_ids}"
+                ),
+            )
+        )
 
     # ------------------------------------------------------------------
     # start_drive

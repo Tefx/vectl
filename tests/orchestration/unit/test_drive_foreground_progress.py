@@ -142,6 +142,71 @@ def test_foreground_drive_continues_after_unpause_control_consumption() -> None:
     assert terminal_events[-1]["summary"] == "resolver requires operator: still blocked"
 
 
+def test_foreground_drive_gives_blocked_barrier_one_resolver_pass() -> None:
+    """Foreground blocks should get one agent pass before surfacing to users."""
+
+    app = object.__new__(OrchestrationApp)
+    app._drive_child_run_contexts = {}
+    events: list[dict[str, object]] = []
+    loop_calls: list[str] = []
+
+    status_snapshots = [
+        DriveStatusResult(drive_id="drv-test", status="running", summary="running"),
+        DriveStatusResult(
+            drive_id="drv-test",
+            status="blocked_operator",
+            barrier=DriveBarrier(reason="review_failed", case_ids=("review-run-1",)),
+            summary="post-execution review operator_required for step.a",
+        ),
+    ]
+    loop_results = [
+        DriveLoopResult(
+            drive_id="drv-test",
+            status="blocked_operator",
+            barrier=DriveBarrier(reason="review_failed", case_ids=("review-run-1",)),
+            summary="post-execution review operator_required for step.a",
+        ),
+        DriveLoopResult(
+            drive_id="drv-test",
+            status="blocked_operator",
+            barrier=DriveBarrier(reason="review_failed", case_ids=("review-run-1",)),
+            summary="resolver requires operator: still blocked",
+        ),
+    ]
+
+    app.drive_runs = lambda drive_id: ()  # type: ignore[method-assign]
+    app.drive_status = lambda drive_id: status_snapshots.pop(0)  # type: ignore[method-assign]
+
+    def _run_drive_loop(drive_id: str) -> DriveLoopResult:
+        loop_calls.append(drive_id)
+        return loop_results.pop(0)
+
+    app.run_drive_loop = _run_drive_loop  # type: ignore[method-assign]
+    app._drive_max_parallelism = lambda drive_id: 1  # type: ignore[method-assign]
+    app._drive_progress_snapshot = lambda *, status, started_at: {  # type: ignore[method-assign]
+        "drive_id": status.drive_id,
+        "status": status.status,
+        "elapsed_seconds": 0,
+        "total_steps": 0,
+        "done_steps": 0,
+        "running_count": 0,
+        "max_parallelism": 1,
+        "ready_count": 0,
+        "blocked_count": 0,
+        "case_count": 1,
+        "active_child_run_ids": (),
+        "frontier_step_ids": (),
+        "blocked_case_ids": ("review-run-1",),
+        "summary": status.summary,
+    }
+
+    app.run_drive_foreground("drv-test", progress_callback=events.append)
+
+    assert loop_calls == ["drv-test", "drv-test"]
+    terminal_events = [event for event in events if event.get("type") == "drive_blocked"]
+    assert terminal_events[-1]["summary"] == "resolver requires operator: still blocked"
+
+
 def test_foreground_drive_reports_stopped_as_terminal_even_with_barrier() -> None:
     """Stopped drives should not render as case-resolution-required blocks."""
 

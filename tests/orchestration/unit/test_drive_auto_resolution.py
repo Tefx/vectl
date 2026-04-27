@@ -84,9 +84,12 @@ class _FakeRuntimeSource:
 @dataclass
 class _FakeResolver:
     cases: list[ResolutionCase]
+    report: ResolutionReport | None = None
 
     def resolve(self, case: ResolutionCase) -> ResolutionReport:
         self.cases.append(case)
+        if self.report is not None:
+            return self.report
         return ResolutionReport(
             status="operator_required",
             summary="manual resolver fallback was invoked",
@@ -209,3 +212,76 @@ def test_stale_runtime_barrier_does_not_auto_unblock_retry_limit(tmp_path: Path)
     assert result.status == "blocked_operator"
     assert "resolver requires operator" in result.summary
     assert [case.case_id for case in resolver.cases] == ["case-retry-limit"]
+
+
+def test_agent_assisted_recovery_opens_case_and_invokes_resolver(tmp_path: Path) -> None:
+    resolver = _FakeResolver(
+        cases=[],
+        report=ResolutionReport(
+            status="unblocked",
+            summary="agent resolved retry-limit blocker",
+            evidence_refs=("resolver:test",),
+        ),
+    )
+    driver = _make_driver(
+        tmp_path,
+        core=_core(),
+        resolver=resolver,
+    )
+    start = driver.start_drive(plan_path="/repo/plan.yaml")
+    record = driver._drive_store.load_drive(start.drive_id)
+    assert record is not None
+    driver._drive_store.save_drive(
+        replace(
+            record,
+            status="blocked_operator",
+            updated_at=time.time(),
+            blocked_case_ids=(),
+            barrier=None,
+            summary="retry limit reached without an existing case",
+        )
+    )
+
+    result = driver.attempt_agent_assisted_recovery(
+        start.drive_id,
+        reason="retry limit reached for step.next",
+    )
+
+    assert result.status == "running"
+    assert "resolver unblocked" in result.summary
+    assert len(resolver.cases) == 1
+    assert resolver.cases[0].case_source == "runtime_failure"
+    updated = driver._drive_store.load_drive(start.drive_id)
+    assert updated is not None
+    assert updated.blocked_case_ids == ()
+    assert updated.barrier is None
+
+
+def test_agent_assisted_recovery_preserves_operator_pause(tmp_path: Path) -> None:
+    resolver = _FakeResolver(cases=[])
+    driver = _make_driver(
+        tmp_path,
+        core=_core(claimable=("step.next",)),
+        resolver=resolver,
+    )
+    start = driver.start_drive(plan_path="/repo/plan.yaml")
+    record = driver._drive_store.load_drive(start.drive_id)
+    assert record is not None
+    driver._drive_store.save_drive(
+        replace(
+            record,
+            status="paused",
+            updated_at=time.time(),
+            operator_pause_state="paused",
+            summary="operator pause consumed",
+        )
+    )
+
+    result = driver.attempt_agent_assisted_recovery(
+        start.drive_id,
+        reason="operator paused",
+    )
+
+    assert result.status == "paused"
+    assert "explicitly operator-paused" in result.summary
+    assert resolver.cases == []

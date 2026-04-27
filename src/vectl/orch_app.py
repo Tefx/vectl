@@ -2223,6 +2223,7 @@ class OrchestrationApp:
         last_workspace_change_count: dict[str, int] = {}
         barrier_idle_key: tuple[str, str, tuple[str, ...], str] | None = None
         barrier_idle_passes = 0
+        agent_recovery_attempted_keys: set[tuple[str, str, tuple[str, ...], str]] = set()
 
         initial_status = self.drive_status(drive_id=drive_id)
         self._emit_drive_progress_event(
@@ -2262,7 +2263,14 @@ class OrchestrationApp:
             )
 
             if self._foreground_drive_should_exit(status):
-                if self._foreground_should_continue_after_control_consumption(
+                agent_recovery_key = self._foreground_agent_recovery_key(last_result)
+                if (
+                    agent_recovery_key is not None
+                    and agent_recovery_key not in agent_recovery_attempted_keys
+                ):
+                    agent_recovery_attempted_keys.add(agent_recovery_key)
+                    pass
+                elif self._foreground_should_continue_after_control_consumption(
                     status=status,
                     last_result=last_result,
                 ):
@@ -2301,6 +2309,13 @@ class OrchestrationApp:
                 time.sleep(max(0.1, poll_interval_seconds))
                 last_result = self.run_drive_loop(drive_id)
                 if self._foreground_loop_result_should_exit(last_result):
+                    agent_recovery_key = self._foreground_agent_recovery_key(last_result)
+                    if (
+                        agent_recovery_key is not None
+                        and agent_recovery_key not in agent_recovery_attempted_keys
+                    ):
+                        agent_recovery_attempted_keys.add(agent_recovery_key)
+                        continue
                     if last_result.status in TERMINAL_DRIVE_STATUSES:
                         self._cleanup_drive_workspaces_for_terminal_status(
                             drive_id=drive_id,
@@ -2325,6 +2340,13 @@ class OrchestrationApp:
 
             last_result = self.run_drive_loop(drive_id)
             if self._foreground_loop_result_should_exit(last_result):
+                agent_recovery_key = self._foreground_agent_recovery_key(last_result)
+                if (
+                    agent_recovery_key is not None
+                    and agent_recovery_key not in agent_recovery_attempted_keys
+                ):
+                    agent_recovery_attempted_keys.add(agent_recovery_key)
+                    continue
                 if last_result.status in TERMINAL_DRIVE_STATUSES:
                     self._cleanup_drive_workspaces_for_terminal_status(
                         drive_id=drive_id,
@@ -2388,6 +2410,38 @@ class OrchestrationApp:
         if not last_result.summary.startswith("operator unpause consumed:"):
             return False
         return status.summary == last_result.summary
+
+    @staticmethod
+    def _foreground_agent_recovery_key(
+        result: DriveLoopResult,
+    ) -> tuple[str, str, tuple[str, ...], str] | None:
+        """Return a one-shot key when a blocked drive should get resolver help."""
+
+        if result.status != "blocked_operator":
+            return None
+        if result.barrier is None or not result.barrier.case_ids:
+            return None
+        if result.barrier.reason == "operator_pause":
+            return None
+        summary_lower = result.summary.lower()
+        if any(
+            token in summary_lower
+            for token in (
+                "resolver requires operator",
+                "planner requires operator intervention",
+                "operator pause consumed",
+                "operator stop consumed",
+                "agent-assisted recovery skipped",
+                "agent-assisted recovery unavailable",
+            )
+        ):
+            return None
+        return (
+            result.status,
+            result.barrier.reason,
+            result.barrier.case_ids,
+            result.summary[:160],
+        )
 
     @staticmethod
     def _track_barrier_idle_result(
@@ -2911,6 +2965,21 @@ class OrchestrationApp:
             DriveRecoverResult with recovery outcomes.
         """
         return self._drive_driver().recover_drive(drive_id, dry_run=dry_run)
+
+    def attempt_agent_assisted_drive_recovery(
+        self,
+        drive_id: str,
+        *,
+        reason: str = "",
+        max_attempts: int = 2,
+    ) -> DriveLoopResult:
+        """Try resolver/planner automation before surfacing a human stop."""
+
+        return self._drive_driver().attempt_agent_assisted_recovery(
+            drive_id,
+            reason=reason,
+            max_attempts=max_attempts,
+        )
 
     def drive_status(self, drive_id: str) -> DriveStatusResult:
         """Inspect current drive status.

@@ -670,33 +670,57 @@ def _drive_action_guidance(payload: dict[str, Any]) -> dict[str, Any]:
 
     if "retry limit" in summary_lower or "retry limit" in conflict_lower:
         reason_code = "retry_limit"
-        suggested_action = "inspect repeated child-run failures, adjust the step, then rerun `vectl orch drive`"
+        suggested_action = (
+            "inspect repeated child-run failures, adjust the step, "
+            "then rerun `vectl orch drive`"
+        )
         human_required = True
     elif "automation stopped" in summary_lower:
         reason_code = "automation_stalled"
-        suggested_action = "inspect the unchanged barrier/case, then rerun `vectl orch drive` after fixing the blocker"
+        suggested_action = (
+            "inspect the unchanged barrier/case, then rerun `vectl orch drive` "
+            "after fixing the blocker"
+        )
         human_required = True
     elif failed_child_run_ids:
         reason_code = "drive_recovery_failed_children"
-        suggested_action = "run `vectl orch drive-recover --latest --dry-run`, inspect stale child runs, then rerun drive"
+        suggested_action = (
+            "run `vectl orch drive-recover --latest --dry-run`, "
+            "inspect stale child runs, then rerun drive"
+        )
         human_required = True
     elif "runtime non-closure" in summary_lower:
         reason_code = "runtime_nonclosure"
-        suggested_action = "inspect the failed child run/case, create or run the remediation step, then rerun drive"
+        suggested_action = (
+            "inspect the failed child run/case, create or run the remediation step, "
+            "then rerun drive"
+        )
         human_required = True
     elif status == "blocked_operator":
         reason_code = "operator_required"
-        suggested_action = "inspect drive cases and respond via `vectl orch case-*` or rerun `vectl orch drive-recover --latest --dry-run`"
+        suggested_action = (
+            "inspect drive cases and respond via `vectl orch case-*` or rerun "
+            "`vectl orch drive-recover --latest --dry-run`"
+        )
         human_required = True
     elif status in {"resolving", "replanning"}:
         reason_code = "barrier_active"
-        suggested_action = "drive will continue through resolver/planner; if stale, run `vectl orch drive-recover --latest --dry-run`"
+        suggested_action = (
+            "drive will continue through resolver/planner; if stale, run "
+            "`vectl orch drive-recover --latest --dry-run`"
+        )
     elif status == "recovering":
         reason_code = "recovery_needed"
-        suggested_action = "rerun `vectl orch drive`; it will attempt safe recovery, or run `vectl orch drive-recover --latest --dry-run`"
+        suggested_action = (
+            "rerun `vectl orch drive`; it will attempt safe recovery, or run "
+            "`vectl orch drive-recover --latest --dry-run`"
+        )
     elif status in {"halted", "failed_unrecoverable", "stopped"}:
         reason_code = "terminal_attention_required"
-        suggested_action = "inspect drive status/logs and start a new drive only after the terminal cause is understood"
+        suggested_action = (
+            "inspect drive status/logs and start a new drive only after the "
+            "terminal cause is understood"
+        )
         human_required = status != "stopped"
     elif status == "completed":
         reason_code = "completed"
@@ -719,7 +743,10 @@ def _drive_payload(value: Any) -> Any:
     if isinstance(payload, dict):
         return _drive_action_guidance(payload)
     if isinstance(payload, list):
-        return [_drive_action_guidance(item) if isinstance(item, dict) else item for item in payload]
+        return [
+            _drive_action_guidance(item) if isinstance(item, dict) else item
+            for item in payload
+        ]
     return payload
 
 
@@ -2070,30 +2097,108 @@ def _drive_recovery_preview_has_work(preview: Any) -> bool:
     return False
 
 
+def _drive_recovery_preview_is_orphaned_claim_only(preview: Any, notes_lower: str) -> bool:
+    """Return True for the narrow orphaned-claim recovery case.
+
+    A previous foreground supervisor can die after a child run reaches a
+    terminal state but before the drive releases the core claim.  Recovery can
+    prove that state when there are no child runs to recover/fail and every
+    recovery note only releases an orphaned drive claim with no active child
+    remaining.  That action is safe to auto-apply because it removes stale
+    orchestration bookkeeping; it does not mark work complete or discard a live
+    child process.
+    """
+
+    notes = tuple(
+        str(note)
+        for note in getattr(preview, "conflict_resolutions", ()) or ()
+        if str(note) != "dry-run: no changes applied"
+    )
+    summary = str(getattr(preview, "summary", "")).lower()
+    barrier = getattr(preview, "barrier", None)
+    barrier_reason = (
+        barrier.get("reason") if isinstance(barrier, dict) else getattr(barrier, "reason", None)
+    )
+    allowed_barrier = barrier_reason in {
+        None,
+        "runtime_failure",
+        "review_failed",
+        "recovery_gate",
+    }
+    return (
+        not getattr(preview, "recovered_child_run_ids", ())
+        and not getattr(preview, "failed_child_run_ids", ())
+        and bool(notes)
+        and all(
+            "released orphaned drive claim" in note.lower()
+            and "no active child run remains" in note.lower()
+            for note in notes
+        )
+        and ("transition to resolving" in summary or "transition to running" in summary)
+        and allowed_barrier
+        and "operator required" not in notes_lower
+        and "merge conflict" not in notes_lower
+    )
+
+
 def _drive_recovery_preview_requires_operator(preview: Any) -> bool:
     """Conservatively identify recovery previews that should not auto-apply."""
 
-    status = str(getattr(preview, "status", ""))
-    if status in {"blocked_operator", "failed_unrecoverable", "halted", "stopped"}:
-        return True
     notes = "\n".join(str(note) for note in getattr(preview, "conflict_resolutions", ()) or ())
     notes_lower = notes.lower()
-    if any(token in notes_lower for token in ("merge conflict", "operator", "manual")):
-        return True
-
-    failed_child_run_ids = tuple(str(run_id) for run_id in getattr(preview, "failed_child_run_ids", ()) or ())
-    if not failed_child_run_ids:
+    if _drive_recovery_preview_is_orphaned_claim_only(preview, notes_lower):
         return False
 
+    status = str(getattr(preview, "status", ""))
+    terminal_or_operator = status in {
+        "blocked_operator",
+        "failed_unrecoverable",
+        "halted",
+        "stopped",
+    }
+    unsafe_notes = any(token in notes_lower for token in ("merge conflict", "operator", "manual"))
+    failed_child_run_ids = tuple(
+        str(run_id) for run_id in getattr(preview, "failed_child_run_ids", ()) or ()
+    )
     # Auto-retry only the narrow stale-run case recover_drive can prove:
     # persisted pending/running child, no live process, no terminal artifact.
     # Everything else stays operator-owned.
-    return not (
+    retryable_failed_child = bool(failed_child_run_ids) and (
         "live process missing" in notes_lower
         and "no terminal artifact" in notes_lower
         and "stale" in notes_lower
         and all(run_id.lower() in notes_lower for run_id in failed_child_run_ids)
     )
+    return terminal_or_operator or unsafe_notes or (
+        bool(failed_child_run_ids) and not retryable_failed_child
+    )
+
+
+def _attempt_agent_assisted_recovery_preview(
+    app_runtime: Any,
+    drive_id: str,
+    preview: Any,
+) -> tuple[Any, dict[str, Any]]:
+    """Let resolver automation try once, then return a fresh recovery preview."""
+
+    assistant = getattr(app_runtime, "attempt_agent_assisted_drive_recovery", None)
+    if not callable(assistant):
+        return preview, {"attempted": False, "reason": "not_supported"}
+    try:
+        result = assistant(
+            drive_id=drive_id,
+            reason=str(getattr(preview, "summary", "") or "drive recovery requires operator"),
+        )
+        followup = app_runtime.recover_drive(drive_id=drive_id, dry_run=True)
+        return followup, {
+            "attempted": True,
+            "result": _json_ready(result),
+        }
+    except Exception as exc:
+        return preview, {
+            "attempted": True,
+            "error": str(exc),
+        }
 
 
 def _auto_recover_active_drive(app_runtime: Any, drive_id: str) -> dict[str, Any] | None:
@@ -2106,12 +2211,33 @@ def _auto_recover_active_drive(app_runtime: Any, drive_id: str) -> dict[str, Any
     preview = app_runtime.recover_drive(drive_id=drive_id, dry_run=True)
     if not _drive_recovery_preview_has_work(preview):
         return None
+    agent_assisted: dict[str, Any] | None = None
+    if _drive_recovery_preview_requires_operator(preview):
+        preview, agent_assisted = _attempt_agent_assisted_recovery_preview(
+            app_runtime,
+            drive_id,
+            preview,
+        )
+        if not _drive_recovery_preview_has_work(preview):
+            return {
+                "drive_id": drive_id,
+                "status": getattr(preview, "status", "running"),
+                "summary": getattr(preview, "summary", "agent-assisted recovery cleared blocker"),
+                "auto_recovery": {
+                    "applied": False,
+                    "agent_assisted": agent_assisted,
+                    "conflict_resolutions": tuple(
+                        getattr(preview, "conflict_resolutions", ()) or ()
+                    ),
+                },
+            }
     if _drive_recovery_preview_requires_operator(preview):
         payload = _drive_action_guidance(_json_ready(preview))
         payload["auto_recovery"] = {
             "applied": False,
             "reason": "operator_required",
             "preview_summary": getattr(preview, "summary", ""),
+            "agent_assisted": agent_assisted,
         }
         payload["human_required"] = True
         payload["reason_code"] = payload.get("reason_code") or "recovery_requires_operator"
@@ -2127,6 +2253,7 @@ def _auto_recover_active_drive(app_runtime: Any, drive_id: str) -> dict[str, Any
             "conflict_resolutions": tuple(getattr(applied, "conflict_resolutions", ()) or ()),
             "recovered_child_run_ids": tuple(getattr(applied, "recovered_child_run_ids", ()) or ()),
             "failed_child_run_ids": tuple(getattr(applied, "failed_child_run_ids", ()) or ()),
+            "agent_assisted": agent_assisted,
         },
     }
 

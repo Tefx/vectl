@@ -359,13 +359,19 @@ class _FakeRecoveringActiveDriveOrchApp(_FakeActiveDriveOrchApp):
                 drive_id=drive_id,
                 status="recovering",
                 conflict_resolutions=("recovering drive can safely transition to running",),
-                summary="dry-run: would recover 0 child runs, fail 0 stale runs, transition to running",
+                summary=(
+                    "dry-run: would recover 0 child runs, fail 0 stale runs, "
+                    "transition to running"
+                ),
             )
         return _DriveRecoverResult(
             drive_id=drive_id,
             status="running",
             conflict_resolutions=("safe startup auto-recovery applied",),
-            summary="drive recovered; 0 child runs restored; 0 stale runs classified as failed; status=running",
+            summary=(
+                "drive recovered; 0 child runs restored; 0 stale runs classified as "
+                "failed; status=running"
+            ),
         )
 
 
@@ -382,14 +388,105 @@ class _FakeRetryableFailedChildDriveOrchApp(_FakeActiveDriveOrchApp):
                     "and no terminal artifact; classifying as stale (failed); "
                     "scheduler may retry after claim release",
                 ),
-                summary="dry-run: would recover 0 child runs, fail 1 stale runs, transition to running",
+                summary=(
+                    "dry-run: would recover 0 child runs, fail 1 stale runs, "
+                    "transition to running"
+                ),
             )
         return _DriveRecoverResult(
             drive_id=drive_id,
             status="running",
             failed_child_run_ids=("run-stale",),
             conflict_resolutions=("marked stale child run failed and released claim",),
-            summary="drive recovered; 0 child runs restored; 1 stale runs classified as failed; status=running",
+            summary=(
+                "drive recovered; 0 child runs restored; 1 stale runs classified as "
+                "failed; status=running"
+            ),
+        )
+
+
+class _FakeOrphanedClaimActiveDriveOrchApp(_FakeActiveDriveOrchApp):
+    def recover_drive(self, *, drive_id: str, dry_run: bool = False) -> _DriveRecoverResult:
+        self.calls.append("recover_drive_dry_run" if dry_run else "recover_drive_apply")
+        if dry_run:
+            return _DriveRecoverResult(
+                drive_id=drive_id,
+                status="blocked_operator",
+                conflict_resolutions=(
+                    "released orphaned drive claim for step.a: no active child run remains",
+                ),
+                summary=(
+                    "dry-run: would recover 0 child runs, fail 0 stale runs, "
+                    "transition to resolving"
+                ),
+            )
+        return _DriveRecoverResult(
+            drive_id=drive_id,
+            status="resolving",
+            conflict_resolutions=(
+                "released orphaned drive claim for step.a: no active child run remains",
+            ),
+            summary=(
+                "drive recovered; 0 child runs restored; 0 stale runs classified as "
+                "failed; status=resolving"
+            ),
+        )
+
+
+class _FakeAgentAssistedRecoveryDriveApp(_FakeActiveDriveOrchApp):
+    def __init__(self) -> None:
+        super().__init__()
+        self.agent_assisted = False
+
+    def recover_drive(self, *, drive_id: str, dry_run: bool = False) -> _DriveRecoverResult:
+        self.calls.append("recover_drive_dry_run" if dry_run else "recover_drive_apply")
+        if dry_run and not self.agent_assisted:
+            return _DriveRecoverResult(
+                drive_id=drive_id,
+                status="blocked_operator",
+                failed_child_run_ids=("run-ambiguous",),
+                conflict_resolutions=(
+                    "child run run-ambiguous: manual inspection required before retry",
+                ),
+                summary="dry-run: would fail 1 ambiguous child run; operator required",
+            )
+        if dry_run:
+            return _DriveRecoverResult(
+                drive_id=drive_id,
+                status="running",
+                failed_child_run_ids=("run-ambiguous",),
+                conflict_resolutions=(
+                    "child run run-ambiguous: persisted status=running but live process missing "
+                    "and no terminal artifact; classifying as stale (failed); "
+                    "scheduler may retry after claim release",
+                ),
+                summary=(
+                    "dry-run: would recover 0 child runs, fail 1 stale runs, "
+                    "transition to running"
+                ),
+            )
+        return _DriveRecoverResult(
+            drive_id=drive_id,
+            status="running",
+            failed_child_run_ids=("run-ambiguous",),
+            conflict_resolutions=("agent-assisted recovery classified stale child for retry",),
+            summary="drive recovered after agent-assisted classification; status=running",
+        )
+
+    def attempt_agent_assisted_drive_recovery(
+        self,
+        *,
+        drive_id: str,
+        reason: str = "",
+        max_attempts: int = 2,
+    ) -> _DriveLoopResult:
+        self.calls.append("attempt_agent_assisted_drive_recovery")
+        self.agent_assisted = True
+        del reason, max_attempts
+        return _DriveLoopResult(
+            drive_id=drive_id,
+            status="resolving",
+            summary="resolver agent classified ambiguous recovery preview",
         )
 
 
@@ -400,8 +497,13 @@ class _FakeUnsafeActiveDriveOrchApp(_FakeActiveDriveOrchApp):
             drive_id=drive_id,
             status="running",
             failed_child_run_ids=("run-stale",),
-            conflict_resolutions=("child run run-stale: live process missing; classifying as stale",),
-            summary="dry-run: would recover 0 child runs, fail 1 stale runs, transition to running",
+            conflict_resolutions=(
+                "child run run-stale: live process missing; classifying as stale",
+            ),
+            summary=(
+                "dry-run: would recover 0 child runs, fail 1 stale runs, "
+                "transition to running"
+            ),
         )
 
 
@@ -415,7 +517,10 @@ class _FakeRetryLimitActiveDriveOrchApp(_FakeActiveDriveOrchApp):
             conflict_resolutions=(
                 "operator required: retry limit reached for step.a after 3 stale child failures",
             ),
-            summary="dry-run: would recover 0 child runs, fail 1 stale runs, transition to blocked_operator",
+            summary=(
+                "dry-run: would recover 0 child runs, fail 1 stale runs, "
+                "transition to blocked_operator"
+            ),
         )
 
 
@@ -612,6 +717,49 @@ def test_orch_drive_auto_retries_retryable_failed_child_run(monkeypatch) -> None
     payload = json.loads(result.output)
     assert payload["auto_recovery"]["applied"] is True
     assert payload["auto_recovery"]["failed_child_run_ids"] == ["run-stale"]
+    assert payload["human_required"] is False
+
+
+def test_orch_drive_auto_recovers_orphaned_claim_only_preview(monkeypatch) -> None:
+    """An orphaned claim release with no child work is safe to auto-apply."""
+    fake = _FakeOrphanedClaimActiveDriveOrchApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--once", "--json"])
+
+    assert result.exit_code == 0
+    assert fake.calls == [
+        "start_drive",
+        "recover_drive_dry_run",
+        "recover_drive_apply",
+        "run_drive_loop",
+    ]
+    payload = json.loads(result.output)
+    assert payload["auto_recovery"]["applied"] is True
+    assert payload["auto_recovery"]["failed_child_run_ids"] == []
+    assert payload["human_required"] is False
+
+
+def test_orch_drive_agent_assisted_recovery_before_operator_stop(monkeypatch) -> None:
+    """Unsafe previews get one resolver-agent attempt before human handoff."""
+    fake = _FakeAgentAssistedRecoveryDriveApp()
+    monkeypatch.setattr("vectl.cli._build_orchestration_runtime_app", lambda plan: fake)
+
+    result = runner.invoke(app, ["orch", "drive", "--once", "--json"])
+
+    assert result.exit_code == 0
+    assert fake.calls == [
+        "start_drive",
+        "recover_drive_dry_run",
+        "attempt_agent_assisted_drive_recovery",
+        "recover_drive_dry_run",
+        "recover_drive_apply",
+        "run_drive_loop",
+    ]
+    payload = json.loads(result.output)
+    assert payload["auto_recovery"]["applied"] is True
+    assert payload["auto_recovery"]["agent_assisted"]["attempted"] is True
+    assert payload["auto_recovery"]["failed_child_run_ids"] == ["run-ambiguous"]
     assert payload["human_required"] is False
 
 

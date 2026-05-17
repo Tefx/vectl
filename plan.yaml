@@ -92869,31 +92869,31 @@ phases:
       closing the listed invar rule families.
 
 
-      ## Checklist
+      ## Acceptance Requirements
 
-      - [ ] `src/vectl/claims.py` has no ungoverned `shell_result` findings under
+      - `src/vectl/claims.py` has no ungoverned `shell_result` findings under the
+      targeted guard command.
+
+      - `src/vectl/claims.py` has no ungoverned `shell_too_complex` findings under
       the targeted guard command.
 
-      - [ ] `src/vectl/claims.py` has no ungoverned `shell_too_complex` findings under
-      the targeted guard command.
+      - Any intentional allow markers are narrow, local, and include rationale; no
+      broad file-level masking was added.
 
-      - [ ] Any intentional allow markers are narrow, local, and include rationale;
-      no broad file-level masking was added.
+      - Existing claims behavior remains covered by `tests/test_claims.py`.
 
-      - [ ] Existing claims behavior remains covered by `tests/test_claims.py`.
-
-      - [ ] No files outside `src/vectl/claims.py` were modified except tests directly
+      - No files outside `src/vectl/claims.py` were modified except tests directly
       required for claims regression evidence.'
-    verification: '- [ ] `uv run invar guard src/vectl/claims.py --agent` exits zero
-      or only reports findings with precise local non-blocking dispositions accepted
+    verification: '- `uv run invar guard src/vectl/claims.py --agent` exits zero or
+      only reports findings with precise local non-blocking dispositions accepted
       by invar policy.
 
-      - [ ] `uv run python -m pytest tests/test_claims.py -q` passes.
+      - `uv run python -m pytest tests/test_claims.py -q` passes.
 
-      - [ ] `uv run python -m compileall src/vectl/claims.py` passes.
+      - `uv run python -m compileall src/vectl/claims.py` passes.
 
-      - [ ] Evidence identifies the main path preserved and the highest-risk failure
-      path checked for claims persistence/claim state behavior.'
+      - Evidence identifies the main path preserved and the highest-risk failure path
+      checked for claims persistence/claim state behavior.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

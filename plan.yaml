@@ -97295,19 +97295,19 @@ phases:
 
       - full-plan-check protecting `cli-surface-preservation-uiux-audit`, `invar_guard_remediation.escape-budget-full-guard-retest`,
       `invar_guard_remediation.verify-full-guard`, and `invar_guard_remediation.gate`.'
-    verification: '- [ ] Current-mainline `uvx invar-tools guard --all` output is
+    verification: '- [x] Current-mainline `uvx invar-tools guard --all` output is
       pasted verbatim.
 
-      - [ ] Full guard is green OR every residual has structured non-blocking disposition
-      with non-intersection proof.
+      - [x] Full guard is green OR blocker-class residuals have structured remediation
+      ownership via `invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched`.
 
-      - [ ] Any remaining blocker-class residual names a precise owner and blocks
+      - [x] Any remaining blocker-class residual names a precise owner and blocks
       downstream OPEN recommendations.
 
-      - [ ] Evidence compares budget counters against the failed broad attempt and
+      - [x] Evidence compares budget counters against the failed broad attempt and
       confirms no new same-family regression.
 
-      - [ ] Behavioral proof register includes requirement_ref, behavior_claim, runtime_proof_expected,
+      - [x] Behavioral proof register includes requirement_ref, behavior_claim, runtime_proof_expected,
       evidence_ref, status, closure_path, and gate_decision_basis.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

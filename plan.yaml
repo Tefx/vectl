@@ -97078,15 +97078,15 @@ phases:
       deliverable MUST contain substantive logic that processes its inputs and produces
       outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
       `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
-    verification: '- [ ] `orch_app.py` and `driver.py` residuals are closed or dispositioned
+    verification: '- [x] `orch_app.py` and `driver.py` residuals are closed or dispositioned
       with pasted BEFORE/AFTER `uvx invar-tools guard --all` excerpts.
 
-      - [ ] Targeted app/driver regression or smoke evidence proves runtime/control/lifecycle
+      - [x] Targeted app/driver regression or smoke evidence proves runtime/control/lifecycle
       behavior still works.
 
-      - [ ] Project-level budget counters do not regress from this slice.
+      - [x] Project-level budget counters do not regress from this slice.
 
-      - [ ] No broad suppression, budget lowering, or stub-only implementation is
+      - [x] No broad suppression, budget lowering, or stub-only implementation is
       accepted.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

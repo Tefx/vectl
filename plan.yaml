@@ -95774,7 +95774,7 @@ phases:
       - [x] Removed escape-hatch justifications are inventoried as restore/repair
       candidates, not broadly reintroduced.
 
-      - [ ] Next implementation strategy is constrained to code-level closure, not
+      - [x] Next implementation strategy is constrained to code-level closure, not
       comment churn or broad suppression.'
     verification: '- [ ] Investigation evidence includes blocker_fingerprint, root_cause_hypothesis,
       why_previous_fix_failed, why_comment_deletion_is_not_closure, reversal_risk,

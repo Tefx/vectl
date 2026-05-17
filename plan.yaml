@@ -97468,7 +97468,7 @@ phases:
       until the batched fix/retest path closes.'
   - id: invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     name: Classify post-salvage escape-budget residuals
-    status: claimed
+    status: done
     description: "Post-salvage residualization step. This replaces the prior coarse\
       \ retry loop with a bounded classification and slice-selection handoff for the\
       \ current mainline state after salvaged main commit `1618486` (`[vectl] salvage\
@@ -97594,6 +97594,100 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T22:14:53.387755+00:00'
+    done_at: '2026-05-17T22:23:23.971866+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — subagent reported key passage: Core functions require `@pre`, `@post`,
+      and doctests before implementation; Shell applies to I/O/subprocess work; escape
+      hatches must be rare and justified.
+
+      - AGENTS.md — subagent reported key passage: `plan.yaml` is vectl-owned and
+      must not be edited directly; evidence is mandatory; final-gate evidence must
+      distinguish phase-local proof from repo-wide readiness.
+
+
+      ## Post-Salvage Residual Classification Evidence
+
+      - Evidence artifact: `docs/invar_guard_remediation/post_salvage_residual_classification_register.md`
+
+      - Worker commit: `ac87927503bdd2813f102ef8859f5fabf7c5b853` (`docs: classify
+      post-salvage invar residuals`)
+
+      - Main merge commit: `71160d9` (`[vectl] step-invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
+      completed`)
+
+      - main_salvage_commit: `1618486`
+
+      - branch_provenance_commit: `49aa644b897c3ff08ba39d74a5da036e1fe6bfe2`
+
+      - targeted_regression_baseline: `190 passed in 13.71s`
+
+
+      ### Verification Commands
+
+      - Worktree: `git merge-base --is-ancestor 1618486 HEAD` — succeeded per subagent
+      evidence.
+
+      - Worktree: `uvx invar-tools guard --all` — expected failed guard state for
+      classification; confirmed `file_size: 9/5`, weighted `40/15`, `dead_param: 6`,
+      `entry_point_too_thick: 2`, `shell_complexity: 1` per subagent evidence.
+
+      - Mainline after squash merge: `uvx invar-tools guard --all` — expected failed
+      guard state for classification; confirmed project errors `Project rule budget
+      file_size: 9/5` and `Escape hatch weighted budget: 40/15`, `escape_hatches.by_rule.file_size:
+      9`, `dead_param: 6`, `entry_point_too_thick: 2`, `shell_complexity: 1`.
+
+
+      ### Classification Register Summary
+
+      | file_path | hatch_kind | classification | assigned_residual_step |
+
+      | --- | --- | --- | --- |
+
+      | `src/vectl/mcp_core_tools.py` | `file_size` | `public_schema_facade` | `invar_guard_remediation.split-mcp-and-cli-public-surfaces`
+      |
+
+      | `src/vectl/orch_app.py` | `file_size` | `composition_root_facade` | `invar_guard_remediation.split-orch-app-and-core-plan-compat-surfaces`
+      |
+
+      | `src/vectl/core_plan_mutations.py` | `file_size` | `compatibility_api_facade`
+      | `invar_guard_remediation.split-orch-app-and-core-plan-compat-surfaces` |
+
+      | `src/vectl/cli_orchestration.py` | `file_size` | `cli_registration_facade`
+      | `invar_guard_remediation.split-mcp-and-cli-public-surfaces` |
+
+      | `src/vectl/cli_plan.py` | `file_size` | `cli_registration_facade` | `invar_guard_remediation.split-mcp-and-cli-public-surfaces`
+      |
+
+      | `src/vectl/orchestration/config.py` | `file_size` | `config_runtime_compatibility`
+      | `invar_guard_remediation.split-orchestration-config-runtime-persistence-surfaces`
+      |
+
+      | `src/vectl/orchestration/runtime.py` | `file_size` | `config_runtime_compatibility`
+      | `invar_guard_remediation.split-orchestration-config-runtime-persistence-surfaces`
+      |
+
+      | `src/vectl/orchestration/driver.py` | `file_size` | `state_machine_runtime`
+      | `invar_guard_remediation.split-orchestration-driver-state-machine-surface`
+      |
+
+      | `src/vectl/orchestration/run_store.py` | `file_size` | `persistence_compatibility`
+      | `invar_guard_remediation.split-orchestration-config-runtime-persistence-surfaces`
+      |
+
+
+      ### checklist_receipt Applied
+
+      - All description and verification checklist items were toggled complete from
+      subagent receipt.
+
+
+      ### Gaps / Notes
+
+      - No product-code edits were made by this classification step.
+
+      - The guard remains red by design for downstream focused residual implementation
+      slices and cold retest.'
   - id: invar_guard_remediation.full-guard-escape-budget-batched-retest
     name: Retest full guard after focused residual remediation
     status: pending

@@ -98122,7 +98122,7 @@ phases:
       \ its inputs and produces outputs that vary based on those inputs. Private stub\
       \ classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\
       \n## Checklist\n- [x] Capture BEFORE guard excerpts for owned residual rows\
-      \ and weighted contributors.\n- [ ] Decompose `orch_app.py` and/or `core_plan_mutations.py`\
+      \ and weighted contributors.\n- [x] Decompose `orch_app.py` and/or `core_plan_mutations.py`\
       \ only through compatibility-preserving internals.\n- [ ] Smoke-prove original\
       \ facade imports and representative mutation APIs.\n- [ ] Smoke-prove CLI/app\
       \ boot and top-level help through the real routing facade.\n- [ ] Run targeted\

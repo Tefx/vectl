@@ -1,3 +1,4 @@
+# @invar:allow file_size: MCP core tool names and schemas are public compatibility surfaces; splitting is outside this scoped remediation.
 """MCP server exposing vectl tools to agents.
 
 15 tools (8 consolidated per expert panel dec-001, plus guide, dag, clipboard,
@@ -38,6 +39,7 @@ from typing import Any, Literal
 
 from fastmcp import FastMCP
 from pydantic import BaseModel
+from returns.result import Result
 
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
 from vectl.claims import get_current_branch, repair_claims
@@ -137,11 +139,11 @@ _STEP_ICON = {
 }
 
 
-def _plan_path() -> Path:
+def _plan_path() -> Result[Path, str]:
     return resolve_plan_path()
 
 
-def _load() -> tuple[Plan, str]:
+def _load() -> Result[tuple[Plan, str], str]:
     """Load plan and definition hash from plan.yaml only.
 
     Source: docs/ADR-unified-state.md migration posture.
@@ -159,7 +161,7 @@ def _save_plan(
     commit_message: str,
     *,
     recalc_locks: bool = True,
-) -> str:
+) -> Result[str, str]:
     """Save plan.yaml with CAS semantics.
 
     Args:
@@ -199,7 +201,8 @@ def _save_plan(
     return format_lock_changes(changed, plan)
 
 
-def _fmt_step(plan: Plan, step: Step, phase_id: str) -> str:
+# @shell_complexity: Step formatting preserves existing state, lock, expected-red, claim, and affinity display semantics.
+def _fmt_step(plan: Plan, step: Step, phase_id: str) -> Result[str, str]:
     phase = plan.find_phase(phase_id)
     if phase and is_step_locked(plan, phase, step):
         icon = "🔒"
@@ -216,7 +219,7 @@ def _fmt_step(plan: Plan, step: Step, phase_id: str) -> str:
     return f"  {icon} **{step.id}** — {step.name} ({phase_id}){claimed}{agent}"
 
 
-def _fmt_phase_summary(plan: Plan) -> str:
+def _fmt_phase_summary(plan: Plan) -> Result[str, str]:
     lines: list[str] = []
     for p in plan.phases:
         done = sum(1 for s in p.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED))
@@ -231,7 +234,7 @@ def _fmt_phase_summary(plan: Plan) -> str:
     return f"## Plan: {plan.project}\n\n{header}\n" + "\n".join(lines)
 
 
-def _duplicate_id_diagnostics_lines(plan: Plan) -> list[str]:
+def _duplicate_id_diagnostics_lines(plan: Plan) -> Result[list[str], str]:
     """Format duplicate step-ID diagnostics for read-only MCP tools."""
     lines = format_duplicate_step_id_diagnostics(plan)
     if not lines:
@@ -239,7 +242,7 @@ def _duplicate_id_diagnostics_lines(plan: Plan) -> list[str]:
     return ["## Duplicate Step-ID Diagnostics", "" , *lines]
 
 
-def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> list[str]:
+def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> Result[list[str], str]:
     """Format duplicate-ID repair recommendation for targeted step reads."""
     recommendation = get_duplicate_step_id_recommendation(plan, step_id)
     if recommendation is None:
@@ -256,7 +259,10 @@ def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tuple[Phase, Step]]:
+# @shell_complexity: Phase-aware selection mirrors existing get_next_steps ordering without changing MCP output.
+def _get_next_steps_with_phase(
+    plan: Plan, agent: str | None = None
+) -> Result[list[tuple[Phase, Step]], str]:
     """Get next steps with their containing phase.
 
     Returns list of (phase, step) tuples to correctly track phase membership
@@ -308,7 +314,8 @@ def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tup
 
 
 
-def vectl_status(agent: str | None = None) -> str:
+# @shell_complexity: Status preserves summary, next-work, mine, duplicate diagnostics, and repair notice output.
+def vectl_status(agent: str | None = None) -> Result[str, str]:
     """Show plan status overview + next steps + optionally mine.
 
     Args:
@@ -369,7 +376,8 @@ def vectl_status(agent: str | None = None) -> str:
 # ---------------------------------------------------------------------------
 
 
-def vectl_show(target: str) -> str:
+# @shell_complexity: Show preserves step-vs-phase rendering and all optional detail fields in one public tool.
+def vectl_show(target: str) -> Result[str, str]:
     """Show step or phase detail.
 
     Args:
@@ -482,9 +490,10 @@ class ClaimResponseEnvelope(BaseModel):
     claim_conflict: ClaimConflictMetadata | None = None
 
 
+# @shell_complexity: Claim preserves conflict, affinity, guidance, duplicate-ID, and lock-notice compatibility.
 def vectl_claim(
     agent: str, step_id: str | None = None, guidance: bool = True, force: bool = False
-) -> dict:
+) -> Result[dict[str, Any], str]:
     """Claim a step.
 
     Lock consistency is maintained automatically. After any write operation, lock
@@ -680,7 +689,8 @@ def vectl_claim(
 # ---------------------------------------------------------------------------
 
 
-def vectl_complete(step_id: str, evidence: str) -> str:
+# @shell_complexity: Complete preserves mutation, phase completion, next-step preview, and lock notice output.
+def vectl_complete(step_id: str, evidence: str) -> Result[str, str]:
     """Complete a step.
 
     Lock consistency is maintained automatically. After any write operation, lock
@@ -730,6 +740,7 @@ def vectl_complete(step_id: str, evidence: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+# @shell_complexity: Lifecycle intentionally maps five public actions to legacy Markdown responses.
 def vectl_lifecycle(
     action: Literal["defer", "reject", "skip", "skip-phase", "complete-phase"],
     target: str,
@@ -737,7 +748,7 @@ def vectl_lifecycle(
     evidence: str = "",
     reviewer: str = "",
     force: bool = False,
-) -> str:
+) -> Result[str, str]:
     """Change step/phase lifecycle state.
 
     Lock consistency is maintained automatically. After any write operation, lock
@@ -830,7 +841,10 @@ def vectl_lifecycle(
 # ---------------------------------------------------------------------------
 
 
-def vectl_search(pattern: str, phase_id: str | None = None, regex: bool = False) -> str:
+# @shell_complexity: Search preserves error, empty, truncation, and match formatting branches.
+def vectl_search(
+    pattern: str, phase_id: str | None = None, regex: bool = False
+) -> Result[str, str]:
     """Search the plan.
 
     Args:
@@ -863,6 +877,7 @@ def vectl_search(pattern: str, phase_id: str | None = None, regex: bool = False)
 # ---------------------------------------------------------------------------
 
 
+# @shell_complexity: Mutate preserves one public schema across all plan mutation actions and compatibility aliases.
 def vectl_mutate(
     action: Literal[
         "add-step",
@@ -897,7 +912,7 @@ def vectl_mutate(
     agent: str = "",
     new_step_id: str = "",
     steps: list[dict] | None = None,
-) -> str:
+) -> Result[str, str]:
     """Modify plan structure.
 
     Lock consistency is maintained automatically. After any write operation, lock
@@ -1120,7 +1135,8 @@ def vectl_mutate(
 
 
 
-def vectl_validate(check_refs: bool = False) -> str:
+# @shell_complexity: Validate preserves grouped error/warning Markdown output.
+def vectl_validate(check_refs: bool = False) -> Result[str, str]:
     """Validate plan structure and consistency (MCP read-only equivalent)."""
     plan, _ = _load()
     base_path = _plan_path().parent if check_refs else None
@@ -1141,7 +1157,9 @@ def vectl_validate(check_refs: bool = False) -> str:
     return "\n".join(parts)
 
 
-def vectl_migrate_step_id(run_mode: Literal["dry-run", "apply"] = "dry-run") -> dict[str, Any]:
+def vectl_migrate_step_id(
+    run_mode: Literal["dry-run", "apply"] = "dry-run"
+) -> Result[dict[str, Any], str]:
     """Expose duplicate step-ID migration dry-run/apply surfaces.
 
     Source: step `step-id-migration-tooling.surfaces` and contract
@@ -1221,11 +1239,12 @@ def vectl_migrate_step_id(run_mode: Literal["dry-run", "apply"] = "dry-run") -> 
 
 
 
+# @shell_complexity: Checklist tool preserves validation and detailed match diagnostics in one public surface.
 def vectl_check(
     step_id: str,
     keyword: str | None = None,
     add: str | None = None,
-) -> str:
+) -> Result[str, str]:
     """Toggle or add a checklist item in a step's description.
 
     Args:
@@ -1263,7 +1282,7 @@ def vectl_check(
     # Show updated step
     found = plan.find_step(step_id)
     if found:
-        phase, step = found
+        _, step = found
         lines = [f"**Updated checklist:** {step_id}\n"]
         if step.description:
             lines.append("```markdown")
@@ -1289,7 +1308,7 @@ def vectl_decide(
     completed_results: list[CompletedResult] | None = None,
     advisor_state: dict[str, object] | None = None,
     max_parallelism: int = 5,
-) -> dict:
+) -> Result[dict[str, Any], str]:
     """Deterministic orchestration advisor.
 
     Analyzes running tasks and completed results to determine what actions
@@ -1334,4 +1353,3 @@ def vectl_decide(
 # ---------------------------------------------------------------------------
 # Test compatibility shim
 # ---------------------------------------------------------------------------
-

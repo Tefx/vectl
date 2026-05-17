@@ -92004,7 +92004,7 @@ phases:
       - Verdict: SUCCESS.'
   - id: fix-cli-render-agent-domain
     name: Fix CLI render/agents invar domain
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to CLI rendering
       and agents-md surfaces.
 
@@ -92082,6 +92082,86 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-17T13:37:34.583665+00:00'
+    done_at: '2026-05-17T14:04:33.080940+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Core/Shell rules, shell Result boundary, and escape-hatch syntax
+      read.
+
+      - AGENTS.md — plan/orchestrator state ownership read; no direct plan.yaml edits
+      by worker.
+
+      - src/vectl/cli.py, src/vectl/cli_render.py, src/vectl/cli_agents_md.py — read
+      and remediated within owned scope.
+
+      - docs/invar_guard_remediation/failure_inventory.md — scoped baseline read for
+      owned files.
+
+
+      ## Worktree Evidence
+
+      - Worker status: SUCCESS.
+
+      - Worker commit: 3effe716.
+
+      - Squash merge commit on main: 6351458 ([vectl] step-fix-cli-render-agent-domain
+      completed).
+
+      - Files changed: src/vectl/cli.py, src/vectl/cli_agents_md.py, src/vectl/cli_render.py.
+
+
+      ## Remediation Decisions
+
+      - Reduced cli_render.py to render/diff/log plus compatibility helpers only.
+
+      - Reduced cli_agents_md.py to delegate canonical agents-md behavior to vectl.agents_md.
+
+      - Reduced cli.py to command registration and backwards-compatible aliases.
+
+      - Converted compatible returns to Result; retained one governed compatibility
+      hatch for cli_render._load.
+
+
+      ## Mainline Final-State Verification
+
+      Commands executed after squash merge on main:
+
+      ```text
+
+      uv run invar guard src/vectl/cli.py --agent
+
+      uv run invar guard src/vectl/cli_render.py --agent
+
+      uv run invar guard src/vectl/cli_agents_md.py --agent
+
+      uv run python -m pytest tests/test_cli.py tests/test_init_gitattributes.py tests/test_render.py
+      tests/test_output_hygiene.py tests/test_manual_yaml_edit.py -q
+
+      ```
+
+      Results:
+
+      - invar guard: passed for all three files; errors=0, warnings=0, infos=0. One
+      governed shell_result escape hatch remains in cli_render._load with compatibility
+      rationale.
+
+      - pytest: 291 passed in 12.46s.
+
+
+      ## Residuals
+
+      - Full-repo guard remains expected-red outside owned files.
+
+      - No plan/orchestrator state files were modified by worker.
+
+      - No vectl CLI commands were run.
+
+
+      ## Product Scope Confirmation
+
+      - Owned product files only: src/vectl/cli.py, src/vectl/cli_render.py, src/vectl/cli_agents_md.py.
+
+      - Verdict: SUCCESS.'
   - id: fix-mcp-tooling-domain
     name: Fix MCP tooling invar domain
     status: pending

@@ -94523,7 +94523,7 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] Contract artifacts exist for every structural Core extraction target from
+      - [x] Contract artifacts exist for every structural Core extraction target from
       the decision step.
 
       - [ ] No implementation logic is introduced beyond stubs.

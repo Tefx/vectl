@@ -97225,7 +97225,7 @@ phases:
       by orchestrator before completion.'
   - id: invar_guard_remediation.full-guard-residual-disposition-retest
     name: Retest and consolidate full-guard residual disposition
-    status: pending
+    status: claimed
     description: 'VERIFICATION / full-plan-check. Consolidate the focused residual
       slices and retest the authoritative full-guard command before downstream UI/UX
       audit, full-guard verification, and phase gate.
@@ -97369,6 +97369,8 @@ phases:
     - invar_guard_remediation.fix-config-projections-recovery-budget-closure
     - invar_guard_remediation.fix-orch-app-driver-budget-closure
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-17T20:38:04.401341+00:00'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

@@ -96542,7 +96542,7 @@ phases:
       - [x] AFTER `uvx invar-tools guard --all` excerpt shows `contracts.py` file-size
       closure or explicit non-blocking disposition with proof.
 
-      - [ ] Targeted import/consumer tests pass and command output is pasted.
+      - [x] Targeted import/consumer tests pass and command output is pasted.
 
       - [ ] Public contract symbol compatibility is proven for known consumers.
 

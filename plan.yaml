@@ -90950,7 +90950,7 @@ phases:
     - invar_guard_remediation.escape-budget-full-guard-retest
     agent: integration-verifier
   - id: invar_guard_remediation.gate
-    name: Gate invar guard remediation
+    name: Gate invar guard remediation closure
     status: pending
     description: 'As an independent gate reviewer, decide whether the invar guard
       remediation phase can close.
@@ -90963,6 +90963,9 @@ phases:
 
       - Failure inventory mapped every guard finding to a domain step or explicit
       residual/replan bucket.
+
+      - The escape-budget authority decision and residual slices own the shared budget/shell_result
+      failure family after salvaged partial progress.
 
       - Each domain step stayed within its owned file cluster and included scoped
       red baseline evidence.
@@ -90978,60 +90981,124 @@ phases:
       - Complexity/dead-code findings were fixed or justified narrowly; broad blanket
       allows are blocking.
 
-      - Full authoritative guard is green via `uvx invar-tools guard --all`.
+      - Full authoritative guard is green via `uvx invar-tools guard --all`, OR every
+      remaining finding has a structured residual disposition proving non-blocking
+      status under invar policy and non-intersection with downstream gates.
 
 
       BLOCK if:
 
-      - Full guard is non-zero.
+      - Full guard is non-zero and residual disposition is incomplete.
 
       - Any planned domain has unowned residual findings without replan.
 
       - Evidence lacks refs read confirmation, scoped red baseline, or expected-red
       proof for semantic implementation changes.
 
-      - Public CLI/MCP/schema compatibility was changed without evidence.'
-    verification: '- Gate reviews every phase step''s evidence.
+      - Public CLI/MCP/schema/model-visible compatibility was changed without evidence.
 
-      - Gate decision basis maps all guard obligations to PROVEN closure or explicit
-      BLOCK.
+      - Any escape-hatch budget finding is dismissed as pre-existing/out-of-scope
+      rather than dispositioned as blocking, non-blocking with proof, or owned by
+      a follow-up step.
 
-      - Final decision is OPEN only if full guard exits zero and evidence supports
-      scoped remediation without broad masking.'
+
+      ## Completion Criteria
+
+      - [ ] Every phase step and escape-budget residual owner is complete before gate
+      review.
+
+      - [ ] Gate decision basis maps all guard obligations to PROVEN closure, explicit
+      non-blocking disposition, or BLOCK.
+
+      - [ ] Full guard evidence or residual disposition evidence is current-mainline
+      and not branch-local.
+
+      - [ ] No downstream phase can proceed on stale partial-success evidence.'
+    verification: '- [ ] Gate reviews every phase step''s evidence, including the
+      escape-budget authority decision, contract step, residual slices, and full-guard
+      retest.
+
+      - [ ] Gate decision basis maps all guard obligations to PROVEN closure, explicit
+      non-blocking disposition, or BLOCK.
+
+      - [ ] Final decision is OPEN only if full guard exits zero or structured residual
+      disposition proves non-blocking status under the phase gate policy.
+
+      - [ ] OPEN decision includes requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis for behavioral/runtime
+      obligations.
+
+      - [ ] BLOCK decision names exact owner steps for unresolved findings.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
-      - INVAR.md — <passage read>
 
-      - AGENTS.md — <passage read>
+      For each ref in this step:
 
-
-      ## Step Evidence Review
-
-      | Step ID | Evidence Quality | Scoped Findings Closed | Concerns |
-
-      | --- | --- | --- | --- |
+      - <filename> — key passage or "NOT READ: <reason>"
 
 
-      ## Guard Closure Register
-
-      | Requirement / Rule Family | Evidence Ref | Status | Gate Decision Basis |
-
-      | --- | --- | --- | --- |
-
-      | shell_result | <ref> | PROVEN/BLOCK | <why> |
-
-      | shell_complexity_debt | <ref> | PROVEN/BLOCK | <why> |
-
-      | dead_param/dead_assign/dead_export | <ref> | PROVEN/BLOCK | <why> |
-
-      | Core contracts/doctests | <ref> | PROVEN/BLOCK | <why> |
+      If no refs were provided, state: "No refs for this step."
 
 
-      ## Gate Decision
+      ## Gate Review Report
 
-      - [ ] OPEN: full guard green and all evidence acceptable
 
-      - [ ] BLOCKED: list blockers and required fix/retest ownership'
+      **Reviewer**: gate-reviewer (independent of phase implementation)
+
+      **Phase**: invar_guard_remediation
+
+
+      ### Execution Review
+
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      |---|---|---|---|
+
+      | <step> | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |
+
+
+      ### Escape-Budget Closure Review
+
+
+      | Residual family | Owner step | Evidence | Gate status |
+
+      |---|---|---|---|
+
+      | function_size/shell_result/weighted_budget | <step> | <evidence ref> | PROVEN/NON_BLOCKING/BLOCKING
+      |
+
+
+      ### Issues Identified
+
+
+      | Severity | Description | Related Step | Blocking? | Required owner |
+
+      |---|---|---|---|---|
+
+      | blocker/should_fix | <issue> | <step> | YES/NO | <step id> |
+
+
+      ### Gate Decision Basis
+
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | <ref> | <claim> | <proof expected> | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
+      | <owner/disposition> | <OPEN/BLOCK basis> |
+
+
+      ### Gate Decision
+
+      - [ ] OPEN: phase passes gate under full guard green or accepted structured
+      residual disposition.
+
+      - [ ] BLOCKED: unresolved blocker-class findings remain.
+
+      '
     refs:
     - INVAR.md
     - AGENTS.md
@@ -91058,8 +91125,14 @@ phases:
     - fix-small-root-support-domain
     - fix-small-policy-archive-domain
     - cli-surface-preservation-uiux-audit
+    - invar_guard_remediation.escape-budget-authority-decision
+    - invar_guard_remediation.escape-budget-core-contracts
+    - invar_guard_remediation.fix-config-projection-recovery-budget-residuals
+    - invar_guard_remediation.fix-events-control-app-driver-budget-residuals
+    - invar_guard_remediation.fix-inspection-prompt-budget-residuals
+    - invar_guard_remediation.escape-budget-full-guard-retest
     - invar_guard_remediation.verify-full-guard
-    agent: gate-reviewer-tacit
+    agent: gate-reviewer
   - id: fix-plan-mutation-query-domain
     name: Fix plan mutation/query invar domain
     status: pending

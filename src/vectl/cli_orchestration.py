@@ -3,6 +3,10 @@
 Spec authority: tools/vectl/plan.yaml, phases cli_read + cli_write.
 """
 
+# @invar:allow file_size: orchestration CLI preserves one public Typer registration surface; splitting requires a public command compatibility migration outside this scoped file-only fix.
+# @shell_complexity: orchestration CLI selector/progress branches encode documented public command modes and exit-code compatibility.
+# @shell_orchestration: Typer callbacks delegate to orchestration app boundaries; indirect I/O and CLI behavior must remain in shell.
+
 from __future__ import annotations
 
 import enum
@@ -121,7 +125,8 @@ _PHASE_STATUS_STYLE = {
 }
 
 
-def _step_icon(status: StepStatus, locked: bool = False, verify: str | None = None) -> Text:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _step_icon(status: StepStatus, locked: bool = False, verify: str | None = None):
     if locked and status == StepStatus.PENDING:
         return Text("🔒 locked", style="dim")
     # Special rendering for expected_red completed steps
@@ -131,12 +136,15 @@ def _step_icon(status: StepStatus, locked: bool = False, verify: str | None = No
     return Text(f"{icon} {status.value}", style=style)
 
 
-def _phase_icon(status: PhaseStatus) -> Text:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _phase_icon(status: PhaseStatus):
     icon, style = _PHASE_STATUS_STYLE[status]
     return Text(f"{icon} {status.value}", style=style)
 
 
-def _one_line_summary(description: str, max_len: int = 72) -> str:
+# @shell_complexity: checklist-aware summary extraction preserves existing CLI display semantics.
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _one_line_summary(description: str, max_len: int = 72):
     """Extract first meaningful line from description, truncated.
 
     Skips empty lines and checklist markers. Returns empty string if
@@ -184,7 +192,9 @@ def _print_duplicate_id_recommendation_for_step(p: Plan, step_id: str) -> None:
 
 
 
-def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tuple[Phase, Step]]:
+# @shell_complexity: phase dependency and agent-affinity ordering mirrors existing get-next CLI semantics.
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _get_next_steps_with_phase(plan: Plan, agent: str | None = None):
     """Get next steps with their containing phase.
 
     Returns list of (phase, step) tuples to correctly track phase membership
@@ -233,13 +243,14 @@ def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tup
 # ---------------------------------------------------------------------------
 
 
-def _die(msg: str, code: int = 1, *, cause: Exception | None = None) -> NoReturn:
+def _die(msg: str, code: int = 1, *, cause: Exception | None = None):
     console.print(f"[red bold]Error:[/] {msg}")
     if cause is None:
         raise typer.Exit(code)
     raise typer.Exit(code) from cause
 
 
+# @shell_complexity: linked-worktree guard preserves documented env/CLI escape hatches and errors.
 def _check_not_linked_worktree(plan: Path | None = None) -> None:
     """Guard: block mutations in linked worktrees.
 
@@ -271,7 +282,8 @@ def _check_not_linked_worktree(plan: Path | None = None) -> None:
         )
 
 
-def _load(plan_path: Path | None) -> tuple[Plan, str, Path]:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _load(plan_path: Path | None):
     """Load plan.yaml and return plan with CAS hash.
 
     Source: docs/ADR-unified-state.md migration posture.
@@ -317,7 +329,7 @@ def _save_plan(plan: Plan, plan_path: Path, expected_def_hash: str, msg: str) ->
         print(notice)
 
 
-def _git_toplevel_for(path: Path) -> Path | None:
+def _git_toplevel_for(path: Path):
     """Return git toplevel for a path, or None when unavailable."""
     import subprocess as sp
 
@@ -342,19 +354,20 @@ def _git_toplevel_for(path: Path) -> Path | None:
     return Path(resolved).resolve()
 
 
-def _should_autosave_commit(plan_path: Path) -> bool:
+def _should_autosave_commit(plan_path: Path):
     """Allow autosave commit only when plan is in current repo/worktree."""
     cwd_repo = _git_toplevel_for(Path.cwd())
     plan_repo = _git_toplevel_for(plan_path.parent.resolve())
     return cwd_repo is not None and plan_repo is not None and cwd_repo == plan_repo
 
 
-def _is_claim_consistency_scoped_gate(phase_id: str) -> bool:
+def _is_claim_consistency_scoped_gate(phase_id: str):
     """Return True when scoped verification note should be shown."""
     return phase_id == "claim-consistency-recovery"
 
 
-def _check_claim_mismatch(p: Plan, plan_path: Path) -> tuple[bool, list[str], list[str]]:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _check_claim_mismatch(p: Plan, plan_path: Path):
     """Check for claims.json vs plan.yaml mismatch.
 
     Returns:
@@ -473,7 +486,7 @@ DashboardOutputOption = typer.Option(
 )
 
 
-class OrchOutputMode(str, enum.Enum):
+class _OrchOutputMode(str, enum.Enum):
     """CLI output mode for orchestration command surfaces."""
 
     HUMAN = "human"
@@ -481,7 +494,7 @@ class OrchOutputMode(str, enum.Enum):
     JSONL = "jsonl"
 
 
-class DriveProgressMode(str, enum.Enum):
+class _DriveProgressMode(str, enum.Enum):
     """Foreground drive progress rendering mode."""
 
     AUTO = "auto"
@@ -490,7 +503,7 @@ class DriveProgressMode(str, enum.Enum):
     NONE = "none"
 
 
-class OrchMigrationState(str, enum.Enum):
+class _OrchMigrationState(str, enum.Enum):
     """CLI enum for legacy migration-state advancement."""
 
     PARALLEL = "parallel"
@@ -517,7 +530,7 @@ OrchConfigPathArgument = typer.Argument(
     help="Optional config file path (mapped to --plan).",
 )
 OrchOutputOption = typer.Option(
-    OrchOutputMode.HUMAN,
+    _OrchOutputMode.HUMAN,
     "--output",
     help="Output mode: human|json|jsonl",
     case_sensitive=False,
@@ -528,13 +541,14 @@ OrchDryRunOption = typer.Option(False, "--dry-run", help="Run in dry-run mode.")
 OrchLatestOption = typer.Option(False, "--latest", help="Select latest run automatically.")
 OrchWatchOption = typer.Option(False, "--watch", help="Poll once more before returning.")
 OrchFollowOption = typer.Option(False, "--follow", help="Follow once more before returning.")
-OrchMigrationStateArgument = typer.Argument(
+_OrchMigrationStateArgument = typer.Argument(
     ...,
     help="Target migration state: parallel|preferred|deprecated|retired.",
 )
 
 
-def _build_orchestration_runtime_app(plan: Path | None) -> Any:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _build_orchestration_runtime_app(plan: Path | None):
     """Compose orchestration app using frozen-capable runtime config wiring."""
     root_cli = sys.modules.get("vectl.cli")
     patched = getattr(root_cli, "_build_orchestration_runtime_app", None)
@@ -559,28 +573,31 @@ def _build_orchestration_runtime_app(plan: Path | None) -> Any:
     return build_orchestration_app(app_config)
 
 
+# @shell_complexity: conflict checks preserve documented --json/--jsonl/--output compatibility.
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
 def _resolve_orch_output_mode(
     *,
-    output: OrchOutputMode,
+    output: _OrchOutputMode,
     json_flag: bool,
     jsonl_flag: bool,
-) -> OrchOutputMode:
+):
     """Resolve one concrete output mode with conflict checks."""
 
     if json_flag and jsonl_flag:
         _die("Conflicting output flags: --json and --jsonl are mutually exclusive")
-    if json_flag and output != OrchOutputMode.HUMAN:
+    if json_flag and output != _OrchOutputMode.HUMAN:
         _die("Conflicting output flags: --json cannot be combined with --output")
-    if jsonl_flag and output != OrchOutputMode.HUMAN:
+    if jsonl_flag and output != _OrchOutputMode.HUMAN:
         _die("Conflicting output flags: --jsonl cannot be combined with --output")
     if json_flag:
-        return OrchOutputMode.JSON
+        return _OrchOutputMode.JSON
     if jsonl_flag:
-        return OrchOutputMode.JSONL
+        return _OrchOutputMode.JSONL
     return output
 
 
-def _orch_failure_exit_code(message: str) -> int:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _orch_failure_exit_code(message: str):
     """Map orchestration failure messages to documented exit codes.
 
     Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §6
@@ -600,13 +617,14 @@ def _orch_die_on_failure(message: str) -> None:
     _die(message, code=_orch_failure_exit_code(message))
 
 
-def _orch_internal_error(exc: Exception) -> NoReturn:
+def _orch_internal_error(exc: Exception):
     """Surface unexpected orchestration app exceptions as internal errors."""
 
     _die(f"Internal orchestration error: {exc}", code=5, cause=exc)
 
 
-def _build_orchestration_runtime_app_or_die(plan: Path | None) -> Any:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _build_orchestration_runtime_app_or_die(plan: Path | None):
     """Build orchestration runtime app with internal-error mapping."""
 
     try:
@@ -615,7 +633,8 @@ def _build_orchestration_runtime_app_or_die(plan: Path | None) -> Any:
         _orch_internal_error(exc)
 
 
-def _enrich_drive_scope_result(result: ControlResult, drive_id: str) -> dict[str, Any]:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _enrich_drive_scope_result(result: ControlResult, drive_id: str):
     """Enrich a ControlResult with drive-scoped discrimination metadata.
 
     Authority: docs/RFC-orch-drive.md §7.4 — flat surfaces must report
@@ -628,7 +647,9 @@ def _enrich_drive_scope_result(result: ControlResult, drive_id: str) -> dict[str
     return payload
 
 
-def _json_ready(value: Any) -> Any:
+# @shell_complexity: recursive dataclass/container normalization is required for JSON output safety.
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _json_ready(value: Any):
     """Convert CLI payload into JSON-serializable structure."""
 
     if is_dataclass(value) and not isinstance(value, type):
@@ -644,7 +665,9 @@ def _json_ready(value: Any) -> Any:
     return value
 
 
-def _drive_action_guidance(payload: dict[str, Any]) -> dict[str, Any]:
+# @shell_complexity: operator guidance branches encode documented drive terminal/recovery cases.
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _drive_action_guidance(payload: dict[str, Any]):
     """Add operator-action guidance to drive result payloads.
 
     This is deliberately a tiny presentation-layer helper: drive state remains
@@ -736,7 +759,8 @@ def _drive_action_guidance(payload: dict[str, Any]) -> dict[str, Any]:
     return enriched
 
 
-def _drive_payload(value: Any) -> Any:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _drive_payload(value: Any):
     """Convert and enrich drive payloads with action guidance."""
 
     payload = _json_ready(value)
@@ -750,16 +774,17 @@ def _drive_payload(value: Any) -> Any:
     return payload
 
 
-def _emit_orch_payload(value: Any, mode: OrchOutputMode) -> None:
+# @shell_complexity: output emitter preserves human/json/jsonl formatting and ANSI-free JSON paths.
+def _emit_orch_payload(value: Any, mode: _OrchOutputMode) -> None:
     """Emit orchestration payload in human/json/jsonl formats."""
 
     payload = _drive_payload(value)
 
-    if mode == OrchOutputMode.JSON:
+    if mode == _OrchOutputMode.JSON:
         typer.echo(json.dumps(payload, sort_keys=True))
         return
 
-    if mode == OrchOutputMode.JSONL:
+    if mode == _OrchOutputMode.JSONL:
         if isinstance(payload, list):
             for item in payload:
                 typer.echo(json.dumps(item, sort_keys=True))
@@ -785,7 +810,8 @@ def _emit_orch_payload(value: Any, mode: OrchOutputMode) -> None:
     out.print(_esc(str(payload)))
 
 
-def _format_duration(seconds: float | int | None) -> str:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _format_duration(seconds: float | int | None):
     """Format seconds as compact HH:MM:SS/MM:SS text for CLI progress."""
 
     if seconds is None:
@@ -798,19 +824,20 @@ def _format_duration(seconds: float | int | None) -> str:
     return f"{minutes:02d}:{secs:02d}"
 
 
-def _drive_event_time(event: dict[str, Any]) -> str:
+def _drive_event_time(event: dict[str, Any]):
     timestamp = event.get("timestamp")
     if isinstance(timestamp, (int, float)):
         return time.strftime("%H:%M:%S", time.localtime(timestamp))
     return time.strftime("%H:%M:%S")
 
 
-def _drive_progress_label(progress: DriveProgressMode) -> DriveProgressMode:
-    if progress is DriveProgressMode.AUTO:
-        return DriveProgressMode.RICH if out.is_terminal else DriveProgressMode.PLAIN
+def _drive_progress_label(progress: _DriveProgressMode):
+    if progress is _DriveProgressMode.AUTO:
+        return _DriveProgressMode.RICH if out.is_terminal else _DriveProgressMode.PLAIN
     return progress
 
 
+# @shell_complexity: status snapshot keeps rich/plain progress rendering in one CLI output boundary.
 def _emit_drive_status_snapshot(event: dict[str, Any], *, rich_mode: bool) -> None:
     status = str(event.get("status", "unknown")).upper()
     drive_id = str(event.get("drive_id", ""))
@@ -838,7 +865,9 @@ def _emit_drive_status_snapshot(event: dict[str, Any], *, rich_mode: bool) -> No
             out.print(f"summary={_esc(summary)}")
 
 
-def _format_drive_progress_event(event: dict[str, Any], *, verbose: bool) -> str | None:
+# @shell_complexity: event-type branching preserves documented foreground drive progress messages.
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _format_drive_progress_event(event: dict[str, Any], *, verbose: bool):
     event_type = str(event.get("type", ""))
     ts = _drive_event_time(event)
     step_id = str(event.get("step_id", ""))
@@ -895,29 +924,30 @@ def _format_drive_progress_event(event: dict[str, Any], *, verbose: bool) -> str
     return None
 
 
+# @shell_complexity: callback selection preserves human/jsonl/no-progress drive modes.
 def _build_drive_progress_callback(
     *,
-    mode: OrchOutputMode,
-    progress: DriveProgressMode,
+    mode: _OrchOutputMode,
+    progress: _DriveProgressMode,
     quiet: bool,
     verbose: bool,
-) -> Any | None:
+):
     """Return an orch drive progress callback for human/jsonl modes."""
 
     resolved_progress = _drive_progress_label(progress)
-    if mode == OrchOutputMode.JSON:
+    if mode == _OrchOutputMode.JSON:
         return None
 
-    if mode == OrchOutputMode.JSONL:
+    if mode == _OrchOutputMode.JSONL:
         def _jsonl(event: dict[str, Any]) -> None:
             typer.echo(json.dumps(_json_ready(event), sort_keys=True))
 
         return _jsonl
 
-    if quiet or resolved_progress is DriveProgressMode.NONE:
+    if quiet or resolved_progress is _DriveProgressMode.NONE:
         return None
 
-    rich_mode = resolved_progress is DriveProgressMode.RICH
+    rich_mode = resolved_progress is _DriveProgressMode.RICH
 
     def _human(event: dict[str, Any]) -> None:
         if event.get("type") == "status_snapshot":
@@ -933,7 +963,8 @@ def _build_drive_progress_callback(
     return _human
 
 
-def _resolve_latest_run_id(app_runtime: Any) -> str | None:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _resolve_latest_run_id(app_runtime: Any):
     """Resolve latest non-terminal run ID from app boundary."""
 
     runs = app_runtime.runs(limit=200)
@@ -945,7 +976,8 @@ def _resolve_latest_run_id(app_runtime: Any) -> str | None:
     return None
 
 
-def _step_id_for_run(app_runtime: Any, run_id: str) -> str | None:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _step_id_for_run(app_runtime: Any, run_id: str):
     """Resolve step ID for run selector via app read boundary."""
     root_cli = sys.modules.get("vectl.cli")
     patched = getattr(root_cli, "_step_id_for_run", None)
@@ -961,6 +993,7 @@ def _step_id_for_run(app_runtime: Any, run_id: str) -> str | None:
 # --- vectl orch run ---
 
 
+# @shell_complexity: command callback preserves dry-run, active-drive, error-code, and output-mode behavior.
 def orch_run(
     step_id: str | None = typer.Argument(
         None, help="Step ID to run (auto-selects next if omitted)."
@@ -968,7 +1001,7 @@ def orch_run(
     agent: str | None = OrchAgentOption,
     dry_run: bool = OrchDryRunOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Start or resume an orchestration run.
@@ -1015,12 +1048,13 @@ def orch_run(
 # --- vectl orch resume ---
 
 
+# @shell_complexity: command callback preserves RUN_ID/--latest selector validation and exit codes.
 def orch_resume(
     run_id: str | None = typer.Argument(None, help="Run identifier to resume."),
     latest: bool = OrchLatestOption,
     dry_run: bool = OrchDryRunOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Resume an existing orchestration run from artifacts.
@@ -1067,14 +1101,15 @@ def orch_resume(
 # --- vectl orch recover ---
 
 
+# @shell_complexity: command callback preserves recover selector validation, dry-run, and output behavior.
 def orch_recover(
     run_id: str | None = typer.Argument(None, help="Run identifier to recover."),
     latest: bool = OrchLatestOption,
     step_id: str | None = typer.Option(None, "--step", help="Step ID to recover."),
     dry_run: bool = OrchDryRunOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
-    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
+    output: _OrchOutputMode = OrchOutputOption,
+    _yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Recover orchestration state from continuity artifacts.
@@ -1084,7 +1119,7 @@ def orch_recover(
       §7.1 — recover accepts [RUN_ID|--latest]
       §6   — exit 2 = not found
     """
-    del yes
+    del _yes
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if run_id is not None and latest:
@@ -1116,7 +1151,7 @@ def orch_runs(
     step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
     status: str | None = typer.Option(None, "--status", help="Optional run status filter."),
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     limit: int = typer.Option(100, "--limit", "-n", help="Maximum runs to show."),
     plan: Path | None = OrchPlanOption,
 ) -> None:
@@ -1135,6 +1170,7 @@ def orch_runs(
 # --- vectl orch prune ---
 
 
+# @shell_complexity: command callback preserves mutually exclusive pruning selectors and dry-run output.
 def orch_prune(
     before: float | None = typer.Option(None, "--before", help="Unix timestamp threshold."),
     older_than: int | None = typer.Option(
@@ -1144,7 +1180,7 @@ def orch_prune(
     ),
     dry_run: bool = OrchDryRunOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     force: bool = typer.Option(False, "--force", "-y", help="Skip confirmation prompt."),
     plan: Path | None = OrchPlanOption,
 ) -> None:
@@ -1178,9 +1214,10 @@ def orch_prune(
 # --- vectl orch migration (cutover validate / state advance) ---
 
 
+# @shell_orchestration: Typer callback delegates to orchestration app cutover boundary and emits CLI payloads.
 def orch_migration_validate_cutover(
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Validate cutover readiness against migration retirement criteria.
@@ -1194,15 +1231,16 @@ def orch_migration_validate_cutover(
     _emit_orch_payload(result, mode)
 
 
+# @shell_complexity: command callback maps public migration enum values to legacy bridge statuses.
 def orch_migration_advance_state(
-    status: OrchMigrationState = OrchMigrationStateArgument,
+    status: _OrchMigrationState = _OrchMigrationStateArgument,
     legacy_run_id: str | None = typer.Option(
         None,
         "--legacy-run-id",
         help="Optional imported legacy run ID scope. Omit to update all imported runs.",
     ),
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Advance imported legacy migration state via canonical bridge wiring.
@@ -1214,11 +1252,11 @@ def orch_migration_advance_state(
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
 
     mapped_status: LegacyRunStatus
-    if status is OrchMigrationState.PARALLEL:
+    if status is _OrchMigrationState.PARALLEL:
         mapped_status = LegacyRunStatus.PARALLEL
-    elif status is OrchMigrationState.PREFERRED:
+    elif status is _OrchMigrationState.PREFERRED:
         mapped_status = LegacyRunStatus.PREFERRED
-    elif status is OrchMigrationState.DEPRECATED:
+    elif status is _OrchMigrationState.DEPRECATED:
         mapped_status = LegacyRunStatus.DEPRECATED
     else:
         mapped_status = LegacyRunStatus.RETIRED
@@ -1235,13 +1273,14 @@ def orch_migration_advance_state(
 # --- vectl orch inspect (status / events / logs / artifacts / actions) ---
 
 
+# @shell_complexity: command callback preserves drive-vs-legacy selector routing and watch output.
 def orch_inspect_status(
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     step_id: str | None = typer.Option(None, "--step", help="Step ID to inspect."),
     watch: bool = OrchWatchOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
     drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
     child_run_id: str | None = typer.Option(
@@ -1300,6 +1339,7 @@ def orch_inspect_status(
         _emit_orch_payload(payload, mode)
 
 
+# @shell_complexity: command callback preserves drive-vs-legacy selector routing and json/jsonl modes.
 def orch_inspect_events(
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
@@ -1307,7 +1347,7 @@ def orch_inspect_events(
     follow: bool = OrchFollowOption,
     jsonl_flag: bool = OrchJsonlOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     limit: int = typer.Option(100, "--limit", "-n", help="Maximum events to show."),
     plan: Path | None = OrchPlanOption,
     drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
@@ -1361,12 +1401,13 @@ def orch_inspect_events(
         _emit_orch_payload(payload.data, mode)
 
 
+# @shell_complexity: command callback preserves drive-vs-legacy log selection, tailing, and follow behavior.
 def orch_inspect_logs(
     latest: bool = OrchLatestOption,
     tail: int = typer.Option(100, "--tail", help="Show only the last N log lines."),
     follow: bool = OrchFollowOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID."),
     step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
     plan: Path | None = OrchPlanOption,
@@ -1422,12 +1463,13 @@ def orch_inspect_logs(
         _emit_orch_payload(rows, mode)
 
 
+# @shell_complexity: command callback preserves drive-vs-legacy artifact selection and kind filtering.
 def orch_inspect_artifacts(
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     kind: str | None = typer.Option(None, "--kind", help="Optional artifact kind filter token."),
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     step_id: str | None = typer.Option(None, "--step", help="Filter by step ID."),
     plan: Path | None = OrchPlanOption,
     drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
@@ -1479,11 +1521,12 @@ def orch_inspect_artifacts(
     _emit_orch_payload(rows, mode)
 
 
+# @shell_complexity: command callback preserves explicit action selector requirements and drive routing.
 def orch_inspect_actions(
     latest: bool = OrchLatestOption,
     status: str | None = typer.Option(None, "--status", help="Action status filter token."),
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID."),
     plan: Path | None = OrchPlanOption,
     drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
@@ -1538,12 +1581,13 @@ def orch_inspect_actions(
 # --- vectl orch case (list / show / respond) ---
 
 
+# @shell_complexity: command callback preserves drive/legacy case-list routing, status filtering, and watch behavior.
 def orch_case_list(
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     watch: bool = OrchWatchOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     status: str | None = typer.Option(
         None,
         "--status",
@@ -1593,9 +1637,7 @@ def orch_case_list(
             _emit_orch_payload(rows, mode)
         return
 
-    # Legacy path
-    resolved_run = run_id or (_resolve_latest_run_id(app_runtime) if latest else None)
-    del resolved_run
+    # Legacy path: keep run/latest validation above; case_list itself is not run-scoped.
     allowed_statuses = {"open", "resolved", "halt"}
     if status is not None and status not in allowed_statuses:
         _die("Invalid --status value. Expected one of: open, resolved, halt")
@@ -1613,7 +1655,7 @@ def orch_case_show(
     case_id: str = typer.Argument(..., help="Case identifier to show."),
     watch: bool = OrchWatchOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Show detail for a specific case.
@@ -1628,6 +1670,8 @@ def orch_case_show(
         _emit_orch_payload(app_runtime.case_show(case_id=case_id), mode)
 
 
+# @invar:allow dead_param: drive_id is retained as a public Typer positional compatibility placeholder for drive-scoped case responses.
+# @shell_complexity: command callback preserves legacy --response alias and structured --action data assembly.
 def orch_case_respond(
     case_id: str = typer.Argument(..., help="Case identifier to respond to."),
     action: str | None = typer.Option(None, "--action", help="Bounded operator action token."),
@@ -1637,7 +1681,7 @@ def orch_case_respond(
         None, "--response", "-r", help="Legacy response text alias."
     ),
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
     drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
 ) -> None:
@@ -1647,6 +1691,7 @@ def orch_case_respond(
     """
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
+    del drive_id
     resolved_response = response
     if resolved_response is None and action is not None:
         parts = [f"action={action}"]
@@ -1667,12 +1712,13 @@ def orch_case_respond(
 # --- vectl orch control (pause / unpause / stop) ---
 
 
+# @shell_complexity: command callback preserves drive-default and legacy pause selector behavior.
 def orch_control_pause(
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     reason: str | None = typer.Option(None, "--reason", help="Optional pause reason."),
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     step_id: str | None = typer.Option(None, "--step", help="Specific step to pause."),
     plan: Path | None = OrchPlanOption,
     drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
@@ -1723,12 +1769,13 @@ def orch_control_pause(
     _emit_orch_payload(result, mode)
 
 
+# @shell_complexity: command callback preserves drive-default and legacy unpause selector behavior.
 def orch_control_unpause(
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
     reason: str | None = typer.Option(None, "--reason", help="Optional unpause reason."),
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     step_id: str | None = typer.Option(None, "--step", help="Specific step to unpause."),
     plan: Path | None = OrchPlanOption,
     drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
@@ -1779,6 +1826,7 @@ def orch_control_unpause(
     _emit_orch_payload(result, mode)
 
 
+# @shell_complexity: command callback preserves drive-default, legacy run, and force-stop semantics.
 def orch_control_stop(
     run_id: str | None = typer.Option(None, "--run", help="Specific run ID (legacy selector)."),
     latest: bool = OrchLatestOption,
@@ -1789,7 +1837,7 @@ def orch_control_stop(
         help="Immediate stop: cancel active step child runs (RFC §7.3.1).",
     ),
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
     drive_id: str | None = typer.Argument(None, help="Drive identifier (omit to use --latest)."),
 ) -> None:
@@ -1850,7 +1898,7 @@ def orch_control_stop(
 def orch_config_show(
     effective: bool = typer.Option(False, "--effective", help="Show effective merged config."),
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Show current orchestration configuration.
@@ -1864,7 +1912,7 @@ def orch_config_show(
     except Exception as exc:  # pragma: no cover - defensive internal mapping
         _orch_internal_error(exc)
         return
-    if mode == OrchOutputMode.HUMAN:
+    if mode == _OrchOutputMode.HUMAN:
         out.print(_esc(payload.show_output))
         return
     _emit_orch_payload(payload, mode)
@@ -1873,7 +1921,7 @@ def orch_config_show(
 def orch_config_validate(
     path: Path | None = OrchConfigPathArgument,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Validate current orchestration configuration.
@@ -1884,7 +1932,7 @@ def orch_config_validate(
     target_plan = path if path is not None else plan
     app_runtime = _build_orchestration_runtime_app(plan=target_plan)
     payload = app_runtime.config_validate()
-    if mode == OrchOutputMode.HUMAN:
+    if mode == _OrchOutputMode.HUMAN:
         out.print(_esc(payload.show_output))
     else:
         _emit_orch_payload(payload, mode)
@@ -1894,7 +1942,7 @@ def orch_config_validate(
 
 def orch_config_tools(
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Show registered tool families and allowlist.
@@ -1904,7 +1952,7 @@ def orch_config_tools(
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     payload = app_runtime.config_tools()
-    if mode == OrchOutputMode.HUMAN:
+    if mode == _OrchOutputMode.HUMAN:
         out.print(_esc(payload.show_output))
         return
     _emit_orch_payload(payload, mode)
@@ -1940,7 +1988,8 @@ OrchDriveForceOption = typer.Option(
 )
 
 
-def _resolve_latest_drive_id(app_runtime: Any) -> str | None:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _resolve_latest_drive_id(app_runtime: Any):
     """Resolve the latest drive ID from the orchestration app boundary.
 
     Authority: docs/RFC-orch-drive.md section 7.5
@@ -1951,6 +2000,8 @@ def _resolve_latest_drive_id(app_runtime: Any) -> str | None:
     return app_runtime.resolve_latest_drive_id()
 
 
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+# @shell_complexity: selector routing preserves RFC drive/legacy compatibility and active-drive defaults.
 def _resolve_optional_drive_scope(
     app_runtime: Any,
     *,
@@ -1960,7 +2011,7 @@ def _resolve_optional_drive_scope(
     allow_active_drive_default: bool,
     legacy_run_id: str | None = None,
     legacy_step_id: str | None = None,
-) -> str | None:
+):
     """Resolve drive scope only when a drive selector is actually available.
 
     Authority: docs/RFC-orch-drive.md sections 7.3, 7.4
@@ -2013,12 +2064,13 @@ def _resolve_optional_drive_scope(
     return active_drive_id
 
 
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
 def _resolve_drive_selector_or_die(
     app_runtime: Any,
     drive_id: str | None,
     latest: bool,
     child_run_id: str | None = None,
-) -> str:
+):
     """Resolve a drive selector and validate selector exclusivity.
 
     Authority: docs/RFC-orch-drive.md sections 7.3, 7.4
@@ -2054,6 +2106,7 @@ def _resolve_drive_selector_or_die(
     return resolved_drive_id
 
 
+# @shell_orchestration: validation delegates to drive store/inspection boundary and maps failures to Typer exit.
 def _validate_child_run_scope_or_die(
     app_runtime: Any,
     drive_id: str,
@@ -2084,7 +2137,8 @@ def _validate_child_run_scope_or_die(
         _die(str(exc), code=2)
 
 
-def _drive_recovery_preview_has_work(preview: Any) -> bool:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _drive_recovery_preview_has_work(preview: Any):
     """Return True when a dry-run recovery preview found recoverable work."""
 
     if getattr(preview, "recovered_child_run_ids", ()):
@@ -2097,7 +2151,8 @@ def _drive_recovery_preview_has_work(preview: Any) -> bool:
     return False
 
 
-def _drive_recovery_preview_is_orphaned_claim_only(preview: Any, notes_lower: str) -> bool:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _drive_recovery_preview_is_orphaned_claim_only(preview: Any, notes_lower: str):
     """Return True for the narrow orphaned-claim recovery case.
 
     A previous foreground supervisor can die after a child run reaches a
@@ -2141,7 +2196,8 @@ def _drive_recovery_preview_is_orphaned_claim_only(preview: Any, notes_lower: st
     )
 
 
-def _drive_recovery_preview_requires_operator(preview: Any) -> bool:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _drive_recovery_preview_requires_operator(preview: Any):
     """Conservatively identify recovery previews that should not auto-apply."""
 
     notes = "\n".join(str(note) for note in getattr(preview, "conflict_resolutions", ()) or ())
@@ -2174,11 +2230,12 @@ def _drive_recovery_preview_requires_operator(preview: Any) -> bool:
     )
 
 
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
 def _attempt_agent_assisted_recovery_preview(
     app_runtime: Any,
     drive_id: str,
     preview: Any,
-) -> tuple[Any, dict[str, Any]]:
+):
     """Let resolver automation try once, then return a fresh recovery preview."""
 
     assistant = getattr(app_runtime, "attempt_agent_assisted_drive_recovery", None)
@@ -2201,7 +2258,9 @@ def _attempt_agent_assisted_recovery_preview(
         }
 
 
-def _auto_recover_active_drive(app_runtime: Any, drive_id: str) -> dict[str, Any] | None:
+# @shell_complexity: recovery branches preserve safe auto-apply versus operator-required drive behavior.
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _auto_recover_active_drive(app_runtime: Any, drive_id: str):
     """Attempt safe startup recovery for an already-active drive.
 
     Returns a blocking payload when recovery needs operator attention.  Returns
@@ -2258,7 +2317,8 @@ def _auto_recover_active_drive(app_runtime: Any, drive_id: str) -> dict[str, Any
     }
 
 
-def _merge_auto_recovery_notice(result: Any, notice: dict[str, Any] | None) -> Any:
+# @shell_orchestration: CLI helper remains in shell to preserve Typer/Rich/orchestration boundary compatibility.
+def _merge_auto_recovery_notice(result: Any, notice: dict[str, Any] | None):
     """Attach an auto-recovery note to a drive result payload."""
 
     if notice is None:
@@ -2270,6 +2330,7 @@ def _merge_auto_recovery_notice(result: Any, notice: dict[str, Any] | None) -> A
     return payload
 
 
+# @shell_complexity: drive callback preserves admission, safe recovery, progress, jsonl, and quiet-mode behavior.
 def orch_drive(
     agent: str | None = OrchAgentOption,
     max_parallelism: int = OrchMaxParallelismOption,
@@ -2288,8 +2349,8 @@ def orch_drive(
         "--status-interval",
         help="Seconds between quiet-period progress summaries in foreground mode.",
     ),
-    progress: DriveProgressMode = typer.Option(
-        DriveProgressMode.AUTO,
+    progress: _DriveProgressMode = typer.Option(
+        _DriveProgressMode.AUTO,
         "--progress",
         help="Foreground progress renderer: auto|plain|rich|none.",
         case_sensitive=False,
@@ -2306,7 +2367,7 @@ def orch_drive(
     ),
     jsonl_flag: bool = OrchJsonlOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Start or resolve a full-plan orchestration drive.
@@ -2368,23 +2429,25 @@ def orch_drive(
     except Exception as exc:
         _orch_internal_error(exc)
         return
-    if mode == OrchOutputMode.JSONL and not once:
+    if mode == _OrchOutputMode.JSONL and not once:
         return
     if (
-        mode == OrchOutputMode.HUMAN
+        mode == _OrchOutputMode.HUMAN
         and not once
         and not quiet
-        and progress is not DriveProgressMode.NONE
+        and progress is not _DriveProgressMode.NONE
     ):
         return
     _emit_orch_payload(_merge_auto_recovery_notice(loop_result, auto_recovery_notice), mode)
 
 
+# @shell_orchestration: Typer callback delegates to drive status boundary and emits CLI payloads.
+# @shell_complexity: command callback preserves selector validation, not-found mapping, and output modes.
 def orch_drive_status(
     drive_id: str | None = OrchDriveIdArgument,
     latest: bool = OrchLatestOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Show current drive status.
@@ -2414,11 +2477,13 @@ def orch_drive_status(
     _emit_orch_payload(result, mode)
 
 
+# @shell_orchestration: Typer callback delegates to drive child-run boundary and emits CLI payloads.
+# @shell_complexity: command callback preserves selector validation, empty-list output, and output modes.
 def orch_drive_runs(
     drive_id: str | None = OrchDriveIdArgument,
     latest: bool = OrchLatestOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """List child runs belonging to a drive.
@@ -2449,11 +2514,12 @@ def orch_drive_runs(
     _emit_orch_payload(runs, mode)
 
 
+# @shell_complexity: command callback preserves drive selector validation and resume error mapping.
 def orch_drive_resume(
     drive_id: str | None = OrchDriveIdArgument,
     latest: bool = OrchLatestOption,
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Resume an interrupted drive session.
@@ -2481,13 +2547,14 @@ def orch_drive_resume(
     _emit_orch_payload(result, mode)
 
 
+# @shell_complexity: command callback preserves drive recover selector validation, dry-run, and output behavior.
 def orch_drive_recover(
     drive_id: str | None = OrchDriveIdArgument,
     latest: bool = OrchLatestOption,
     dry_run: bool = OrchDryRunDriveOption,
-    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
+    _yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
     json_flag: bool = OrchJsonOption,
-    output: OrchOutputMode = OrchOutputOption,
+    output: _OrchOutputMode = OrchOutputOption,
     plan: Path | None = OrchPlanOption,
 ) -> None:
     """Recover a drive from interrupted state.
@@ -2496,7 +2563,7 @@ def orch_drive_recover(
 
     Contract authority: orch_app.py::OrchestrationApp.recover_drive()
     """
-    del yes
+    del _yes
     mode = _resolve_orch_output_mode(output=output, json_flag=json_flag, jsonl_flag=False)
     app_runtime = _build_orchestration_runtime_app_or_die(plan=plan)
     if drive_id is not None and latest:

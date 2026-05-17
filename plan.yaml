@@ -91328,7 +91328,7 @@ phases:
     agent: python-senior-tacit
   - id: fix-orch-config-projections-domain
     name: Fix orchestration config/projections invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
       configuration loading and projection logic.
 
@@ -91403,6 +91403,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-17T14:49:53.908939+00:00'
   - id: fix-orch-runtime-runners-domain
     name: Fix orchestration runtime/runners invar domain
     status: pending

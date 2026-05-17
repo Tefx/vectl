@@ -94167,6 +94167,164 @@ phases:
     depends_on:
     - invar_guard_remediation.escape-budget-core-contracts
     agent: python-senior
+  - id: invar_guard_remediation.fix-inspection-prompt-budget-residuals
+    name: Fix inspection/prompt escape-budget residuals
+    status: pending
+    description: 'IMPLEMENTATION. Complete the structural escape-budget remediation
+      slice for inspection queries, prompt materialization, and core adapter surfaces
+      according to the authority decision and Core contracts.
+
+
+      Target inventory:
+
+      - `src/vectl/orchestration/inspection_queries.py` — budget residuals blocked
+      by output-contract risk.
+
+      - `src/vectl/orchestration/prompt_materialization.py` — budget residuals blocked
+      by public/model-visible prompt contract risk.
+
+      - `src/vectl/orchestration/core_adapter.py` — adapter boundary residuals.
+
+      - Contract artifacts from `invar_guard_remediation.escape-budget-core-contracts`
+      that the authority decision assigns to this slice.
+
+
+      YOUR SCOPE:
+
+      - Fill in stub bodies created by the contract step, or move pure presenter/query
+      logic behind those contracts, only where assigned by the authority decision.
+
+      - Preserve inspection query outputs and prompt contract/resource semantics exactly
+      unless the authority decision marks a specific output change as BLOCKING and
+      assigns tests/docs.
+
+      - Public/model-visible prompt text changes require explicit expected-red or
+      targeted regression evidence before closure.
+
+      - Use narrow adapter allows only for rows explicitly classified as `narrow_adapter_allow`
+      by the authority decision.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Prompt or inspection output drift without pasted before/after evidence and
+      a targeted regression.
+
+      2. Adapter allows that do not explain why the code is a true Shell boundary.
+
+      3. Core extraction without @pre, @post, and doctest coverage.
+
+      4. Broad budget allows that merely silence `uvx invar-tools guard --all`.
+
+
+      ## Failure-Mode Checklist
+
+      - [ ] Inspection query output shape and ordering are preserved.
+
+      - [ ] Prompt materialization text/resource semantics are preserved or changed
+      only with explicit authority-decision approval.
+
+      - [ ] Core adapter remains a boundary adapter and does not become an uncontracted
+      logic sink.
+
+      - [ ] Remaining residual debt, if any, is mapped to policy disposition with
+      gate non-intersection proof rather than being hidden.
+
+
+      ## Required Regression Evidence
+
+      - [ ] Targeted inspection/prompt/core_adapter tests pass on mainline paths.
+
+      - [ ] Snapshot or exact-string regression evidence covers any prompt/materialization
+      output affected by refactor.
+
+      - [ ] Scoped guard evidence for the owned files improves or closes the listed
+      residuals.'
+    verification: '- [ ] Main path: targeted inspection/prompt/core_adapter tests
+      pass with actual command output pasted.
+
+      - [ ] Failure path: prompt/materialization or inspection output regression covers
+      the highest-risk changed behavior.
+
+      - [ ] Invar scoped evidence shows the target residual budget findings are closed
+      or dispositioned exactly as the authority decision allowed.
+
+      - [ ] No public/model-visible output drift, uncontracted Core code, or broad
+      Shell allow masking is introduced.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Slice Evidence
+
+
+      **Authority decision rows implemented**:
+
+      - <row ids / file residuals>
+
+
+      **Core contracts filled**:
+
+      | Contract path | Function | Stub replaced with substantive logic? | @pre/@post
+      retained? | Doctest retained? |
+
+      |---|---|---|---|---|
+
+      | <path> | <function> | YES/NO | YES/NO | YES/NO |
+
+
+      **Output-contract proof**:
+
+      ```
+
+      <paste before/after exact output or snapshot evidence for inspection/prompt
+      outputs>
+
+      ```
+
+
+      **Commands and outputs**:
+
+      ```
+
+      <paste targeted tests and scoped guard outputs>
+
+      ```
+
+
+      **Behavioral proof register**:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | inspection/prompt/core_adapter | <claim> | <test/property/doctest> | <output>
+      | PROVEN/NEEDS_TEST/UNPROVEN | <owner> | <OPEN/BLOCK basis> |
+
+
+      **Residuals after this slice**:
+
+      - <none or exact residual with owner/disposition>
+
+      '
+    depends_on:
+    - invar_guard_remediation.escape-budget-core-contracts
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

@@ -96325,6 +96325,151 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-inspection-prompt-budget-residuals
     agent: python-senior
+  - id: invar_guard_remediation.fix-inspection-drive-query-result-boundaries
+    name: Fix inspection and drive query Result-boundary budgets
+    status: pending
+    description: 'IMPLEMENTATION / Focused residual slice for inspection and drive
+      query Result-boundary closure.
+
+
+      work_type: technical_debt_remediation
+
+      step_type: implementation
+
+      symbolic_testing: true
+
+      agent_source: default
+
+
+      Owned blocker family:
+
+      - `src/vectl/orchestration/inspection_queries.py` raw `shell_result` and `shell_too_complex`
+      residuals.
+
+      - Any `drive_inspection_queries.py` budget residual caused by or related to
+      the discarded branch split.
+
+
+      Scope boundaries:
+
+      - Do not broaden suppressions, lower budgets, or hide findings.
+
+      - Do not resurrect the discarded split shape unless current-mainline BEFORE/AFTER
+      evidence proves it improves `uvx invar-tools guard --all` without increasing
+      `shell_result`, file, or weighted budgets.
+
+      - Preserve public orchestration inspection semantics and CLI/operator-visible
+      behavior.
+
+      - Keep Result-boundary ownership explicit: true shell functions return `Result[T,
+      E]`; pure/Core helpers do not import I/O and must have non-vacuous contracts/doctests
+      if placed under `**/core/**`.
+
+
+      Required implementation approach:
+
+      - Use the slice boundary register from `invar_guard_remediation.fix-full-guard-residual-budget-blockers`.
+
+      - Close raw shell_result by extracting pure transformation/query helpers only
+      where it reduces budget pressure without runtime behavior drift.
+
+      - Add/update targeted tests for inspection query paths, including the focused
+      inspection suite that previously reported `27 passed`, plus any drive query
+      tests touched by the slice.
+
+
+      ## Completion Criteria
+
+      - [ ] BEFORE `uvx invar-tools guard --all` excerpt for inspection/drive query
+      residuals is pasted from current mainline.
+
+      - [ ] AFTER `uvx invar-tools guard --all` excerpt shows no inspection/drive
+      query budget regression and either closure or explicit residual ownership.
+
+      - [ ] Targeted inspection/drive query tests pass and command output is pasted.
+
+      - [ ] No broad suppressions, budget lowering, or visibility deletion is used.
+
+      - [ ] Any new `**/core/**` extraction has non-vacuous `@pre`/`@post` contracts
+      and at least one doctest.
+
+      - [ ] Residual disposition register is updated for inspection/drive query findings.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
+    verification: '- [ ] Inspection/drive query `uvx invar-tools guard --all` residuals
+      are closed or dispositioned without increasing same-family or project-level
+      budgets.
+
+      - [ ] Targeted inspection/drive query tests pass with pasted output.
+
+      - [ ] Evidence includes BEFORE/AFTER full-guard excerpts and a residual disposition
+      register entry for this slice.
+
+      - [ ] No broad suppression, budget lowering, or stub-only implementation is
+      accepted.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Slice Evidence
+
+
+      **BEFORE full-guard excerpt**:
+
+      ```text
+
+      <paste uvx invar-tools guard --all excerpt for inspection/drive query residuals>
+
+      ```
+
+
+      **Targeted tests**:
+
+      ```text
+
+      <paste exact commands and output>
+
+      ```
+
+
+      **AFTER full-guard excerpt**:
+
+      ```text
+
+      <paste uvx invar-tools guard --all excerpt for the same families>
+
+      ```
+
+
+      **Residual disposition register**:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      **Suppression/budget-change statement**:
+
+      <confirm none, or justify narrow authority-backed exception>'
+    depends_on:
+    - invar_guard_remediation.fix-full-guard-residual-budget-blockers
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

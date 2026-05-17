@@ -92454,6 +92454,94 @@ phases:
     changes.
   depends_on:
   - det_check_contracts
+  steps:
+  - id: det_check_tests_core_red
+    name: Define core checklist expected-red tests
+    status: pending
+    description: 'step_type: test_define_red
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Define expected-red tests for the pure core checklist inventory and mutation
+      contract. This phase depends on `det_check_contracts`, so contract artifacts
+      from `det_check_contract_lock` are upstream. This step MUST modify only tests,
+      fixtures, and test helpers; product implementation files are out of scope.
+
+
+      Test targets to add/update:
+
+      - `tests/test_checklist.py` for pure inventory, revision, selector, idempotency,
+      marker-only, batch, and legacy compatibility coverage.
+
+      - optional fixture/helper module under `tests/fixtures/` if needed for Markdown
+      cases.
+
+
+      Expected-red coverage checklist:
+
+      - [ ] Inventory discovers checklist items from both `description` and `verification`.
+
+      - [ ] Missing and empty `description`/`verification` fields produce valid empty
+      inventories without errors.
+
+      - [ ] `item_id` values are snapshot-scoped and change only when the canonicalized
+      inventory snapshot changes.
+
+      - [ ] `checklist_inventory_revision` stale values reject deterministic mutation
+      with structured retry guidance.
+
+      - [ ] Deterministic single set-state mutation is idempotent when target state
+      already matches.
+
+      - [ ] Legacy keyword toggle remains case-insensitive and fuzzy-compatible for
+      human usage.
+
+      - [ ] Invalid selector-mode combinations are rejected deterministically.
+
+      - [ ] Marker-only preservation keeps item text, indentation, ordering, and surrounding
+      Markdown unchanged.
+
+      - [ ] Atomic batch mutation is all-or-nothing and returns per-selector diagnostics.
+
+
+      Scope guardrails:
+
+      - [ ] Do not change `src/` implementation files in this test-definition step.
+
+      - [ ] Red failures must map to the declared deterministic checklist gaps, not
+      unrelated import or syntax errors.
+
+      - [ ] Existing legacy tests must remain present so compatibility regressions
+      are visible.'
+    verification: '- [ ] Run `pytest tests/test_checklist.py -k ''checklist or deterministic
+      or batch or inventory'' -q` and record that new deterministic tests fail red
+      for the declared missing implementation.
+
+      - [ ] Confirm no product implementation files outside tests/fixtures/helpers
+      were modified.
+
+      - [ ] Confirm every red failure maps to one of the checklist gaps in this step.
+
+      - [ ] Confirm legacy keyword-toggle tests remain included and not weakened.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- docs/RFC-deterministic-checklists.md — key passage or \"NOT READ:\
+      \ <reason>\"\n- src/vectl/core_checklist.py — key passage or \"NOT READ: <reason>\"\
+      \n- src/vectl/core_plan_mutations.py — key passage or \"NOT READ: <reason>\"\
+      \n- tests/test_checklist.py — key passage or \"NOT READ: <reason>\"\n\n## Expected-Red\
+      \ Test Evidence\n- Modified files (must be tests/fixtures/helpers only):\n-\
+      \ Command executed:\n```bash\npytest tests/test_checklist.py -k 'checklist or\
+      \ deterministic or batch or inventory' -q\n```\n- Actual output:\n```\n<paste\
+      \ output>\n```\n- expected_result: red\n- Exposed gaps:\n  - [ ] inventory from\
+      \ description + verification\n  - [ ] missing/empty fields\n  - [ ] snapshot\
+      \ item_id + stale revision\n  - [ ] deterministic idempotent single mutation\n\
+      \  - [ ] legacy keyword toggle compatibility\n  - [ ] invalid selector-mode\
+      \ combinations\n  - [ ] marker-only preservation\n  - [ ] atomic batch diagnostics\n\
+      - Downstream implementation owner: det_check_impl_core_inventory / det_check_impl_single_mutation\
+      \ / det_check_impl_batch_mutation"
+    agent: python-executor
 - id: det_check_impl
   name: 'Deterministic Checklist Handling: Implementation and Surface Wiring'
   status: locked

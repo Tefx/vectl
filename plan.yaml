@@ -94535,15 +94535,15 @@ phases:
 
       - [x] Public/model-visible outputs are locked and not changed by this contract
       step.'
-    verification: '- [ ] Contract step contains signatures, @pre/@post contracts,
+    verification: '- [x] Contract step contains signatures, @pre/@post contracts,
       doctests, and stubs only.
 
-      - [ ] No runnable business logic, Shell I/O, or output contract change is introduced.
+      - [x] No runnable business logic, Shell I/O, or output contract change is introduced.
 
-      - [ ] Doctest expectations expose the downstream implementation gap without
+      - [x] Doctest expectations expose the downstream implementation gap without
       pretending full guard is green.
 
-      - [ ] Evidence maps each contract artifact to the authority-decision table row
+      - [x] Evidence maps each contract artifact to the authority-decision table row
       it satisfies.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

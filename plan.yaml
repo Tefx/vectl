@@ -94750,7 +94750,7 @@ phases:
 
       - [x] Projection replay ordering and event-derived output formats remain compatible.
 
-      - [ ] Recovery fallback missing-file/path behavior and compatibility parameters
+      - [x] Recovery fallback missing-file/path behavior and compatibility parameters
       are preserved.
 
       - [ ] Any partial structural extraction keeps Shell I/O outside `src/vectl/core/**`.

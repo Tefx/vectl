@@ -96813,7 +96813,7 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] BEFORE `uvx invar-tools guard --all` excerpt for config/projections/recovery_fallback
+      - [x] BEFORE `uvx invar-tools guard --all` excerpt for config/projections/recovery_fallback
       residuals is pasted from current mainline.
 
       - [ ] AFTER `uvx invar-tools guard --all` excerpt shows closure or explicit

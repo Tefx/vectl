@@ -97468,7 +97468,7 @@ phases:
       until the batched fix/retest path closes.'
   - id: invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     name: Investigate and safely close residual full-guard escape-budget blockers
-    status: claimed
+    status: pending
     description: "Loop 4+ investigation-style remediation for the residual full-guard\
       \ escape-hatch budget blocker family. This step is still executable remediation:\
       \ investigate first, then implement only the safest decompositions that can\
@@ -97754,8 +97754,6 @@ phases:
     depends_on:
     - invar_guard_remediation.full-guard-residual-disposition-retest
     agent: python-senior
-    claimed_by: python-senior
-    claimed_at: '2026-05-17T21:52:39.248503+00:00'
   - id: invar_guard_remediation.full-guard-escape-budget-batched-retest
     name: Retest full guard after batched escape-budget remediation
     status: pending

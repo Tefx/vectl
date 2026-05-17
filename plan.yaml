@@ -97878,7 +97878,7 @@ phases:
       \ deliverable MUST contain substantive logic that processes its inputs and produces\
       \ outputs that vary based on those inputs. Private stub classes (`_Runtime*`,\
       \ `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\n## Checklist\n\
-      - [ ] Capture BEFORE guard excerpts for owned residual rows and weighted contributors.\n\
+      - [x] Capture BEFORE guard excerpts for owned residual rows and weighted contributors.\n\
       - [ ] Reduce owned public-surface file-size/weighted pressure through cohesive\
       \ internal extraction only.\n- [ ] Preserve original MCP and CLI public imports,\
       \ registrations, schema/payload formats, and help surfaces.\n- [ ] Run targeted\

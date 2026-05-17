@@ -97593,107 +97593,64 @@ phases:
     - invar_guard_remediation.full-guard-residual-disposition-retest
     agent: python-senior
   - id: invar_guard_remediation.full-guard-escape-budget-batched-retest
-    name: Retest full guard after batched escape-budget remediation
+    name: Retest full guard after focused residual remediation
     status: pending
-    description: 'Independent retest after batched full-guard escape-budget remediation.
-
-
-      step_type: test
-
-      step_intent: retest_green
-
-      expected_result: green
-
-      verification_scope: full-plan-check
-
-      protected_downstream_gates:
-
-      - `cli-surface-preservation-uiux-audit`
-
-      - `invar_guard_remediation.escape-budget-full-guard-retest`
-
-      - `invar_guard_remediation.verify-full-guard`
-
-      - `invar_guard_remediation.gate`
-
-
-      Run the exact command `uvx invar-tools guard --all` from current mainline after
-      the batched fix has merged. This is a post-implementation retest and MUST be
-      green unless every remaining finding has a structured non-blocking disposition
-      with non-intersection proof under invar policy.
-
-
-      PASS criteria:
-
-      - Full guard is green; OR
-
-      - Every remaining finding has structured non-blocking disposition with non-intersection
-      proof under invar policy, and no remaining residual intersects the protected
-      downstream gates.
-
-
-      FAIL criteria:
-
-      - Any `escape_hatch_file_limit`, `escape_hatch_project_limit`, or `escape_hatch_budget`
-      finding remains without structured non-blocking non-intersection proof.
-
-      - CrossHair/property/symbolic testing is skipped due to prior failures and no
-      closure path exists.
-
-      - Product implementation files were modified during this retest.
-
-      - Gate-open recommendation is made while blocker-class residuals remain unresolved.
-
-
-      ## Semantic Report Fields Required
-
-      - `step_intent`
-
-      - `expected_result`
-
-      - `observed_result`
-
-      - `failure_alignment`
-
-      - `verdict`
-
-      - `blockers`
-
-      - `gate_open_allowed`
-
-      - `orchestrator_action_hint`
-
-      - `product_implementation_files_modified`
-
-      - `behavioral_proof_register`
-
-
-      ## Checklist
-
-      - [ ] Confirm this retest runs after `invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched`
-      has merged to current mainline.
-
-      - [ ] Run exact command `uvx invar-tools guard --all`.
-
-      - [ ] Record exact command, exit code, summary, and relevant guard excerpts.
-
-      - [ ] Report all required semantic fields.
-
-      - [ ] Verify no product implementation files were modified by this retest.
-
-      - [ ] Mark `observed_result: green` only when guard is green or all residuals
-      have structured non-blocking non-intersection proof under invar policy.
-
-      - [ ] Set `gate_open_allowed: false` and `orchestrator_action_hint: DO_NOT_COMPLETE`
-      if blocker-class residuals remain.
-
-      - [ ] Include behavioral proof register entries for every remaining guard finding
-      with closure path and gate decision basis.'
+    description: "Independent cold retest after post-salvage focused escape-budget\
+      \ residual remediation slices complete.\n\nstep_type: test\nstep_intent: retest_green\n\
+      expected_result: green\nverification_scope: full-plan-check\nagent_source: default\n\
+      post_salvage_context:\n  main_salvage_commit: 1618486\n  branch_provenance_commit:\
+      \ 49aa644b897c3ff08ba39d74a5da036e1fe6bfe2\n  baseline_after_salvage: file_size\
+      \ 9/5; weighted 40/15\nprotected_downstream_gates:\n- `cli-surface-preservation-uiux-audit`\n\
+      - `invar_guard_remediation.escape-budget-full-guard-retest`\n- `invar_guard_remediation.verify-full-guard`\n\
+      - `invar_guard_remediation.gate`\n\nRun the exact command `uvx invar-tools guard\
+      \ --all` from current mainline after all focused residual implementation steps\
+      \ have merged. This is a post-implementation retest and MUST be green unless\
+      \ every remaining finding has a structured non-blocking disposition with non-intersection\
+      \ proof under invar policy.\n\nFocused residual owners that MUST be complete\
+      \ first:\n- `split-mcp-and-cli-public-surfaces`\n- `split-orch-app-and-core-plan-compat-surfaces`\n\
+      - `split-orchestration-config-runtime-persistence-surfaces`\n- `split-orchestration-driver-state-machine-surface`\n\
+      \nRequired proof:\n- BEFORE/AFTER guard excerpts from each focused residual\
+      \ owner are reviewed.\n- This retest itself runs in a fresh/cold environment\
+      \ and pastes exact command, exit code, summary, residual detail rows, `file_size`,\
+      \ weighted budget, and relevant `dead_param`/`entry_point_too_thick`/`shell_complexity`\
+      \ contributors.\n- No budget lowering, broad suppression, ignored files, deleted\
+      \ findings, or policy bypass occurred.\n- Compatibility smoke evidence exists\
+      \ for public imports, CLI/MCP surfaces, config/runtime/persistence surfaces,\
+      \ and driver runtime lifecycle as applicable.\n\nPASS criteria:\n- Full guard\
+      \ is green; OR\n- Every remaining finding has structured non-blocking disposition\
+      \ with non-intersection proof under invar policy, and no remaining residual\
+      \ intersects the protected downstream gates.\n\nFAIL criteria:\n- Any `escape_hatch_file_limit`,\
+      \ `escape_hatch_project_limit`, or `escape_hatch_budget` finding remains without\
+      \ structured non-blocking non-intersection proof.\n- `file_size`, `dead_param`,\
+      \ `entry_point_too_thick`, or `shell_complexity` residuals lack an owner or\
+      \ proof register entry.\n- CrossHair/property/symbolic testing is skipped due\
+      \ to prior failures and no closure path exists.\n- Product implementation files\
+      \ were modified during this retest.\n- Gate-open recommendation is made while\
+      \ blocker-class residuals remain unresolved.\n\n## Semantic Report Fields Required\n\
+      - `step_intent`\n- `expected_result`\n- `observed_result`\n- `failure_alignment`\n\
+      - `verdict`\n- `blockers`\n- `gate_open_allowed`\n- `orchestrator_action_hint`\n\
+      - `product_implementation_files_modified`\n- `behavioral_proof_register`\n\n\
+      ## Checklist\n- [ ] Confirm this retest runs after all four focused residual\
+      \ implementation steps are complete and merged to current mainline.\n- [ ] Review\
+      \ owner evidence for BEFORE/AFTER guard excerpts and compatibility smoke proofs.\n\
+      - [ ] Run exact command `uvx invar-tools guard --all` in a fresh/cold environment.\n\
+      - [ ] Record exact command, exit code, summary, and relevant guard excerpts.\n\
+      - [ ] Report all required semantic fields.\n- [ ] Verify no product implementation\
+      \ files were modified by this retest.\n- [ ] Mark `observed_result: green` only\
+      \ when guard is green or all residuals have structured non-blocking non-intersection\
+      \ proof under invar policy.\n- [ ] Set `gate_open_allowed: false` and `orchestrator_action_hint:\
+      \ DO_NOT_COMPLETE` if blocker-class residuals remain.\n- [ ] Include behavioral\
+      \ proof register entries for every remaining guard finding with closure path\
+      \ and gate decision basis."
     verification: '- [ ] `step_intent: retest_green` and `expected_result: green`
       are reported.
 
       - [ ] Exact `uvx invar-tools guard --all` command is run from current mainline
-      after merge.
+      after all focused residual owner steps complete.
+
+      - [ ] Exact retest output includes exit code, summary, residual detail rows,
+      `file_size`, weighted budget, and relevant `dead_param`/`entry_point_too_thick`/`shell_complexity`
+      contributors.
 
       - [ ] PASS only if full guard is green or every remaining finding has structured
       non-blocking disposition with non-intersection proof under invar policy.
@@ -97708,35 +97665,90 @@ phases:
 
       - [ ] Product implementation files are not modified by this retest.
 
-      - [ ] Downstream gate intersection is explicitly assessed for any residual finding.'
-    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
-      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
-      \ were provided, state: \"No refs for this step.\"\n\n## Full-Guard Escape-Budget\
-      \ Retest Report\n\nstep_type: test\nstep_intent: retest_green\nexpected_result:\
-      \ green\n\n### Execution Context\n- Current mainline revision/context: <describe>\n\
-      - Fix dependency merged: `invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched`\
-      \ yes/no\n- Product implementation files modified by this retest: true/false\n\
-      \n### Command\n```bash\nuvx invar-tools guard --all\n```\n\n### Observed Result\n\
-      ```yaml\nobserved_result: green|red|error\nfailure_alignment: aligned_with_prior_blockers|new_blockers|green|inconclusive\n\
-      verdict: PASS|FAIL\nblockers:\n  - <blocker family or []>\ngate_open_allowed:\
-      \ true|false\norchestrator_action_hint: COMPLETE|DO_NOT_COMPLETE|CREATE_FIX_RETEST\n\
-      product_implementation_files_modified: true|false\n```\n\n### Guard Output Excerpt\n\
-      ```text\n<paste exact exit code, summary, blockers, and symbolic/CrossHair/Hypothesis\
-      \ status>\n```\n\n### Behavioral Proof Register\nFor each remaining finding,\
-      \ include:\n```yaml\nbehavioral_proof_register:\n  - requirement_ref: <invar/spec/plan\
-      \ ref>\n    behavior_claim: <claim>\n    runtime_proof_expected: <proof expected>\n\
-      \    evidence_ref: <guard/test/output evidence>\n    status: PROVEN|NEEDS_TEST|UNPROVEN|UNCERTAIN_BLOCKING|NON_BLOCKING_WITH_NON_INTERSECTION_PROOF\n\
-      \    closure_path: <fix/retest/non-intersection path>\n    gate_decision_basis:\
-      \ <why gate may open or must block>\n```\n\n### Gate-Intersection Assessment\n\
-      | Residual | cli-surface-preservation-uiux-audit | escape-budget-full-guard-retest\
-      \ | verify-full-guard | gate | Decision |\n| --- | --- | --- | --- | --- | ---\
-      \ |\n| <finding> | intersects/non-intersects + proof | intersects/non-intersects\
-      \ + proof | intersects/non-intersects + proof | intersects/non-intersects +\
-      \ proof | blocking/non-blocking |\n\n### Headline\n- [ ] PASS: full guard green,\
-      \ or all residuals have structured non-blocking non-intersection proof under\
-      \ invar policy.\n- [ ] FAIL: blocker-class residuals remain or proof is incomplete."
+      - [ ] Downstream gate intersection is explicitly assessed for any residual finding.
+
+      - [ ] Evidence confirms no budget lowering, suppression, ignored files, deleted
+      findings, or stale branch-local proof was used.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      ## Cold Full-Guard Retest Evidence
+
+
+      ### Prerequisite Owner Evidence Review
+
+      - [ ] `split-mcp-and-cli-public-surfaces` evidence reviewed
+
+      - [ ] `split-orch-app-and-core-plan-compat-surfaces` evidence reviewed
+
+      - [ ] `split-orchestration-config-runtime-persistence-surfaces` evidence reviewed
+
+      - [ ] `split-orchestration-driver-state-machine-surface` evidence reviewed
+
+
+      ### Command
+
+      ```text
+
+      uvx invar-tools guard --all
+
+      ```
+
+
+      ### Output
+
+      ```text
+
+      <paste exact exit code, summary, residual rows, file_size, weighted budget,
+      dead_param/entry_point_too_thick/shell_complexity contributors>
+
+      ```
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ### Decision
+
+      - observed_result: <green|red>
+
+      - verdict: <PASS|FAIL>
+
+      - gate_open_allowed: <true|false>
+
+      - orchestrator_action_hint: <PROCEED|DO_NOT_COMPLETE|CREATE_REMEDIATION>
+
+      - product_implementation_files_modified: <true|false>
+
+
+      ### Suppression Check
+
+      - [ ] no budget lowering
+
+      - [ ] no widened escape hatches
+
+      - [ ] no ignored files/deleted findings
+
+      - [ ] no stale branch-local proof accepted'
+    refs:
+    - INVAR.md
+    - AGENTS.md
     depends_on:
-    - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
+    - split-mcp-and-cli-public-surfaces
+    - split-orch-app-and-core-plan-compat-surfaces
+    - split-orchestration-config-runtime-persistence-surfaces
+    - split-orchestration-driver-state-machine-surface
     agent: integration-verifier
   - id: split-mcp-and-cli-public-surfaces
     name: Split MCP and CLI public surfaces without compatibility loss

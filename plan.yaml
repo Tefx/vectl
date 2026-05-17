@@ -94702,7 +94702,7 @@ phases:
       the expected-red stubs.'
   - id: invar_guard_remediation.fix-config-projection-recovery-budget-residuals
     name: Fix config/projection/recovery escape-budget residuals
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Complete the structural escape-budget remediation
       slice for config, projections, and recovery fallback according to the authority
       decision and Core contracts.
@@ -94838,6 +94838,8 @@ phases:
     depends_on:
     - invar_guard_remediation.escape-budget-core-contracts
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T16:53:45.169183+00:00'
   - id: invar_guard_remediation.fix-events-control-app-driver-budget-residuals
     name: Fix event/control/app/driver escape-budget residuals
     status: pending

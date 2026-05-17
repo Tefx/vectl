@@ -1,3 +1,4 @@
+# @invar:allow file_size: Recovery fallback persistence and decision surface remains co-located to preserve RFC recovery artifact compatibility.
 """Automatic recovery fallback semantics for OpenCode-backed orchestration.
 
 Authority: docs/RFC-opencode-orchestration-runner.md sections 10, 11, 12
@@ -80,6 +81,9 @@ class SessionValidationResult:
     agent_id: str = ""
 
 
+# @invar:allow function_size: Native-resume validation keeps ordered RFC checks and reason strings in one compatibility surface.
+# @invar:allow shell_result: Public recovery validation API returns SessionValidationResult consumed by existing recovery callers.
+# @shell_complexity: Branches preserve distinct RFC validation failure reasons for session and prompt artifacts.
 def validate_session_for_resume(
     *,
     run_root: Path,
@@ -273,6 +277,8 @@ class RecoveryFallbackResult:
     recover_attempt: RecoveryAttempt | None = None
 
 
+# @invar:allow function_size: Fallback decision preserves native-resume, fresh-relaunch, and explicit-failure branches in one recovery contract.
+# @invar:allow shell_result: Public fallback API returns RecoveryFallbackResult truth labels rather than Result wrapper for compatibility.
 def recover_with_fallback(
     *,
     run_id: str,
@@ -478,6 +484,7 @@ _RESUME_ATTEMPT_FILENAME: str = "resume_attempt.json"
 _RECOVER_ATTEMPT_FILENAME: str = "recover_attempt.json"
 
 
+# @invar:allow shell_result: Persistence helper historically returns the written artifact Path for recovery audit callers.
 def persist_recovery_continuity(
     *,
     run_root: Path,
@@ -521,6 +528,7 @@ def persist_recovery_continuity(
     return continuity_path
 
 
+# @invar:allow shell_result: Persistence helper historically returns the written attempt Path for recovery audit callers.
 def persist_recovery_attempt(
     *,
     run_root: Path,
@@ -565,6 +573,8 @@ def persist_recovery_attempt(
     return attempt_path
 
 
+# @invar:allow shell_result: Aggregate persistence returns artifact-name to Path mapping consumed by recovery callers.
+# @shell_orchestration: Aggregate delegates persistence I/O helpers while preserving legacy artifact mapping return shape.
 def persist_recovery_fallback_result(
     *,
     run_root: Path,
@@ -612,6 +622,8 @@ def persist_recovery_fallback_result(
     return persisted
 
 
+# @invar:allow shell_result: Reader API intentionally uses None for missing or invalid legacy continuity artifacts.
+# @shell_complexity: Branches preserve missing, unreadable, non-object, and invalid-label legacy artifact handling.
 def read_recovery_continuity(
     *,
     run_root: Path,
@@ -651,6 +663,8 @@ def read_recovery_continuity(
     )
 
 
+# @invar:allow shell_result: Reader API intentionally uses None for missing or invalid legacy attempt artifacts.
+# @shell_complexity: Branches preserve missing, unreadable, non-object, and parsed attempt compatibility handling.
 def read_recovery_attempt(
     *,
     run_root: Path,

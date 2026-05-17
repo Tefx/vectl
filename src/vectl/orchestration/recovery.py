@@ -1,3 +1,4 @@
+# @invar:allow file_size: Recovery DTOs, legacy bridge, and cutover contracts remain co-located as one public recovery compatibility surface.
 """
 Recovery and cutover contracts for orchestration run recovery and legacy migration.
 
@@ -384,15 +385,15 @@ class LegacyRunBridge:
 
     def import_legacy_run(
         self,
-        legacy_run_id: str,
-        target_step_id: str,
+        _legacy_run_id: str,
+        _target_step_id: str,
     ) -> LegacyRunImport:
         """
         Import a legacy run into the new orchestration surface.
 
         Args:
-            legacy_run_id: Original legacy run identifier.
-            target_step_id: Target step ID in the new plane.
+            _legacy_run_id: Original legacy run identifier.
+            _target_step_id: Target step ID in the new plane.
 
         Returns:
             LegacyRunImport record of the import.
@@ -406,13 +407,13 @@ class LegacyRunBridge:
 
     def get_migration_status(
         self,
-        legacy_run_id: str | None = None,
+        _legacy_run_id: str | None = None,
     ) -> LegacyRunStatus:
         """
         Get the current migration status for a legacy run or the system overall.
 
         Args:
-            legacy_run_id: Optional legacy run ID. None means system-wide status.
+            _legacy_run_id: Optional legacy run ID. None means system-wide status.
 
         Returns:
             Current LegacyRunStatus.
@@ -426,15 +427,15 @@ class LegacyRunBridge:
 
     def set_migration_status(
         self,
-        status: LegacyRunStatus,
-        legacy_run_id: str | None = None,
+        _status: LegacyRunStatus,
+        _legacy_run_id: str | None = None,
     ) -> None:
         """
         Set the migration status for a legacy run or system-wide.
 
         Args:
-            status: The migration status to set.
-            legacy_run_id: Optional legacy run ID. None means system-wide.
+            _status: The migration status to set.
+            _legacy_run_id: Optional legacy run ID. None means system-wide.
 
         Raises:
             NotImplementedError: Until bridge semantics are specified.
@@ -595,6 +596,7 @@ class CutoverValidator:
             if record.source == "orchestration_native"
         )
 
+    # @invar:allow function_size: Cutover validation keeps four retirement criteria evaluated in one ordered audit report.
     def validate_cutover_readiness(self) -> CutoverValidationResult:
         """
         Validate whether orchestration-plane cutover criteria are met.

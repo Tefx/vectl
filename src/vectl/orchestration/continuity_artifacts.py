@@ -1,3 +1,4 @@
+# @invar:allow file_size: Continuity artifact DTOs and quarantine protocols remain co-located as one recovery contract module.
 """
 Continuity artifact reader/writer contracts for recovery and resume decisions.
 
@@ -516,6 +517,7 @@ class QuarantineManager:
         5. Ambiguous identity remains blocking
     """
 
+    # @invar:allow dead_param: Quarantine contract preserves public parameter names for external implementations.
     def classify_artifact(
         self,
         artifact_path: str,
@@ -538,6 +540,7 @@ class QuarantineManager:
             "QuarantineManager.classify_artifact: hygiene semantics not yet specified"
         )
 
+    # @invar:allow dead_param: Quarantine contract preserves public parameter names for external implementations.
     def quarantine(
         self,
         artifact_path: str,

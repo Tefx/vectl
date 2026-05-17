@@ -94946,7 +94946,7 @@ phases:
       hidden; no new broad allow masking introduced.'
   - id: invar_guard_remediation.fix-events-control-app-driver-budget-residuals
     name: Fix event/control/app/driver escape-budget residuals
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Complete the structural escape-budget remediation
       slice for event/control surfaces, `orch_app.py`, and the driver loop according
       to the authority decision and Core contracts.
@@ -95086,6 +95086,8 @@ phases:
     depends_on:
     - invar_guard_remediation.escape-budget-core-contracts
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T17:27:25.090231+00:00'
   - id: invar_guard_remediation.fix-inspection-prompt-budget-residuals
     name: Fix inspection/prompt escape-budget residuals
     status: pending

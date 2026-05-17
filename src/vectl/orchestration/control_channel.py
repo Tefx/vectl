@@ -1,24 +1,3 @@
-"""
-Joined read-query DTOs for runs, inspect, and case surfaces.
-
-Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3
-Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3, 5
-Authority: docs/RFC-orch-drive.md sections 7.3, 7.3.1 (drive-scoped control)
-
-Public surfaces (this module):
-    - ControlChannelMessage   (message schema for control-channel communication)
-    - ControlChannel          (protocol for control-channel send/receive)
-    - send_to_control()      (convenience surface for sending to control channel)
-    - send_drive_control()   (drive-scoped control convenience surface)
-    - InspectView             (joined read-query DTO for inspect surfaces)
-    - CaseView               (joined read-query DTO for case/unresolved surfaces)
-
-Note: This module addresses the "joined read-query DTOs for runs, inspect, and
-case surfaces". The exact channel transport and query model are not yet
-specified; this module records interface anchors with documented gaps. Drive-
-scoped control (pause/unpause/stop) targets the drive rather than a single run.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -66,28 +45,27 @@ _DEFAULT_POLL_INTERVAL_SECONDS = 0.05
 
 
 class ControlChannelError(RuntimeError):
-    """Base class for control-channel persistence errors."""
+    ...
 
 
 class InvalidControlChannelMessageError(ControlChannelError):
-    """Raised when the message cannot be persisted as an operator action."""
+    ...
 
 
 class DuplicateActionError(ControlChannelError):
-    """Raised when action ID already exists in channel storage."""
+    ...
 
 
 class PendingActionLimitExceededError(ControlChannelError):
-    """Raised when pending-action queue is already at configured capacity."""
+    ...
 
 
 class MalformedActionFileError(ControlChannelError):
-    """Raised when action file payload is malformed or undecodable."""
+    ...
 
 
 @dataclass(frozen=True)
 class ActionRequest:
-    """Persisted operator action request."""
 
     action_id: str
     run_id: str
@@ -99,7 +77,6 @@ class ActionRequest:
 
 @dataclass(frozen=True)
 class ActionReceipt:
-    """Persisted operator action acknowledgement receipt."""
 
     action_id: str
     run_id: str
@@ -110,7 +87,6 @@ class ActionReceipt:
 
 @dataclass(frozen=True)
 class ActionAcknowledgement:
-    """Result of acknowledgement lookup including timeout status."""
 
     action_id: str
     status: AcknowledgementStatus
@@ -124,21 +100,6 @@ class ActionAcknowledgement:
 
 @dataclass(frozen=True)
 class ControlChannelMessage:
-    """
-    Message schema for control-channel communication.
-
-    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3
-    Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3, 5
-
-    GAP: The exact message taxonomy and required fields are not yet fully
-    specified. The fields below represent the known minimum anchor.
-
-    Attributes:
-        msg_type: Message type identifier.
-        sender: Identifier of the sending component.
-        payload: Message payload (content depends on msg_type).
-        timestamp: Message emission timestamp.
-    """
 
     msg_type: str
     sender: str
@@ -154,40 +115,16 @@ class ControlChannelMessage:
 
 
 class ControlChannel(Protocol):
-    """
-    Protocol for control-channel send/receive between orchestration components.
-
-    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3
-
-    GAP: The exact transport mechanism (in-memory, file-based, async MQ) and
-    the full message protocol are not yet specified. No concrete implementation
-    should be added in this contract step.
-
-    This protocol records the expected boundary role for inter-component
-    control communication.
-    """
 
     def send(self, message: ControlChannelMessage) -> None:
-        """
-        Send a message through the control channel.
+        ...
 
-        Args:
-            message: The message to send.
-
-        Raises:
-            NotImplementedError: Until channel transport is specified.
-        """
+    def receive(self, timeout_seconds: float | None = None) -> ControlChannelMessage | None:
         ...
 
 
 @dataclass
 class FilesystemControlChannel:
-    """Filesystem-backed operator control channel implementation.
-
-    Authority: user task for ``orch_operator_control_surface.impl_control_channel``
-    requiring pending/applied/rejected persistence, acknowledgement lookup,
-    bounded pending queue behavior, and run-local path normalization.
-    """
 
     runs_root: Path | str = _DEFAULT_RUNS_ROOT
     max_pending_actions: int = _DEFAULT_MAX_PENDING_ACTIONS
@@ -201,7 +138,6 @@ class FilesystemControlChannel:
             raise ValueError("poll_interval_seconds must be > 0")
 
     def send(self, message: ControlChannelMessage) -> None:
-        """Persist operator action request as pending file."""
 
         request = _request_from_message(message)
         self._reject_malformed_and_duplicate_pending(run_id=request.run_id)
@@ -218,7 +154,6 @@ class FilesystemControlChannel:
         )
 
     def receive(self, timeout_seconds: float | None = None) -> ControlChannelMessage | None:
-        """Read oldest pending message across runs without mutating queue."""
 
         if timeout_seconds is not None and timeout_seconds < 0:
             raise ValueError("timeout_seconds must be >= 0")
@@ -242,7 +177,6 @@ class FilesystemControlChannel:
         *,
         status: ActionStatus = "pending",
     ) -> tuple[ActionRequest, ...]:
-        """List persisted requests for ``run_id`` and status."""
 
         if status == "pending":
             self._reject_malformed_and_duplicate_pending(run_id=run_id)
@@ -264,21 +198,18 @@ class FilesystemControlChannel:
     def acknowledge_applied(
         self, run_id: str, action_id: str, *, reason: str | None = None
     ) -> ActionReceipt:
-        """Persist applied receipt and remove pending request if present."""
 
         return self._acknowledge(
             run_id=run_id, action_id=action_id, status="applied", reason=reason
         )
 
     def acknowledge_rejected(self, run_id: str, action_id: str, *, reason: str) -> ActionReceipt:
-        """Persist rejected receipt and remove pending request if present."""
 
         return self._acknowledge(
             run_id=run_id, action_id=action_id, status="rejected", reason=reason
         )
 
     def lookup_acknowledgement(self, run_id: str, action_id: str) -> ActionAcknowledgement | None:
-        """Return applied/rejected acknowledgement if already present."""
 
         for status in ("applied", "rejected"):
             receipt_path = self._receipt_file_path(
@@ -303,7 +234,6 @@ class FilesystemControlChannel:
         *,
         timeout_seconds: float,
     ) -> ActionAcknowledgement:
-        """Poll for acknowledgement and return explicit timeout status."""
 
         if timeout_seconds < 0:
             raise ValueError("timeout_seconds must be >= 0")
@@ -317,7 +247,6 @@ class FilesystemControlChannel:
             time.sleep(self.poll_interval_seconds)
 
     def control_layout(self, run_id: str) -> dict[str, Path]:
-        """Return canonical control-channel file layout for ``run_id``."""
 
         root = self._control_root(run_id)
         return {
@@ -460,6 +389,8 @@ class FilesystemControlChannel:
         )
 
 
+# @invar:allow shell_result: Path-component normalizer must return the encoded string used in persisted layouts.
+# @shell_orchestration: Path normalization is part of run-local control-channel persistence safety.
 def _normalize_component(raw: str) -> str:
     normalized = quote(
         raw, safe="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-%"
@@ -469,6 +400,8 @@ def _normalize_component(raw: str) -> str:
     return normalized
 
 
+# @invar:allow shell_result: Action IDs are stable digest strings in the persisted control-channel schema.
+# @shell_orchestration: Action ID construction is coupled to persisted control-message deduplication.
 def _build_action_id(message: ControlChannelMessage) -> str:
     payload = {
         "msg_type": message.msg_type,
@@ -481,6 +414,8 @@ def _build_action_id(message: ControlChannelMessage) -> str:
     return digest[:24]
 
 
+# @invar:allow shell_result: Message adapter raises domain errors and returns ActionRequest per public send semantics.
+# @shell_orchestration: Message-to-request mapping is the control-channel persistence boundary validator.
 def _request_from_message(message: ControlChannelMessage) -> ActionRequest:
     if message.msg_type not in _ALLOWED_CONTROL_MESSAGE_TYPES:
         raise InvalidControlChannelMessageError(
@@ -500,6 +435,8 @@ def _request_from_message(message: ControlChannelMessage) -> ActionRequest:
     )
 
 
+# @invar:allow shell_result: Request serializer returns JSON-ready dict required by on-disk schema.
+# @shell_orchestration: Request serialization is fixed by the on-disk control-channel schema.
 def _serialize_request(request: ActionRequest) -> dict[str, object]:
     return {
         "action_id": request.action_id,
@@ -511,6 +448,9 @@ def _serialize_request(request: ActionRequest) -> dict[str, object]:
     }
 
 
+# @invar:allow shell_result: Request deserializer raises MalformedActionFileError per quarantine/rejection flow.
+# @shell_complexity: Validation branches preserve per-field malformed-action diagnostics.
+# @shell_orchestration: Request deserialization feeds pending-file rejection and acknowledgement routing.
 def _deserialize_request(payload: dict[str, object]) -> ActionRequest:
     action_id = str(payload.get("action_id", "")).strip()
     run_id = str(payload.get("run_id", "")).strip()
@@ -540,6 +480,8 @@ def _deserialize_request(payload: dict[str, object]) -> ActionRequest:
     )
 
 
+# @invar:allow shell_result: Receipt serializer returns JSON-ready dict required by acknowledgement schema.
+# @shell_orchestration: Receipt serialization is fixed by the on-disk acknowledgement schema.
 def _serialize_receipt(receipt: ActionReceipt) -> dict[str, object]:
     return {
         "action_id": receipt.action_id,
@@ -550,6 +492,9 @@ def _serialize_receipt(receipt: ActionReceipt) -> dict[str, object]:
     }
 
 
+# @invar:allow shell_result: Receipt deserializer raises MalformedActionFileError for existing acknowledgement contract.
+# @shell_complexity: Validation branches preserve identifier, status, and timestamp diagnostics.
+# @shell_orchestration: Receipt deserialization belongs with acknowledgement lookup semantics.
 def _deserialize_receipt(payload: dict[str, object]) -> ActionReceipt:
     action_id = str(payload.get("action_id", "")).strip()
     run_id = str(payload.get("run_id", "")).strip()
@@ -574,6 +519,7 @@ def _deserialize_receipt(payload: dict[str, object]) -> ActionReceipt:
     )
 
 
+# @invar:allow shell_result: JSON reader raises MalformedActionFileError so callers can reject bad pending files.
 def _read_json_object(path: Path) -> dict[str, object]:
     try:
         parsed = json.loads(path.read_text(encoding="utf-8"))
@@ -594,44 +540,16 @@ def _write_json_atomic(path: Path, payload: dict[str, object]) -> None:
         os.fsync(handle.fileno())
     tmp_path.replace(path)
 
-    def receive(self, timeout_seconds: float | None = None) -> ControlChannelMessage | None:
-        """
-        Receive a message from the control channel.
-
-        Args:
-            timeout_seconds: Optional timeout. None means block indefinitely.
-
-        Returns:
-            The next message, or None if timeout expired.
-
-        Raises:
-            NotImplementedError: Until channel transport is specified.
-        """
-        ...
-
-
 # ---------------------------------------------------------------------
 # Send-to-Control Convenience Function
 # ---------------------------------------------------------------------
 
 
+# @shell_orchestration: Convenience helper belongs to control-channel shell API and delegates transport mutation.
 def send_to_control(
     message: ControlChannelMessage,
     channel: ControlChannel,
 ) -> None:
-    """
-    Convenience surface for sending a message to the control channel.
-
-    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3
-
-    Args:
-        message: The message to send to control.
-        channel: Explicit control-channel implementation.
-
-    Raises:
-        InvalidControlChannelMessageError: If message cannot be persisted.
-        ControlChannelError: If persistence fails.
-    """
     channel.send(message)
 
 
@@ -655,9 +573,11 @@ _ALLOWED_DRIVE_CONTROL_MESSAGE_TYPES: frozenset[str] = frozenset(
 
 
 class InvalidDriveControlMessageError(ControlChannelError):
-    """Raised when a drive-scoped control message is invalid."""
+    ...
 
 
+# @invar:allow shell_result: Public drive-control helper returns persisted ActionRequest per existing callers/tests.
+# @shell_orchestration: Drive-control helper builds operator payloads before delegating filesystem persistence.
 def send_drive_control(
     drive_id: str,
     action: Literal["pause", "unpause", "stop"],
@@ -666,30 +586,6 @@ def send_drive_control(
     reason: str | None = None,
     force: bool = False,
 ) -> ActionRequest:
-    """
-    Send a drive-scoped control message through the control channel.
-
-    Authority: docs/RFC-orch-drive.md section 7.3
-
-    Drive-scoped control targets the drive rather than a single run.
-    The drive_id is carried as the first payload element. For stop
-    with --force, "force=true" is appended per RFC §7.3.1.
-
-    Args:
-        drive_id: The drive to target with this control message.
-        action: Control action — one of pause, unpause, stop.
-        channel: FilesystemControlChannel to persist the action.
-        reason: Optional operator reason for the action.
-        force: If True and action is "stop", request immediate stop
-            semantics per RFC §7.3.1. Ignored for pause/unpause.
-
-    Returns:
-        The persisted ActionRequest.
-
-    Raises:
-        InvalidDriveControlMessageError: If the action is invalid.
-        ControlChannelError: If persistence fails.
-    """
     msg_type = f"drive.{action}"
     payload_items: list[str] = [drive_id]
     if reason is not None:
@@ -715,22 +611,6 @@ def send_drive_control(
 
 @dataclass(frozen=True)
 class InspectView:
-    """
-    Joined read-query DTO for inspection surfaces.
-
-    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md (shared)
-
-    GAP: The exact inspect surface shape and query model are not yet
-    specified. The fields below represent the known minimum anchor.
-
-    Attributes:
-        plan_id: Identifier of the plan being inspected.
-        core: Current core snapshot view.
-        roster: Current roster snapshot view.
-        runtime: Current runtime snapshot view.
-        active_runs: Tuple of currently active run identifiers.
-        recent_decisions: Tuple of recent control decisions.
-    """
 
     plan_id: str
     core: CoreSnapshot | None = None
@@ -747,23 +627,6 @@ class InspectView:
 
 @dataclass(frozen=True)
 class CaseView:
-    """
-    Joined read-query DTO for case / unresolved-state inspection.
-
-    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md (shared)
-
-    GAP: The exact case view shape and query model are not yet specified.
-    The fields below represent the known minimum anchor.
-
-    Attributes:
-        case_id: Unique identifier for this case.
-        reason: Human-readable explanation of why normal flow did not close.
-        core: Core snapshot at time of case creation.
-        roster: Roster snapshot at time of case creation.
-        runtime: Runtime snapshot at time of case creation.
-        resolution_report: Resolution report if the case has been resolved.
-        status: Current case status.
-    """
 
     case_id: str
     reason: str

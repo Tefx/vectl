@@ -187,6 +187,8 @@ class PlanAwareControl:
         runtime = self.sources.runtime.snapshot()
         return self.apply_resolution(report=report, core=core, roster=roster, runtime=runtime)
 
+    # @invar:allow function_size: Decision ladder preserves RFC priority order and public control semantics in one auditable method.
+    # @invar:allow dead_param: roster is retained for Control interface compatibility and future roster-aware scheduling.
     def evaluate(
         self,
         core: CoreSnapshot,

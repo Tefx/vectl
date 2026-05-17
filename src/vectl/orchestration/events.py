@@ -1,13 +1,3 @@
-"""Orchestration-plane canonical event envelopes and append-only sinks.
-
-Authority:
-    - User dispatch for step orch_operator_observability.impl_event_envelope_registry_sinks
-      (requires canonical JSONL framing, prev/entry hash chain, seq hooks,
-      registry validation, append-only sink behavior, corruption diagnostics)
-    - tests from orch_operator_tests.observability_red (protected)
-    - docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3.8
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -24,13 +14,6 @@ from urllib.parse import quote, unquote
 
 @dataclass(frozen=True)
 class EventSchema:
-    """Schema contract for one canonical event kind.
-
-    Attributes:
-        required_payload_keys: Keys that must be present in payload.
-        optional_payload_keys: Keys allowed in payload in addition to required keys.
-        version: Canonical event schema version.
-    """
 
     required_payload_keys: tuple[str, ...] = ()
     optional_payload_keys: tuple[str, ...] = ()
@@ -89,13 +72,6 @@ DriveEventKind = Literal[
     "child_run_final",
     "drive_final",
 ]
-"""Drive event kind literals.
-
-Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §10.4,
-          docs/RFC-orch-drive.md §16.3
-
-Drive-capable implementations must emit at least these event kinds.
-"""
 
 DRIVE_EVENT_KINDS: Final[frozenset[str]] = frozenset(
     [
@@ -190,11 +166,10 @@ CANONICAL_EVENT_REGISTRY: Final[dict[str, EventSchema]] = {
 
 
 class EventValidationError(ValueError):
-    """Raised when event kind, payload, or integrity metadata is invalid."""
+    ...
 
 
 class EventCorruptionError(ValueError):
-    """Raised when an existing JSONL stream is truncated or malformed."""
 
     def __init__(self, line_no: int, reason: str, raw_line: str = "") -> None:
         self.line_no = line_no
@@ -203,45 +178,32 @@ class EventCorruptionError(ValueError):
         super().__init__(f"event log corruption at line {line_no}: {reason}; raw={raw_line!r}")
 
 
+# @invar:allow shell_result: Public normalization API must return filesystem-safe step key string.
 def normalize_step_key(step_id: str) -> str:
-    """Return the canonical filesystem-safe step key for a step ID.
-
-    Authority:
-        tests/repro/test_orch_observability_red.py::TestStepArtifactSchemas
-
-    The contract requires percent-encoding for bytes outside ``[A-Za-z0-9._-]``
-    while preserving case and allowing lossless decode.
-    """
 
     return quote(step_id, safe="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-")
 
 
+# @invar:allow shell_result: Public normalization API must return decoded step id string.
 def denormalize_step_key(step_key: str) -> str:
-    """Decode a canonical step key back into the original step ID."""
 
     return unquote(step_key)
 
 
+# @invar:allow shell_result: Hash canonicalization helper must return a JSON string for existing event schema compatibility.
 def _canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
+# @invar:allow shell_result: Hash validation predicate is used inside constructors that raise domain validation errors.
 def _is_hex_sha256(value: str) -> bool:
     if len(value) != 64:
         return False
     return all(ch in "0123456789abcdef" for ch in value)
 
 
+# @shell_orchestration: Payload validation remains adjacent to the canonical event registry it enforces.
 def validate_payload(kind: str, payload: Mapping[str, Any]) -> None:
-    """Validate payload against static canonical registry schema.
-
-    Args:
-        kind: Canonical event kind name.
-        payload: Event payload object.
-
-    Raises:
-        EventValidationError: If kind is unknown or payload shape drifts.
-    """
 
     schema = CANONICAL_EVENT_REGISTRY.get(kind)
     if schema is None:
@@ -262,20 +224,6 @@ def validate_payload(kind: str, payload: Mapping[str, Any]) -> None:
 
 @dataclass(frozen=True)
 class OrchestrationEventEnvelope:
-    """Canonical orchestration event envelope for append-only JSONL logs.
-
-    Attributes:
-        kind: Canonical event name from the static registry.
-        timestamp: UTC-aware timestamp for the event.
-        step_id: Optional associated step identifier.
-        payload: Event payload validated against event registry schema.
-        agent: Optional agent identifier.
-        seq: Monotonic append-order sequence value.
-        prev_hash: Previous record entry hash (or None for first record).
-        entry_hash: SHA-256 over canonical JSON of envelope without entry_hash.
-        run_id: Optional associated run identifier.
-        drive_id: Optional associated drive identifier (drive events only).
-    """
 
     kind: OrchestrationEventKind
     timestamp: datetime
@@ -314,7 +262,6 @@ class OrchestrationEventEnvelope:
 
     @property
     def version(self) -> int:
-        """Return canonical schema version for this event kind."""
 
         return CANONICAL_EVENT_REGISTRY[self.kind].version
 
@@ -336,13 +283,11 @@ class OrchestrationEventEnvelope:
         return result
 
     def compute_entry_hash(self) -> str:
-        """Compute deterministic SHA-256 over canonical event JSON payload."""
 
         canonical = _canonical_json(self._hash_payload())
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def to_record(self) -> dict[str, Any]:
-        """Convert envelope to canonical JSONL record payload."""
 
         record: dict[str, Any] = {
             "seq": self.seq,
@@ -362,36 +307,15 @@ class OrchestrationEventEnvelope:
         return record
 
     def to_jsonl_line(self) -> str:
-        """Return canonical single-line JSONL framing for this envelope."""
 
         return _canonical_json(self.to_record()) + "\n"
 
     def with_integrity(self, *, seq: int, prev_hash: str | None) -> OrchestrationEventEnvelope:
-        """Return envelope with seq/hash-chain metadata recomputed.
-
-        Args:
-            seq: Assigned append sequence.
-            prev_hash: Previous entry hash in chain.
-
-        Returns:
-            New immutable envelope with deterministic entry_hash.
-        """
 
         return replace(self, seq=seq, prev_hash=prev_hash, entry_hash=None)
 
     @classmethod
     def from_record(cls, record: Mapping[str, Any]) -> OrchestrationEventEnvelope:
-        """Build and validate an envelope from JSONL record data.
-
-        Args:
-            record: Decoded JSON object from one JSONL line.
-
-        Returns:
-            Fully validated envelope.
-
-        Raises:
-            EventValidationError: If record is missing required fields.
-        """
 
         required = {
             "seq",
@@ -483,14 +407,6 @@ class OrchestrationEventEnvelope:
 
     @classmethod
     def validate_chain(cls, envelopes: Sequence[OrchestrationEventEnvelope]) -> None:
-        """Validate monotonic seq and prev_hash -> entry_hash chain integrity.
-
-        Args:
-            envelopes: Ordered sequence of envelopes as they appear in JSONL.
-
-        Raises:
-            EventCorruptionError: If sequence or hash chain integrity is broken.
-        """
 
         expected_seq = 1
         previous_hash: str | None = None
@@ -512,45 +428,13 @@ class OrchestrationEventEnvelope:
 
 
 class EventSink(Protocol):
-    """Protocol for durable event sink implementations."""
 
     def emit(self, envelope: OrchestrationEventEnvelope) -> None:
-        """Emit one validated event envelope to sink."""
+        ...
 
 
 @dataclass(frozen=True)
 class DriveEventEnvelope:
-    """Canonical drive event envelope with drive_id scoping.
-
-    Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §10.4,
-              docs/RFC-orch-drive.md §16.3
-
-    Drive event envelopes extend the canonical OrchestrationEventEnvelope
-    contract with a mandatory ``drive_id`` field and optional ``child_run_id``
-    for child-run-scoped drive events.
-
-    Minimum drive event envelope fields per §10.4:
-    - ``seq``
-    - ``prev_hash``
-    - ``entry_hash``
-    - ``timestamp``
-    - ``kind``
-    - ``drive_id``
-    - ``run_id`` (may be null for drive-level events)
-    - ``step_id`` (may be null for drive-level events)
-    - ``payload``
-
-    Attributes:
-        kind: Drive event kind from DRIVE_EVENT_KINDS.
-        timestamp: UTC-aware timestamp for the event.
-        drive_id: Owning drive identifier (required for all drive events).
-        child_run_id: Optional child run identifier for child-run-scoped events.
-        step_id: Optional associated step identifier.
-        payload: Event payload validated against drive event registry schema.
-        seq: Monotonic append-order sequence value.
-        prev_hash: Previous record entry hash (or None for first record).
-        entry_hash: SHA-256 over canonical JSON of envelope without entry_hash.
-    """
 
     kind: DriveEventKind
     timestamp: datetime
@@ -605,14 +489,6 @@ class DriveEventEnvelope:
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def to_orchestration_envelope(self) -> OrchestrationEventEnvelope:
-        """Convert drive event envelope to a standard orchestration envelope.
-
-        Returns:
-            An ``OrchestrationEventEnvelope`` with the drive_id propagated
-            and kind validated against the canonical registry. The
-            entry_hash is recomputed because the canonical hash payload
-            differs between envelope types.
-        """
         return OrchestrationEventEnvelope(
             kind=cast(OrchestrationEventKind, self.kind),
             timestamp=self.timestamp,
@@ -625,18 +501,11 @@ class DriveEventEnvelope:
         )
 
     def with_integrity(self, *, seq: int, prev_hash: str | None) -> DriveEventEnvelope:
-        """Return envelope with seq/hash-chain metadata recomputed.
-
-        Args:
-            seq: Assigned append sequence.
-            prev_hash: Previous entry hash in chain.
-
-        Returns:
-            New immutable envelope with deterministic entry_hash.
-        """
         return replace(self, seq=seq, prev_hash=prev_hash, entry_hash=None)
 
 
+# @invar:allow shell_result: Public drive event constructor returns the envelope object required by callers and tests.
+# @shell_orchestration: Drive-event constructor stays with envelope schema validation to preserve public import surface.
 def build_drive_event(
     kind: DriveEventKind,
     drive_id: str,
@@ -646,22 +515,6 @@ def build_drive_event(
     step_id: str | None = None,
     timestamp: datetime | None = None,
 ) -> DriveEventEnvelope:
-    """Convenience constructor for drive event envelopes.
-
-    Authority: docs/RFC-orch-drive.md §16.3
-
-    Args:
-        kind: Drive event kind.
-        drive_id: Owning drive identifier.
-        payload: Event-specific data validated against the drive event schema.
-        child_run_id: Optional child run identifier for child-run events.
-        step_id: Optional associated step identifier.
-        timestamp: Optional event timestamp (defaults to now UTC).
-
-    Returns:
-        A validated ``DriveEventEnvelope`` (with seq/prev_hash to be
-        assigned at emit time).
-    """
     return DriveEventEnvelope(
         kind=kind,
         timestamp=timestamp or datetime.now(timezone.utc),
@@ -672,19 +525,11 @@ def build_drive_event(
     )
 
 
+# @shell_complexity: Chain validation branches separately diagnose missing seq, seq drift, and hash drift.
+# @shell_orchestration: Drive chain validation stays with envelope hashing to preserve corruption diagnostics.
 def validate_drive_event_chain(
     envelopes: Sequence[DriveEventEnvelope],
 ) -> None:
-    """Validate monotonic seq and prev_hash -> entry_hash chain for drive events.
-
-    Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §9.3
-
-    Args:
-        envelopes: Ordered sequence of drive event envelopes.
-
-    Raises:
-        EventCorruptionError: If sequence or hash chain integrity is broken.
-    """
     expected_seq = 1
     previous_hash: str | None = None
     for index, envelope in enumerate(envelopes, start=1):
@@ -705,7 +550,6 @@ def validate_drive_event_chain(
 
 
 class JsonlEventSink:
-    """Append-only events JSONL sink with hash-chain continuity checks."""
 
     def __init__(self, path: str | Path) -> None:
         self._path = Path(path)
@@ -721,7 +565,6 @@ class JsonlEventSink:
         return ((tail.seq or 0), tail.entry_hash)
 
     def emit(self, envelope: OrchestrationEventEnvelope) -> None:
-        """Append one event preserving seq monotonicity and hash chain integrity."""
 
         with self._thread_lock:
             self._lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -748,18 +591,9 @@ class JsonlEventSink:
                     flock(lock_handle.fileno(), LOCK_UN)
 
 
+# @invar:allow shell_result: Loader raises EventCorruptionError per established JSONL integrity contract.
+# @shell_complexity: Loader distinguishes missing file, truncation, JSON, object-shape, and chain corruption.
 def load_event_jsonl(path: str | Path) -> tuple[OrchestrationEventEnvelope, ...]:
-    """Load and validate canonical events JSONL stream.
-
-    Args:
-        path: Path to events JSONL file.
-
-    Returns:
-        Ordered tuple of envelopes.
-
-    Raises:
-        EventCorruptionError: For truncated trailing lines, malformed JSON, or chain drift.
-    """
 
     records: list[OrchestrationEventEnvelope] = []
     file_path = Path(path)
@@ -793,7 +627,6 @@ def load_event_jsonl(path: str | Path) -> tuple[OrchestrationEventEnvelope, ...]
 
 
 class EventRegistry:
-    """Event dispatch registry with canonical taxonomy and schema validation."""
 
     def __init__(self) -> None:
         self._handlers: dict[str, list[EventSink]] = {
@@ -801,14 +634,12 @@ class EventRegistry:
         }
 
     def register(self, kind: OrchestrationEventKind, handler: EventSink) -> None:
-        """Register a sink handler for one canonical event kind."""
 
         if kind not in self._handlers:
             raise EventValidationError(f"cannot register unknown event kind {kind!r}")
         self._handlers[kind].append(handler)
 
     def emit(self, envelope: OrchestrationEventEnvelope) -> None:
-        """Validate and dispatch an envelope to handlers of its event kind."""
 
         validate_payload(envelope.kind, envelope.payload or {})
         for handler in self._handlers[envelope.kind]:
@@ -816,18 +647,17 @@ class EventRegistry:
 
 
 def emit(envelope: OrchestrationEventEnvelope, *, registry: EventRegistry) -> None:
-    """Emit one orchestration event through an explicit registry instance."""
 
     registry.emit(envelope)
 
 
+# @shell_orchestration: Registry helper preserves explicit registry public API while delegating mutation.
 def register_sink(
     kind: OrchestrationEventKind,
     handler: EventSink,
     *,
     registry: EventRegistry,
 ) -> None:
-    """Register a sink on an explicit event registry instance."""
 
     registry.register(kind, handler)
 

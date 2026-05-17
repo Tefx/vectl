@@ -95765,7 +95765,7 @@ phases:
       - [x] Full guard prompt_materialization excerpt is captured from current mainline
       before the next implementation retry.
 
-      - [ ] Each listed function is classified as pure adapter, true Shell boundary,
+      - [x] Each listed function is classified as pure adapter, true Shell boundary,
       or mixed boundary with rationale.
 
       - [ ] Evidence includes `why_previous_fix_failed`, `why_comment_deletion_is_not_closure`,

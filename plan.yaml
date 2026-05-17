@@ -94345,7 +94345,7 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] Current mainline residual inventory is mapped for every listed file.
+      - [x] Current mainline residual inventory is mapped for every listed file.
 
       - [ ] Each residual has exactly one disposition and an explicit downstream owner.
 

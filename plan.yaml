@@ -97888,22 +97888,22 @@ phases:
       \ and paste actual output excerpts.\n- [x] Capture AFTER guard excerpts for\
       \ owned residual rows and weighted contributors.\n- [x] Confirm no budget lowering,\
       \ broad suppression, ignored files, deleted findings, or policy bypass was used."
-    verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
+    verification: '- [x] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
       owned residual rows, `file_size`, weighted budget, and relevant `dead_param`/`entry_point_too_thick`
       contributors.
 
-      - [ ] Public MCP imports and schema/tool exposure through `vectl.mcp_core_tools`
+      - [x] Public MCP imports and schema/tool exposure through `vectl.mcp_core_tools`
       are smoke-proven.
 
-      - [ ] Real Typer CLI registration/help smoke proof is pasted for touched orchestration
+      - [x] Real Typer CLI registration/help smoke proof is pasted for touched orchestration
       and plan command groups.
 
-      - [ ] Targeted MCP/CLI tests pass with exact command output pasted.
+      - [x] Targeted MCP/CLI tests pass with exact command output pasted.
 
-      - [ ] Evidence states remaining owned residuals, if any, and assigns them to
+      - [x] Evidence states remaining owned residuals, if any, and assigns them to
       downstream retest/gate disposition rather than dismissing them.
 
-      - [ ] No invar budget lowering, suppression, ignored files, deleted findings,
+      - [x] No invar budget lowering, suppression, ignored files, deleted findings,
       import-breaking extraction, or handler-only narrowing occurred.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

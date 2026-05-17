@@ -95776,16 +95776,16 @@ phases:
 
       - [x] Next implementation strategy is constrained to code-level closure, not
       comment churn or broad suppression.'
-    verification: '- [ ] Investigation evidence includes blocker_fingerprint, root_cause_hypothesis,
+    verification: '- [x] Investigation evidence includes blocker_fingerprint, root_cause_hypothesis,
       why_previous_fix_failed, why_comment_deletion_is_not_closure, reversal_risk,
       environment_consistency_check, and next_fix_constraint.
 
-      - [ ] Exact `uvx invar-tools guard --all` prompt_materialization excerpt is
+      - [x] Exact `uvx invar-tools guard --all` prompt_materialization excerpt is
       pasted from current mainline before implementation.
 
-      - [ ] No product code or docs are changed by this investigation step.
+      - [x] No product code or docs are changed by this investigation step.
 
-      - [ ] The implementation step has a precise closure strategy and cannot repeat
+      - [x] The implementation step has a precise closure strategy and cannot repeat
       budget-comment deletion as completion.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

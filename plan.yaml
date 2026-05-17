@@ -95303,12 +95303,12 @@ phases:
       - No blockers. verdict: PASS; blockers: []; gate_open_allowed: true; orchestrator_action_hint:
       COMPLETE.'
   - id: invar_guard_remediation.fix-inspection-prompt-budget-residuals
-    name: Fix inspection/prompt/core_adapter guard residuals
+    name: Fix prompt_materialization guard residual
     status: pending
-    description: 'IMPLEMENTATION / residual closure. Complete ONE batched residual
-      implementation slice for ALL remaining inspection, prompt-materialization, and
-      core-adapter invar guard blockers after salvaged partial progress from `fix-inspection-prompt-budget-residuals`
-      and after the facade-compatibility restoration from `fix-events-control-app-driver-budget-residuals`.
+    description: 'IMPLEMENTATION / residual closure. Complete a narrow prompt-materialization
+      residual slice after salvaged partial progress from commit `7b7ea4e` proved
+      the prior broad inspection/prompt/core_adapter retry made useful progress but
+      did not close semantic guard completion.
 
 
       work_type: technical_debt_remediation
@@ -95320,138 +95320,158 @@ phases:
       agent_source: default
 
 
-      Authoritative context already merged to mainline:
+      Scope classification:
 
-      - Salvaged partial progress from worker commit `262b43c19c15c20acb917bc643689623e314710b`
-      landed on main as `51648312`.
+      - Primary work_type: technical_debt_remediation.
 
-      - Targeted mainline verification passed: `pytest tests/orchestration/unit/test_inspection_queries.py
-      tests/orchestration/unit/test_prompt_artifact_contract.py tests/orchestration/unit/test_core_adapter_contract.py
-      tests/orchestration/unit/test_core_adapter_impl.py` => 73 passed.
+      - Step semantics: reduction-to-closure residual step for ONE blocker family,
+      not a broad retry.
 
-      - Doctests for `prompt_contracts.py`, `planner_mutation_mapping.py`, and `routing_presenters.py`
-      passed.
-
-      - Facade compatibility restoration from event/control work landed on main (`15b4296`)
-      and restored legacy `vectl.core` facade exports in `src/vectl/core/__init__.py`.
+      - Authoritative blocker owned here: `src/vectl/orchestration/prompt_materialization.py`
+      full-guard finding `shell_result 9/2`.
 
 
-      Target inventory (OWN ALL OF THESE IN THIS SINGLE STEP):
+      Already improved by salvage; OUT OF SCOPE unless this step introduces a new
+      regression:
 
-      - `src/vectl/orchestration/core_adapter.py` — file rule budget `shell_result:
-      2/2`; remaining `_apply_single_mutation` function_size warning; preserve boundary
-      adapter behavior.
+      - `src/vectl/orchestration/core_adapter.py` improvements from salvaged progress
+      are accepted as the current baseline; do not redo core_adapter refactors.
 
-      - `src/vectl/orchestration/prompt_materialization.py` — file rule budget `shell_result:
-      9/2`; prompt wrapper `shell_pure_logic` warnings; preserve public/model-visible
-      prompt resource semantics exactly.
+      - `src/vectl/orchestration/prompt_contracts.py` improvements from salvaged progress
+      are accepted as the current baseline; do not redo prompt_contracts refactors.
 
-      - `src/vectl/orchestration/prompt_contracts.py` — related `output_contract_lines`
-      function_size warning if still present after residual refactor.
+      - `src/vectl/orchestration/planner_mutation_mapping.py` improvements from salvaged
+      progress are accepted as the current baseline; do not redo planner_mapping refactors.
 
-      - `src/vectl/orchestration/planner_mutation_mapping.py` — related `interpret_planner_mutation`
-      function_size warning if still present after residual refactor.
-
-      - Any immediately adjacent tests/snapshots needed to prove output-contract preservation.
-
-
-      Exact failing guard fingerprints to close or disposition with owner evidence:
-
-      - `invar guard --changed` still fails on main with `src/vectl/orchestration/core_adapter.py`
-      file rule budget `shell_result: 2/2`.
-
-      - `invar guard --changed` still fails on main with `src/vectl/orchestration/prompt_materialization.py`
-      file rule budget `shell_result: 9/2`.
-
-      - `invar guard --changed` still fails on main with project `shell_result: 11/5`.
-
-      - `invar guard --changed` still fails on main with weighted budget `33/15`.
-
-      - Related warning family: `shell_pure_logic` wrappers in `prompt_materialization`,
-      function_size in `prompt_contracts.output_contract_lines`, `planner_mutation_mapping.interpret_planner_mutation`,
-      and `core_adapter._apply_single_mutation`.
+      - The current mainline proof baseline includes 73 targeted tests passed, doctests
+      for `prompt_contracts.py`, `planner_mutation_mapping.py`, `routing_presenters.py`
+      passed, `python -c "from vectl.core import RecoverResult"` passed, and `.venv/bin/invar
+      guard --changed` passed with only unrelated/non-blocking output outside this
+      prompt_materialization residual.
 
 
-      Command family lock:
+      Target inventory (own only this slice):
 
-      - Reproduce the residual family with the same changed/scoped command family
-      reported by the orchestrator: `invar guard --changed`.
+      - `src/vectl/orchestration/prompt_materialization.py` — close or explicitly
+      disposition `shell_result 9/2` from `uvx invar-tools guard --all`.
 
-      - Also provide readiness evidence for the downstream authoritative full-plan
-      check command family when feasible: `uvx invar-tools guard --all`.
-
-      - Do not substitute unrelated lint/test commands as closure evidence for this
-      blocker family.
+      - Adjacent prompt/materialization tests and snapshots only when needed to prove
+      exact output, prompt text, argv rendering, and prompt artifact semantics.
 
 
-      known_pitfalls:
+      Required fields for repeated-loop closure:
 
-      - `contract_gap` recurrence around `src/vectl/core/__init__.py`: the new `src/vectl/core/`
-      package shadows the historical `src/vectl/core.py` facade unless exports are
-      preserved. Do NOT remove or narrow legacy `vectl.core` facade compatibility
-      while touching core-adapter imports; verify `RecoverResult` and other historical
-      facade exports remain importable.
+      - why_previous_fix_failed: the previous broad residual step landed useful core_adapter/prompt_contract/planner_mapping
+      progress, but it did not modify `prompt_materialization.py`; therefore the surviving
+      `prompt_materialization.py shell_result 9/2` finding remained outside the actual
+      changed seam.
 
-      - Contract stubs/doctests may expose expected-red gaps. Keep contract edits
-      minimal and contract-preserving; update doctests only when implementation semantics
-      now make the authoritative example true, and paste before/after rationale.
+      - why_previous_gate_missed_it: targeted/changed verification after salvage did
+      not exercise authoritative full-guard prompt_materialization budget closure;
+      `invar guard --changed` was green enough for changed files, while `uvx invar-tools
+      guard --all` still reported the untouched prompt_materialization file-level
+      shell_result budget.
 
-      - Prompt/model-visible resources are public contracts. Do NOT normalize, rewrap,
-      reorder, or rephrase prompt/help/snapshot strings unless a targeted exact-string
-      regression and authority rationale are included.
-
-      - Avoid ungoverned `@invar:allow` churn. No broad budget suppression, no blanket
-      file-level allows, and no new escape hatch without a narrow boundary explanation
-      tied to the authority decision.
+      - reversal_risk: prompt/materialization output is model-visible and CLI/operator-visible;
+      extracting or relocating logic can silently alter prompt text, output ordering,
+      argv rendering, or artifact envelopes even when unit tests stay green.
 
 
       Root Cause vs Symptom:
 
-      - Root cause: prompt/materialization and core-adapter code still mixes shell-boundary
-      result handling with pure prompt/contract transformation logic, exceeding shell_result/weighted
-      budgets after partial salvage.
+      - Root cause: prompt_materialization still carries too much Result/shell-boundary
+      handling in a model-visible formatting/materialization module instead of isolating
+      pure prompt/argv/output transformations behind contracted Core-safe seams or
+      narrow Shell adapter boundaries.
 
-      - Symptom: changed guard reports file-level and project-level budget failures
-      plus nearby function_size/shell_pure_logic warnings.
+      - Symptom: full guard still reports `src/vectl/orchestration/prompt_materialization.py
+      shell_result 9/2`, while broader project shell_result/weighted-budget findings
+      remain red.
 
-      - Why previous fix failed: prior worker produced verified target-test progress
-      but left the changed-guard budget family above policy limits after merge conflict
-      resolution in the core facade.
-
-      - Why this fix is not surface-level: closure must move/extract pure logic behind
-      contracted Core-safe seams or make truly narrow Shell boundaries explicit, while
-      preserving exact prompt/model-visible outputs.
+      - Why this fix is not surface-level: completion requires either reducing prompt_materialization
+      shell_result pressure with behavior-preserving extraction, or producing a structured
+      residual disposition proving the remaining prompt_materialization finding does
+      not intersect the invar remediation gate and naming the downstream owner.
 
 
       YOUR SCOPE:
 
-      - Finish the residual guard-budget closure for the target inventory only; do
-      not reopen completed event/control/app/driver work.
+      - Focus on `src/vectl/orchestration/prompt_materialization.py` only, plus the
+      minimum adjacent tests/snapshots needed for exact behavior proof.
 
-      - Prefer reducing/removing shell_result pressure by extracting pure logic with
-      non-vacuous contracts and doctests where appropriate.
+      - Preserve public/model-visible prompt resources exactly unless a cited authority
+      requires a change.
 
-      - Keep true shell boundaries in Shell with narrow `Result[T, E]` handling; use
-      narrow allows only where the authority decision classifies a real adapter boundary.
+      - Preserve argv rendering, prompt artifact envelopes, prompt text ordering,
+      whitespace, and output contract semantics.
 
-      - Preserve `src/vectl/core/__init__.py` legacy facade exports as a compatibility
-      superset; do not regress CLI boot/import behavior.
+      - Prefer extracting pure transformations into contracted Core-safe helpers with
+      non-vacuous `@pre`/`@post` and doctests when that reduces shell_result pressure
+      without changing output.
 
-      - Preserve prompt/model-visible output contracts with snapshot or exact-string
-      regression evidence.
+      - Keep true shell boundaries as narrow Shell adapter logic returning `Result[T,
+      E]`; do not hide the finding with broad `@invar:allow` churn.
 
-      - Treat any remaining blocker-class guard finding that intersects full guard,
-      CLI/help, prompt, or model-visible surfaces as owned by this step unless evidence
-      proves explicit non-intersection.
+      - If full-guard prompt_materialization closure is not achievable in this slice,
+      produce a structured residual disposition that proves non-intersection with
+      remaining required gates and names the downstream owner. Without that proof,
+      the residual remains BLOCKING and this step is not semantically complete.
 
 
-      Out-of-scope guardrail:
+      Explicit non-goals:
 
-      - Do not add broad invar budget suppressions, blanket escape hatches, unrelated
-      module refactors, or cosmetic prompt rewrites.
+      - Do not redo core_adapter, prompt_contracts, planner_mutation_mapping, event/control/app/driver,
+      config/projection/recovery, IO/storage, or CLI remediation unless this step
+      creates a regression there.
 
-      - Do not mark residuals as `pre-existing` or `out-of-scope`; use PROVEN closed,
-      explicit non-intersection, or name a downstream owner.
+      - Do not mark prompt_materialization residuals as `pre-existing`, `out-of-scope`,
+      or merely `tech_debt`; use PROVEN closed, explicit non-intersection, or named
+      downstream owner.
+
+      - Do not add broad budget suppressions, blanket escape hatches, prompt rewrites,
+      or unrelated module refactors.
+
+
+      Exact evidence required:
+
+      - Exact output regression evidence: paste before/after or snapshot evidence
+      for every affected prompt/materialization output path.
+
+      - Prompt regression evidence: prove prompt text/resource ordering, whitespace-sensitive
+      sections, and model-visible prompt artifacts did not drift.
+
+      - argv regression evidence: prove command/argv materialization remains byte-for-byte
+      or semantically exact where documented, with actual expected/actual output pasted.
+
+      - Guard evidence: run `invar guard --changed` and paste output; additionally
+      run `uvx invar-tools guard --all` or provide a prompt_materialization-specific
+      excerpt from that command showing `prompt_materialization.py shell_result 9/2`
+      is closed. If full guard remains red elsewhere, provide structured residual
+      disposition for broader project shell_result `81/5`, weighted budget `403/15`,
+      and any prompt_materialization-related finding.
+
+
+      ## Structured Residual Disposition Register (required if any finding remains)
+
+      For each remaining finding include:
+
+      - requirement_ref: exact guard rule/finding and file path.
+
+      - behavior_claim: whether it affects prompt/output/argv/model-visible runtime
+      behavior.
+
+      - runtime_proof_expected: exact command, test, snapshot, or prompt artifact
+      proof required.
+
+      - evidence_ref: pasted command output or snapshot/test reference.
+
+      - status: PROVEN_CLOSED | NON_INTERSECTING | BLOCKING_OWNER_NEEDED.
+
+      - closure_path: why it is closed, why it cannot affect remaining gates, or which
+      downstream owner must close it.
+
+      - gate_decision_basis: why `invar_guard_remediation.escape-budget-full-guard-retest`,
+      `verify-full-guard`, and `gate` may or may not proceed.
 
 
       ## Completion Criteria (stub exclusion)
@@ -95464,180 +95484,101 @@ phases:
 
       ## Gate Preview (what the gate WILL reject)
 
-      1. `invar guard --changed` still showing the listed shell_result/weighted-budget
-      fingerprints without an explicit blocking owner.
+      1. Retrying the old broad inspection/prompt/core_adapter scope instead of focusing
+      on `prompt_materialization.py shell_result 9/2`.
 
-      2. Prompt/materialization output drift without pasted exact-string or snapshot
-      before/after evidence.
+      2. Evidence that repeats the 73-test/core_adapter/prompt_contract/planner_mapping
+      salvage proof without prompt_materialization-specific closure.
 
-      3. Any regression of legacy `vectl.core` facade imports, including `RecoverResult`.
+      3. `uvx invar-tools guard --all` still reporting `prompt_materialization.py
+      shell_result 9/2` without structured non-intersection proof and a named downstream
+      owner.
 
-      4. Broad budget suppressions or ungoverned `@invar:allow` markers that merely
-      silence guard output.
+      4. Prompt, output, artifact, or argv drift without exact before/after evidence
+      and cited authority.
 
-      5. Function-size or shell_pure_logic warnings ignored without either closure
-      or structured non-intersection proof.
+      5. Broad budget suppression or ungoverned `@invar:allow` masking.
 
 
       ## Failure-Mode Checklist
 
-      - [ ] `src/vectl/core/__init__.py` remains a compatibility superset for legacy
-      `vectl.core` imports, including `RecoverResult`.
+      - [ ] `src/vectl/orchestration/prompt_materialization.py shell_result 9/2` is
+      directly addressed by code reduction/extraction or structured residual disposition.
 
-      - [ ] Prompt materialization text/resource semantics are preserved exactly or
-      changed only with explicit authority and exact-string regression evidence.
+      - [ ] Exact prompt text/resource ordering and whitespace-sensitive output are
+      preserved or changed only with cited authority.
 
-      - [ ] Core adapter remains a boundary adapter and does not become an uncontracted
-      logic sink.
+      - [ ] argv materialization behavior is covered by expected/actual regression
+      evidence.
 
-      - [ ] `shell_result` and weighted budget fingerprints listed above are closed
-      by reduction, not hidden by broad suppression.
+      - [ ] core_adapter, prompt_contracts, and planner_mutation_mapping are not reopened
+      except to fix a regression introduced by this step.
 
-      - [ ] Remaining residual debt, if any, is mapped to policy disposition with
-      gate non-intersection proof and an owner.
+      - [ ] Any remaining full-guard red output has a structured residual disposition
+      proving non-intersection or naming a downstream owner.
 
-
-      ## Required Regression Evidence
-
-      - [ ] Targeted inspection/prompt/core_adapter tests pass on mainline paths with
-      actual command output pasted.
-
-      - [ ] Snapshot or exact-string regression evidence covers every affected prompt/materialization
-      output.
-
-      - [ ] `python -c "from vectl.core import RecoverResult"` or equivalent import
-      evidence proves facade compatibility remains intact.
-
-      - [ ] `invar guard --changed` output is pasted and no longer contains the listed
-      blocker-class fingerprints, OR each remaining finding has explicit owner/non-intersection
-      disposition.
-
-      - [ ] No broad budget suppression or ungoverned `@invar:allow` churn is introduced.'
-    verification: '- [ ] Main path: targeted inspection/prompt/core_adapter tests
+      - [ ] No broad shell_result budget suppression or ungoverned escape hatch is
+      introduced.'
+    verification: '- [ ] Main path: prompt_materialization-focused tests/snapshots
       pass with actual command output pasted.
 
-      - [ ] Failure path: prompt/materialization or inspection output regression covers
-      the highest-risk changed behavior with exact-string or snapshot evidence.
+      - [ ] Failure path: exact output/prompt/argv regression evidence proves no model-visible
+      drift for every changed prompt_materialization path.
 
-      - [ ] `invar guard --changed` is run on current mainline and closes the listed
-      `core_adapter.py`, `prompt_materialization.py`, project `shell_result`, and
-      weighted-budget fingerprints, OR assigns any remaining blocker to explicit downstream
-      ownership.
+      - [ ] `invar guard --changed` is run on current mainline and pasted.
 
-      - [ ] Legacy facade compatibility is proven by an import check for `RecoverResult`
-      from `vectl.core` after the residual changes.
+      - [ ] `uvx invar-tools guard --all` closes `src/vectl/orchestration/prompt_materialization.py
+      shell_result 9/2`, OR the evidence includes a structured residual disposition
+      proving non-intersection and naming a downstream owner.
+
+      - [ ] Broader full-guard red findings such as project shell_result `81/5` and
+      weighted budget `403/15` are either closed by this slice where prompt_materialization-related
+      or explicitly mapped as non-owned residuals with downstream owner/non-intersection
+      proof.
+
+      - [ ] core_adapter, prompt_contracts, and planner_mutation_mapping salvage improvements
+      remain untouched except for regression repair and are not used as substitute
+      proof for prompt_materialization closure.
 
       - [ ] No public/model-visible output drift, uncontracted Core code, broad Shell
       allow masking, or ungoverned `@invar:allow` churn is introduced.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-
-      For each ref in this step:
-
-      - INVAR.md — key passage or "NOT READ: <reason>"
-
-      - AGENTS.md — key passage or "NOT READ: <reason>"
-
-
-      If no refs were provided, state: "No refs for this step."
-
-
-      ## Residual Guard Closure Evidence
-
-
-      **Target inventory owned**:
-
-      - `src/vectl/orchestration/core_adapter.py`
-
-      - `src/vectl/orchestration/prompt_materialization.py`
-
-      - `src/vectl/orchestration/prompt_contracts.py` (related warning if present)
-
-      - `src/vectl/orchestration/planner_mutation_mapping.py` (related warning if
-      present)
-
-
-      **Commands executed**:
-
-      ```
-
-      <paste targeted pytest/doctest commands>
-
-      <paste invar guard --changed>
-
-      <paste optional uvx invar-tools guard --all readiness evidence if run>
-
-      ```
-
-
-      **Exact guard fingerprint disposition**:
-
-      | Fingerprint | Status: CLOSED / OWNER / NON_INTERSECTING | Evidence |
-
-      | --- | --- | --- |
-
-      | core_adapter.py shell_result 2/2 | | |
-
-      | prompt_materialization.py shell_result 9/2 | | |
-
-      | project shell_result 11/5 | | |
-
-      | weighted budget 33/15 | | |
-
-      | prompt_materialization shell_pure_logic wrappers | | |
-
-      | prompt_contracts.output_contract_lines function_size | | |
-
-      | planner_mutation_mapping.interpret_planner_mutation function_size | | |
-
-      | core_adapter._apply_single_mutation function_size | | |
-
-
-      **Prompt/model-visible contract preservation**:
-
-      ```
-
-      <paste snapshot or exact-string before/after evidence, or state no prompt/model-visible
-      text changed and cite tests proving it>
-
-      ```
-
-
-      **Facade compatibility proof**:
-
-      ```
-
-      <paste import evidence such as python -c "from vectl.core import RecoverResult">
-
-      ```
-
-
-      **Escape hatch audit**:
-
-      - New `@invar:allow` markers added: <count and narrow rationale, or 0>
-
-      - Broad budget suppressions added: <must be 0>
-
-
-      **Root cause vs symptom closure**:
-
-      - Root cause addressed:
-
-      - Why this is not a symptom-only patch:
-
-      - Remaining blockers and owners, if any:
-
-
-      **Headline**:
-
-      - [ ] PASS: listed blocker family closed
-
-      - [ ] PASS_WITH_OWNER: only explicitly owned blocker-class residual remains
-
-      - [ ] FAIL: blocker family remains unowned'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- INVAR.md — key passage or \"NOT READ: <reason>\"\n- AGENTS.md — key\
+      \ passage or \"NOT READ: <reason>\"\n- src/vectl/orchestration/prompt_materialization.py\
+      \ — key passage or \"NOT READ: <reason>\"\n- tests/orchestration/unit/test_prompt_artifact_contract.py\
+      \ — key passage or \"NOT READ: <reason>\"\n- tests/orchestration/unit/test_inspection_queries.py\
+      \ — key passage or \"NOT READ: <reason>\"\n\nIf no refs were provided, state:\
+      \ \"No refs for this step.\"\n\n## Prompt Materialization Residual Closure Evidence\n\
+      \n### Repeated-loop required fields\n- why_previous_fix_failed: <why the prior\
+      \ broad residual did not close prompt_materialization>\n- why_previous_gate_missed_it:\
+      \ <why changed/targeted verification did not expose full-guard prompt_materialization\
+      \ red>\n- reversal_risk: <prompt/output/argv/model-visible risk considered and\
+      \ mitigated>\n\n### Target ownership\n- Owned blocker: `src/vectl/orchestration/prompt_materialization.py\
+      \ shell_result 9/2`\n- Core adapter / prompt_contracts / planner_mapping status:\
+      \ <already improved by salvage; untouched unless regression introduced>\n\n\
+      ### Exact regression evidence\n- Exact output evidence:\n  ```\n  <paste before/after\
+      \ or snapshot/test output>\n  ```\n- Prompt text/resource evidence:\n  ```\n\
+      \  <paste prompt artifact/snapshot evidence>\n  ```\n- argv materialization\
+      \ evidence:\n  ```\n  <paste expected/actual argv evidence>\n  ```\n\n### Guard\
+      \ commands\n- `invar guard --changed` output:\n  ```\n  <paste output>\n  ```\n\
+      - `uvx invar-tools guard --all` prompt_materialization excerpt or full output:\n\
+      \  ```\n  <paste output/excerpt>\n  ```\n\n## Structured Residual Disposition\
+      \ Register\n| requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref\
+      \ | status | closure_path | gate_decision_basis |\n| --- | --- | --- | --- |\
+      \ --- | --- | --- |\n| `prompt_materialization.py shell_result 9/2` | <claim>\
+      \ | <proof> | <evidence> | PROVEN_CLOSED/NON_INTERSECTING/BLOCKING_OWNER_NEEDED\
+      \ | <path> | <basis> |\n| broader project shell_result/weighted budget | <claim>\
+      \ | <proof> | <evidence> | PROVEN_CLOSED/NON_INTERSECTING/BLOCKING_OWNER_NEEDED\
+      \ | <path> | <basis> |\n\n## Headline\n- [ ] PASS: prompt_materialization blocker\
+      \ closed and no model-visible drift.\n- [ ] PASS_WITH_RESIDUAL_OWNER: prompt_materialization\
+      \ non-intersection proven and downstream owner named.\n- [ ] FAIL: prompt_materialization\
+      \ remains blocking or evidence is missing."
     refs:
     - INVAR.md
     - AGENTS.md
+    - src/vectl/orchestration/prompt_materialization.py
+    - tests/orchestration/unit/test_prompt_artifact_contract.py
+    - tests/orchestration/unit/test_inspection_queries.py
     depends_on:
     - invar_guard_remediation.escape-budget-core-contracts
     - invar_guard_remediation.fix-events-control-app-driver-budget-residuals

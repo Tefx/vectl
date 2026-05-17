@@ -98850,7 +98850,7 @@ phases:
       wrapper, runtime narrowing, or operator-visible behavior deletion occurred.'
   - id: invar_guard_remediation.fix-full-guard-weighted-budget-residuals
     name: Fix full-guard weighted budget residuals
-    status: pending
+    status: claimed
     description: 'Batched remediation owner for the failed cold full-guard retest
       `invar_guard_remediation.full-guard-escape-budget-batched-retest`.
 
@@ -99242,6 +99242,8 @@ phases:
     - split-orchestration-config-runtime-persistence-surfaces
     - split-orchestration-driver-state-machine-surface
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T23:17:41.441104+00:00'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

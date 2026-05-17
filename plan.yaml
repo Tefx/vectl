@@ -92803,7 +92803,7 @@ phases:
     agent: python-senior-tacit
   - id: fix-small-policy-archive-domain
     name: Fix small policy/archive invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate small policy/archive invar findings not
       owned by earlier domain steps.
 
@@ -92877,6 +92877,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T15:31:51.589557+00:00'
   - id: cli-surface-preservation-uiux-audit
     name: CLI surface preservation UI/UX audit
     status: claimed

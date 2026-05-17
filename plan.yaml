@@ -92961,6 +92961,182 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+  - id: fix-io-storage-io-residual
+    name: Fix IO residual invar guard findings
+    status: pending
+    description: 'IMPLEMENTATION residual closure for the salvaged IO/storage domain.
+
+
+      Work type: technical_debt_remediation / closure step.
+
+      Salvage baseline: commit `a110fe4` landed partial progress from `fix-io-storage-domain`;
+      do NOT retry that coarse step.
+
+
+      Owned files:
+
+      - `src/vectl/io.py`
+
+
+      Residual rule families owned by this step:
+
+      - `shell_result` findings reported by `uv run invar guard src/vectl/io.py --agent`
+
+      - `shell_too_complex` findings reported by `uv run invar guard src/vectl/io.py
+      --agent`
+
+
+      Scope guardrails:
+
+      - Preserve public IO API behavior for plan loading/saving, backup handling,
+      error rendering, and compatibility surfaces.
+
+      - Do not edit `src/vectl/claims.py` or `src/vectl/merge_driver.py`; those are
+      separately owned residual steps.
+
+      - Do not change external plan.yaml schema, path semantics, backup semantics,
+      or error strings without explicit evidence and tests.
+
+      - Prefer real Result boundary repair for true shell functions; use narrow `@invar:allow`
+      only when a public adapter/compatibility surface cannot safely change, with
+      a one-line rationale at the exact finding.
+
+      - Complexity remediation must be behavior-preserving extraction or simplification;
+      do not hide complexity with broad file-level allows.
+
+      - If safe public IO API migration requires a broader compatibility design, stop
+      and record a deviation note in evidence rather than making opportunistic cross-domain
+      edits.
+
+
+      ## State semantics and failure modes
+
+      - [ ] Relative vs absolute path behavior is preserved.
+
+      - [ ] Missing-file fallback behavior is preserved or intentionally tightened
+      with regression proof.
+
+      - [ ] Corrupt/invalid YAML behavior is preserved or intentionally tightened
+      with regression proof.
+
+      - [ ] Partial-write/backup behavior is preserved where applicable.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that preserves IO behavior while
+      closing the listed invar rule families.
+
+
+      ## Checklist
+
+      - [ ] `src/vectl/io.py` has no ungoverned `shell_result` findings under the
+      targeted guard command.
+
+      - [ ] `src/vectl/io.py` has no ungoverned `shell_too_complex` findings under
+      the targeted guard command.
+
+      - [ ] Any intentional allow markers are narrow, local, and include rationale;
+      no broad file-level masking was added.
+
+      - [ ] Existing IO behavior remains covered by `tests/test_io.py`.
+
+      - [ ] No files outside `src/vectl/io.py` were modified except tests directly
+      required for IO regression evidence.'
+    verification: '- [ ] `uv run invar guard src/vectl/io.py --agent` exits zero or
+      only reports findings with precise local non-blocking dispositions accepted
+      by invar policy.
+
+      - [ ] `uv run python -m pytest tests/test_io.py -q` passes.
+
+      - [ ] `uv run python -m compileall src/vectl/io.py` passes.
+
+      - [ ] Evidence covers main IO load/save behavior plus the highest-risk failure
+      path among missing files, corrupt files, relative/absolute paths, and partial-write/backup
+      behavior.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/io.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_io.py — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Residual Closure Evidence
+
+
+      **Owned file**: `src/vectl/io.py`
+
+      **Residual rule families**: `shell_result`, `shell_too_complex`
+
+      **Salvage baseline acknowledged**: `a110fe4`
+
+
+      ### Commands
+
+      ```text
+
+      uv run invar guard src/vectl/io.py --agent
+
+      uv run python -m pytest tests/test_io.py -q
+
+      uv run python -m compileall src/vectl/io.py
+
+      ```
+
+
+      ### Actual output
+
+      ```text
+
+      <paste command output>
+
+      ```
+
+
+      ### Finding disposition table
+
+      | Rule family | Before residual | After residual | Disposition |
+
+      | --- | --- | --- | --- |
+
+      | shell_result | <count/detail> | <count/detail> | PROVEN_CLOSED / NARROW_ALLOW
+      |
+
+      | shell_too_complex | <count/detail> | <count/detail> | PROVEN_CLOSED / NARROW_ALLOW
+      |
+
+
+      ### IO compatibility and failure paths
+
+      - Files changed: <list>
+
+      - Public IO API changed: YES/NO (if YES, list compatibility evidence)
+
+      - Broad allows added: YES/NO (if YES, explain why this is not masking)
+
+      - Relative/absolute path evidence: <detail>
+
+      - Missing-file evidence: <detail>
+
+      - Corrupt-file evidence: <detail>
+
+      - Partial-write/backup evidence: <detail>
+
+      '
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: python-senior-tacit
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

@@ -96402,7 +96402,7 @@ phases:
 
       - [x] Targeted inspection/drive query tests pass and command output is pasted.
 
-      - [ ] No broad suppressions, budget lowering, or visibility deletion is used.
+      - [x] No broad suppressions, budget lowering, or visibility deletion is used.
 
       - [ ] Any new `**/core/**` extraction has non-vacuous `@pre`/`@post` contracts
       and at least one doctest.

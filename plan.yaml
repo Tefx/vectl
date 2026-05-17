@@ -96799,7 +96799,7 @@ phases:
 
       - [x] Relative vs absolute config/recovery paths retain documented behavior.
 
-      - [ ] Missing-file fallback behavior is preserved or intentionally dispositioned
+      - [x] Missing-file fallback behavior is preserved or intentionally dispositioned
       with proof.
 
       - [ ] Explicit clear/null overwrite semantics are not changed without targeted

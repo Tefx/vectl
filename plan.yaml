@@ -94355,7 +94355,7 @@ phases:
       - [x] Any planned `**/core/**` work includes @pre, @post, and doctest-before-implementation
       requirements.
 
-      - [ ] Public/model-visible contract risks are listed with targeted regression/property
+      - [x] Public/model-visible contract risks are listed with targeted regression/property
       evidence required downstream.'
     verification: '- [ ] Decision table covers every residual file named in the orchestrator
       failure evidence.

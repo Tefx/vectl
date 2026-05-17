@@ -97058,7 +97058,7 @@ phases:
       - [x] BEFORE `uvx invar-tools guard --all` excerpt for `orch_app.py`, `driver.py`,
       and project-level budget counters is pasted from current mainline.
 
-      - [ ] AFTER `uvx invar-tools guard --all` excerpt shows closure or explicit
+      - [x] AFTER `uvx invar-tools guard --all` excerpt shows closure or explicit
       residual ownership for these families without project-level budget regression.
 
       - [ ] Targeted app/driver regression tests or smoke checks pass and output is

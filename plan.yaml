@@ -93687,6 +93687,106 @@ phases:
     - det_check_impl_cli_mcp
     - det_check_impl_orch_receipts
     agent: wiring-auditor
+  - id: det_check_impl_liveness_probe
+    name: Probe runnable checklist surfaces
+    status: pending
+    description: 'As a semi-blind tester (blind-tester Mode D), actually run the checklist
+      entry points after implementation wiring.
+
+
+      Runnable-surface checklist:
+
+      - [ ] CLI entry point starts and accepts at least one legacy checklist operation.
+
+      - [ ] CLI entry point accepts at least one deterministic checklist operation
+      or inventory command if exposed.
+
+      - [ ] MCP checklist tool wrapper can be invoked through the registered tool
+      function and returns expected structured output.
+
+      - [ ] At least one documented request/command reaches the real entrypoint path
+      end-to-end.
+
+      - [ ] Handler-only proof is not accepted.
+
+
+      Independence Level: L2 for runnable CLI/MCP seams.'
+    verification: '- [ ] phase-check protecting `det_check_impl_gate`: run exact CLI
+      invocation(s) and paste stdout/stderr.
+
+      - [ ] Invoke the MCP checklist tool wrapper or registered tool path and paste
+      request/response.
+
+      - [ ] Confirm the declared entrypoint path actually starts and reaches core
+      checklist service.
+
+      - [ ] Confirm at least one operation produces expected output.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_server.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_cli.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_mcp.py — key passage or "NOT READ: <reason>"
+
+
+      ## Runnable Surface Evidence
+
+      **CLI launch/invocation command**:
+
+      ```bash
+
+      <paste exact command>
+
+      ```
+
+      **CLI output**:
+
+      ```text
+
+      <paste stdout/stderr>
+
+      ```
+
+      **MCP tool invocation**:
+
+      ```text
+
+      <paste request/wrapper call>
+
+      ```
+
+      **MCP output**:
+
+      ```text
+
+      <paste response>
+
+      ```
+
+      **Path exercised**: CLI/MCP entrypoint → core checklist service → plan mutation/result
+
+
+      ## Checklist
+
+      - [ ] Entry point starts.
+
+      - [ ] At least one operation succeeds.
+
+      - [ ] Expected output is produced.'
+    depends_on:
+    - det_check_impl_cli_mcp
+    - det_check_impl_orch_receipts
+    agent: blind-tester
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

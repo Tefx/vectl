@@ -90630,7 +90630,7 @@ phases:
   steps:
   - id: invar_guard_remediation.collect-failure-inventory
     name: Collect invar guard failure inventory
-    status: pending
+    status: claimed
     description: 'Run the authoritative guard command and reduce the broad failure
       face into a stable, actionable remediation map. Do not modify product code.
 
@@ -90748,6 +90748,8 @@ phases:
     - INVAR.md
     - AGENTS.md
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-05-17T13:23:41.477307+00:00'
   - id: invar_guard_remediation.verify-full-guard
     name: Verify full invar guard green
     status: pending

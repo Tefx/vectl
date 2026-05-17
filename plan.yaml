@@ -97284,7 +97284,7 @@ phases:
       - [x] Budget counters are compared against the reported failed attempt and show
       no new blocker-class regression from the residual remediation path.
 
-      - [ ] Closure evidence includes requirement_ref, behavior_claim, runtime_proof_expected,
+      - [x] Closure evidence includes requirement_ref, behavior_claim, runtime_proof_expected,
       evidence_ref, status, closure_path, and gate_decision_basis.
 
       - [ ] This step reports PASS only for full guard green or complete structured

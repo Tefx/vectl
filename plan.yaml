@@ -97468,7 +97468,7 @@ phases:
       until the batched fix/retest path closes.'
   - id: invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     name: Classify post-salvage escape-budget residuals
-    status: pending
+    status: claimed
     description: "Post-salvage residualization step. This replaces the prior coarse\
       \ retry loop with a bounded classification and slice-selection handoff for the\
       \ current mainline state after salvaged main commit `1618486` (`[vectl] salvage\
@@ -97592,6 +97592,8 @@ phases:
     depends_on:
     - invar_guard_remediation.full-guard-residual-disposition-retest
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T22:14:53.387755+00:00'
   - id: invar_guard_remediation.full-guard-escape-budget-batched-retest
     name: Retest full guard after focused residual remediation
     status: pending

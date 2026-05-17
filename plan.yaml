@@ -90800,8 +90800,8 @@ phases:
     name: Verify full invar guard closure
     status: pending
     description: 'As an independent verifier, run the authoritative full invar guard
-      from a fresh perspective after every domain remediation step and the escape-budget
-      residual strategy complete.
+      from a fresh perspective after every domain remediation step, the focused residual
+      remediation DAG, the UI/UX rerun, and the escape-budget residual retest complete.
 
 
       Scope: full-plan-check protecting the final gate and downstream deterministic-checklist
@@ -90815,7 +90815,8 @@ phases:
 
       This step must confirm that domain steps did not silently shift failures into
       unowned files, add uncontracted Core code, or hide real defects behind broad
-      allow markers.
+      allow markers. It must not rely on stale evidence from discarded branch commit
+      `68fcddb6486745572905c5f16248e0c64aa23e37` or any cleaned worktree.
 
 
       Closure policy:
@@ -90830,7 +90831,8 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] All remediation domain steps and `invar_guard_remediation.escape-budget-full-guard-retest`
+      - [ ] All remediation domain steps, focused residual slices, `invar_guard_remediation.full-guard-residual-disposition-retest`,
+      `cli-surface-preservation-uiux-audit`, and `invar_guard_remediation.escape-budget-full-guard-retest`
       are complete before this verifier runs.
 
       - [ ] Authoritative `uvx invar-tools guard --all` output is pasted from current
@@ -90856,72 +90858,62 @@ phases:
       or non-intersection proof.
 
       - [ ] Verification evidence includes a behavioral proof register for runtime/contract-sensitive
-      obligations.'
+      obligations.
+
+      - [ ] Evidence shows the focused residual DAG and UI/UX audit rerun completed
+      before this verifier ran.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 
       For each ref in this step:
 
-      - <filename> — key passage or "NOT READ: <reason>"
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
 
 
       If no refs were provided, state: "No refs for this step."
 
 
-      ## Full Plan Check Evidence
+      ## Full Guard Closure Verification
 
 
-      **Command executed**:
+      **Command**:
 
-      ```
+      ```text
 
       uvx invar-tools guard --all
 
       ```
 
 
-      **Actual output**:
+      **Current-mainline output**:
+
+      ```text
+
+      <paste output>
 
       ```
 
-      <paste full output>
 
-      ```
+      **Prerequisite evidence checked**:
 
+      - focused residual DAG complete: YES/NO
 
-      ## Residual / Closure Register
+      - UI/UX audit rerun complete: YES/NO
 
-
-      | Finding | File | Status | Owner or non-intersection proof | Gate impact |
-
-      |---|---|---|---|---|
-
-      | <finding> | <path> | PROVEN/NON_BLOCKING/BLOCKING | <step/proof> | OPEN/BLOCK
-      |
+      - escape-budget full-guard retest complete: YES/NO
 
 
-      ## Behavioral Proof Register
-
+      **Residual disposition register**:
 
       | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
       status | closure_path | gate_decision_basis |
 
-      |---|---|---|---|---|---|---|
-
-      | <ref> | <claim> | <proof expected> | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
-      | <owner/disposition> | <OPEN/BLOCK basis> |
+      | --- | --- | --- | --- | --- | --- | --- |
 
 
-      ## Headline
-
-      - [ ] PASS: full guard green.
-
-      - [ ] PASS_WITH_DISPOSITION: residuals are explicitly non-blocking under invar
-      policy and do not intersect the final gate.
-
-      - [ ] BLOCK: unresolved blocker-class findings remain.
-
-      '
+      **Decision**: PASS | PASS_WITH_NON_BLOCKING_RESIDUALS | BLOCK'
     refs:
     - INVAR.md
     - AGENTS.md
@@ -90946,9 +90938,14 @@ phases:
     - fix-plan-path-migration-domain
     - fix-small-root-support-domain
     - fix-small-policy-archive-domain
+    - invar_guard_remediation.fix-full-guard-residual-budget-blockers
+    - invar_guard_remediation.fix-inspection-drive-query-result-boundaries
+    - invar_guard_remediation.fix-contracts-file-size-decomposition
+    - invar_guard_remediation.fix-config-projections-recovery-budget-closure
+    - invar_guard_remediation.fix-orch-app-driver-budget-closure
+    - invar_guard_remediation.full-guard-residual-disposition-retest
     - cli-surface-preservation-uiux-audit
     - invar_guard_remediation.escape-budget-full-guard-retest
-    - invar_guard_remediation.fix-full-guard-residual-budget-blockers
     agent: integration-verifier
   - id: invar_guard_remediation.gate
     name: Gate invar guard remediation closure

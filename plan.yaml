@@ -94986,7 +94986,7 @@ phases:
     claimed_at: '2026-05-17T16:53:55.253546+00:00'
   - id: invar_guard_remediation.fix-inspection-prompt-budget-residuals
     name: Fix inspection/prompt escape-budget residuals
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Complete the structural escape-budget remediation
       slice for inspection queries, prompt materialization, and core adapter surfaces
       according to the authority decision and Core contracts.
@@ -95142,6 +95142,8 @@ phases:
     depends_on:
     - invar_guard_remediation.escape-budget-core-contracts
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T16:54:05.348453+00:00'
   - id: invar_guard_remediation.escape-budget-full-guard-retest
     name: Retest escape-budget closure with full guard
     status: pending

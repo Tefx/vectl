@@ -96180,7 +96180,7 @@ phases:
       - [x] Residual disposition schema is present with requirement_ref, behavior_claim,
       runtime_proof_expected, evidence_ref, status, closure_path, and gate_decision_basis.
 
-      - [ ] No product-code remediation is claimed by this planning/investigation
+      - [x] No product-code remediation is claimed by this planning/investigation
       step.'
     verification: '- [ ] The step produces a current-mainline residual inventory and
       does not claim implementation closure.

@@ -97467,290 +97467,128 @@ phases:
       step after remediation ownership was created; downstream OPEN remains blocked
       until the batched fix/retest path closes.'
   - id: invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
-    name: Investigate and safely close residual full-guard escape-budget blockers
+    name: Classify post-salvage escape-budget residuals
     status: pending
-    description: "Loop 4+ investigation-style remediation for the residual full-guard\
-      \ escape-hatch budget blocker family. This step is still executable remediation:\
-      \ investigate first, then implement only the safest decompositions that can\
-      \ close residuals without breaking public compatibility.\n\nstep_type: implementation\n\
-      symbolic_testing: true\nloop_count: 4\ninvestigation_style_remediation: true\n\
-      root_cause_analysis: true\nprior_loop: invar_guard_remediation.full-guard-residual-disposition-retest\n\
-      salvaged_progress_commits:\n  - 3a155e9\n  - 57d44cf\n  - ca0fd6d\nremaining_blocker:\
-      \ current post-ca0fd6d `uvx invar-tools guard --all` fails only on project `file_size`\
-      \ `12/5` and weighted `49/15`.\n\n## Scope Boundary\nThis attempt focuses EXCLUSIVELY\
-      \ on root-cause closure of residual `file_size` escape-hatch pressure and weighted\
-      \ budget pressure driven by `file_size`, `dead_param`, `entry_point`, and `shell_complexity`\
-      \ hatches. Do not chase already-closed file-level blockers, old function_size\
-      \ project blockers, or old shell_result project blockers unless the current\
-      \ guard detail list proves they reappeared.\n\n## Salvaged Progress to Preserve\n\
-      - Salvage commit `3a155e9` closed listed file-level blockers and substantially\
-      \ reduced project escape-hatch pressure.\n- Salvage commit `57d44cf` closed\
-      \ project `function_size` and `shell_result`; remaining blockers became `file_size`\
-      \ `17/5` and weighted `64/15`.\n- Salvage commit `ca0fd6d` decomposed several\
-      \ modules and reported targeted tests `613 passed`; remaining blockers became\
-      \ `file_size` `12/5` and weighted `49/15`.\n- Preserve all behavior, public\
-      \ imports, runtime semantics, and test coverage from all three salvage commits.\n\
-      \n## why_previous_fix_failed\nThe three salvageable attempts reduced the blocker\
-      \ family but did not close the project-level escape budget. `3a155e9` closed\
-      \ file-level blockers and reduced broad counters; `57d44cf` closed project `function_size`\
-      \ and `shell_result`; `ca0fd6d` decomposed several modules and improved the\
-      \ residual count, but full guard still fails with project `file_size` `12/5`\
-      \ and weighted `49/15`. The remaining pressure persists because high-risk public\
-      \ compatibility facades and entrypoint-adjacent modules remain oversized or\
-      \ hatch-heavy; prior attempts avoided some of these seams to preserve compatibility.\
-      \ Because the exact downstream full-guard command still exits failed, non-intersection\
-      \ with downstream full-guard and gate checks cannot be assumed.\n\n## Investigation\
-      \ Protocol (MANDATORY FIRST)\nBefore editing product code, classify each current\
-      \ residual `file_size` hatch from the current guard details into exactly one\
-      \ class:\n1. `safely_decomposable_now`: cohesive internal extraction can reduce\
-      \ size without changing public imports, CLI/operator-visible behavior, runtime\
-      \ lifecycle, MCP/core tool compatibility, config precedence, projection semantics,\
-      \ recovery behavior, orchestration lifecycle behavior, or data formats.\n2.\
-      \ `requires_dedicated_compatibility_migration`: public compatibility facade\
-      \ or entrypoint-adjacent surface can be split internally without public import\
-      \ break, but requires a deliberate compatibility-preserving migration plan and\
-      \ import-compat smoke proof.\n3. `policy_exception_only_with_complete_non_intersection_proof`:\
-      \ decomposition is not safe or authorized in this step, and residual status\
-      \ is allowed only if complete non-intersection proof exists against every downstream\
-      \ gate.\n\nRequired classification fields for each residual:\n- `file_path`\n\
-      - `current_hatch_kind`\n- `classification`\n- `public_surface_or_runtime_risk`\n\
-      - `safe_decomposition_candidate`\n- `compatibility_smoke_required`\n- `decision_basis`\n\
-      \n## Current Residual File-Size Hatch List to Verify From Guard Details\nUse\
-      \ the current guard detail list as source of truth and especially verify these\
-      \ post-ca0fd6d residual file-size hatches are still current before editing:\n\
-      - `src/vectl/mcp_core_tools.py`\n- `src/vectl/orch_app.py`\n- `src/vectl/lifecycle.py`\n\
-      - `src/vectl/core_plan_mutations.py`\n- `src/vectl/cli_orchestration.py`\n-\
-      \ `src/vectl/core_plan_queries.py`\n- `src/vectl/cli_plan.py`\n- `src/vectl/orchestration/continuity_artifacts.py`\n\
-      - `src/vectl/orchestration/config.py`\n- `src/vectl/orchestration/runtime.py`\n\
-      - `src/vectl/orchestration/driver.py`\n- `src/vectl/orchestration/run_store.py`\n\
-      \n## Remediation Decision Rule\nAfter classification, choose enough `safely_decomposable_now`\
-      \ items, and if needed the safest `requires_dedicated_compatibility_migration`\
-      \ items, to make `file_size <= 5` and weighted `<= 15` if feasible. Favor cohesive\
-      \ internal module extraction behind stable facades. Preserve public import compatibility\
-      \ and runtime behavior. If those thresholds are not feasible without unsafe\
-      \ compatibility or runtime risk, return FAIL with:\n- exact residual blockers,\n\
-      - classification register,\n- why each unclosed residual could not be safely\
-      \ closed now,\n- exact proposed plan mutation request for the next remediation\
-      \ step.\n\n## Required Guard Evidence\n- Capture exact BEFORE `uvx invar-tools\
-      \ guard --all` excerpts showing summary, detail rows for current residual hatches,\
-      \ `file_size` count, weighted budget, and relevant `dead_param`/`entry_point`/`shell_complexity`\
-      \ rows contributing to weighted budget.\n- Capture exact AFTER `uvx invar-tools\
-      \ guard --all` excerpts showing summary, any remaining detail rows, `file_size`\
-      \ count, weighted budget, and relevant weighted contributors.\n- Use exact excerpts,\
-      \ not paraphrases.\n- Run in a fresh/cold environment for the full-guard retest\
-      \ evidence.\n\n## Required Tests and Compatibility Proof\n- Run targeted tests\
-      \ for every module split or touched public compatibility surface; report exact\
-      \ test names and results.\n- Run import-compat smoke checks for every touched\
-      \ public module or facade, including stable imports through the original module\
-      \ path.\n- If CLI/MCP/runtime/orchestration entrypoint-adjacent modules are\
-      \ touched, include a seam or smoke proof that exercises the public path, not\
-      \ only internal helpers.\n- Include exact BEFORE/AFTER evidence for the targeted\
-      \ tests and import-compat smoke commands where applicable.\n\n## Prohibited\
-      \ Remediation Patterns\n- No broad suppression, widened escape hatches, budget\
-      \ lowering, guard disabling, ignored files, deleted findings, or policy bypass.\n\
-      - No stub-only modules or placeholder facades.\n- No import-breaking public\
-      \ surface changes.\n- No handler-only narrowing of runtime, server/app/driver\
-      \ lifecycle, CLI, MCP, or orchestration behavior.\n- No deletion of operator-visible\
-      \ behavior to reduce counters.\n- No reliance on old counters if the current\
-      \ guard detail list differs.\n\n## Residual Disposition Register Required\n\
-      For every residual after the retry, evidence MUST include a structured register\
-      \ with:\n- `requirement_ref`\n- `file_path`\n- `behavior_claim`\n- `why_decomposition_was_not_feasible_or_not_authorized`\n\
-      - `runtime_proof_expected`\n- `evidence_ref`\n- `status`\n- `closure_path`\n\
-      - `gate_decision_basis`\nAllowed statuses: `FIXED`, `PROVEN_NON_INTERSECTING`,\
-      \ or `POLICY_EXCEPTION_WITH_COMPLETE_PROOF`. Any `NEEDS_TEST`, `UNPROVEN`, `UNCERTAIN_BLOCKING`,\
-      \ partial proof, or unexplained residual means FAIL.\n\n## Gate-Intersection\
-      \ Rule\nResiduals are blocker-class unless proven otherwise. If any residual\
-      \ remains, evidence MUST prove non-intersection against ALL of:\n- downstream\
-      \ UI/UX audit (`cli-surface-preservation-uiux-audit` or equivalent remaining\
-      \ audit)\n- `invar_guard_remediation.escape-budget-full-guard-retest`\n- `invar_guard_remediation.verify-full-guard`\n\
-      - `invar_guard_remediation.gate`\n\n## Completion Criteria (stub exclusion)\n\
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each\
-      \ deliverable MUST contain substantive logic that processes its inputs and produces\
-      \ outputs that vary based on those inputs. Private stub classes (`_Runtime*`,\
-      \ `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\n## Checklist\n\
-      - [ ] Confirm current mainline includes salvage context from `3a155e9`, `57d44cf`,\
-      \ and `ca0fd6d`.\n- [ ] Capture exact BEFORE `uvx invar-tools guard --all` excerpts\
-      \ with summary, residual detail rows, `file_size` `12/5`, weighted `49/15`,\
-      \ or the current equivalent if guard details changed.\n- [ ] Inventory all current\
-      \ residual hatches from the current guard detail list, including the listed\
-      \ 12 file-size residual files when still present.\n- [ ] Classify every current\
-      \ residual file-size hatch into `safely_decomposable_now`, `requires_dedicated_compatibility_migration`,\
-      \ or `policy_exception_only_with_complete_non_intersection_proof` with the required\
-      \ classification fields.\n- [ ] Choose enough safest decompositions to reach\
-      \ `file_size <= 5` and weighted `<= 15` if feasible.\n- [ ] Preserve public\
-      \ compatibility surfaces, imports, CLI/operator-visible behavior, runtime/entrypoint\
-      \ behavior, config precedence, projection semantics, recovery behavior, orchestration\
-      \ lifecycle behavior, and MCP/core tool compatibility.\n- [ ] Run targeted tests\
-      \ for every module split or touched public compatibility surface and include\
-      \ exact test names/results.\n- [ ] Run import-compat smoke checks for every\
-      \ touched public module or facade and include exact commands/results.\n- [ ]\
-      \ Capture exact AFTER `uvx invar-tools guard --all` excerpts with summary, remaining\
-      \ detail rows, `file_size` count, weighted budget, and relevant weighted contributors.\n\
-      - [ ] Confirm no broad suppression, budget lowering, deleted findings, ignored\
-      \ files, stub-only modules, import-breaking public surface changes, or handler-only\
-      \ narrowing was used.\n- [ ] Prove final state is `file_size <= 5` and weighted\
-      \ `<= 15`, or return FAIL with exact residual blockers and a proposed plan mutation\
-      \ request.\n- [ ] If any residual remains, include the structured residual disposition\
-      \ register and complete gate non-intersection proof; otherwise mark remaining\
-      \ ambiguity empty."
-    verification: '- [ ] Exact BEFORE `uvx invar-tools guard --all` excerpt is present
-      and includes summary, current residual detail rows, `file_size` count, weighted
-      budget, and relevant `dead_param`/`entry_point`/`shell_complexity` weighted
-      contributors.
+    description: "Post-salvage residualization step. This replaces the prior coarse\
+      \ retry loop with a bounded classification and slice-selection handoff for the\
+      \ current mainline state after salvaged main commit `1618486` (`[vectl] salvage\
+      \ partial progress from step-invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched`).\
+      \ Do NOT perform broad product-code remediation in this step; produce the authoritative\
+      \ residual register that the focused implementation slices must consume.\n\n\
+      step_type: planning\nsymbolic_testing: true\nloop_count: 4\ninvestigation_style_remediation:\
+      \ true\nwork_type: technical_debt_remediation\nagent_source: default\npost_salvage_baseline:\n\
+      \  branch_commit: 49aa644b897c3ff08ba39d74a5da036e1fe6bfe2\n  main_salvage_commit:\
+      \ 1618486\n  targeted_regression: 190 passed in 13.71s\n  guard_baseline_before_salvage:\
+      \ file_size 12/5; weighted 49/15\n  guard_baseline_after_salvage: file_size\
+      \ 9/5; weighted 40/15\n\n## Current Residual Ownership Scope\nClassify and route\
+      \ exactly these current post-salvage file_size hatches unless fresh guard details\
+      \ prove a different current list:\n1. `src/vectl/mcp_core_tools.py` — public\
+      \ MCP core tool schemas.\n2. `src/vectl/orch_app.py` — documented composition\
+      \ root/public CLI routing facade.\n3. `src/vectl/core_plan_mutations.py` — compatibility\
+      \ module keeping lifecycle/add/edit/remove/clipboard/agents-md/recovery APIs.\n\
+      4. `src/vectl/cli_orchestration.py` — public Typer registration surface.\n5.\
+      \ `src/vectl/cli_plan.py` — legacy Typer plan-management surface.\n6. `src/vectl/orchestration/config.py`\
+      \ — public config model/loader compatibility surface.\n7. `src/vectl/orchestration/runtime.py`\
+      \ — public runtime/worktree lifecycle/reconcile glue surface.\n8. `src/vectl/orchestration/driver.py`\
+      \ — active-drive state machine/barriers/resume/recovery surface.\n9. `src/vectl/orchestration/run_store.py`\
+      \ — run/drive JSONL persistence compatibility surface.\n\nCurrent weighted contributors\
+      \ to route: `file_size: 9`, `dead_param: 6`, `entry_point_too_thick: 2`, `shell_complexity:\
+      \ 1`; weighted budget `40/15`.\n\n## Required Classification Register\nFor every\
+      \ current residual, produce a structured register with:\n- `file_path`\n- `current_hatch_kind`\n\
+      - `current_counter_contribution`\n- `classification`: one of `public_schema_facade`,\
+      \ `cli_registration_facade`, `composition_root_facade`, `compatibility_api_facade`,\
+      \ `config_runtime_compatibility`, `state_machine_runtime`, `persistence_compatibility`\n\
+      - `assigned_residual_step`\n- `compatibility_smoke_required`\n- `runtime_or_surface_smoke_required`\n\
+      - `dead_param_or_entrypoint_owner` when applicable\n- `decision_basis`\n\n##\
+      \ Downstream Residual Slices\nAssign all current blocker-class residuals to\
+      \ these focused implementation steps; do not leave any residual unowned:\n-\
+      \ `invar_guard_remediation.split-mcp-and-cli-public-surfaces` owns `mcp_core_tools.py`,\
+      \ `cli_orchestration.py`, and `cli_plan.py`.\n- `invar_guard_remediation.split-orch-app-and-core-plan-compat-surfaces`\
+      \ owns `orch_app.py` and `core_plan_mutations.py`.\n- `invar_guard_remediation.split-orchestration-config-runtime-persistence-surfaces`\
+      \ owns `orchestration/config.py`, `orchestration/runtime.py`, and `orchestration/run_store.py`.\n\
+      - `invar_guard_remediation.split-orchestration-driver-state-machine-surface`\
+      \ owns `orchestration/driver.py` and any residual driver `entry_point_too_thick`,\
+      \ `dead_param`, or state-machine budget pressure.\n\n## Prohibited Dispositions\n\
+      - Do not mark residuals as `pre-existing`, `out-of-scope`, or `deferred` without\
+      \ assigning a downstream owner.\n- Do not lower invar budgets, suppress hatches,\
+      \ delete findings, add ignored files, or widen escape-hatch policy.\n- Do not\
+      \ use old branch-local evidence as current-mainline proof.\n\n## Checklist\n\
+      - [ ] Confirm mainline contains salvage commit `1618486` and record branch commit\
+      \ `49aa644b897c3ff08ba39d74a5da036e1fe6bfe2` as provenance only.\n- [ ] Capture\
+      \ current BEFORE `uvx invar-tools guard --all` excerpts showing `file_size 9/5`,\
+      \ weighted `40/15`, or explicitly explain any current-mainline delta.\n- [ ]\
+      \ Produce the classification register for all nine listed residual files or\
+      \ the fresh current equivalent.\n- [ ] Assign every `file_size`, `dead_param`,\
+      \ `entry_point_too_thick`, and `shell_complexity` contributor to one of the\
+      \ focused residual implementation steps.\n- [ ] Confirm no downstream retest/gate\
+      \ can proceed until all focused residual implementation steps and the cold retest\
+      \ complete.\n- [ ] Include no product-code edits except incidental evidence\
+      \ artifacts are expected from this classification step."
+    verification: '- [ ] Evidence includes current-mainline BEFORE guard excerpts
+      with `file_size 9/5`, weighted `40/15`, or an explicit fresh-current delta.
 
-      - [ ] Evidence confirms the current post-ca0fd6d residual blocker family is
-      only project `file_size` and weighted budget, or explicitly records any changed
-      current guard details.
+      - [ ] Evidence mentions salvaged main commit `1618486` and branch provenance
+      commit `49aa644b897c3ff08ba39d74a5da036e1fe6bfe2`.
 
-      - [ ] Evidence includes the mandatory investigation classification register
-      for every current residual file-size hatch using exactly the three classes:
-      `safely_decomposable_now`, `requires_dedicated_compatibility_migration`, and
-      `policy_exception_only_with_complete_non_intersection_proof`.
+      - [ ] All nine listed post-salvage residual file_size hatches are classified
+      or replaced by a fresh-current guard-derived list.
 
-      - [ ] Evidence shows enough safest decompositions were selected to reach `file_size
-      <= 5` and weighted `<= 15` if feasible.
+      - [ ] Every blocker-class residual has an assigned focused implementation owner;
+      none are dismissed as pre-existing/out-of-scope.
 
-      - [ ] Targeted tests for every module split or touched public compatibility
-      surface are named and reported with exact results.
+      - [ ] The register maps weighted contributors `file_size`, `dead_param`, `entry_point_too_thick`,
+      and `shell_complexity` to owners.
 
-      - [ ] Import-compat smoke checks for every touched public module or facade are
-      named and reported with exact commands/results.
-
-      - [ ] Public compatibility surfaces, imports, CLI/operator-visible behavior,
-      runtime/entrypoint behavior, config precedence, projection semantics, recovery
-      behavior, orchestration lifecycle behavior, and MCP/core tool compatibility
-      are preserved.
-
-      - [ ] Exact AFTER `uvx invar-tools guard --all` excerpt is present and includes
-      summary, any remaining detail rows, `file_size` count, weighted budget, and
-      relevant weighted contributors.
-
-      - [ ] No broad suppression, budget lowering, deleted findings, ignored files,
-      stub-only modules, import-breaking public surface changes, handler-only narrowing,
-      or deleted operator-visible behavior is used.
-
-      - [ ] Final evidence proves `file_size <= 5` and weighted `<= 15`, or the final
-      verdict is FAIL with exact residual blockers and a proposed plan mutation request.
-
-      - [ ] Any residual disposition includes complete non-intersection proof against
-      downstream UI/UX audit, `invar_guard_remediation.escape-budget-full-guard-retest`,
-      `invar_guard_remediation.verify-full-guard`, and `invar_guard_remediation.gate`.'
+      - [ ] No budget lowering, broad suppression, ignored files, or stale branch-local
+      proof is accepted.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
-
 
       For each ref in this step:
 
-      - <filename> — key passage or "NOT READ: <reason>"
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
 
 
-      If no refs were provided, state: "No refs for this step."
+      ## Post-Salvage Residual Classification Evidence
+
+      - main_salvage_commit: 1618486
+
+      - branch_provenance_commit: 49aa644b897c3ff08ba39d74a5da036e1fe6bfe2
+
+      - targeted_regression_baseline: 190 passed in 13.71s
 
 
-      ## Loop 4+ Investigation Report
-
-
-      **loop_count**: 4
-
-      **investigation_style_remediation**: true
-
-      **prior salvage commits considered**: `3a155e9`, `57d44cf`, `ca0fd6d`
-
-
-      ### why_previous_fix_failed
-
-      - <explain how the three salvage commits reduced but did not close the blocker
-      family>
-
-      - <explain which high-risk public compatibility facades or entrypoint-adjacent
-      modules remain>
-
-
-      ### BEFORE full-guard evidence
+      ### BEFORE Guard Excerpts
 
       ```text
 
-      <paste exact `uvx invar-tools guard --all` summary, residual rows, file_size
-      count, weighted budget, and relevant weighted contributors>
+      <paste current `uvx invar-tools guard --all` summary, residual detail rows,
+      file_size count, weighted budget, dead_param/entry_point_too_thick/shell_complexity
+      rows>
 
       ```
 
 
-      ### Investigation classification register
+      ### Classification Register
 
-      | file_path | current_hatch_kind | classification | public_surface_or_runtime_risk
-      | safe_decomposition_candidate | compatibility_smoke_required | decision_basis
+      | file_path | hatch_kind | contribution | classification | assigned_residual_step
+      | compatibility_smoke_required | runtime_or_surface_smoke_required | decision_basis
       |
 
-      | --- | --- | --- | --- | --- | --- | --- |
-
-      | <path> | file_size | safely_decomposable_now / requires_dedicated_compatibility_migration
-      / policy_exception_only_with_complete_non_intersection_proof | <risk> | <candidate
-      or none> | yes/no | <basis> |
+      | --- | --- | --- | --- | --- | --- | --- | --- |
 
 
-      ### Remediation performed
+      ### Ownership Closure
 
-      - <decomposition or compatibility-preserving migration performed>
+      - [ ] every current residual has a focused owner
 
-      - <public imports/facades preserved>
+      - [ ] no downstream retest/gate can proceed before focused owners and cold retest
 
-
-      ### Targeted tests
-
-      ```text
-
-      <paste exact targeted test commands and results>
-
-      ```
-
-
-      ### Import-compat smoke checks
-
-      ```text
-
-      <paste exact import-compat smoke commands/results for touched public modules>
-
-      ```
-
-
-      ### AFTER full-guard evidence
-
-      ```text
-
-      <paste exact `uvx invar-tools guard --all` summary, remaining rows, file_size
-      count, weighted budget, and relevant weighted contributors>
-
-      ```
-
-
-      ### Residual disposition register (required for any residual)
-
-      | requirement_ref | file_path | behavior_claim | why_decomposition_was_not_feasible_or_not_authorized
-      | runtime_proof_expected | evidence_ref | status | closure_path | gate_decision_basis
-      |
-
-      | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-
-      | <ref> | <path> | <claim> | <why> | <proof> | <evidence> | FIXED / PROVEN_NON_INTERSECTING
-      / POLICY_EXCEPTION_WITH_COMPLETE_PROOF | <closure> | <basis> |
-
-
-      ### Final verdict
-
-      - [ ] PASS: `file_size <= 5` and weighted `<= 15` with no broad suppression/budget
-      lowering/deleted findings.
-
-      - [ ] FAIL: thresholds could not be safely reached; exact residual blockers
-      and proposed plan mutation request are included.
-
-
-      ### Proposed plan mutation request (required if FAIL)
-
-      ```text
-
-      <exact next-step mutation request, residual blockers, and required ownership>
-
-      ```'
+      - [ ] no budget lowering/suppression/ignored files proposed'
+    refs:
+    - INVAR.md
+    - AGENTS.md
     depends_on:
     - invar_guard_remediation.full-guard-residual-disposition-retest
     agent: python-senior

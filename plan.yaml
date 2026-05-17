@@ -98305,7 +98305,7 @@ phases:
     claimed_at: '2026-05-17T22:24:18.322946+00:00'
   - id: split-orchestration-driver-state-machine-surface
     name: Split orchestration driver state-machine surface
-    status: pending
+    status: claimed
     description: "Focused residual implementation slice for current post-salvage orchestration\
       \ driver state-machine and barrier/resume/recovery budget blockers.\n\nstep_type:\
       \ implementation\nsymbolic_testing: true\nreduction_step: true\nagent_source:\
@@ -98447,6 +98447,8 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T22:24:23.786975+00:00'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

@@ -96544,7 +96544,7 @@ phases:
 
       - [x] Targeted import/consumer tests pass and command output is pasted.
 
-      - [ ] Public contract symbol compatibility is proven for known consumers.
+      - [x] Public contract symbol compatibility is proven for known consumers.
 
       - [ ] No broad suppression, budget lowering, or duplicate contract definitions
       are used.

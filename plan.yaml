@@ -93028,15 +93028,15 @@ phases:
 
       ## State semantics and failure modes
 
-      - [ ] Relative vs absolute path behavior is preserved.
+      - Relative vs absolute path behavior is preserved.
 
-      - [ ] Missing-file fallback behavior is preserved or intentionally tightened
-      with regression proof.
+      - Missing-file fallback behavior is preserved or intentionally tightened with
+      regression proof.
 
-      - [ ] Corrupt/invalid YAML behavior is preserved or intentionally tightened
-      with regression proof.
+      - Corrupt/invalid YAML behavior is preserved or intentionally tightened with
+      regression proof.
 
-      - [ ] Partial-write/backup behavior is preserved where applicable.
+      - Partial-write/backup behavior is preserved where applicable.
 
 
       ## Completion Criteria (stub exclusion)
@@ -93046,31 +93046,31 @@ phases:
       closing the listed invar rule families.
 
 
-      ## Checklist
+      ## Acceptance Requirements
 
-      - [ ] `src/vectl/io.py` has no ungoverned `shell_result` findings under the
+      - `src/vectl/io.py` has no ungoverned `shell_result` findings under the targeted
+      guard command.
+
+      - `src/vectl/io.py` has no ungoverned `shell_too_complex` findings under the
       targeted guard command.
 
-      - [ ] `src/vectl/io.py` has no ungoverned `shell_too_complex` findings under
-      the targeted guard command.
+      - Any intentional allow markers are narrow, local, and include rationale; no
+      broad file-level masking was added.
 
-      - [ ] Any intentional allow markers are narrow, local, and include rationale;
-      no broad file-level masking was added.
+      - Existing IO behavior remains covered by `tests/test_io.py`.
 
-      - [ ] Existing IO behavior remains covered by `tests/test_io.py`.
+      - No files outside `src/vectl/io.py` were modified except tests directly required
+      for IO regression evidence.'
+    verification: '- `uv run invar guard src/vectl/io.py --agent` exits zero or only
+      reports findings with precise local non-blocking dispositions accepted by invar
+      policy.
 
-      - [ ] No files outside `src/vectl/io.py` were modified except tests directly
-      required for IO regression evidence.'
-    verification: '- [ ] `uv run invar guard src/vectl/io.py --agent` exits zero or
-      only reports findings with precise local non-blocking dispositions accepted
-      by invar policy.
+      - `uv run python -m pytest tests/test_io.py -q` passes.
 
-      - [ ] `uv run python -m pytest tests/test_io.py -q` passes.
+      - `uv run python -m compileall src/vectl/io.py` passes.
 
-      - [ ] `uv run python -m compileall src/vectl/io.py` passes.
-
-      - [ ] Evidence covers main IO load/save behavior plus the highest-risk failure
-      path among missing files, corrupt files, relative/absolute paths, and partial-write/backup
+      - Evidence covers main IO load/save behavior plus the highest-risk failure path
+      among missing files, corrupt files, relative/absolute paths, and partial-write/backup
       behavior.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

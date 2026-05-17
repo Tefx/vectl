@@ -96416,16 +96416,16 @@ phases:
       deliverable MUST contain substantive logic that processes its inputs and produces
       outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
       `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
-    verification: '- [ ] Inspection/drive query `uvx invar-tools guard --all` residuals
+    verification: '- [x] Inspection/drive query `uvx invar-tools guard --all` residuals
       are closed or dispositioned without increasing same-family or project-level
       budgets.
 
-      - [ ] Targeted inspection/drive query tests pass with pasted output.
+      - [x] Targeted inspection/drive query tests pass with pasted output.
 
-      - [ ] Evidence includes BEFORE/AFTER full-guard excerpts and a residual disposition
+      - [x] Evidence includes BEFORE/AFTER full-guard excerpts and a residual disposition
       register entry for this slice.
 
-      - [ ] No broad suppression, budget lowering, or stub-only implementation is
+      - [x] No broad suppression, budget lowering, or stub-only implementation is
       accepted.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

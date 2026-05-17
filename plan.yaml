@@ -97281,7 +97281,7 @@ phases:
       - [x] The register maps every remaining finding to PROVEN_CLOSED, NON_INTERSECTING
       with proof, or BLOCKING_OWNER_NEEDED with owner.
 
-      - [ ] Budget counters are compared against the reported failed attempt and show
+      - [x] Budget counters are compared against the reported failed attempt and show
       no new blocker-class regression from the residual remediation path.
 
       - [ ] Closure evidence includes requirement_ref, behavior_claim, runtime_proof_expected,

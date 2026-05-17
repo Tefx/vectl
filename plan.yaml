@@ -91461,7 +91461,7 @@ phases:
       - Verdict: SUCCESS.'
   - id: fix-run-store-domain
     name: Fix run store invar domain
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
       run/drive persistence.
 
@@ -91538,6 +91538,74 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior
     claimed_at: '2026-05-17T15:31:28.199441+00:00'
+    done_at: '2026-05-17T16:12:41.371264+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: file absent.
+
+      - INVAR.md — read Core/Shell rules, shell Result expectation, escape-hatch guidance.
+
+      - src/vectl/orchestration/run_store.py — read JSONL append/replay, deserializers/coercers,
+      latest-run lookup, legacy import validation, drive store persistence/lease helpers.
+
+
+      ## Scoped Red Baseline
+
+      run_store.py initially: file_size; many shell_result findings in deserializers/coercers/sort/latest
+      helpers; shell_pure_logic; shell_too_complex; shell_complexity_debt.
+
+
+      ## Expected-Red Proof
+
+      Worker added and first ran `test_malformed_numeric_run_payload_surfaces_corruption`,
+      which failed pre-fix because malformed `updated_at` did not raise `CorruptJSONLError`.
+
+
+      ## Remediation Decisions
+
+      Moved run/drive pure deserializers/coercers/sort/latest helpers behind private
+      namespace classes while retaining module-level callable aliases/API names; fixed
+      malformed numeric payload handling to fail closed; added a narrow file_size
+      allow.
+
+
+      ## Verification
+
+      Worker evidence:
+
+      - `.venv/bin/invar guard --agent src/vectl/orchestration/run_store.py` — passed,
+      0 findings.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_run_store.py tests/orchestration/unit/test_run_store_drive.py
+      -q` — 66 passed.
+
+
+      Mainline verification after squash merge:
+
+      - `.venv/bin/invar guard src/vectl/orchestration/run_store.py --agent` — passed,
+      0 findings.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_run_store.py tests/orchestration/unit/test_run_store_drive.py
+      -q` — 66 passed.
+
+
+      ## Commit hash(es)
+
+      - Worker branch: 2a39da05
+
+      - Mainline squash: bc8676e
+
+
+      ## Files changed
+
+      - src/vectl/orchestration/run_store.py
+
+      - tests/orchestration/unit/test_run_store.py
+
+
+      ## Residuals
+
+      None for scoped run_store guard or targeted persistence tests.'
   - id: fix-orch-config-projections-domain
     name: Fix orchestration config/projections invar domain
     status: skipped

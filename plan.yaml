@@ -94999,7 +94999,7 @@ phases:
       - [x] Driver loop and orch app routing still reach real runtime paths rather
       than private `_Runtime*`/`_Stub*`/`_Placeholder*` substitutes.
 
-      - [ ] Dead/compatibility parameters in public callback/CLI surfaces are renamed
+      - [x] Dead/compatibility parameters in public callback/CLI surfaces are renamed
       or narrowly allowed rather than silently removed.
 
       - [ ] Remaining residual debt, if any, is mapped to policy disposition with

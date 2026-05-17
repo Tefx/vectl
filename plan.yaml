@@ -94357,16 +94357,16 @@ phases:
 
       - [x] Public/model-visible contract risks are listed with targeted regression/property
       evidence required downstream.'
-    verification: '- [ ] Decision table covers every residual file named in the orchestrator
+    verification: '- [x] Decision table covers every residual file named in the orchestrator
       failure evidence.
 
-      - [ ] Structural extraction vs residual disposition is resolved without requiring
+      - [x] Structural extraction vs residual disposition is resolved without requiring
       user input.
 
-      - [ ] Every BLOCKING residual has an owner among the follow-up implementation/retest
+      - [x] Every BLOCKING residual has an owner among the follow-up implementation/retest
       steps.
 
-      - [ ] Evidence states whether the final closure path is full guard green or
+      - [x] Evidence states whether the final closure path is full guard green or
       structured residual disposition accepted under invar policy.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

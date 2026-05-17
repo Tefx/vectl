@@ -97513,7 +97513,7 @@ phases:
       \ assigning a downstream owner.\n- Do not lower invar budgets, suppress hatches,\
       \ delete findings, add ignored files, or widen escape-hatch policy.\n- Do not\
       \ use old branch-local evidence as current-mainline proof.\n\n## Checklist\n\
-      - [ ] Confirm mainline contains salvage commit `1618486` and record branch commit\
+      - [x] Confirm mainline contains salvage commit `1618486` and record branch commit\
       \ `49aa644b897c3ff08ba39d74a5da036e1fe6bfe2` as provenance only.\n- [ ] Capture\
       \ current BEFORE `uvx invar-tools guard --all` excerpts showing `file_size 9/5`,\
       \ weighted `40/15`, or explicitly explain any current-mainline delta.\n- [ ]\

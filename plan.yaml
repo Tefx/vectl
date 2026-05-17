@@ -93038,7 +93038,7 @@ phases:
       No owned-file guard findings remain.'
   - id: fix-small-root-support-domain
     name: Fix small root support invar domain
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Remediate small root-support invar findings not
       owned by earlier domain steps.
 
@@ -93114,6 +93114,81 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior
     claimed_at: '2026-05-17T16:15:37.431672+00:00'
+    done_at: '2026-05-17T16:30:01.253277+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: file absent.
+
+      - INVAR.md — read core/shell rules and escape hatch requirements.
+
+      - src/vectl/agents_md.py — read AgentsTarget, detect_agents_target, upsert_agents_md,
+      snippet constants.
+
+      - src/vectl/models.py — read Step/Phase/Plan and formatting/DTO surfaces.
+
+      - src/vectl/claim_guidance.py — read GuidancePayload, build_claim_guidance,
+      default evidence template, dedupe/truncate helpers.
+
+
+      ## Scoped Red Baseline
+
+      models.py file_size and format_step_selector shell_result; claim_guidance.py
+      build_claim_guidance function_size; agents_md.py detect/upsert shell_result
+      and detect complexity.
+
+
+      ## Remediation Decisions
+
+      - Converted detect_agents_target to local Result while preserving upsert tuple/exception
+      behavior.
+
+      - Added narrow compatibility allows for upsert_agents_md, models file_size/formatting
+      helper, and claim_guidance assembly.
+
+
+      ## Verification
+
+      Worker evidence:
+
+      - `.venv/bin/invar guard --all` still red only due residuals outside owned files;
+      no ungoverned findings remained for owned files.
+
+      - `.venv/bin/python -m pytest tests/test_cli.py::TestInit::test_agents_md_command_upserts
+      tests/test_cli.py::TestClaudeDetection` — 13 passed.
+
+
+      Mainline verification after squash merge:
+
+      - `.venv/bin/invar guard src/vectl/agents_md.py --agent` — passed, 0 findings.
+
+      - `.venv/bin/invar guard src/vectl/models.py --agent` — passed, 0 findings.
+
+      - `.venv/bin/invar guard src/vectl/claim_guidance.py --agent` — passed, 0 findings.
+
+      - `.venv/bin/python -m pytest tests/test_cli.py::TestInit::test_agents_md_command_upserts
+      tests/test_cli.py::TestClaudeDetection -q` — 13 passed.
+
+
+      ## Commit hash(es)
+
+      - Worker branch: 7789a5132812fca8df616872281430936d5eeb56
+
+      - Mainline squash: 8f8e108
+
+
+      ## Files changed
+
+      - src/vectl/agents_md.py
+
+      - src/vectl/models.py
+
+      - src/vectl/claim_guidance.py
+
+
+      ## Residuals
+
+      Owned files: none. Remaining full-guard residuals are outside owned files and
+      owned by later residual chain.'
   - id: fix-small-policy-archive-domain
     name: Fix small policy/archive invar domain
     status: done

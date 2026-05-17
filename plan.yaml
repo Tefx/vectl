@@ -98128,7 +98128,7 @@ phases:
       \ boot and top-level help through the real routing facade.\n- [x] Run targeted\
       \ tests covering core mutation/lifecycle/recovery and app routing surfaces.\n\
       - [x] Capture AFTER guard excerpts for owned residual rows and weighted contributors.\n\
-      - [ ] Confirm no budget lowering, suppression, ignored files, deleted findings,\
+      - [x] Confirm no budget lowering, suppression, ignored files, deleted findings,\
       \ stub facades, or import-breaking public surface changes."
     verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
       owned residual rows, `file_size`, weighted budget, and relevant `dead_param`/`entry_point_too_thick`/`shell_complexity`

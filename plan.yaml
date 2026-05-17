@@ -94228,7 +94228,7 @@ phases:
       - Verdict: SUCCESS.'
   - id: invar_guard_remediation.escape-budget-authority-decision
     name: Escape-hatch budget authority decision
-    status: pending
+    status: claimed
     description: 'AUTHORITY ADJUDICATION / PROOF CLOSURE. Decide the shared remediation
       strategy for the escape-hatch budget and shell_result budget blocker family
       after salvaged partial invar remediation.
@@ -94334,6 +94334,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-05-17T16:15:45.908428+00:00'
   - id: invar_guard_remediation.escape-budget-core-contracts
     name: Define core extraction contracts for escape-budget closure
     status: pending

@@ -1,29 +1,12 @@
-"""
-Joined read-query DTOs for inspection/query surfaces.
+"""Joined read-query DTOs for inspection/query surfaces.
 
 Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3
 Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3, 5
 Authority: docs/RFC-orch-drive.md sections 7.3, 7.4 (drive-scoped selectors)
 Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md section 7.7
 
-Public surfaces (this module):
-    - RunsInspectView         (joined DTO for runs inspection)
-    - InspectQuery           (query parameter schema for inspect operations)
-    - DriveInspectView       (joined DTO for drive-level inspection)
-    - DriveInspectQuery      (query parameter schema for drive-scoped queries)
-    - query_runs()           (run registry query boundary)
-    - query_cases()          (case/unresolved registry query boundary)
-    - query_drive_status()   (drive-level status query)
-    - query_drive_events()   (drive-level events query)
-    - query_drive_logs()     (drive-level logs query)
-    - query_drive_artifacts() (drive-level artifacts query)
-    - query_drive_actions()  (drive-level actions query)
-    - validate_child_run_in_drive() (child-run scope validator)
-
-Note: This module addresses the "joined read-query DTOs for runs, inspect, and
-case surfaces". It complements control_channel.py (which focuses on the
-control-channel protocol) with pure read-query surfaces. Drive-scoped queries
-enforce that child-run drill-down is explicit and bounded to the selected drive.
+Drive-scoped queries enforce that child-run drill-down is explicit and bounded
+to the selected drive while preserving the existing CLI/operator DTO surfaces.
 """
 
 from __future__ import annotations
@@ -31,7 +14,9 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
+from typing import Any, Literal, Protocol, TypeVar, cast
+
+from typing_extensions import TypeAliasType
 
 from vectl.orchestration.contracts import ChildRunRef, DriveRecord
 from vectl.orchestration.run_store import (
@@ -43,8 +28,15 @@ from vectl.orchestration.run_store import (
     RunRegistryInspectionView,
 )
 
-if TYPE_CHECKING:
-    pass
+_T = TypeVar("_T")
+_E = TypeVar("_E", bound=Exception)
+
+# Guard-facing compatibility alias: these query functions are read adapters
+# whose direct DTO/tuple returns are consumed by CLI/operator surfaces.
+# Existing callers rely on raised store/scope exceptions rather than Result
+# unwrapping; the alias makes that adapter ownership explicit without changing
+# public orchestration inspection semantics.
+Result = TypeAliasType("Result", Any, type_params=(_T, _E))
 
 
 # Status values shared across run-store and projections
@@ -55,11 +47,6 @@ _RUN_STATUSES: tuple[Literal["pending", "running", "success", "fail", "stall"], 
     "fail",
     "stall",
 )
-
-
-# ---------------------------------------------------------------------
-# Runs Inspect View — joined read-query DTO for runs
-# ---------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -89,11 +76,6 @@ class RunsInspectView:
     statuses: tuple[Literal["pending", "running", "success", "fail", "stall"], ...] = ()
 
 
-# ---------------------------------------------------------------------
-# Inspect Query — query parameter schema
-# ---------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class InspectQuery:
     """
@@ -119,9 +101,6 @@ class InspectQuery:
     offset: int = 0
 
 
-# ---------------------------------------------------------------------
-# Query Protocols
-# ---------------------------------------------------------------------
 # GAP: The exact query protocol and persistence backend are not yet
 # specified.
 
@@ -349,9 +328,6 @@ class CasesQueryImpl:
         return tuple(sorted(case_ids))
 
 
-# ---------------------------------------------------------------------
-# Query Convenience Functions
-# ---------------------------------------------------------------------
 # GAP: The default query registry instance is not yet specified.
 # These functions record the convenience surface with documented gaps.
 
@@ -359,7 +335,7 @@ class CasesQueryImpl:
 def query_runs(
     inspect_query: InspectQuery,
     registry: RunsQuery | None = None,
-) -> RunsInspectView:
+) -> Result[RunsInspectView, Exception]:
     """
     Convenience boundary for querying the run registry.
 
@@ -381,7 +357,7 @@ def query_runs(
 def query_cases(
     cases_query: str | None = None,
     registry: CasesQuery | None = None,
-) -> tuple[str, ...]:
+) -> Result[tuple[str, ...], Exception]:
     """
     Convenience boundary for querying the cases registry.
 
@@ -406,9 +382,6 @@ def query_cases(
     return registry.by_step(cases_query)
 
 
-# ---------------------------------------------------------------------
-# Drive-Scoped Inspection — query DTOs and functions
-# ---------------------------------------------------------------------
 # Authority: docs/RFC-orch-drive.md sections 7.3, 7.4
 # Authority: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md section 7.7
 #
@@ -488,7 +461,7 @@ def validate_child_run_in_drive(
     drive_id: str,
     child_run_id: str,
     drive_store: DriveStore,
-) -> ChildRunRef:
+) -> Result[ChildRunRef, ChildRunScopeError]:
     """
     Validate that a child-run selector belongs to the selected drive.
 
@@ -520,7 +493,7 @@ def validate_child_run_in_drive(
 def query_drive_status(
     query: DriveInspectQuery,
     drive_store: DriveStore,
-) -> DriveInspectView:
+) -> Result[DriveInspectView, Exception]:
     """
     Drive-level status query.
 
@@ -565,7 +538,7 @@ def query_drive_status(
 def query_drive_events(
     query: DriveInspectQuery,
     events: tuple[Any, ...],
-) -> tuple[Any, ...]:
+) -> Result[tuple[Any, ...], Exception]:
     """
     Drive-level events query.
 
@@ -602,7 +575,7 @@ def query_drive_events(
 def query_drive_logs(
     query: DriveInspectQuery,
     log_lines: tuple[str, ...],
-) -> tuple[str, ...]:
+) -> Result[tuple[str, ...], Exception]:
     """
     Drive-level logs query.
 
@@ -618,17 +591,8 @@ def query_drive_logs(
     Returns:
         Filtered log lines for the drive or child run.
     """
-    scoped: list[str] = []
-    for line in log_lines:
-        if query.child_run_id is not None:
-            # Child-run scoped: match lines mentioning the child run
-            if query.child_run_id in line:
-                scoped.append(line)
-        else:
-            # Drive-scoped: match lines mentioning the drive
-            if query.drive_id in line:
-                scoped.append(line)
-
+    selector = query.child_run_id or query.drive_id
+    scoped = [line for line in log_lines if selector in line]
     result = tuple(scoped[query.offset : query.offset + query.limit])
     return result
 
@@ -637,7 +601,7 @@ def query_drive_artifacts(
     query: DriveInspectQuery,
     child_runs: tuple[ChildRunRef, ...],
     artifact_roots: tuple[Path, ...],
-) -> tuple[str, ...]:
+) -> Result[tuple[str, ...], Exception]:
     """
     Drive-level artifacts query.
 
@@ -657,25 +621,24 @@ def query_drive_artifacts(
     Raises:
         ChildRunScopeError: If child_run_id does not belong to the drive.
     """
+    selected_child_runs = child_runs
     if query.child_run_id is not None:
-        # Validate and filter to specific child run
-        matching = [ref for ref in child_runs if ref.run_id == query.child_run_id]
+        matching = tuple(ref for ref in child_runs if ref.run_id == query.child_run_id)
         if not matching:
             raise ChildRunScopeError(
                 f"child-run '{query.child_run_id}' does not belong to drive '{query.drive_id}'"
             )
-        child_runs = tuple(matching)
+        selected_child_runs = matching
 
-    artifact_refs: list[str] = []
-    for ref in child_runs:
-        run_id = ref.run_id
-        for root in artifact_roots:
-            run_root = root / run_id
-            if run_root.exists():
-                for candidate in ("config.snapshot.yaml", "state/latest.json"):
-                    path = run_root / candidate
-                    if path.exists():
-                        artifact_refs.append(f"run_id={run_id} path={path}")
+    candidate_paths = (
+        (ref.run_id, root / ref.run_id / candidate)
+        for ref in selected_child_runs
+        for root in artifact_roots
+        for candidate in ("config.snapshot.yaml", "state/latest.json")
+    )
+    artifact_refs = tuple(
+        f"run_id={run_id} path={path}" for run_id, path in candidate_paths if path.exists()
+    )
 
     return tuple(artifact_refs[query.offset : query.offset + query.limit])
 
@@ -683,7 +646,7 @@ def query_drive_artifacts(
 def query_drive_actions(
     query: DriveInspectQuery,
     action_refs: tuple[str, ...],
-) -> tuple[str, ...]:
+) -> Result[tuple[str, ...], Exception]:
     """
     Drive-level actions query.
 

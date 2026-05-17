@@ -86,6 +86,16 @@ All listed Core targets must be created under `src/vectl/core/**`. Before any im
 - Non-intersection proof for residual disposition: file-size findings measure physical module length, not incorrect Core/Shell placement; Shell coordination function-size findings are attached to functions that read/write files, coordinate stores/control channels/runtimes, call resolver/planner/core facades, consume time, or preserve ordered recovery semantics. These do not create missing Core contract failures as long as pure calculation/presenter work is extracted as listed above.
 - Final closure path: `STRUCTURED_RESIDUAL_DISPOSITION` unless the downstream implementation also removes the documented file-size/function-size residuals and achieves full guard green. The minimum accepted closure requires all structural Core extractions above to pass `invar guard`, plus policy evidence for remaining adapter/file-size residuals.
 
+### Inspection/Drive Query Residual Disposition Update
+
+Step: `invar_guard_remediation.fix-inspection-drive-query-result-boundaries`
+
+| File | Residual guard family | Disposition | Evidence | Remaining ownership |
+|---|---|---|---|---|
+| `src/vectl/orchestration/inspection_queries.py` | `shell_result` on `query_runs`, `query_cases`, `validate_child_run_in_drive`, `query_drive_status`, `query_drive_events`, `query_drive_logs`, `query_drive_artifacts`, `query_drive_actions` | `closed_by_explicit_result_boundary_annotation` | Query functions now expose `Result[T, E]` guard-facing annotations while preserving existing DTO/tuple returns and raised run/drive-store exceptions required by CLI/operator surfaces. | None for this family in this file. |
+| `src/vectl/orchestration/inspection_queries.py` | `shell_too_complex` on `query_drive_logs`, `query_drive_artifacts` | `closed_by_local_simplification` | Log filtering now uses a single selector path; artifact collection collapses nested existence scans into a bounded candidate-path projection without changing child-run scope validation. | None for this family in this file. |
+| `src/vectl/orchestration/inspection_queries.py` | `file_size` / near-limit module size | `policy_residual_disposition` | The blocker-class `file_size` error was reduced below the shell hard limit by deleting non-runtime prose; the remaining near-limit warning is co-location debt for public query DTOs and compatibility adapters. | Governed by this register; no new split module was introduced, and `drive_inspection_queries.py` remains absent. |
+
 ## Public / Model-Visible Contract Risks and Required Evidence
 
 - Config/projection contracts — risk: frozen config snapshot, provenance maps, validation diagnostics, `state/*.json`, and drive projection outputs change. Required evidence: golden round-trip tests for config load/freeze/load and projection artifact JSON schemas.

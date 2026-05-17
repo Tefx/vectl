@@ -95691,7 +95691,7 @@ phases:
     agent: integration-verifier
   - id: invar_guard_remediation.investigate-prompt-materialization-shell-result-root-cause
     name: Investigate prompt_materialization shell_result root cause
-    status: pending
+    status: claimed
     description: 'INVESTIGATION / Loop 3+ root-cause analysis before any additional
       prompt_materialization implementation retry.
 
@@ -95872,6 +95872,8 @@ phases:
     - invar_guard_remediation.escape-budget-core-contracts
     - invar_guard_remediation.fix-events-control-app-driver-budget-residuals
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T18:35:13.862796+00:00'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

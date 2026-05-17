@@ -91694,7 +91694,7 @@ phases:
     skipped_reason: absorbed
   - id: fix-orch-inspection-prompt-domain
     name: Fix orchestration inspection/prompt invar domain
-    status: claimed
+    status: skipped
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
       inspection and prompt materialization.
 
@@ -91770,6 +91770,7 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior
     claimed_at: '2026-05-17T14:56:27.110725+00:00'
+    skipped_reason: absorbed
   - id: fix-orch-recovery-continuity-domain
     name: Fix orchestration recovery/continuity invar domain
     status: claimed

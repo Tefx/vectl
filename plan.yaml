@@ -92253,7 +92253,7 @@ phases:
       - Verdict: SUCCESS.'
   - id: fix-mcp-tooling-domain
     name: Fix MCP tooling invar domain
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to MCP tool
       surfaces.
 
@@ -92331,6 +92331,95 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-17T14:19:09.424569+00:00'
+    done_at: '2026-05-17T14:41:54.551909+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Shell Result boundary, complexity, size warnings, and escape hatch
+      rules read.
+
+      - AGENTS.md — plan/orchestrator state ownership read; no direct plan mutation
+      by worker.
+
+      - src/vectl/mcp_core_tools.py, src/vectl/mcp_project_tools.py, src/vectl/mcp_render_tools.py
+      — read and remediated within owned scope.
+
+
+      ## Worktree Evidence
+
+      - Worker status: SUCCESS.
+
+      - Worker commit: 89e91b8f.
+
+      - Squash merge commit on main: 18b02a8 ([vectl] step-fix-mcp-tooling-domain
+      completed).
+
+      - Files changed: src/vectl/mcp_core_tools.py, src/vectl/mcp_project_tools.py,
+      src/vectl/mcp_render_tools.py.
+
+
+      ## Remediation Decisions
+
+      - Preserved MCP runtime response shapes and public tool schemas.
+
+      - Added Result-compatible annotations to MCP shell surfaces without wrapping
+      FastMCP payloads.
+
+      - Added narrow shell_complexity/file-size rationales where required.
+
+      - Preserved public compatibility parameters such as pretty.
+
+      - Fixed vectl_recover compatibility with existing mcp_server monkeypatch/testing
+      surface.
+
+
+      ## Mainline Final-State Verification
+
+      Commands executed after squash merge on main:
+
+      ```text
+
+      uv run invar guard src/vectl/mcp_core_tools.py --agent
+
+      uv run invar guard src/vectl/mcp_project_tools.py --agent
+
+      uv run invar guard src/vectl/mcp_render_tools.py --agent
+
+      uv run python -m pytest tests/test_mcp.py -q
+
+      ```
+
+      Results:
+
+      - mcp_core_tools guard: status passed; errors=0, infos=0; warnings=2 for existing
+      large public functions vectl_claim/vectl_mutate; governed file_size escape hatch
+      present.
+
+      - mcp_project_tools guard: status passed; errors=0, infos=0; warning=1 file_size_warning.
+
+      - mcp_render_tools guard: status passed; errors=0, infos=0; warning=1 function_size
+      for vectl_review.
+
+      - pytest: 175 passed in 8.69s.
+
+
+      ## Residual Disposition
+
+      - Residual owned-file warnings are non-blocking under the non-strict invar policy
+      because targeted guard status is `passed` for all three owned files and no error-class
+      findings remain.
+
+      - Final full-guard/gate remains responsible for repo-wide residual disposition
+      if warnings intersect final policy.
+
+
+      ## Product Scope Confirmation
+
+      - Owned product files only: src/vectl/mcp_core_tools.py, src/vectl/mcp_project_tools.py,
+      src/vectl/mcp_render_tools.py.
+
+      - MCP request/response compatibility preserved by tests/test_mcp.py.
+
+      - Verdict: SUCCESS.'
   - id: fix-io-storage-domain
     name: Fix IO/storage support invar domain
     status: skipped

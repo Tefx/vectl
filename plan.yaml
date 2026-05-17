@@ -96470,6 +96470,155 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-residual-budget-blockers
     agent: python-senior
+  - id: invar_guard_remediation.fix-contracts-file-size-decomposition
+    name: Fix contracts.py file-size decomposition
+    status: pending
+    description: 'IMPLEMENTATION / Focused residual slice for `src/vectl/orchestration/contracts.py`
+      file-size closure.
+
+
+      work_type: technical_debt_remediation
+
+      step_type: implementation
+
+      symbolic_testing: true
+
+      agent_source: default
+
+
+      Owned blocker family:
+
+      - `src/vectl/orchestration/contracts.py` `file_size` error (`1247 lines > 600`
+      in the failure report).
+
+
+      Scope boundaries:
+
+      - Decompose by real contract domains only; do not create wrapper churn or duplicate
+      contract definitions.
+
+      - Preserve public imports and runtime contract semantics consumed by orchestration,
+      drive, recovery, CLI/operator surfaces, and tests.
+
+      - If shared exports or registration files must change, keep wiring changes minimal
+      and include import-compatibility proof.
+
+      - Do not lower file-size budgets, add broad allow markers, or delete contract
+      visibility.
+
+
+      Required implementation approach:
+
+      - Use the slice boundary register from `invar_guard_remediation.fix-full-guard-residual-budget-blockers`.
+
+      - Split contracts into cohesive modules with a stable compatibility layer if
+      needed.
+
+      - Add/update targeted import and contract-consumer tests proving existing consumers
+      still resolve the same symbols.
+
+
+      ## Completion Criteria
+
+      - [ ] BEFORE `uvx invar-tools guard --all` excerpt for `contracts.py` file-size
+      is pasted from current mainline.
+
+      - [ ] AFTER `uvx invar-tools guard --all` excerpt shows `contracts.py` file-size
+      closure or explicit non-blocking disposition with proof.
+
+      - [ ] Targeted import/consumer tests pass and command output is pasted.
+
+      - [ ] Public contract symbol compatibility is proven for known consumers.
+
+      - [ ] No broad suppression, budget lowering, or duplicate contract definitions
+      are used.
+
+      - [ ] Residual disposition register is updated for contracts file-size findings.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
+    verification: '- [ ] `contracts.py` file-size residual is closed or dispositioned
+      under invar policy with pasted BEFORE/AFTER `uvx invar-tools guard --all` excerpts.
+
+      - [ ] Targeted import/consumer tests pass with pasted output.
+
+      - [ ] Public contract compatibility is proven and no duplicate/wrapper churn
+      is introduced.
+
+      - [ ] Evidence includes the mandatory residual disposition register for this
+      slice.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Slice Evidence
+
+
+      **BEFORE full-guard excerpt**:
+
+      ```text
+
+      <paste uvx invar-tools guard --all excerpt for contracts.py file_size>
+
+      ```
+
+
+      **Compatibility/import proof**:
+
+      ```text
+
+      <paste import trace or targeted test output proving consumers still resolve
+      symbols>
+
+      ```
+
+
+      **Targeted tests**:
+
+      ```text
+
+      <paste exact commands and output>
+
+      ```
+
+
+      **AFTER full-guard excerpt**:
+
+      ```text
+
+      <paste uvx invar-tools guard --all excerpt for the same family>
+
+      ```
+
+
+      **Residual disposition register**:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      **Suppression/budget-change statement**:
+
+      <confirm none, or justify narrow authority-backed exception>'
+    depends_on:
+    - invar_guard_remediation.fix-full-guard-residual-budget-blockers
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

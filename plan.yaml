@@ -97468,7 +97468,7 @@ phases:
       until the batched fix/retest path closes.'
   - id: invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     name: Fix residual full-guard escape-budget project blockers after salvage
-    status: pending
+    status: claimed
     description: "Batched implementation remediation retry after salvaged partial\
       \ progress from commit `3a155e9`.\n\nstep_type: implementation\nsymbolic_testing:\
       \ true\nprior_loop: invar_guard_remediation.full-guard-residual-disposition-retest\n\
@@ -97727,6 +97727,8 @@ phases:
     depends_on:
     - invar_guard_remediation.full-guard-residual-disposition-retest
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T21:15:45.528384+00:00'
   - id: invar_guard_remediation.full-guard-escape-budget-batched-retest
     name: Retest full guard after batched escape-budget remediation
     status: pending

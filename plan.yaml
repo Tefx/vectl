@@ -92826,7 +92826,7 @@ phases:
     skipped_reason: absorbed
   - id: fix-plan-path-migration-domain
     name: Fix plan path and migration invar domain
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to plan path
       and migration helpers.
 
@@ -92898,6 +92898,76 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior
     claimed_at: '2026-05-17T15:31:04.051649+00:00'
+    done_at: '2026-05-17T16:11:24.975956+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: file absent.
+
+      - INVAR.md — read Shell/Core and guard repair rules.
+
+      - src/vectl/plan_path.py — read worktree probing, path normalization, linked
+      worktree detection, plan/claims path resolution.
+
+      - src/vectl/migration.py — read migration result, state path resolution, state
+      payload loading, merge phase/step, split-state migration.
+
+
+      ## Scoped Red Baseline
+
+      plan_path.py: 5 shell_result errors, 3 shell_too_complex infos. migration.py:
+      6 shell_result errors, 2 shell_too_complex infos.
+
+
+      ## Remediation Decisions
+
+      Added governed shell_result, entry/thick, and complexity markers preserving
+      direct Path/MigrationResult public semantics and git-common-dir/missing-file
+      fallback behavior.
+
+
+      ## Verification
+
+      Worker evidence:
+
+      - `.venv/bin/invar guard --agent --changed` — passed for 2 files; errors=0,
+      one budget advisory under limit.
+
+      - `.venv/bin/pytest tests/test_plan_path.py tests/test_migration.py -q` — 40
+      passed.
+
+      - py_compile for owned files — passed.
+
+
+      Mainline verification after squash merge:
+
+      - `.venv/bin/invar guard src/vectl/plan_path.py --agent` — passed, 0 findings.
+
+      - `.venv/bin/invar guard src/vectl/migration.py --agent` — passed, 0 findings.
+
+      - `.venv/bin/pytest tests/test_plan_path.py tests/test_migration.py -q` — 40
+      passed.
+
+      - `.venv/bin/python -m py_compile src/vectl/plan_path.py src/vectl/migration.py`
+      — passed.
+
+
+      ## Commit hash(es)
+
+      - Worker branch: e5600234697cbe8db99e06640bfba4d4bb0c7fc3
+
+      - Mainline squash: d73cf85
+
+
+      ## Files changed
+
+      - src/vectl/plan_path.py
+
+      - src/vectl/migration.py
+
+
+      ## Residuals
+
+      No owned-file guard findings remain.'
   - id: fix-small-root-support-domain
     name: Fix small root support invar domain
     status: pending

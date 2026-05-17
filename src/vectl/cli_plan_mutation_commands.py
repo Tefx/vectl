@@ -251,7 +251,9 @@ def _ensure_edit_step_has_change(
     new_step_id: str | None,
     evidence_template_file: Path | None,
 ) -> None:
-    if any((name, desc, verify, step_agent, add_deps, rm_deps, add_refs, rm_refs)):
+    if any((name, desc, verify, add_deps, rm_deps, add_refs, rm_refs)):
+        return
+    if step_agent is not None:
         return
     if evidence_template is not None or new_step_id is not None or evidence_template_file is not None:
         return
@@ -469,5 +471,4 @@ def move_step_cmd(
 # ---------------------------------------------------------------------------
 # cli.12: unlock (explicit phase unlock)
 # ---------------------------------------------------------------------------
-
 

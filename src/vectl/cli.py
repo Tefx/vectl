@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import typer
 import json
+
+import typer
 from returns.result import Result, Success
 from rich.console import Console
 

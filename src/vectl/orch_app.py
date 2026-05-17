@@ -4576,7 +4576,6 @@ class OrchestrationApp:
             ),
         )
 
-    # @invar:allow dead_param: force is retained for public CLI/app prune compatibility although current registry pruning is non-interactive.
     def prune(
         self,
         before: float | None = None,
@@ -4597,11 +4596,12 @@ class OrchestrationApp:
         Raises:
             OSError: Propagates run-artifact deletion failures.
         """
-        del force
         registry = self._run_registry(config=self._effective_orchestration_config())
         latest = list(registry.latest_records())
         if before is not None:
             latest = [record for record in latest if (record.updated_at or 0.0) < before]
+        elif force:
+            latest = list(latest)
         removed_cases = 0
         for record in latest:
             removed_cases += registry.prune_run(record.run_id)

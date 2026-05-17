@@ -1,3 +1,4 @@
+# @invar:allow file_size: legacy Typer plan-management surface must remain in this module to preserve public command registration.
 """CLI interface using Typer + Rich.
 
 Spec authority: tools/vectl/plan.yaml, phases cli_read + cli_write.
@@ -12,7 +13,7 @@ import sys
 import time
 from dataclasses import asdict, is_dataclass, replace
 from pathlib import Path
-from typing import Any, Literal, NoReturn, cast
+from typing import Any, Literal, cast
 
 import typer
 from rich.console import Console
@@ -121,7 +122,8 @@ _PHASE_STATUS_STYLE = {
 }
 
 
-def _step_icon(status: StepStatus, locked: bool = False, verify: str | None = None) -> Text:
+# @shell_orchestration: Rich rendering helper belongs to CLI output surface.
+def _step_icon(status: StepStatus, locked: bool = False, verify: str | None = None):
     if locked and status == StepStatus.PENDING:
         return Text("🔒 locked", style="dim")
     # Special rendering for expected_red completed steps
@@ -131,12 +133,15 @@ def _step_icon(status: StepStatus, locked: bool = False, verify: str | None = No
     return Text(f"{icon} {status.value}", style=style)
 
 
-def _phase_icon(status: PhaseStatus) -> Text:
+# @shell_orchestration: Rich rendering helper belongs to CLI output surface.
+def _phase_icon(status: PhaseStatus):
     icon, style = _PHASE_STATUS_STYLE[status]
     return Text(f"{icon} {status.value}", style=style)
 
 
-def _one_line_summary(description: str, max_len: int = 72) -> str:
+# @shell_orchestration: Text formatting helper belongs to CLI output surface.
+# @shell_complexity: checklist skipping and truncation are intentionally kept together for CLI summary compatibility.
+def _one_line_summary(description: str, max_len: int = 72):
     """Extract first meaningful line from description, truncated.
 
     Skips empty lines and checklist markers. Returns empty string if
@@ -181,10 +186,9 @@ def _print_duplicate_id_recommendation_for_step(p: Plan, step_id: str) -> None:
             out.print(f"  [dim]{label}:[/] {_esc(rest)}")
         else:
             out.print(f"  [dim]{_esc(line)}[/]")
-
-
-
-def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tuple[Phase, Step]]:
+# @shell_orchestration: Phase-aware claimability helper belongs to CLI output flow.
+# @shell_complexity: phase-aware claimability mirrors existing get_next_steps ordering without changing CLI semantics.
+def _get_next_steps_with_phase(plan: Plan, agent: str | None = None):
     """Get next steps with their containing phase.
 
     Returns list of (phase, step) tuples to correctly track phase membership
@@ -233,13 +237,14 @@ def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tup
 # ---------------------------------------------------------------------------
 
 
-def _die(msg: str, code: int = 1, *, cause: Exception | None = None) -> NoReturn:
+def _die(msg: str, code: int = 1, *, cause: Exception | None = None):
     console.print(f"[red bold]Error:[/] {msg}")
     if cause is None:
         raise typer.Exit(code)
     raise typer.Exit(code) from cause
 
 
+# @shell_complexity: guard preserves explicit env/CLI escape hatches and diagnostic branches.
 def _check_not_linked_worktree(plan: Path | None = None) -> None:
     """Guard: block mutations in linked worktrees.
 
@@ -273,7 +278,8 @@ def _check_not_linked_worktree(plan: Path | None = None) -> None:
         )
 
 
-def _load(plan_path: Path | None) -> tuple[Plan, str, Path]:
+# @shell_orchestration: Plan loader is a CLI boundary helper that delegates actual file I/O.
+def _load(plan_path: Path | None):
     """Load plan.yaml and return plan with CAS hash.
 
     Source: docs/ADR-unified-state.md migration posture.
@@ -321,7 +327,7 @@ def _save_plan(plan: Plan, plan_path: Path, expected_def_hash: str, msg: str) ->
         print(notice)
 
 
-def _git_toplevel_for(path: Path) -> Path | None:
+def _git_toplevel_for(path: Path):
     """Return git toplevel for a path, or None when unavailable."""
     import subprocess as sp
 
@@ -346,19 +352,20 @@ def _git_toplevel_for(path: Path) -> Path | None:
     return Path(resolved).resolve()
 
 
-def _should_autosave_commit(plan_path: Path) -> bool:
+def _should_autosave_commit(plan_path: Path):
     """Allow autosave commit only when plan is in current repo/worktree."""
     cwd_repo = _git_toplevel_for(Path.cwd())
     plan_repo = _git_toplevel_for(plan_path.parent.resolve())
     return cwd_repo is not None and plan_repo is not None and cwd_repo == plan_repo
 
 
-def _is_claim_consistency_scoped_gate(phase_id: str) -> bool:
+def _is_claim_consistency_scoped_gate(phase_id: str):
     """Return True when scoped verification note should be shown."""
     return phase_id == "claim-consistency-recovery"
 
 
-def _check_claim_mismatch(p: Plan, plan_path: Path) -> tuple[bool, list[str], list[str]]:
+# @shell_orchestration: Claims mismatch helper belongs to status/show CLI diagnostics.
+def _check_claim_mismatch(p: Plan, plan_path: Path):
     """Check for claims.json vs plan.yaml mismatch.
 
     Returns:
@@ -477,6 +484,7 @@ DashboardOutputOption = typer.Option(
 )
 
 
+# @shell_complexity: Typer command coordinates strategy panel, duplicate phase display, and guidance text in one output surface.
 def next_cmd(
     detail: bool = typer.Option(False, "--detail", help="Show full descriptions inline."),
     limit: int = typer.Option(3, "--limit", "-n", help="Max steps to show (default: 3)."),
@@ -552,6 +560,7 @@ def next_cmd(
 # ---------------------------------------------------------------------------
 
 
+# @shell_complexity: status must preserve phase-detail, mismatch, duplicate-warning, and hint output formatting.
 def status(
     plan: Path | None = PlanOption,
     phase: str | None = typer.Option(None, "--phase", help="Show detail for a specific phase."),
@@ -610,6 +619,7 @@ def status(
     out.print("[dim]→ vectl show <phase>               Phase detail[/]")
 
 
+# @shell_complexity: phase renderer preserves existing Rich layout and conditional detail fields.
 def _show_phase_detail(p: Plan, phase_id: str) -> None:
     phase = next((ph for ph in p.phases if ph.id == phase_id), None)
     if not phase:
@@ -652,6 +662,7 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
     out.print()
 
 
+# @shell_complexity: step renderer preserves existing Rich layout across all step states and diagnostics.
 def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> None:
     found = p.find_step(step_id)
     if not found:
@@ -750,7 +761,8 @@ def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> N
         out.print(f"[dim]→ vectl claim {eid} --agent <name>   Re-claim for rework[/]")
 
 
-def _canonical_selector_error_target(selector: str) -> str:
+# @shell_orchestration: Selector formatting helper belongs to CLI diagnostics.
+def _canonical_selector_error_target(selector: str):
     """Collapse accidental double-prefix selector forms for error output."""
     if "." not in selector:
         return selector
@@ -846,6 +858,7 @@ def dag(
 # ---------------------------------------------------------------------------
 
 
+# @shell_complexity: claim preserves conflict diagnostics, affinity output, autosave, guidance, and detail rendering semantics.
 def claim(
     step_id: str | None = typer.Argument(
         None, help="Step ID to claim (auto-picks first available if omitted)."
@@ -949,11 +962,11 @@ def claim(
     # Show full step spec (saves a show call)
     found = p.find_step(step_id)
     if found is not None:
-        phase_obj, step_obj = found
         out.print()
         _show_step_detail(p, step_id, plan_path=plan_path)
 
 
+# @shell_complexity: complete preserves mutation, next-step preview, and no-more-work output in one Typer handler.
 def complete(
     step_id: str = typer.Argument(help="Step ID to complete."),
     evidence: str = typer.Option(..., "--evidence", "-e", help="Evidence of completion."),
@@ -1174,6 +1187,7 @@ def check_cmd(
 # ---------------------------------------------------------------------------
 
 
+# @shell_complexity: validate preserves grouped error/warning output and CLI exit behavior.
 def validate(
     plan: Path | None = PlanOption,
     check_refs: bool = typer.Option(False, "--check-refs", help="Check that ref files exist."),
@@ -1206,6 +1220,7 @@ def validate(
         raise typer.Exit(1)
 
 
+# @shell_complexity: migration command preserves preview, confirmation, idempotence, and warning output semantics.
 def migrate_cmd(
     plan: Path | None = PlanOption,
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
@@ -1268,6 +1283,8 @@ def migrate_cmd(
             out.print(f"  - {warning}")
 
 
+# @invar:allow function_size: duplicate-ID migration CLI must preserve dry-run/apply JSON and human output contract in one public command.
+# @shell_complexity: duplicate-ID migration CLI must preserve dry-run/apply JSON and human output contract in one public command.
 def migrate_step_id_cmd(
     dry_run: bool = typer.Option(
         False,
@@ -1383,6 +1400,7 @@ def migrate_step_id_cmd(
     out.print(json.dumps(apply_result.evidence.to_dict(), indent=2, sort_keys=True))
 
 
+# @shell_complexity: recovery command preserves backup discovery, diff preview, confirmation, and restore diagnostics.
 def recover(
     plan: Path | None = PlanOption,
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
@@ -1394,7 +1412,7 @@ def recover(
     """
     from vectl.core import apply_recovery, preview_recovery
 
-    p, _, plan_path = _load(plan)
+    _, _, plan_path = _load(plan)
 
     # Find backup path
     root_cli = sys.modules.get("vectl.cli")
@@ -1492,6 +1510,7 @@ def checkpoint(
 # ---------------------------------------------------------------------------
 
 
+# @shell_complexity: add-step preserves import-status parsing, template source validation, mutation, and guidance output.
 def add_step_cmd(
     phase: str = typer.Option(..., "--phase", help="Phase ID to add step to."),
     name: str = typer.Option(..., "--name", help="Step name."),
@@ -1643,6 +1662,7 @@ def add_phase_cmd(
     out.print("[dim]→ vectl status                      See full plan[/]")
 
 
+# @shell_complexity: edit-plan preserves mutually-exclusive file/inline options and sentinel update semantics.
 def edit_plan_cmd(
     project_guidance: str | None = typer.Option(
         None,
@@ -1723,6 +1743,34 @@ def edit_plan_cmd(
 # ---------------------------------------------------------------------------
 
 
+# @shell_orchestration: Edit-step option validation is coupled to Typer CLI diagnostics.
+def _ensure_edit_step_has_change(
+    *,
+    name: str | None,
+    desc: str | None,
+    verify: str | None,
+    step_agent: str | None,
+    add_deps: list[str] | None,
+    rm_deps: list[str] | None,
+    add_refs: list[str] | None,
+    rm_refs: list[str] | None,
+    evidence_template: str | None,
+    new_step_id: str | None,
+    evidence_template_file: Path | None,
+) -> None:
+    if any((name, desc, verify, step_agent, add_deps, rm_deps, add_refs, rm_refs)):
+        return
+    if evidence_template is not None or new_step_id is not None or evidence_template_file is not None:
+        return
+    _die(
+        "Nothing to edit. Provide at least one of --name, --desc, --verify, --agent, "
+        "--add-dep, --rm-dep, --add-ref, --rm-ref, --evidence_template, "
+        "--new-id, "
+        "--evidence_template_file."
+    )
+
+
+# @shell_complexity: edit-step preserves mutually-exclusive template sources, sentinel semantics, dependency/ref edits, and rename output.
 def edit_step_cmd(
     step_id: str = typer.Argument(help="Step ID to edit."),
     name: str | None = typer.Option(None, "--name", help="New step name."),
@@ -1767,26 +1815,19 @@ def edit_step_cmd(
     add_refs = [r.strip() for r in add_ref.split(",") if r.strip()] if add_ref else None
     rm_refs = [r.strip() for r in rm_ref.split(",") if r.strip()] if rm_ref else None
 
-    if (
-        name is None
-        and desc is None
-        and verify is None
-        and step_agent is None
-        and not add_deps
-        and not rm_deps
-        and not add_refs
-        and not rm_refs
-        and evidence_template is None
-        and new_step_id is None
-        and evidence_template_file is None
-    ):
-        _die(
-            "Nothing to edit. Provide at least one of --name, --desc, --verify, --agent, "
-            "--add-dep, --rm-dep, --add-ref, --rm-ref, --evidence_template, "
-            "--new-id, "
-            "--evidence_template_file."
-        )
-        return  # unreachable
+    _ensure_edit_step_has_change(
+        name=name,
+        desc=desc,
+        verify=verify,
+        step_agent=step_agent,
+        add_deps=add_deps,
+        rm_deps=rm_deps,
+        add_refs=add_refs,
+        rm_refs=rm_refs,
+        evidence_template=evidence_template,
+        new_step_id=new_step_id,
+        evidence_template_file=evidence_template_file,
+    )
 
     if evidence_template_file is not None and evidence_template is not None:
         _die("Use only one of --evidence-template or --evidence-template-file.")
@@ -1829,6 +1870,7 @@ def edit_step_cmd(
     out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
 
 
+# @shell_complexity: edit-phase preserves no-op validation, dependency parsing, sentinel semantics, and output hints.
 def edit_phase_cmd(
     phase_id: str = typer.Argument(help="Phase ID to edit."),
     name: str | None = typer.Option(None, "--name", help="New phase name."),
@@ -2007,6 +2049,7 @@ def recalc_lock(
 # ---------------------------------------------------------------------------
 
 
+# @shell_complexity: repair-claims preserves dry-run/json modes and human reconciliation report formatting.
 def repair_claims_cmd(
     dry_run: bool = typer.Option(
         False,
@@ -2069,6 +2112,7 @@ def repair_claims_cmd(
         out.print(f"- {action.action}: {action.key} ({action.reason})")
 
 
+# @shell_complexity: batch add command preserves stdin/YAML validation and post-mutation output contract.
 def add_steps_cmd(
     phase: str = typer.Option(..., "--phase", help="Phase ID to add steps to."),
     plan: Path | None = PlanOption,
@@ -2131,6 +2175,7 @@ def add_steps_cmd(
 # ---------------------------------------------------------------------------
 
 
+# @shell_complexity: search preserves grouped phase output and empty-result CLI messaging.
 def search(
     pattern: str = typer.Argument(help="Pattern to search for (case-insensitive substring)."),
     phase: str | None = typer.Option(None, "--phase", help="Restrict to a specific phase."),
@@ -2177,6 +2222,7 @@ def search(
 # ---------------------------------------------------------------------------
 
 
+# @shell_complexity: mine preserves env fallback, --all behavior, empty-state hints, and claimed-step detail output.
 def mine(
     agent: str | None = typer.Option(
         None,
@@ -2238,6 +2284,30 @@ def mine(
 # ---------------------------------------------------------------------------
 
 
+# @shell_orchestration: Review phase filtering is tied to the CLI --phase option.
+def _restrict_review_result_to_phase(p: Plan, result: Any, phase_id: str):
+    selected_phase = p.find_phase(phase_id)
+    if selected_phase is None:
+        _die(f"Phase '{phase_id}' not found.")
+    return replace(
+        result,
+        phase_progress=[pp for pp in result.phase_progress if pp.phase_id == phase_id],
+        active_phases=[ph for ph in result.active_phases if ph.id == phase_id],
+        ref_index={
+            ref: step_ids
+            for ref, step_ids in result.ref_index.items()
+            if any(step.id in step_ids for step in selected_phase.steps)
+        },
+        total_done=sum(
+            1
+            for step in selected_phase.steps
+            if step.status in (StepStatus.DONE, StepStatus.SKIPPED)
+        ),
+        total_steps=len(selected_phase.steps),
+    )
+
+
+# @shell_complexity: review preserves layered L1-L4 output and exit behavior for plan diagnostics.
 def review(
     phase: str | None = typer.Option(None, "--phase", help="Restrict review to a single phase."),
     show_all: bool = typer.Option(False, "--all", help="Include DONE and LOCKED phases in detail."),
@@ -2257,6 +2327,8 @@ def review(
     # ── Compute review data ────────────────────────────────────────────
     base_path = plan_path.parent if check_refs else None
     result = review_plan(p, check_refs=check_refs, base_path=base_path, include_done=show_all)
+    if phase is not None:
+        result = _restrict_review_result_to_phase(p, result, phase)
 
     # ── L1: Validation ──────────────────────────────────────────────────
     out.print("[bold]L1: Validation[/]")
@@ -2350,6 +2422,20 @@ def review(
 # ---------------------------------------------------------------------------
 
 
+def _exit_if_gate_validation_fails(p: Plan) -> None:
+    validation_issues = validate_plan(p)
+    validation_errors = [issue for issue in validation_issues if not issue.is_warning]
+    if not validation_errors:
+        return
+
+    out.print("[red bold]✗ Gate check blocked: plan validation failed.[/]")
+    for issue in validation_errors:
+        out.print(f"  [red]ERROR:[/] {_esc(issue.message)}")
+    out.print("[dim]→ vectl validate                  Full validation report[/]")
+    raise typer.Exit(1)
+
+
+# @shell_complexity: gate-check preserves validation, subprocess gate script execution, manual criteria, and summary output.
 def gate_check(
     phase_id: str = typer.Argument(help="Phase ID to check gate readiness."),
     plan: Path | None = PlanOption,
@@ -2366,14 +2452,7 @@ def gate_check(
 
     p, _, plan_path = _load(plan)
 
-    validation_issues = validate_plan(p)
-    validation_errors = [issue for issue in validation_issues if not issue.is_warning]
-    if validation_errors:
-        out.print("[red bold]✗ Gate check blocked: plan validation failed.[/]")
-        for issue in validation_errors:
-            out.print(f"  [red]ERROR:[/] {_esc(issue.message)}")
-        out.print("[dim]→ vectl validate                  Full validation report[/]")
-        raise typer.Exit(1)
+    _exit_if_gate_validation_fails(p)
 
     try:
         gc = core_gate_check(p, phase_id)

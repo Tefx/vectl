@@ -96536,7 +96536,7 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] BEFORE `uvx invar-tools guard --all` excerpt for `contracts.py` file-size
+      - [x] BEFORE `uvx invar-tools guard --all` excerpt for `contracts.py` file-size
       is pasted from current mainline.
 
       - [ ] AFTER `uvx invar-tools guard --all` excerpt shows `contracts.py` file-size

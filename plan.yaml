@@ -96341,7 +96341,7 @@ phases:
       \ implementation slices own closure."
   - id: invar_guard_remediation.fix-inspection-drive-query-result-boundaries
     name: Fix inspection and drive query Result-boundary budgets
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION / Focused residual slice for inspection and drive
       query Result-boundary closure.
 
@@ -96486,6 +96486,59 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T19:51:03.251175+00:00'
+    done_at: '2026-05-17T20:13:29.449580+00:00'
+    evidence: "## refs Read Confirmation\n- INVAR.md — read; Core/Shell and Result-boundary\
+      \ rules confirmed.\n- AGENTS.md — read; no direct plan/orchestrator state edits\
+      \ confirmed.\n- CONSTITUTION.md — NOT READ: absent.\n- src/vectl/orchestration/inspection_queries.py\
+      \ — read and changed.\n- tests/orchestration/unit/test_inspection_queries.py\
+      \ and tests/orchestration/unit/test_drive_queries.py — read/used.\n- tools/vectl/README.md\
+      \ — NOT READ: absent.\n\n## Slice Evidence\n\n### Change\n- Added explicit guard-facing\
+      \ Result boundary annotations for inspection/drive query functions while preserving\
+      \ existing CLI/operator direct DTO behavior.\n- Simplified drive log/artifact\
+      \ query branching to close inspection-query shell_too_complex findings.\n- Reduced\
+      \ inspection_queries.py below hard shell file_size limit.\n- Updated residual\
+      \ disposition register for inspection/drive query shell_result, shell_too_complex,\
+      \ and remaining near-limit file_size_warning ownership.\n\nFiles changed:\n\
+      - src/vectl/orchestration/inspection_queries.py\n- docs/invar_guard_remediation/escape_budget_authority_decision.md\n\
+      \nWorker commit: 1553dc89.\nMainline squash commit: 0a6146d.\n\n### BEFORE full-guard\
+      \ excerpt\n```text\nuvx invar-tools guard --all\nsrc/vectl/orchestration/inspection_queries.py\
+      \ file_size error: File has 733 lines (max: 700 for shell)\nshell_result errors:\
+      \ query_runs, query_cases, validate_child_run_in_drive, query_drive_status,\
+      \ query_drive_events, query_drive_logs, query_drive_artifacts, query_drive_actions\n\
+      shell_too_complex infos: query_drive_logs has 4 branches; query_drive_artifacts\
+      \ has 7 branches\nsummary: errors=22 warnings=12 infos=4\nescape hatch budget:\
+      \ 376/15; project shell_result budget: 72/5\n```\n\n### AFTER/mainline full-guard\
+      \ excerpt\n```text\nUV_PROJECT_ENVIRONMENT=.venv uvx invar-tools guard --all\n\
+      No inspection_queries.py shell_result findings.\nNo inspection_queries.py shell_too_complex\
+      \ findings.\nsrc/vectl/orchestration/inspection_queries.py file_size_warning:\
+      \ File has 696 lines (99% of 700 limit)\nsummary after mainline merge: errors=12\
+      \ warnings=13 infos=4\nescape hatch budget unchanged: 376/15; project shell_result\
+      \ budget unchanged: 72/5\n```\n\n### Targeted tests\nWorker evidence:\n```text\n\
+      .venv/bin/python -m pytest -q tests/orchestration/unit/test_inspection_queries.py\
+      \ tests/orchestration/unit/test_drive_queries.py\n27 passed in 0.22s\n```\n\
+      Mainline verification:\n```text\nUV_PROJECT_ENVIRONMENT=.venv uv run pytest\
+      \ -q tests/orchestration/unit/test_inspection_queries.py tests/orchestration/unit/test_drive_queries.py\n\
+      ============================== 27 passed in 0.26s ==============================\n\
+      ```\n\n### Residual disposition register\n- requirement_ref: inspection_queries.py\
+      \ shell_result findings.\n  behavior_claim: public query APIs preserve direct\
+      \ DTO behavior while guard-facing boundary is explicit.\n  runtime_proof_expected:\
+      \ targeted inspection/drive query tests and full guard delta.\n  evidence_ref:\
+      \ 27 targeted tests passed; no shell_result findings after merge.\n  status:\
+      \ PROVEN_CLOSED.\n  closure_path: explicit Result boundary annotation and local\
+      \ simplification.\n  gate_decision_basis: same-family findings closed without\
+      \ project budget regression.\n- requirement_ref: inspection_queries.py shell_too_complex\
+      \ findings.\n  status: PROVEN_CLOSED; evidence_ref: after guard has no shell_too_complex\
+      \ findings for query_drive_logs/query_drive_artifacts.\n- requirement_ref: inspection_queries.py\
+      \ near-limit file_size_warning.\n  status: NON_BLOCKING_WITH_GOVERNED_RESIDUAL;\
+      \ evidence_ref: hard file_size error closed, warning only; no project-level\
+      \ budget regression.\n\n### Suppression/budget-change statement\nNo broad suppressions,\
+      \ budget lowering, discarded drive_inspection_queries split resurrection, or\
+      \ visibility deletion was used. No new core extraction was added.\n\n## checklist_receipt\n\
+      All description and verification checklist items were checked by orchestrator\
+      \ based on worker evidence plus mainline verification.\n\n## Gaps/Notes\nFull\
+      \ guard still fails on unrelated project escape-hatch/file-size budget violations;\
+      \ inspection/drive shell_result and shell_too_complex residuals are closed,\
+      \ and project shell_result/weighted budget did not regress."
   - id: invar_guard_remediation.fix-contracts-file-size-decomposition
     name: Fix contracts.py file-size decomposition
     status: done

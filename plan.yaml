@@ -91535,7 +91535,7 @@ phases:
     skipped_reason: absorbed
   - id: fix-orch-runtime-runners-domain
     name: Fix orchestration runtime/runners invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
       runtime and runner plumbing.
 
@@ -91612,6 +91612,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T15:30:14.675714+00:00'
   - id: fix-orch-events-control-domain
     name: Fix orchestration events/control invar domain
     status: skipped

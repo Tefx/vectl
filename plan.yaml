@@ -94994,7 +94994,7 @@ phases:
 
       - [x] Event/control public schemas and timeout behavior are preserved.
 
-      - [ ] Pause/resume/stop and active-control semantics remain compatible.
+      - [x] Pause/resume/stop and active-control semantics remain compatible.
 
       - [ ] Driver loop and orch app routing still reach real runtime paths rather
       than private `_Runtime*`/`_Stub*`/`_Placeholder*` substitutes.

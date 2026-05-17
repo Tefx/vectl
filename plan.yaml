@@ -90962,6 +90962,14 @@ phases:
       - Failure inventory mapped every guard finding to a domain step or explicit
       residual/replan bucket.
 
+      - The failed coarse residual implementation loop was converted into investigation/slice-boundary
+      ownership and no discarded-branch partial evidence was accepted as mainline
+      proof.
+
+      - Focused residual slices own inspection/drive query Result-boundary closure,
+      `contracts.py` file-size decomposition, config/projections/recovery_fallback
+      budget closure, and orch_app/driver budget closure.
+
       - The escape-budget authority decision and residual slices own the shared budget/shell_result
       failure family after salvaged partial progress.
 
@@ -90979,6 +90987,10 @@ phases:
       - Complexity/dead-code findings were fixed or justified narrowly; broad blanket
       allows are blocking.
 
+      - UI/UX audit was rerun after final residual remediation and includes pasted
+      help/surface snapshots, command executability matrix, JSON ANSI check, facade
+      import check, and behavioral proof register.
+
       - Full authoritative guard is green via `uvx invar-tools guard --all`, OR every
       remaining finding has a structured residual disposition proving non-blocking
       status under invar policy and non-intersection with downstream gates.
@@ -90989,6 +91001,9 @@ phases:
       - Full guard is non-zero and residual disposition is incomplete.
 
       - Any planned domain has unowned residual findings without replan.
+
+      - Evidence relies on discarded branch commit `68fcddb6486745572905c5f16248e0c64aa23e37`
+      or cleaned worktree state as mainline proof.
 
       - Evidence lacks refs read confirmation, scoped red baseline, or expected-red
       proof for semantic implementation changes.
@@ -91011,10 +91026,13 @@ phases:
       - [ ] Full guard evidence or residual disposition evidence is current-mainline
       and not branch-local.
 
+      - [ ] UI/UX audit evidence includes pasted help/surface snapshots and ran after
+      residual remediation.
+
       - [ ] No downstream phase can proceed on stale partial-success evidence.'
     verification: '- [ ] Gate reviews every phase step''s evidence, including the
-      escape-budget authority decision, contract step, residual slices, and full-guard
-      retest.
+      escape-budget authority decision, contract step, focused residual slices, UI/UX
+      rerun, and full-guard retests.
 
       - [ ] Gate decision basis maps all guard obligations to PROVEN closure, explicit
       non-blocking disposition, or BLOCK.
@@ -91026,77 +91044,24 @@ phases:
       evidence_ref, status, closure_path, and gate_decision_basis for behavioral/runtime
       obligations.
 
-      - [ ] BLOCK decision names exact owner steps for unresolved findings.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+      - [ ] BLOCK decision names exact owner steps for unresolved findings.
 
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      If no refs were provided, state: "No refs for this step."
-
-
-      ## Gate Review Report
-
-
-      **Reviewer**: gate-reviewer (independent of phase implementation)
-
-      **Phase**: invar_guard_remediation
-
-
-      ### Execution Review
-
-
-      | Step ID | Status | Evidence Quality | Concerns |
-
-      |---|---|---|---|
-
-      | <step> | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |
-
-
-      ### Escape-Budget Closure Review
-
-
-      | Residual family | Owner step | Evidence | Gate status |
-
-      |---|---|---|---|
-
-      | function_size/shell_result/weighted_budget | <step> | <evidence ref> | PROVEN/NON_BLOCKING/BLOCKING
-      |
-
-
-      ### Issues Identified
-
-
-      | Severity | Description | Related Step | Blocking? | Required owner |
-
-      |---|---|---|---|---|
-
-      | blocker/should_fix | <issue> | <step> | YES/NO | <step id> |
-
-
-      ### Gate Decision Basis
-
-
-      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
-      status | closure_path | gate_decision_basis |
-
-      |---|---|---|---|---|---|---|
-
-      | <ref> | <claim> | <proof expected> | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
-      | <owner/disposition> | <OPEN/BLOCK basis> |
-
-
-      ### Gate Decision
-
-      - [ ] OPEN: phase passes gate under full guard green or accepted structured
-      residual disposition.
-
-      - [ ] BLOCKED: unresolved blocker-class findings remain.
-
-      '
+      - [ ] Evidence rejects stale discarded-branch/worktree proof and confirms UI/UX
+      audit ran after residual remediation.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- INVAR.md — key passage or \"NOT READ: <reason>\"\n- AGENTS.md — key\
+      \ passage or \"NOT READ: <reason>\"\n\nIf no refs were provided, state: \"No\
+      \ refs for this step.\"\n\n## Gate Review Report\n\n**Reviewer**: gate-reviewer\n\
+      **Phase**: invar_guard_remediation\n\n### Execution Review\n| Step ID | Status\
+      \ | Evidence Quality | Concerns |\n| --- | --- | --- | --- |\n\n### Residual\
+      \ DAG Review\n- focused residual slices complete: YES/NO\n- final residual disposition\
+      \ retest complete: YES/NO\n- UI/UX rerun after residual remediation complete:\
+      \ YES/NO\n- stale branch/worktree evidence rejected: YES/NO\n\n### Gate Decision\
+      \ Basis\n| requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref\
+      \ | status | closure_path | gate_decision_basis |\n| --- | --- | --- | --- |\
+      \ --- | --- | --- |\n\n### Gate Decision\n- [ ] OPEN: Phase passes gate, proceed\
+      \ to next phase\n- [ ] BLOCKED: Issues must be resolved before proceeding\n\
+      \  - Blocking issues: <list>\n  - Required owner steps: <list>"
     refs:
     - INVAR.md
     - AGENTS.md
@@ -91129,6 +91094,11 @@ phases:
     - invar_guard_remediation.fix-events-control-app-driver-budget-residuals
     - invar_guard_remediation.fix-inspection-prompt-budget-residuals
     - invar_guard_remediation.fix-full-guard-residual-budget-blockers
+    - invar_guard_remediation.fix-inspection-drive-query-result-boundaries
+    - invar_guard_remediation.fix-contracts-file-size-decomposition
+    - invar_guard_remediation.fix-config-projections-recovery-budget-closure
+    - invar_guard_remediation.fix-orch-app-driver-budget-closure
+    - invar_guard_remediation.full-guard-residual-disposition-retest
     - invar_guard_remediation.escape-budget-full-guard-retest
     - invar_guard_remediation.verify-full-guard
     agent: gate-reviewer

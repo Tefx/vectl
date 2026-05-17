@@ -98271,7 +98271,7 @@ phases:
       \ its inputs and produces outputs that vary based on those inputs. Private stub\
       \ classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\
       \n## Checklist\n- [x] Capture BEFORE guard excerpts for owned residual rows\
-      \ and weighted contributors.\n- [ ] Decompose config/runtime/run_store surfaces\
+      \ and weighted contributors.\n- [x] Decompose config/runtime/run_store surfaces\
       \ behind stable public modules.\n- [ ] Preserve config precedence/defaults,\
       \ runtime lifecycle, reconcile behavior, and JSONL persistence formats.\n- [\
       \ ] Run targeted tests for config projection/recovery, runtime lifecycle, run\

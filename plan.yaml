@@ -96488,7 +96488,7 @@ phases:
     claimed_at: '2026-05-17T19:51:03.251175+00:00'
   - id: invar_guard_remediation.fix-contracts-file-size-decomposition
     name: Fix contracts.py file-size decomposition
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION / Focused residual slice for `src/vectl/orchestration/contracts.py`
       file-size closure.
 
@@ -96637,6 +96637,58 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T19:50:51.698542+00:00'
+    done_at: '2026-05-17T20:09:49.948696+00:00'
+    evidence: "## refs Read Confirmation\n- INVAR.md — read; Core/Shell and guard\
+      \ constraints confirmed.\n- AGENTS.md — read; managed plan state/no direct plan\
+      \ edits confirmed.\n- src/vectl/orchestration/contracts.py — read and decomposed.\n\
+      - tools/vectl/README.md — NOT READ: absent in worktree.\n- CONSTITUTION.md —\
+      \ NOT READ: absent in worktree.\n- known consumers/tests — import consumers\
+      \ and tests/orchestration/unit/test_contracts.py, test_imports.py, test_drive_contracts.py,\
+      \ test_prompt_artifact_contract.py read/used.\n\n## Slice Evidence\n\n### Change\n\
+      Decomposed `src/vectl/orchestration/contracts.py` from 1246 lines into cohesive\
+      \ contract-domain modules while preserving `vectl.orchestration.contracts` public\
+      \ imports.\n\nFiles changed:\n- docs/invar_guard_remediation/escape_budget_authority_decision.md\n\
+      - src/vectl/orchestration/contracts.py\n- src/vectl/orchestration/contract_literals.py\n\
+      - src/vectl/orchestration/contract_dispatch.py\n- src/vectl/orchestration/contract_snapshots.py\n\
+      - src/vectl/orchestration/contract_drive.py\n- src/vectl/orchestration/contract_execution.py\n\
+      - src/vectl/orchestration/contract_resolution.py\n- src/vectl/orchestration/contract_handoff.py\n\
+      \nWorker commit: abb9691ac67cd5ae3c9009d9281ffef4d8671a98.\nMainline squash\
+      \ commit: fce9409.\n\n### BEFORE full-guard excerpt\n```text\nuvx invar-tools\
+      \ guard --all\n{\n  \"file\": \"src/vectl/orchestration/contracts.py\",\n  \"\
+      line\": null,\n  \"rule\": \"file_size\",\n  \"severity\": \"error\",\n  \"\
+      message\": \"File has 1247 lines (max: 600 for default)\"\n}\nsummary: files_checked=81\
+      \ errors=22 warnings=12 infos=4\n```\n\n### AFTER/mainline full-guard excerpt\n\
+      ```text\nUV_PROJECT_ENVIRONMENT=.venv uvx invar-tools guard --all\nNo src/vectl/orchestration/contracts.py\
+      \ file_size finding remains.\nRelevant remaining unrelated excerpt includes\
+      \ inspection_queries.py file_size/shell_result and escape-hatch budget limits.\n\
+      summary after mainline merge: files_checked=90 errors=21 warnings=12 infos=6\n\
+      ```\n\n### Targeted tests / import proof\nWorker evidence:\n```text\n.venv/bin/python\
+      \ -m pytest tests/orchestration/unit/test_contracts.py tests/orchestration/unit/test_imports.py\
+      \ tests/orchestration/unit/test_drive_contracts.py tests/orchestration/unit/test_prompt_artifact_contract.py\n\
+      Result: 189 passed in 0.22s\n```\nMainline verification after squash merge:\n\
+      ```text\nUV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/orchestration/unit/test_contracts.py\
+      \ tests/orchestration/unit/test_imports.py tests/orchestration/unit/test_drive_contracts.py\
+      \ tests/orchestration/unit/test_prompt_artifact_contract.py\ncollected 189 items\n\
+      ============================= 189 passed in 0.27s ==============================\n\
+      ```\nImport proof from worker:\n```text\nPublic symbols resolved from compatibility\
+      \ module; missing []\nExamples: ControlDecision:vectl.orchestration.contract_drive,\
+      \ ExecutionRequest:vectl.orchestration.contract_execution, ResolutionCase:vectl.orchestration.contract_resolution,\
+      \ RunnerHandoffEnv:vectl.orchestration.contract_handoff.\nAST duplicate definition\
+      \ scan across contract*.py excluding contracts.py: duplicate_definitions {};\
+      \ definition_count 30.\npy_compile contracts.py and contract_*.py: passed.\n\
+      ```\n\n### Residual disposition register\n- requirement_ref: src/vectl/orchestration/contracts.py\
+      \ file_size.\n  behavior_claim: public contract symbols and import paths remain\
+      \ compatible while definitions move to cohesive modules.\n  runtime_proof_expected:\
+      \ import/consumer tests and guard closure.\n  evidence_ref: worker and mainline\
+      \ targeted tests; import proof; after guard no contracts.py file_size finding.\n\
+      \  status: PROVEN_CLOSED.\n  closure_path: domain decomposition with compatibility\
+      \ re-export module.\n  gate_decision_basis: contracts.py file-size blocker closed;\
+      \ remaining guard blockers are outside this slice.\n\n### Suppression/budget-change\
+      \ statement\nNo broad suppression, budget lowering, or duplicate contract definitions\
+      \ were used.\n\n## checklist_receipt\nAll description and verification checklist\
+      \ items were checked by orchestrator based on worker evidence plus mainline\
+      \ verification.\n\n## Gaps/Notes\nFull guard remains red for unrelated residual\
+      \ families outside this slice; contracts.py file_size is closed."
   - id: invar_guard_remediation.fix-config-projections-recovery-budget-closure
     name: Fix config, projections, and recovery fallback budget closure
     status: claimed

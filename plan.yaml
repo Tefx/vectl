@@ -96744,7 +96744,7 @@ phases:
       \ families outside this slice; contracts.py file_size is closed."
   - id: invar_guard_remediation.fix-config-projections-recovery-budget-closure
     name: Fix config, projections, and recovery fallback budget closure
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION / Focused residual slice for config/projections/recovery_fallback
       budget closure.
 
@@ -96912,6 +96912,81 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T20:18:37.281039+00:00'
+    done_at: '2026-05-17T20:35:45.437894+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Core requires @pre/@post + doctest; Shell handles I/O; escape hatches
+      rare/reasoned.
+
+      - AGENTS.md — plan.yaml is vectl-managed; evidence mandatory; Invar guard required.
+
+      - tools/vectl/README.md — NOT READ: file not present in isolated worktree.
+
+      - CONSTITUTION.md — NOT READ: file not present in isolated worktree.
+
+
+      ## Implementation / Verification
+
+      - Worktree commit: 2a7f67fc3a01cc72cefb3b6aa7e63a162f55b03c.
+
+      - Mainline squash commit: 1c0d5ed ([vectl] step-invar_guard_remediation.fix-config-projections-recovery-budget-closure
+      completed).
+
+      - Files changed: src/vectl/orchestration/recovery_fallback.py; tests/orchestration/unit/test_config_projection_recovery_residual_slice.py;
+      docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md.
+
+      - BEFORE uvx invar-tools guard --all excerpt from worker: config.py function_size
+      4/2, shell_result 26/2; projections.py shell_result 18/2; recovery_fallback.py
+      function_size 2/2, shell_result 7/2; project function_size 31/5, shell_result
+      72/5; weighted 376/15.
+
+      - AFTER uvx invar-tools guard --all excerpt from worker: config.py function_size
+      4/2, shell_result 26/2; projections.py shell_result 18/2; recovery_fallback.py
+      shell_result 7/2; project function_size 30/5, shell_result 72/5; weighted 373/15.
+      Recovery fallback function_size owned-file budget error closed; remaining owned
+      residuals registered; no project-level budget regression.
+
+      - Worker targeted tests: `.venv/bin/python -m pytest tests/orchestration/unit/test_config_projection_recovery_residual_slice.py
+      tests/orchestration/unit/test_role_profile_overrides.py tests/orchestration/unit/test_projections_impl.py
+      tests/orchestration/integration/test_recovery_fallback.py` → 89 passed in 0.81s.
+
+      - Mainline final-state verification after squash merge: `uv run python -m pytest
+      tests/orchestration/unit/test_config_projection_recovery_residual_slice.py tests/orchestration/unit/test_role_profile_overrides.py
+      tests/orchestration/unit/test_projections_impl.py tests/orchestration/integration/test_recovery_fallback.py`
+      → 89 passed in 0.36s.
+
+
+      ## Failure-path proof
+
+      - Config relative path/env precedence/overwrite semantics covered by targeted
+      test.
+
+      - Projection latest-state precedence and stale partial-write diagnostic covered
+      by targeted test.
+
+      - Recovery fallback missing session, malformed readback, and native absolute
+      workspace truth-label behavior covered by targeted tests.
+
+
+      ## Residual disposition
+
+      Residual register updated in docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md
+      with requirement_ref, behavior_claim, runtime_proof_expected, evidence_ref,
+      status, closure_path, and gate_decision_basis for config.py, projections.py,
+      and recovery_fallback.py.
+
+
+      ## Suppression/budget statement
+
+      No broad suppression, budget lowering, or shell/Core boundary drift used; one
+      existing function_size hatch removed from recover_with_fallback; remaining direct-return
+      residuals dispositioned with runtime proof.
+
+
+      ## checklist_receipt
+
+      All failure-mode, completion, and verification checklist items were satisfied
+      and toggled/updated by orchestrator before completion.'
   - id: invar_guard_remediation.fix-orch-app-driver-budget-closure
     name: Fix orch_app and driver budget closure
     status: claimed

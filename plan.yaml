@@ -92254,6 +92254,112 @@ phases:
     semantics, and structured error contract before tests or implementation.
   depends_on:
   - invar_guard_remediation
+  steps:
+  - id: det_check_contract_lock
+    name: Lock deterministic checklist contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n  - behavioral contract\
+      \ doc\n\nCreate the acceptance-only contract for deterministic checklist handling.\
+      \ This step may add docs, public signatures, type definitions, structured error\
+      \ definitions, and stubs only; it MUST NOT ship runnable mutation logic.\n\n\
+      Authoritative contract pins:\n- canonical checklist service/parser ownership:\
+      \ a pure core checklist inventory/mutation service is the single owner for CLI\
+      \ and MCP; CLI/MCP/orchestration surfaces MUST delegate to it and MUST NOT re-derive\
+      \ checklist facts.\n- supported first-version fields: `description` and `verification`\
+      \ only.\n- `evidence_template` is explicitly deferred and MUST be returned as\
+      \ unsupported/deferred rather than silently parsed.\n- selectors: snapshot-scoped\
+      \ `item_id` and `field+index` selectors are supported for deterministic operations.\n\
+      - `checklist_inventory_revision` is required for deterministic mutation.\n-\
+      \ revision scope: complete raw Markdown of both supported fields after line-ending\
+      \ canonicalization; unrelated step metadata is excluded.\n- selector-mode table:\
+      \ legacy keyword toggle, deterministic single set-state, deterministic batch,\
+      \ invalid mode.\n- mutation invariant: marker-only mutation; item text, indentation,\
+      \ ordering, line endings after canonicalization, and surrounding Markdown are\
+      \ preserved except `[ ]` <-> `[x]` marker changes.\n- structured errors and\
+      \ retry guidance: include stale revision, item not found, invalid selector,\
+      \ unsupported field, ambiguous legacy keyword, no legacy match, invalid mode\
+      \ combination, and batch diagnostics.\n- orchestration contract: orchestrator\
+      \ owns checklist mutations and injects item-id/revision-based worker receipts;\
+      \ workers return receipts keyed by item_id/revision and MUST NOT perform natural-language\
+      \ fuzzy mapping.\n\nPlanned contract artifacts (upstream for later implementation):\n\
+      - `docs/RFC-deterministic-checklists.md` — selector modes, revision semantics,\
+      \ errors, retry guidance, CLI/MCP/orchestrator receipt contract.\n- `src/vectl/core_checklist.py`\
+      \ — dataclass/type/signature stubs for inventory, selectors, mutation requests/results,\
+      \ batch diagnostics, and structured errors.\n- `src/vectl/core_plan_mutations.py`\
+      \ — `update_checklist` compatibility contract notes or adapter stub only, preserving\
+      \ legacy behavior.\n\nAcceptance checklist:\n- [ ] Contract identifies pure\
+      \ core checklist service/parser as the sole owner for CLI and MCP.\n- [ ] Contract\
+      \ limits first-version inventory to `description` and `verification`; `evidence_template`\
+      \ is documented as deferred.\n- [ ] Contract defines snapshot-scoped `item_id`,\
+      \ `field+index`, and `checklist_inventory_revision` semantics.\n- [ ] Contract\
+      \ defines revision scope as canonicalized raw Markdown of both supported fields\
+      \ only.\n- [ ] Contract includes selector-mode table for legacy keyword toggle,\
+      \ deterministic single set-state, deterministic batch, and invalid combinations.\n\
+      - [ ] Contract requires marker-only mutations and explicit all-or-nothing batch\
+      \ semantics.\n- [ ] Contract defines structured errors with retry guidance for\
+      \ stale revision, invalid selector/mode, unsupported field, and ambiguous/no\
+      \ legacy match.\n- [ ] Contract defines orchestrator-owned mutation and worker\
+      \ receipts keyed by item_id/revision with no natural-language fuzzy mapping.\n\
+      - [ ] Contract artifacts contain no completed business logic beyond stubs, signatures,\
+      \ docstrings, and type definitions."
+    verification: '- [ ] Confirm `docs/RFC-deterministic-checklists.md` or equivalent
+      contract artifact pins every required selector/revision/error/orchestrator rule
+      from the approved architecture brief.
+
+      - [ ] Confirm only contract/stub/type/doc artifacts changed; no runnable checklist
+      mutation logic is completed.
+
+      - [ ] Confirm core stubs/docstrings follow INVAR core rules where applicable,
+      including planned `@pre`/`@post` and doctest placeholders for pure core functions.
+
+      - [ ] Confirm downstream artifact list is explicit for implementation steps.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_plan_mutations.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/dispatch_policy.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/prompt_materialization.py — key passage or "NOT READ:
+      <reason>"
+
+
+      ## Contract Evidence
+
+      - Contract artifact path(s):
+
+      - Stub/type artifact path(s):
+
+      - Selector-mode table included: yes/no
+
+      - Revision scope definition included: yes/no
+
+      - Structured error table included: yes/no
+
+      - Orchestrator receipt contract included: yes/no
+
+      - Product logic added: no (required)
+
+
+      ## Checklist
+
+      - [ ] All approved architecture brief requirements pinned.
+
+      - [ ] Contract-only purity preserved.
+
+      - [ ] Downstream implementation artifacts listed for `upstream_artifacts`.'
+    agent: python-executor
 - id: det_check_tests
   name: 'Deterministic Checklist Handling: Expected-Red Test Definitions'
   status: locked

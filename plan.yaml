@@ -96164,7 +96164,7 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] Current-mainline `uvx invar-tools guard --all` BEFORE excerpt is pasted
+      - [x] Current-mainline `uvx invar-tools guard --all` BEFORE excerpt is pasted
       and includes the residual budget families being sliced.
 
       - [ ] Evidence explains why the prior broad fix failed and why another all-in-one

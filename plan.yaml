@@ -90623,7 +90623,7 @@ phases:
       invar/static debt remains explicitly outside this non-invar gate lane.'
 - id: invar_guard_remediation
   name: Invar Guard Remediation
-  status: pending
+  status: in_progress
   gate: Final gate requires authoritative `uvx invar-tools guard --all` green, or
     a structured residual disposition proving any remaining finding is non-blocking
     under invar policy.
@@ -92247,3 +92247,10 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+- id: det_check_contracts
+  name: 'Deterministic Checklist Handling: Contract Lock'
+  status: locked
+  gate: Contract phase gates deterministic checklist ownership, selectors, revision
+    semantics, and structured error contract before tests or implementation.
+  depends_on:
+  - invar_guard_remediation

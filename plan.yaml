@@ -95391,7 +95391,7 @@ phases:
       \ prompt_materialization function is closed by code-level Core/Shell boundary\
       \ repair or intentionally migrated Result-returning API with compatibility proof.\n\
       - [x] `why_previous_fix_failed`, `why_comment_deletion_is_not_closure`, and\
-      \ `reversal_risk` are present in evidence.\n- [ ] Exact full-guard prompt_materialization\
+      \ `reversal_risk` are present in evidence.\n- [x] Exact full-guard prompt_materialization\
       \ excerpts before and after are pasted.\n- [ ] Targeted prompt/inspection tests\
       \ and prompt/argv/output-contract snapshots are provided.\n- [ ] Removed escape-hatch\
       \ justifications are restored/repaired only for true Shell boundaries and not\

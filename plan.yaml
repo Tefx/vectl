@@ -97516,7 +97516,7 @@ phases:
       - [x] Confirm mainline contains salvage commit `1618486` and record branch commit\
       \ `49aa644b897c3ff08ba39d74a5da036e1fe6bfe2` as provenance only.\n- [x] Capture\
       \ current BEFORE `uvx invar-tools guard --all` excerpts showing `file_size 9/5`,\
-      \ weighted `40/15`, or explicitly explain any current-mainline delta.\n- [ ]\
+      \ weighted `40/15`, or explicitly explain any current-mainline delta.\n- [x]\
       \ Produce the classification register for all nine listed residual files or\
       \ the fresh current equivalent.\n- [ ] Assign every `file_size`, `dead_param`,\
       \ `entry_point_too_thick`, and `shell_complexity` contributor to one of the\

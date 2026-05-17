@@ -98281,27 +98281,27 @@ phases:
       \ for owned residual rows and weighted contributors.\n- [x] Confirm no budget\
       \ lowering, suppression, ignored files, deleted findings, compatibility break,\
       \ or runtime narrowing."
-    verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
+    verification: '- [x] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
       owned residual rows, `file_size`, weighted budget, and relevant `dead_param`/`entry_point_too_thick`/`shell_complexity`
       contributors.
 
-      - [ ] Original `vectl.orchestration.config`, `vectl.orchestration.runtime`,
+      - [x] Original `vectl.orchestration.config`, `vectl.orchestration.runtime`,
       and `vectl.orchestration.run_store` imports are smoke-proven.
 
-      - [ ] Config loader smoke uses a spec-exact/minimal fixture and proves precedence/default
+      - [x] Config loader smoke uses a spec-exact/minimal fixture and proves precedence/default
       behavior for touched paths.
 
-      - [ ] Runtime lifecycle/reconcile smoke proof is pasted for touched paths.
+      - [x] Runtime lifecycle/reconcile smoke proof is pasted for touched paths.
 
-      - [ ] Run-store JSONL read/write/resume compatibility smoke proof is pasted.
+      - [x] Run-store JSONL read/write/resume compatibility smoke proof is pasted.
 
-      - [ ] Targeted tests for config, runtime lifecycle, and run-store surfaces pass
+      - [x] Targeted tests for config, runtime lifecycle, and run-store surfaces pass
       with exact output pasted.
 
-      - [ ] Main path and highest-risk failure path evidence are both present for
+      - [x] Main path and highest-risk failure path evidence are both present for
       persistence/state changes.
 
-      - [ ] No invar budget lowering, suppression, ignored files, deleted findings,
+      - [x] No invar budget lowering, suppression, ignored files, deleted findings,
       import-breaking extraction, compatibility break, or runtime narrowing occurred.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

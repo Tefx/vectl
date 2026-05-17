@@ -93685,6 +93685,114 @@ phases:
       - Owned product file only: src/vectl/merge_driver.py.
 
       - Verdict: SUCCESS.'
+  - id: invar_guard_remediation.escape-budget-authority-decision
+    name: Escape-hatch budget authority decision
+    status: pending
+    description: 'AUTHORITY ADJUDICATION / PROOF CLOSURE. Decide the shared remediation
+      strategy for the escape-hatch budget and shell_result budget blocker family
+      after salvaged partial invar remediation.
+
+
+      Context to consume:
+
+      - Salvage commits: `4be6a16`, `c35a5d7`, `20cd0bf`, `97cc965`; no salvage for
+      inspection/prompt.
+
+      - Residual owned files: `src/vectl/orch_app.py`, `src/vectl/orchestration/driver.py`,
+      `src/vectl/orchestration/config.py`, `src/vectl/orchestration/projections.py`,
+      `src/vectl/orchestration/events.py`, `src/vectl/orchestration/control_channel.py`,
+      `src/vectl/orchestration/inspection_queries.py`, `src/vectl/orchestration/prompt_materialization.py`,
+      `src/vectl/orchestration/core_adapter.py`, `src/vectl/orchestration/recovery_fallback.py`.
+
+      - Failure family: escape-hatch function_size / shell_result / weighted budget
+      blockers after local test suites passed.
+
+
+      Required decision artifact:
+
+      - Per file, classify each residual as one of: `structural_core_extraction`,
+      `narrow_adapter_allow`, `policy_residual_disposition`, or `already_closed_on_main`.
+
+      - For `structural_core_extraction`, name exact pure functions/presenters that
+      must move to or be introduced under `src/vectl/core/**`, including required
+      @pre/@post/doctest obligations before implementation.
+
+      - For `narrow_adapter_allow`, prove why the function is a true Shell adapter
+      boundary and why the allow is more correct than extraction.
+
+      - For `policy_residual_disposition`, provide non-intersection evidence against
+      the final gate, or mark it BLOCKING with an implementation owner.
+
+      - Preserve public/model-visible contracts for config/projection, path/recovery,
+      event/control, prompt/materialization, and recovery fallback outputs.
+
+
+      ## Completion Criteria
+
+      - [ ] Current mainline residual inventory is mapped for every listed file.
+
+      - [ ] Each residual has exactly one disposition and an explicit downstream owner.
+
+      - [ ] No residual is dismissed as pre-existing or out-of-scope without non-intersection
+      proof.
+
+      - [ ] Any planned `**/core/**` work includes @pre, @post, and doctest-before-implementation
+      requirements.
+
+      - [ ] Public/model-visible contract risks are listed with targeted regression/property
+      evidence required downstream.'
+    verification: '- [ ] Decision table covers every residual file named in the orchestrator
+      failure evidence.
+
+      - [ ] Structural extraction vs residual disposition is resolved without requiring
+      user input.
+
+      - [ ] Every BLOCKING residual has an owner among the follow-up implementation/retest
+      steps.
+
+      - [ ] Evidence states whether the final closure path is full guard green or
+      structured residual disposition accepted under invar policy.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Escape-Budget Authority Decision
+
+
+      | File | Residual guard family | Disposition | Owner step | Contract risk |
+      Required proof |
+
+      |---|---|---|---|---|---|
+
+      | <path> | <function_size/shell_result/etc> | <structural_core_extraction/narrow_adapter_allow/policy_residual_disposition/already_closed_on_main>
+      | <step id> | <none/config/projection/recovery/event/control/prompt> | <test/property/doctest/disposition>
+      |
+
+
+      ## Core Extraction Contract Obligations
+
+      - <core target> — @pre/@post/doctest obligation before implementation
+
+
+      ## Gate Intersection
+
+      - Remaining blocker-class findings that intersect final guard: <list or none>
+
+      - Non-intersection proof for any residual disposition: <proof>
+
+      - Final closure path: FULL_GUARD_GREEN | STRUCTURED_RESIDUAL_DISPOSITION
+
+      '
+    depends_on:
+    - invar_guard_remediation.collect-failure-inventory
+    agent: software-architect
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

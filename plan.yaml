@@ -92254,3 +92254,10 @@ phases:
     semantics, and structured error contract before tests or implementation.
   depends_on:
   - invar_guard_remediation
+- id: det_check_tests
+  name: 'Deterministic Checklist Handling: Expected-Red Test Definitions'
+  status: locked
+  gate: Expected-red tests expose deterministic checklist gaps without product implementation
+    changes.
+  depends_on:
+  - det_check_contracts

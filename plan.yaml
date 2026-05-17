@@ -96174,7 +96174,7 @@ phases:
       config/projections/recovery_fallback, and orch_app/driver/project-level residuals
       to downstream owner steps.
 
-      - [ ] Rollback guard states whether any discarded-branch artifacts are present
+      - [x] Rollback guard states whether any discarded-branch artifacts are present
       on mainline and what downstream steps must avoid.
 
       - [ ] Residual disposition schema is present with requirement_ref, behavior_claim,

@@ -407,10 +407,9 @@ def _write_merged_plan(
     return Success(True)
 
 
-# @invar:allow shell_result: Public merge-driver API must return Git-compatible integer exit status.
 # @shell_complexity: Entry-point branches preserve conflict-marker writes, input errors, write errors, and success status.
 # @shell_orchestration: Public entry point coordinates I/O helpers for Git's integer merge-driver contract.
-def merge_plans(base_path: str, ours_path: str, theirs_path: str) -> int:
+def merge_plans(base_path: str, ours_path: str, theirs_path: str) -> Result[int, str]:
     """Merge plan YAML files for git merge-driver integration.
 
     Source: docs/ADR-unified-state.md + plan step

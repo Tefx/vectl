@@ -578,9 +578,8 @@ class JsonlEventSink:
                     flock(lock_handle.fileno(), LOCK_UN)
 
 
-# @invar:allow shell_result: Loader raises EventCorruptionError per established JSONL integrity contract.
 # @shell_complexity: Loader distinguishes missing file, truncation, JSON, object-shape, and chain corruption.
-def load_event_jsonl(path: str | Path) -> tuple[OrchestrationEventEnvelope, ...]:
+def load_event_jsonl(path: str | Path) -> "Result[tuple[OrchestrationEventEnvelope, ...], str]":
 
     records: list[OrchestrationEventEnvelope] = []
     file_path = Path(path)

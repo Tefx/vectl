@@ -127,11 +127,10 @@ def detect_agents_target(directory: Path, target: AgentsTarget = AgentsTarget.au
     return Success(agents_md)
 
 
-# @invar:allow shell_result: Public upsert API returns status text and target filename for CLI/MCP compatibility.
 # @shell_complexity: Branches preserve create, replace, legacy-append, and fresh-append user messages.
 def upsert_agents_md(
     directory: Path, target: AgentsTarget = AgentsTarget.auto
-) -> tuple[str, str]:
+) -> Result[tuple[str, str], OSError]:
     """Create or upsert vectl section in AGENTS.md or CLAUDE.md."""
 
     target_result = detect_agents_target(directory, target)

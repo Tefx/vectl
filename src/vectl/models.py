@@ -238,9 +238,8 @@ class Plan(BaseModel):
         return None
 
 
-# @invar:allow shell_result: Formatting helper intentionally returns diagnostic text for existing error/report call sites.
 # @shell_orchestration: Selector formatting remains beside Plan/Phase/Step models for diagnostic import compatibility.
-def format_step_selector(phase_id: str, step_id: str) -> str:
+def format_step_selector(phase_id: str, step_id: str) -> "Result[str, str]":
     """Return canonical selector text for step-oriented diagnostics.
 
     If a stored step ID is already phase-qualified (contains ``.``), emit it

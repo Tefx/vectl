@@ -327,7 +327,6 @@ def add_phase(
     return plan, phase_id
 
 
-# @invar:allow function_size: Bulk add remains one two-pass atomic mutation so generated IDs, intra-batch dependency resolution, and rollback stay auditable together.
 # @shell_complexity: Branches preserve typed import parsing, status/evidence guards, duplicate protection, intra-batch refs, and cycle rollback semantics.
 def add_steps_bulk(
     plan: Plan,

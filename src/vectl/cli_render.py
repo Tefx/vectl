@@ -35,9 +35,8 @@ def _die(msg: str, code: int = 1, *, cause: Exception | None = None) -> Result[N
     raise typer.Exit(code) from cause
 
 
-# @invar:allow shell_result: CLI compatibility helper; callers expect tuple or Typer exit.
 # @shell_orchestration: Delegates I/O through plan-path and YAML loader helpers.
-def _load(plan_path: Path | None) -> tuple[Plan, str, Path]:
+def _load(plan_path: Path | None) -> Result[tuple[Plan, str, Path], str]:
     """Load plan.yaml and return plan with CAS hash."""
 
     target = resolve_plan_path(plan_path)

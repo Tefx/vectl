@@ -596,7 +596,6 @@ class CutoverValidator:
             if record.source == "orchestration_native"
         )
 
-    # @invar:allow function_size: Cutover validation keeps four retirement criteria evaluated in one ordered audit report.
     def validate_cutover_readiness(self) -> CutoverValidationResult:
         """
         Validate whether orchestration-plane cutover criteria are met.

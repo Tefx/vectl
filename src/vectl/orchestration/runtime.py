@@ -1633,7 +1633,6 @@ class Runtime:
         return mapping.get(status, "fail")
 
 
-# @invar:allow function_size: Reconcile keeps protected-path restore, collision handling, workspace commit, squash merge, and conflict reporting in one ordered git transaction.
 # @shell_complexity: Branches encode distinct reconcile outcomes and artifact refs without changing child-run status meanings.
 def _perform_reconcile(
     *,

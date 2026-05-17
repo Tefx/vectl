@@ -1283,7 +1283,6 @@ def migrate_cmd(
             out.print(f"  - {warning}")
 
 
-# @invar:allow function_size: duplicate-ID migration CLI must preserve dry-run/apply JSON and human output contract in one public command.
 # @shell_complexity: duplicate-ID migration CLI must preserve dry-run/apply JSON and human output contract in one public command.
 def migrate_step_id_cmd(
     dry_run: bool = typer.Option(

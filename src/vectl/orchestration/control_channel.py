@@ -554,8 +554,7 @@ class _ReceiptDeserializer:
 _deserialize_receipt = _ReceiptDeserializer()
 
 
-# @invar:allow shell_result: JSON reader raises MalformedActionFileError so callers can reject bad pending files.
-def _read_json_object(path: Path) -> dict[str, object]:
+def _read_json_object(path: Path) -> "Result[dict[str, object], str]":
     try:
         parsed = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:

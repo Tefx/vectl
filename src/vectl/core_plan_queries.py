@@ -27,7 +27,6 @@ from vectl.semantics import is_step_locked as _is_step_locked_shared
 
 from vectl.core_duplicate_step_id import analyze_duplicate_step_ids
 
-# @invar:allow function_size: Validation keeps phase DAG, step DAG, duplicate IDs, refs, and evidence guards in one ordered audit report.
 # @shell_complexity: Branches preserve ordered validation diagnostics for phase IDs, DAGs, statuses, duplicate IDs, refs, and evidence guard.
 def validate_plan(
     plan: Plan,

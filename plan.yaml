@@ -97061,7 +97061,7 @@ phases:
       - [x] AFTER `uvx invar-tools guard --all` excerpt shows closure or explicit
       residual ownership for these families without project-level budget regression.
 
-      - [ ] Targeted app/driver regression tests or smoke checks pass and output is
+      - [x] Targeted app/driver regression tests or smoke checks pass and output is
       pasted.
 
       - [ ] Runtime/control/lifecycle behavior is preserved with explicit evidence.

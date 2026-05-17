@@ -93114,7 +93114,7 @@ phases:
     agent: python-senior-tacit
   - id: fix-small-policy-archive-domain
     name: Fix small policy/archive invar domain
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Remediate small policy/archive invar findings not
       owned by earlier domain steps.
 
@@ -93190,6 +93190,92 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior
     claimed_at: '2026-05-17T15:31:51.589557+00:00'
+    done_at: '2026-05-17T16:15:08.524315+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: tools/vectl/README.md absent.
+
+      - INVAR.md — read Core/Shell rules, guard requirement, escape hatch syntax.
+
+      - src/vectl/decide.py — read state resolution, reuse/session runner, status
+      computation, completion processing, dispatch actions, next_state policy.
+
+      - src/vectl/orchestration/dispatch_policy.py — read role/prompt registries,
+      DispatchCoordinator, review normalization, parse failure normalization.
+
+      - docs/archive/consumer_boundary_conformance_verify.py — read conformance verification
+      functions and archive shell flow.
+
+
+      ## Scoped Red Baseline
+
+      - decide.py: file_size_warning and function_size warning on decide.
+
+      - dispatch_policy.py: file_size error.
+
+      - archive verifier: shell_too_complex info on main.
+
+
+      ## Remediation Decisions
+
+      - Refactored decide into helper functions while preserving behavior.
+
+      - Added dispatch_policy file_size rationale.
+
+      - Added archive-only shell_complexity rationale.
+
+
+      ## Verification
+
+      Worker evidence:
+
+      - `.venv/bin/invar guard --changed --verbose` — status passed for 3 files.
+
+      - `.venv/bin/pytest tests/test_decide.py tests/test_decide_state_isolation.py
+      tests/orchestration/unit/test_dispatch_policy.py tests/orchestration/unit/test_dispatch_policy_red.py`
+      — 107 passed.
+
+      - py_compile and git diff --check passed.
+
+
+      Mainline verification after squash merge:
+
+      - `.venv/bin/invar guard src/vectl/decide.py --agent` — passed, 0 findings.
+
+      - `.venv/bin/invar guard src/vectl/orchestration/dispatch_policy.py --agent`
+      — passed, 0 findings.
+
+      - `.venv/bin/invar guard docs/archive/consumer_boundary_conformance_verify.py
+      --agent` — passed with one governed shell_complexity info and recorded escape
+      hatch.
+
+      - `.venv/bin/pytest tests/test_decide.py tests/test_decide_state_isolation.py
+      tests/orchestration/unit/test_dispatch_policy.py tests/orchestration/unit/test_dispatch_policy_red.py
+      -q` — 107 passed.
+
+      - py_compile for changed files passed; git diff --check passed.
+
+
+      ## Commit hash(es)
+
+      - Worker branch: 6d06a8b15d144571f4be1702e432d1546ca3e1dc
+
+      - Mainline squash: bd4a7ed
+
+
+      ## Files changed
+
+      - src/vectl/decide.py
+
+      - src/vectl/orchestration/dispatch_policy.py
+
+      - docs/archive/consumer_boundary_conformance_verify.py
+
+
+      ## Residuals
+
+      Archive shell_too_complex remains as governed info with explicit shell_complexity
+      escape; guard status passed.'
   - id: cli-surface-preservation-uiux-audit
     name: CLI surface preservation UI/UX audit
     status: claimed

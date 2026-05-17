@@ -95304,7 +95304,7 @@ phases:
       COMPLETE.'
   - id: invar_guard_remediation.fix-inspection-prompt-budget-residuals
     name: Fix prompt_materialization shell_result root cause
-    status: claimed
+    status: pending
     description: "IMPLEMENTATION / Loop 3+ root-cause closure for the prompt_materialization\
       \ shell_result blocker family.\n\nwork_type: technical_debt_remediation\nstep_type:\
       \ implementation\nsymbolic_testing: true\nagent_source: default\n\nAuthoritative\
@@ -95556,8 +95556,6 @@ phases:
     depends_on:
     - invar_guard_remediation.investigate-prompt-materialization-shell-result-root-cause
     agent: python-senior
-    claimed_by: python-senior
-    claimed_at: '2026-05-17T18:41:53.108508+00:00'
   - id: invar_guard_remediation.escape-budget-full-guard-retest
     name: Retest escape-budget closure with full guard
     status: pending

@@ -96635,7 +96635,7 @@ phases:
     agent: python-senior
   - id: invar_guard_remediation.fix-config-projections-recovery-budget-closure
     name: Fix config, projections, and recovery fallback budget closure
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION / Focused residual slice for config/projections/recovery_fallback
       budget closure.
 
@@ -96801,6 +96801,8 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-residual-budget-blockers
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T19:50:42.116896+00:00'
   - id: invar_guard_remediation.fix-orch-app-driver-budget-closure
     name: Fix orch_app and driver budget closure
     status: pending

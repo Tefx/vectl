@@ -94992,7 +94992,7 @@ phases:
 
       ## Failure-Mode Checklist
 
-      - [ ] Event/control public schemas and timeout behavior are preserved.
+      - [x] Event/control public schemas and timeout behavior are preserved.
 
       - [ ] Pause/resume/stop and active-control semantics remain compatible.
 

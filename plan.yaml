@@ -96549,7 +96549,7 @@ phases:
       - [x] No broad suppression, budget lowering, or duplicate contract definitions
       are used.
 
-      - [ ] Residual disposition register is updated for contracts file-size findings.
+      - [x] Residual disposition register is updated for contracts file-size findings.
 
 
       ## Completion Criteria (stub exclusion)

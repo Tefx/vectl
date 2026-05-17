@@ -95018,16 +95018,16 @@ phases:
 
       - [x] Scoped guard evidence for the owned files improves or closes the listed
       residuals.'
-    verification: '- [ ] Main path: targeted event/control/app/driver tests pass with
+    verification: '- [x] Main path: targeted event/control/app/driver tests pass with
       actual command output pasted.
 
-      - [ ] Failure path: control timeout/active-control or driver recovery regression
+      - [x] Failure path: control timeout/active-control or driver recovery regression
       covers the highest-risk changed behavior.
 
-      - [ ] Invar scoped evidence shows the target residual budget findings are closed
+      - [x] Invar scoped evidence shows the target residual budget findings are closed
       or dispositioned exactly as the authority decision allowed.
 
-      - [ ] No new uncontracted Core code, private runtime stub substitution, or broad
+      - [x] No new uncontracted Core code, private runtime stub substitution, or broad
       Shell allow masking is introduced.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

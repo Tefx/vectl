@@ -95387,7 +95387,7 @@ phases:
       \ or argv drift without exact snapshot evidence and cited authority.\n5. Restored\
       \ or new escape hatches without narrow true-Shell justification and guard effect.\n\
       6. Compatibility API migration without docs/tests proving intentional migration\
-      \ and behavior preservation.\n\n## Failure-Mode Checklist\n- [ ] Each listed\
+      \ and behavior preservation.\n\n## Failure-Mode Checklist\n- [x] Each listed\
       \ prompt_materialization function is closed by code-level Core/Shell boundary\
       \ repair or intentionally migrated Result-returning API with compatibility proof.\n\
       - [ ] `why_previous_fix_failed`, `why_comment_deletion_is_not_closure`, and\

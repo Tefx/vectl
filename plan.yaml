@@ -97518,7 +97518,7 @@ phases:
       \ current BEFORE `uvx invar-tools guard --all` excerpts showing `file_size 9/5`,\
       \ weighted `40/15`, or explicitly explain any current-mainline delta.\n- [x]\
       \ Produce the classification register for all nine listed residual files or\
-      \ the fresh current equivalent.\n- [ ] Assign every `file_size`, `dead_param`,\
+      \ the fresh current equivalent.\n- [x] Assign every `file_size`, `dead_param`,\
       \ `entry_point_too_thick`, and `shell_complexity` contributor to one of the\
       \ focused residual implementation steps.\n- [ ] Confirm no downstream retest/gate\
       \ can proceed until all focused residual implementation steps and the cold retest\

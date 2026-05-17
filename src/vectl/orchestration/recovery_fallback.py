@@ -277,7 +277,6 @@ class RecoveryFallbackResult:
     recover_attempt: RecoveryAttempt | None = None
 
 
-# @invar:allow function_size: Fallback decision preserves native-resume, fresh-relaunch, and explicit-failure branches in one recovery contract.
 # @invar:allow shell_result: Public fallback API returns RecoveryFallbackResult truth labels rather than Result wrapper for compatibility.
 def recover_with_fallback(
     *,

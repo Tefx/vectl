@@ -98130,22 +98130,22 @@ phases:
       - [x] Capture AFTER guard excerpts for owned residual rows and weighted contributors.\n\
       - [x] Confirm no budget lowering, suppression, ignored files, deleted findings,\
       \ stub facades, or import-breaking public surface changes."
-    verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
+    verification: '- [x] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
       owned residual rows, `file_size`, weighted budget, and relevant `dead_param`/`entry_point_too_thick`/`shell_complexity`
       contributors.
 
-      - [ ] Original `vectl.orch_app` and `vectl.core_plan_mutations` imports and
+      - [x] Original `vectl.orch_app` and `vectl.core_plan_mutations` imports and
       representative public symbols are smoke-proven.
 
-      - [ ] Real CLI/app boot and representative top-level help output are pasted.
+      - [x] Real CLI/app boot and representative top-level help output are pasted.
 
-      - [ ] Representative mutation/lifecycle/recovery compatibility smoke proof is
+      - [x] Representative mutation/lifecycle/recovery compatibility smoke proof is
       pasted.
 
-      - [ ] Targeted tests for touched app/mutation/lifecycle/recovery surfaces pass
+      - [x] Targeted tests for touched app/mutation/lifecycle/recovery surfaces pass
       with exact output pasted.
 
-      - [ ] No invar budget lowering, suppression, ignored files, deleted findings,
+      - [x] No invar budget lowering, suppression, ignored files, deleted findings,
       import-breaking extraction, runtime narrowing, or operator-visible behavior
       deletion occurred.'
     evidence_template: '## refs Read Confirmation (MANDATORY)

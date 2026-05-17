@@ -95304,7 +95304,7 @@ phases:
       COMPLETE.'
   - id: invar_guard_remediation.fix-inspection-prompt-budget-residuals
     name: Fix inspection/prompt/core_adapter guard residuals
-    status: claimed
+    status: pending
     description: 'IMPLEMENTATION / residual closure. Complete ONE batched residual
       implementation slice for ALL remaining inspection, prompt-materialization, and
       core-adapter invar guard blockers after salvaged partial progress from `fix-inspection-prompt-budget-residuals`
@@ -95642,8 +95642,6 @@ phases:
     - invar_guard_remediation.escape-budget-core-contracts
     - invar_guard_remediation.fix-events-control-app-driver-budget-residuals
     agent: python-senior
-    claimed_by: python-senior
-    claimed_at: '2026-05-17T18:02:20.369380+00:00'
   - id: invar_guard_remediation.escape-budget-full-guard-retest
     name: Retest escape-budget closure with full guard
     status: pending

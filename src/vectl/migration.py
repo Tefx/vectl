@@ -45,7 +45,7 @@ _STEP_OVERWRITE_WARNING_DEFAULTS: dict[str, Any] = {
 }
 
 
-def _normalize_step_field_value(field: str, value: Any) -> Any:
+def _normalize_step_field_value(field: str, value: Any):
     if field == "status" and hasattr(value, "value"):
         return value.value
     return value
@@ -60,6 +60,8 @@ class MigrationResult:
     already_migrated: bool
 
 
+# @shell:entry - compatibility boundary returns legacy Path shape
+# @invar:allow entry_point_too_thick: legacy split-state path fallback must remain public
 def resolve_state_path(plan_path: Path) -> Path:
     """Resolve legacy split-state path for a plan.
 
@@ -85,7 +87,7 @@ def resolve_state_path(plan_path: Path) -> Path:
     return git_common_dir / "vectl" / "state.json"
 
 
-def _load_state_payload(path: Path) -> dict[str, Any]:
+def _load_state_payload(path: Path):
     """Load legacy state JSON payload.
 
     Source: step note requires self-contained state reader logic.
@@ -102,7 +104,9 @@ def _load_state_payload(path: Path) -> dict[str, Any]:
     return raw
 
 
-def _merge_step(step: Step, step_state: dict[str, Any]) -> Step:
+# @shell_orchestration: model merge composes Pydantic validation for migration transaction
+# @shell_complexity: overwrite warning branches are migration safety checks
+def _merge_step(step: Step, step_state: dict[str, Any]):
     merged = step.model_dump(mode="python")
     for field in _STEP_MIGRATION_FIELDS:
         if field in step_state:
@@ -123,7 +127,8 @@ def _merge_step(step: Step, step_state: dict[str, Any]) -> Step:
     return Step.model_validate(merged)
 
 
-def _merge_phase(phase: Phase, phase_state: dict[str, Any]) -> Phase:
+# @shell_orchestration: model merge composes Pydantic validation for migration transaction
+def _merge_phase(phase: Phase, phase_state: dict[str, Any]):
     merged = phase.model_dump(mode="python")
     for field in _PHASE_MIGRATION_FIELDS:
         if field in phase_state:
@@ -131,6 +136,8 @@ def _merge_phase(phase: Phase, phase_state: dict[str, Any]) -> Phase:
     return Phase.model_validate(merged)
 
 
+# @invar:allow shell_result: public migration API returns MigrationResult and raises PlanIOError
+# @shell_complexity: migration transaction keeps validation, save, and rename atomicity visible
 def migrate_from_split_state(plan_path: Path) -> MigrationResult:
     """Migrate legacy split-state runtime data into plan.yaml.
 

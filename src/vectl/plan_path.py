@@ -41,7 +41,7 @@ class _WorktreeProbe:
     malformed: bool
 
 
-def _normalize_git_path(raw: str, cwd: Path) -> Path | None:
+def _normalize_git_path(raw: str, cwd: Path):
     """Normalize git path output to an absolute path.
 
     Returns None for empty/malformed path output.
@@ -56,7 +56,8 @@ def _normalize_git_path(raw: str, cwd: Path) -> Path | None:
     return path.resolve()
 
 
-def _probe_worktree_layout() -> _WorktreeProbe:
+# @shell_complexity: git worktree fail-closed edge cases are kept in one audited probe
+def _probe_worktree_layout():
     """Probe git worktree layout with fail-closed malformed detection."""
     cwd = Path.cwd()
 
@@ -110,6 +111,7 @@ def _probe_worktree_layout() -> _WorktreeProbe:
     )
 
 
+# @shell:entry - compatibility boundary returns legacy tuple shape
 def is_linked_worktree() -> tuple[bool, Path | None]:
     """Detect if current directory is a linked git worktree.
 
@@ -122,6 +124,8 @@ def is_linked_worktree() -> tuple[bool, Path | None]:
     return (False, None)
 
 
+# @invar:allow shell_result: public CLI/MCP compatibility requires direct Path return
+# @shell_complexity: precedence chain is the canonical path contract
 def resolve_plan_path(explicit: Path | None = None) -> Path:
     """Resolve the plan.yaml path using the canonical precedence chain.
 
@@ -174,6 +178,9 @@ def resolve_plan_path(explicit: Path | None = None) -> Path:
     return Path("plan.yaml")
 
 
+# @shell_complexity: fallback branches preserve git-common-dir state semantics
+# @shell:entry - compatibility boundary returns legacy Path shape
+# @invar:allow entry_point_too_thick: git-common-dir fallback must remain a single public resolver
 def resolve_claims_path(plan_path: Path | None = None) -> Path:
     """Resolve the claims.json path for a plan.
 

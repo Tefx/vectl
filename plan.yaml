@@ -98088,7 +98088,7 @@ phases:
       extraction, or handler-only narrowing occurred.'
   - id: split-orch-app-and-core-plan-compat-surfaces
     name: Split orch app and core plan compatibility facades
-    status: claimed
+    status: done
     description: "Focused residual implementation slice for current post-salvage composition-root\
       \ and core-plan compatibility blockers.\n\nstep_type: implementation\nsymbolic_testing:\
       \ true\nreduction_step: true\nagent_source: default\npost_salvage_context:\n\
@@ -98233,6 +98233,117 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T22:24:10.943650+00:00'
+    done_at: '2026-05-17T23:04:35.677505+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: file/path absent in isolated worktree.
+
+      - INVAR.md — Read; key passage: Shell applies to file/network/env/time/random/subprocess
+      I/O; escape hatches must be rare and justified.
+
+      - AGENTS.md — Read; key passage: `plan.yaml` is vectl-owned and must not be
+      directly edited; evidence is mandatory.
+
+      - docs/invar_guard_remediation/post_salvage_residual_classification_register.md
+      — Read; key passage: this step owns `src/vectl/orch_app.py`, `src/vectl/core_plan_mutations.py`,
+      and directly attributable composition/compat contributors.
+
+
+      ## Commit hash(es)
+
+      - Worker commit: `ab923bf9e76457e3d8144abd58a793c60a01b82d`.
+
+      - Conflict resolver: resolved `src/vectl/cli.py` and `src/vectl/cli_plan.py`
+      after squash merge conflict.
+
+      - Gate remediation: fixed `src/vectl/cli_plan_mutation_commands.py` clear-agent
+      no-op validation after mainline test failure.
+
+      - Main merge commit: `4e808b0d` — `[vectl] step-split-orch-app-and-core-plan-compat-surfaces
+      completed`.
+
+
+      ## Files changed
+
+      - `src/vectl/core_plan_mutations.py`
+
+      - `src/vectl/core_plan_step_add.py`
+
+      - `src/vectl/core_plan_step_edit.py`
+
+      - `src/vectl/core_plan_clipboard.py`
+
+      - `src/vectl/orch_app.py`
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/cli_plan.py`
+
+      - `src/vectl/cli_plan_mutation_commands.py`
+
+
+      ## Verification
+
+      - Worktree targeted tests: `.venv/bin/python -m pytest tests/test_architect.py
+      tests/test_agent_field.py tests/test_validation.py tests/test_lifecycle_imports.py
+      tests/orchestration/unit/test_orch_app.py tests/test_orch_cli_surface.py -q`
+      — `291 passed in 20.92s`; post-prune retest `104 passed in 14.72s`.
+
+      - Conflict resolver verification: `python -m py_compile src/vectl/cli.py src/vectl/cli_plan.py`
+      passed; `uv run python -c "import vectl.cli; import vectl.cli_plan; print(''imports
+      ok'')"` passed; no unresolved conflict paths remained.
+
+      - Mainline first targeted test run found one merge-resolution failure: `tests/test_agent_field.py::TestCliEditStepAgent::test_edit_step_clear_agent`
+      exited 1.
+
+      - Gate remediation root cause: merge resolution made edit-step no-op validation
+      use truthiness for `--agent`; Typer passes `--agent ''''` as an empty string,
+      so clearing the agent was treated as no change.
+
+      - Gate remediation verification: `tests/test_agent_field.py::TestCliEditStepAgent
+      -q` — `2 passed`; adjacent `tests/test_orch_cli_surface.py tests/orchestration/unit/test_orch_app.py
+      -q` — `103 passed`; full target set — `291 passed`.
+
+      - Mainline final targeted tests after remediation: `.venv/bin/python -m pytest
+      tests/test_architect.py tests/test_agent_field.py tests/test_validation.py tests/test_lifecycle_imports.py
+      tests/orchestration/unit/test_orch_app.py tests/test_orch_cli_surface.py -q`
+      — `291 passed in 10.38s`.
+
+      - Mainline final guard: `uvx invar-tools guard --all` — expected residual red;
+      aggregate improved to weighted budget `17/15`, `file_size 2/5`; remaining project
+      error is `Escape hatch weighted budget: 17/15`.
+
+      - Public mutation/import smoke: worker reported `mutation_smoke p2 p1.new-step
+      [''p1.bulk''] AGENTS.md Created AGENTS.md AGENTS.md True`.
+
+      - Orchestration facade smoke: worker reported `orch_import_smoke AppConfig OrchestrationApp
+      OrchestrationResult True`.
+
+      - CLI help smoke: top-level CLI and `orch` help rendered with expected command
+      surfaces.
+
+
+      ## Spec link
+
+      split-orch-app-and-core-plan-compat-surfaces / docs/invar_guard_remediation/post_salvage_residual_classification_register.md
+
+
+      ## checklist_receipt Applied
+
+      All description and verification checklist items were toggled complete from
+      subagent evidence and mainline remediation evidence.
+
+
+      ## Gaps/Notes
+
+      - Full guard remains red on aggregate weighted budget (`17/15`) and is owned
+      by downstream retest/gate disposition.
+
+      - `file_size` is now within project budget (`2/5`).
+
+      - No budget lowering, suppression, ignored files, deleted findings, stub facades,
+      import-breaking public surface changes, runtime narrowing, or operator-visible
+      behavior deletion occurred.'
   - id: split-orchestration-config-runtime-persistence-surfaces
     name: Split orchestration config, runtime, and persistence facades
     status: done

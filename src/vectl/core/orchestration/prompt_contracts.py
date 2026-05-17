@@ -193,6 +193,8 @@ def compute_prompt_bundle_sha256(bundle_data: Mapping[str, object] | PromptBundl
     messages,
     output_contract="freeform_evidence": bool(role_id.strip())
     and bool(agent_id.strip())
+    and "\x00" not in system_prompt
+    and "\x00" not in task_prompt
     and bool(output_contract.strip())
     and isinstance(messages, Sequence)
 )
@@ -374,6 +376,8 @@ def build_runner_handoff_env(
     bundle,
     output_contract="freeform_evidence": bool(role_id.strip())
     and bool(agent_id.strip())
+    and "\x00" not in bundle.system_prompt
+    and "\x00" not in bundle.task_prompt
     and bool(output_contract.strip())
 )
 @post(lambda result: bool(result.strip()) and result.startswith("# Runner Prompt:"))
@@ -435,6 +439,16 @@ def build_default_opencode_launch_argv(
     lambda workspace, agent_id, session_id=None, config=None: bool(str(workspace).strip())
     and bool(agent_id.strip())
     and (session_id is None or bool(session_id.strip()))
+    and (
+        config is None
+        or (
+            bool(config.format_flag.strip())
+            and bool(config.dir_flag_key.strip())
+            and bool(config.agent_flag_key.strip())
+            and bool(config.session_flag_key.strip())
+            and bool(config.file_flag.strip())
+        )
+    )
 )
 @post(lambda result: isinstance(result, tuple) and result[0:2] == ("opencode", "run"))
 def build_opencode_launch_argv(

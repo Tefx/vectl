@@ -14,6 +14,9 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from vectl.core.orchestration.prompt_recovery import (
+    recovery_validation_reason,
+)
 from vectl.core.orchestration.prompt_contracts import (
     build_default_opencode_launch_argv as _build_default_opencode_launch_argv,
     build_opencode_launch_argv,
@@ -24,6 +27,12 @@ from vectl.core.orchestration.prompt_contracts import (
     resolve_prompt_artifact_paths,
 )
 from vectl.orchestration.contracts import PromptArtifactPaths, PromptBundle, RunnerHandoffEnv
+from vectl.shell.orchestration.prompt_artifacts import (
+    Failure,
+    Result,
+    read_process_environment,
+    read_recovery_prompt_artifacts,
+)
 
 
 def materialize_prompt_artifacts(
@@ -70,16 +79,19 @@ def materialize_prompt_artifacts(
     workspace_prompt.write_text(runner_prompt_content)
 
 
-# @invar:allow shell_result: environment merge is true Shell boundary and public API returns dict
 def build_opencode_launch_env(
     *,
     handoff_env: RunnerHandoffEnv,
     parent_env: dict[str, str] | None = None,
-) -> dict[str, str]:
+) -> Result[dict[str, str], OSError]:
     """Build the complete process environment for OpenCode launch."""
-    import os
-
-    base = dict(parent_env or os.environ)
+    if parent_env is None:
+        env_result = read_process_environment()
+        if isinstance(env_result, Failure):
+            raise env_result.error
+        base = dict(env_result.value)
+    else:
+        base = dict(parent_env)
     base.update(handoff_env.as_dict())
     return base
 
@@ -98,14 +110,12 @@ class PromptArtifactValidation:
     workspace_prompt_path: str = ""
 
 
-# @invar:allow shell_result: recovery validation reads prompt artifact files and preserves public validation DTO API
-# @shell_complexity: ordered recovery checks preserve public failure reason precedence
 def validate_prompt_artifacts_for_recovery(
     *,
     artifact_root: Path,
     run_id: str,
     workspace: Path,
-) -> PromptArtifactValidation:
+) -> Result[PromptArtifactValidation, str]:
     """Validate that prompt artifacts exist and are valid for recovery fallback.
 
     Authority: docs/RFC-opencode-orchestration-runner.md section 10.2
@@ -116,52 +126,23 @@ def validate_prompt_artifacts_for_recovery(
         workspace=workspace,
     )
 
-    bundle_path = Path(paths.prompt_bundle_path)
-    if not bundle_path.exists():
+    read_result = read_recovery_prompt_artifacts(paths=paths)
+    if isinstance(read_result, Failure):
         return PromptArtifactValidation(
             valid=False,
-            reason=f"prompt_bundle.json not found at {bundle_path}",
+            reason=str(read_result.error),
         )
 
-    try:
-        bundle_data = json.loads(bundle_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        return PromptArtifactValidation(
-            valid=False,
-            reason=f"prompt_bundle.json is not valid JSON: {exc}",
-        )
-
-    required_bundle_fields = (
-        "role_id",
-        "agent_id",
-        "runner",
-        "system_prompt",
-        "task_prompt",
-        "prompt_bundle_sha256",
+    payload = read_result.value
+    prompt_reason = recovery_validation_reason(
+        payload.bundle_data,
+        payload.prompt_content,
+        payload.paths.runner_prompt_path,
     )
-    for field_name in required_bundle_fields:
-        value = bundle_data.get(field_name)
-        if not isinstance(value, str) or not value.strip():
-            return PromptArtifactValidation(
-                valid=False,
-                reason=(
-                    f"prompt_bundle.json field {field_name!r} is missing or empty; "
-                    f"recovery requires all of {required_bundle_fields}"
-                ),
-            )
-
-    prompt_path = Path(paths.runner_prompt_path)
-    if not prompt_path.exists():
+    if prompt_reason:
         return PromptArtifactValidation(
             valid=False,
-            reason=f"runner_prompt.md not found at {prompt_path}",
-        )
-
-    prompt_content = prompt_path.read_text(encoding="utf-8")
-    if not prompt_content.strip():
-        return PromptArtifactValidation(
-            valid=False,
-            reason=f"runner_prompt.md is empty at {prompt_path}",
+            reason=prompt_reason,
         )
 
     return PromptArtifactValidation(

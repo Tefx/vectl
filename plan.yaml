@@ -96805,7 +96805,7 @@ phases:
       - [x] Explicit clear/null overwrite semantics are not changed without targeted
       tests.
 
-      - [ ] Stale-definition vs new-state precedence is preserved for config/projection
+      - [x] Stale-definition vs new-state precedence is preserved for config/projection
       consumers.
 
       - [ ] Partial-write or recovery-conflict behavior remains covered where touched.

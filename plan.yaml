@@ -91084,7 +91084,7 @@ phases:
     agent: python-senior-tacit
   - id: fix-lifecycle-duplicate-domain
     name: Fix lifecycle and duplicate-ID invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to lifecycle
       and duplicate-step-ID domain logic.
 
@@ -91158,6 +91158,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-17T13:37:50.353927+00:00'
   - id: fix-run-store-domain
     name: Fix run store invar domain
     status: pending

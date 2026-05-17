@@ -91455,7 +91455,7 @@ phases:
     agent: python-senior-tacit
   - id: fix-orch-config-projections-domain
     name: Fix orchestration config/projections invar domain
-    status: claimed
+    status: skipped
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
       configuration loading and projection logic.
 
@@ -91532,6 +91532,7 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior
     claimed_at: '2026-05-17T14:56:12.991213+00:00'
+    skipped_reason: absorbed
   - id: fix-orch-runtime-runners-domain
     name: Fix orchestration runtime/runners invar domain
     status: pending

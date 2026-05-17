@@ -94349,7 +94349,7 @@ phases:
 
       - [x] Each residual has exactly one disposition and an explicit downstream owner.
 
-      - [ ] No residual is dismissed as pre-existing or out-of-scope without non-intersection
+      - [x] No residual is dismissed as pre-existing or out-of-scope without non-intersection
       proof.
 
       - [ ] Any planned `**/core/**` work includes @pre, @post, and doctest-before-implementation

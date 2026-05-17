@@ -95399,30 +95399,30 @@ phases:
       \ or CLI/operator-visible argv behavior regresses.\n- [x] Any residual finding\
       \ has explicit PROVEN_CLOSED, NON_INTERSECTING, or BLOCKING_OWNER_NEEDED disposition\
       \ with owner."
-    verification: '- [ ] Main path: targeted prompt/inspection tests pass with actual
+    verification: '- [x] Main path: targeted prompt/inspection tests pass with actual
       command output pasted, including suite/count explanation.
 
-      - [ ] Failure path: exact prompt, argv, and output-contract before/after snapshots
+      - [x] Failure path: exact prompt, argv, and output-contract before/after snapshots
       prove no model-visible or operator-visible drift.
 
-      - [ ] `uvx invar-tools guard --all` prompt_materialization excerpt BEFORE and
+      - [x] `uvx invar-tools guard --all` prompt_materialization excerpt BEFORE and
       AFTER is pasted; AFTER closes the listed raw function errors or maps any residual
       to BLOCKING_OWNER_NEEDED with owner.
 
-      - [ ] `why_previous_fix_failed`, `why_comment_deletion_is_not_closure`, and
+      - [x] `why_previous_fix_failed`, `why_comment_deletion_is_not_closure`, and
       `reversal_risk` fields are complete and specific.
 
-      - [ ] Escape-hatch restoration/repair register proves no broad suppression and
+      - [x] Escape-hatch restoration/repair register proves no broad suppression and
       explains every true Shell boundary allow.
 
-      - [ ] Any Core extraction includes non-vacuous @pre/@post contracts and doctests;
+      - [x] Any Core extraction includes non-vacuous @pre/@post contracts and doctests;
       no uncontracted `**/core/**` code is introduced.
 
-      - [ ] Public/model-visible prompt text, artifact envelope, output contract lines,
+      - [x] Public/model-visible prompt text, artifact envelope, output contract lines,
       and OpenCode argv behavior remain unchanged unless tests/docs prove intentional
       migration.
 
-      - [ ] Evidence includes a structured residual disposition register for any remaining
+      - [x] Evidence includes a structured residual disposition register for any remaining
       full-guard red finding.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

@@ -96096,7 +96096,7 @@ phases:
       code or docs and exists to constrain the next implementation retry.'
   - id: invar_guard_remediation.fix-full-guard-residual-budget-blockers
     name: Investigate discarded full-guard residual blocker loop and lock slice boundaries
-    status: pending
+    status: claimed
     description: 'PLANNING / INVESTIGATION. Convert the failed broad residual implementation
       loop into a coordination and root-cause boundary step. Do not modify product
       code except temporary local inspection artifacts that are discarded before completion.
@@ -96250,6 +96250,8 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-inspection-prompt-budget-residuals
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T19:44:05.384898+00:00'
   - id: invar_guard_remediation.fix-inspection-drive-query-result-boundaries
     name: Fix inspection and drive query Result-boundary budgets
     status: pending

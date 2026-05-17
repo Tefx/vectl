@@ -97738,6 +97738,145 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     agent: integration-verifier
+  - id: split-mcp-and-cli-public-surfaces
+    name: Split MCP and CLI public surfaces without compatibility loss
+    status: pending
+    description: "Focused residual implementation slice for current post-salvage public\
+      \ MCP/CLI file-size and weighted-budget blockers.\n\nstep_type: implementation\n\
+      symbolic_testing: true\nreduction_step: true\nagent_source: default\npost_salvage_context:\n\
+      \  main_salvage_commit: 1618486\n  guard_baseline: file_size 9/5; weighted 40/15\n\
+      \n## Owned Residuals\n- `src/vectl/mcp_core_tools.py` — public MCP core tool\
+      \ schemas; current hatch reason says splitting is outside scoped remediation.\n\
+      - `src/vectl/cli_orchestration.py` — public Typer registration surface.\n- `src/vectl/cli_plan.py`\
+      \ — legacy Typer plan-management surface.\n- Any current `dead_param` or `entry_point_too_thick`\
+      \ contributors directly attributable to these public surfaces.\n\n## Scope\n\
+      Safely decompose cohesive internal helpers behind stable public modules. Preserve\
+      \ public import paths, command registration, help text, argument names, schema\
+      \ names, payload formats, and operator-visible behavior. This is a reduction\
+      \ step: land verified non-regressive budget reduction for this inventory; remaining\
+      \ blocker-class debt must be explicitly reported for downstream residual ownership,\
+      \ not hidden.\n\n## Compatibility Migration Requirements\n- MCP compatibility:\
+      \ smoke import/call-schema checks through original `vectl.mcp_core_tools` public\
+      \ path.\n- CLI compatibility: representative `--help` and registration proof\
+      \ for orchestration and plan command groups through the real Typer app path.\n\
+      - Public facade compatibility: original module imports continue to expose documented\
+      \ symbols.\n- Machine-readable output safety: any touched JSON output remains\
+      \ parseable and ANSI-free.\n\n## Gate Preview (what downstream gates WILL reject)\n\
+      1. Import-breaking extraction from public MCP/CLI facade modules.\n2. Handler-only\
+      \ CLI changes that do not prove real Typer registration.\n3. Budget counter\
+      \ movement by suppression, lowered thresholds, or ignored files.\n4. Missing\
+      \ BEFORE/AFTER guard excerpts.\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each\
+      \ deliverable MUST contain substantive logic that processes its inputs and produces\
+      \ outputs that vary based on those inputs. Private stub classes (`_Runtime*`,\
+      \ `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\n## Checklist\n\
+      - [ ] Capture BEFORE guard excerpts for owned residual rows and weighted contributors.\n\
+      - [ ] Reduce owned public-surface file-size/weighted pressure through cohesive\
+      \ internal extraction only.\n- [ ] Preserve original MCP and CLI public imports,\
+      \ registrations, schema/payload formats, and help surfaces.\n- [ ] Run targeted\
+      \ tests for touched MCP/CLI modules and paste exact results.\n- [ ] Run import\
+      \ smoke checks for original public module paths and paste exact commands/results.\n\
+      - [ ] Run real CLI help/registration smoke checks for touched command groups\
+      \ and paste actual output excerpts.\n- [ ] Capture AFTER guard excerpts for\
+      \ owned residual rows and weighted contributors.\n- [ ] Confirm no budget lowering,\
+      \ broad suppression, ignored files, deleted findings, or policy bypass was used."
+    verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
+      owned residual rows, `file_size`, weighted budget, and relevant `dead_param`/`entry_point_too_thick`
+      contributors.
+
+      - [ ] Public MCP imports and schema/tool exposure through `vectl.mcp_core_tools`
+      are smoke-proven.
+
+      - [ ] Real Typer CLI registration/help smoke proof is pasted for touched orchestration
+      and plan command groups.
+
+      - [ ] Targeted MCP/CLI tests pass with exact command output pasted.
+
+      - [ ] Evidence states remaining owned residuals, if any, and assigns them to
+      downstream retest/gate disposition rather than dismissing them.
+
+      - [ ] No invar budget lowering, suppression, ignored files, deleted findings,
+      import-breaking extraction, or handler-only narrowing occurred.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      ## Public MCP/CLI Surface Residual Evidence
+
+
+      ### BEFORE Guard Excerpts
+
+      ```text
+
+      <paste owned rows plus summary/file_size/weighted/dead_param/entry_point_too_thick
+      excerpts>
+
+      ```
+
+
+      ### Compatibility Smoke Proofs
+
+      **MCP original-path import/schema proof**:
+
+      ```text
+
+      <commands and output>
+
+      ```
+
+      **CLI Typer registration/help proof**:
+
+      ```text
+
+      <commands and pasted help excerpts>
+
+      ```
+
+      **JSON/ANSI safety if touched**:
+
+      ```text
+
+      <parse/no-ANSI proof or explicit non-applicability rationale>
+
+      ```
+
+
+      ### Targeted Tests
+
+      ```text
+
+      <exact commands and output>
+
+      ```
+
+
+      ### AFTER Guard Excerpts
+
+      ```text
+
+      <paste owned rows plus summary/file_size/weighted/dead_param/entry_point_too_thick
+      excerpts>
+
+      ```
+
+
+      ### Suppression Check
+
+      - [ ] no budget lowering
+
+      - [ ] no widened escape hatches
+
+      - [ ] no ignored files/deleted findings
+
+      - [ ] no import-breaking public surface changes'
+    depends_on:
+    - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

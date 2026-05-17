@@ -10,7 +10,26 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol
 
-from vectl import core
+from vectl.core.orchestration.planner_mutation_mapping import (
+    as_str_list as planner_as_str_list,
+    interpret_planner_mutation,
+)
+from vectl.core_duplicate_step_id import require_unambiguous_target_step_id
+from vectl.core_plan_mutations import (
+    add_phase,
+    add_step,
+    claim_step as core_claim_step,
+    complete_phase,
+    complete_step as core_complete_step,
+    defer_step as core_defer_step,
+    edit_phase,
+    edit_step,
+    get_claimed_steps,
+    move_step,
+    remove_step,
+    skip_step,
+)
+from vectl.core_plan_queries import get_next_steps, validate_plan
 from vectl.io import load_plan_definition, save_plan
 from vectl.models import IsolationMode, Plan, PlanError, StepStatus
 from vectl.orchestration.contracts import (
@@ -117,9 +136,9 @@ class PlanCoreAdapter:
         """
         plan, _ = load_plan_definition(self._plan_path)
 
-        claimable_step_ids = tuple(step.id for step in core.get_next_steps(plan, agent=agent))
+        claimable_step_ids = tuple(step.id for step in get_next_steps(plan, agent=agent))
         in_progress_step_ids = tuple(
-            step.id for _, step in core.get_claimed_steps(plan, agent=agent)
+            step.id for _, step in get_claimed_steps(plan, agent=agent)
         )
 
         claimable_set = set(claimable_step_ids)
@@ -135,7 +154,7 @@ class PlanCoreAdapter:
 
         unresolved_reasons = tuple(
             issue.message
-            for issue in core.validate_plan(plan, include_completed_evidence_guard=False)
+            for issue in validate_plan(plan, include_completed_evidence_guard=False)
             if not issue.is_warning
         )
 
@@ -160,7 +179,7 @@ class PlanCoreAdapter:
             PlanError: If the step cannot be resolved unambiguously.
         """
         plan, _ = load_plan_definition(self._plan_path)
-        core.require_unambiguous_target_step_id(
+        require_unambiguous_target_step_id(
             plan,
             step_id,
             operation="core-adapter-step-isolation",
@@ -192,7 +211,7 @@ class PlanCoreAdapter:
         if flow != "normal":
             raise ValueError("orchestration core adapter claim flow is pinned to 'normal'")
         plan, file_hash = load_plan_definition(self._plan_path)
-        updated_plan, _ = core.claim_step(
+        updated_plan, _ = core_claim_step(
             plan,
             step_id,
             agent,
@@ -224,7 +243,7 @@ class PlanCoreAdapter:
         # did with `_ = reconcile_disposition`) broke the proof chain.
         enriched_evidence = f"[reconcile_disposition={reconcile_disposition}] {evidence}"
         plan, file_hash = load_plan_definition(self._plan_path)
-        updated_plan = core.complete_step(
+        updated_plan = core_complete_step(
             plan,
             step_id,
             enriched_evidence,
@@ -239,7 +258,7 @@ class PlanCoreAdapter:
             step_id: Step selector to defer.
         """
         plan, file_hash = load_plan_definition(self._plan_path)
-        updated_plan = core.defer_step(plan, step_id, claims_path=self._claims_path)
+        updated_plan = core_defer_step(plan, step_id, claims_path=self._claims_path)
         save_plan(updated_plan, self._plan_path, expected_hash=file_hash)
 
     # ---------------------------------------------------------------------
@@ -277,6 +296,7 @@ class PlanCoreAdapter:
         )
 
 
+# @invar:allow shell_result: core-adapter read presenter preserves bool snapshot field for public CoreSnapshot API
 def _is_plan_complete(plan: Plan) -> bool:
     """Return whether all steps are terminal in authoritative plan state.
 
@@ -443,6 +463,7 @@ class PlanPlannerMutationApplier:
         """
         plan, file_hash = load_plan_definition(self._plan_path)
         args = mutation.arguments
+        mapping = interpret_planner_mutation(mutation.action, args)
 
         if mutation.action == "add-step":
             phase_id = str(args.get("phase_id", ""))
@@ -453,7 +474,7 @@ class PlanPlannerMutationApplier:
             refs = _as_str_list(args.get("refs"))
             verification = str(args.get("verification", ""))
             agent = args.get("agent")
-            plan, generated_id = core.add_step(
+            plan, generated_id = add_step(
                 plan,
                 phase_id,
                 name,
@@ -465,7 +486,8 @@ class PlanPlannerMutationApplier:
                 agent=str(agent) if agent is not None else None,
             )
             save_plan(plan, self._plan_path, expected_hash=file_hash)
-            return f"add-step: phase={phase_id} step={generated_id} name={name}"
+            template = str(mapping.get("description_template", ""))
+            return template.format(phase_id=phase_id, generated_id=generated_id, name=name)
 
         if mutation.action == "edit-step":
             step_id = str(args.get("step_id", ""))
@@ -489,20 +511,20 @@ class PlanPlannerMutationApplier:
                 edit_kwargs["depends_on"] = list(_as_str_list(changes["depends_on"]))
             if "refs" in changes:
                 edit_kwargs["refs"] = list(_as_str_list(changes["refs"]))
-            plan = core.edit_step(plan, step_id, **edit_kwargs)  # type: ignore[arg-type]
+            plan = edit_step(plan, step_id, **edit_kwargs)  # type: ignore[arg-type]
             save_plan(plan, self._plan_path, expected_hash=file_hash)
             return f"edit-step: step={step_id} fields={tuple(edit_kwargs.keys())}"
 
         if mutation.action == "remove-step":
             step_id = str(args.get("step_id", ""))
-            plan = core.remove_step(plan, step_id, force=True)
+            plan = remove_step(plan, step_id, force=True)
             save_plan(plan, self._plan_path, expected_hash=file_hash)
             return f"remove-step: step={step_id}"
 
         if mutation.action == "move-step":
             step_id = str(args.get("step_id", ""))
             target_phase = str(args.get("target_phase", ""))
-            plan = core.move_step(plan, step_id, target_phase)
+            plan = move_step(plan, step_id, target_phase)
             save_plan(plan, self._plan_path, expected_hash=file_hash)
             return f"move-step: step={step_id} to={target_phase}"
 
@@ -510,13 +532,14 @@ class PlanPlannerMutationApplier:
             name = str(args.get("name", ""))
             raw_phase_id = args.get("phase_id")
             add_phase_id: str | None = str(raw_phase_id) if raw_phase_id is not None else None
-            plan, generated_id = core.add_phase(
+            plan, generated_id = add_phase(
                 plan,
                 name,
                 phase_id=add_phase_id,
             )
             save_plan(plan, self._plan_path, expected_hash=file_hash)
-            return f"add-phase: phase={generated_id} name={name}"
+            template = str(mapping.get("description_template", ""))
+            return template.format(generated_id=generated_id, name=name)
 
         if mutation.action == "edit-phase":
             phase_id = str(args.get("phase_id", ""))
@@ -530,23 +553,24 @@ class PlanPlannerMutationApplier:
                 phase_kwargs["depends_on"] = list(_as_str_list(changes["depends_on"]))
             if "context" in changes:
                 phase_kwargs["context"] = str(changes["context"])
-            plan = core.edit_phase(plan, phase_id, **phase_kwargs)  # type: ignore[arg-type]
+            plan = edit_phase(plan, phase_id, **phase_kwargs)  # type: ignore[arg-type]
             save_plan(plan, self._plan_path, expected_hash=file_hash)
             return f"edit-phase: phase={phase_id} fields={tuple(phase_kwargs.keys())}"
 
         if mutation.action == "skip-step":
             step_id = str(args.get("step_id", ""))
             reason = str(args.get("reason", ""))
-            plan = core.skip_step(plan, step_id, reason)
+            plan = skip_step(plan, step_id, reason)
             save_plan(plan, self._plan_path, expected_hash=file_hash)
             return f"skip-step: step={step_id} reason={reason}"
 
         if mutation.action == "complete-phase":
             phase_id = str(args.get("phase_id", ""))
             reason = str(args.get("reason", "planner auto-complete"))
-            plan, completed_ids = core.complete_phase(plan, phase_id, reason)
+            plan, completed_ids = complete_phase(plan, phase_id, reason)
             save_plan(plan, self._plan_path, expected_hash=file_hash)
-            return f"complete-phase: phase={phase_id} completed_steps={completed_ids}"
+            template = str(mapping.get("description_template", ""))
+            return template.format(phase_id=phase_id, completed_ids=completed_ids)
 
         raise ValueError(f"Unsupported planner mutation action: {mutation.action}")
 
@@ -565,6 +589,7 @@ class PlanPlannerMutationApplier:
         return None
 
 
+# @invar:allow shell_result: compatibility adapter delegates planner argument coercion to Core while preserving private call shape
 def _as_str_list(value: object) -> list[str]:
     """Coerce a value to a list of strings.
 
@@ -576,6 +601,8 @@ def _as_str_list(value: object) -> list[str]:
     """
     if value is None:
         return []
+    if isinstance(value, str):
+        return planner_as_str_list(value)
     if isinstance(value, (list, tuple)):
-        return [str(item) for item in value]
-    return [str(value)]
+        return planner_as_str_list(value)
+    return planner_as_str_list(str(value))

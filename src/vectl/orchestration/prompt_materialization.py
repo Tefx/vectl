@@ -20,18 +20,19 @@ definition and implementation.
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from vectl.core.orchestration.prompt_contracts import (
+    build_opencode_launch_argv_data,
+    build_runner_handoff_env_data,
+    compute_prompt_bundle_sha256 as compute_prompt_bundle_sha256_data,
+    output_contract_lines as output_contract_lines_data,
+    resolve_prompt_artifact_paths_data,
+)
 from vectl.orchestration.contracts import (
-    _PROMPT_BUNDLE_FILENAME,
-    _RUNNER_PROMPT_FILENAME,
-    _RUNNER_PROMPT_WORKSPACE_RELATIVE,
-    _RUNS_INPUT_DIR,
-    _WORKSPACE_ORCH_DIR,
     OpenCodeLaunchConfig,
     PromptArtifactPaths,
     PromptBundle,
@@ -47,6 +48,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------
 
 
+# @invar:allow shell_result: public compatibility adapter delegates pure path calculation to Core and preserves PromptArtifactPaths API
 def resolve_prompt_artifact_paths(
     *,
     artifact_root: Path,
@@ -71,16 +73,12 @@ def resolve_prompt_artifact_paths(
     Returns:
         Frozen ``PromptArtifactPaths`` with all three locations resolved.
     """
-    input_dir = artifact_root / run_id / _RUNS_INPUT_DIR
-    prompt_bundle = input_dir / _PROMPT_BUNDLE_FILENAME
-    runner_prompt = input_dir / _RUNNER_PROMPT_FILENAME
-    workspace_prompt = workspace / _WORKSPACE_ORCH_DIR / _RUNNER_PROMPT_FILENAME
-
+    data = resolve_prompt_artifact_paths_data(run_id, str(artifact_root), str(workspace))
     return PromptArtifactPaths(
-        prompt_bundle_path=str(prompt_bundle),
-        runner_prompt_path=str(runner_prompt),
-        workspace_prompt_path=str(workspace_prompt),
-        workspace_prompt_relative=_RUNNER_PROMPT_WORKSPACE_RELATIVE,
+        prompt_bundle_path=str(data["bundle_path"]),
+        runner_prompt_path=str(data["runner_prompt_path"]),
+        workspace_prompt_path=str(data["workspace_prompt_path"]),
+        workspace_prompt_relative=str(data["workspace_prompt_relative"]),
     )
 
 
@@ -89,6 +87,7 @@ def resolve_prompt_artifact_paths(
 # ---------------------------------------------------------------------
 
 
+# @invar:allow shell_result: public compatibility adapter delegates env calculation to Core and preserves RunnerHandoffEnv API
 def build_runner_handoff_env(
     *,
     run_id: str,
@@ -117,13 +116,16 @@ def build_runner_handoff_env(
     Returns:
         Frozen ``RunnerHandoffEnv`` with all five required variables.
     """
-    return RunnerHandoffEnv(
-        VECTL_ORCH_RUN_ID=run_id,
-        VECTL_ORCH_STEP_ID=step_id,
-        VECTL_ORCH_AGENT_ID=agent_id,
-        VECTL_ORCH_PROMPT_PATH=artifact_paths.workspace_prompt_path,
-        VECTL_ORCH_PROMPT_BUNDLE_PATH=artifact_paths.prompt_bundle_path,
+    data = dict(
+        build_runner_handoff_env_data(
+            run_id,
+            agent_id,
+            step_id,
+            artifact_paths.workspace_prompt_path,
+        )
     )
+    data["VECTL_ORCH_PROMPT_BUNDLE_PATH"] = artifact_paths.prompt_bundle_path
+    return RunnerHandoffEnv(**data)
 
 
 # ---------------------------------------------------------------------
@@ -131,6 +133,7 @@ def build_runner_handoff_env(
 # ---------------------------------------------------------------------
 
 
+# @invar:allow shell_result: public compatibility adapter preserves SHA-256 string API while Core owns digest logic
 def compute_prompt_bundle_sha256(bundle: PromptBundle) -> str:
     """Compute deterministic SHA-256 digest over a prompt bundle.
 
@@ -146,16 +149,13 @@ def compute_prompt_bundle_sha256(bundle: PromptBundle) -> str:
     Returns:
         Hex-encoded SHA-256 digest.
     """
-    digest = hashlib.sha256()
-    digest.update(bundle.system_prompt.encode("utf-8"))
-    digest.update(b"\x00")
-    digest.update(bundle.task_prompt.encode("utf-8"))
-    for message in bundle.messages:
-        digest.update(b"\x00")
-        digest.update(message.get("role", "").encode("utf-8"))
-        digest.update(b":")
-        digest.update(message.get("content", "").encode("utf-8"))
-    return digest.hexdigest()
+    return compute_prompt_bundle_sha256_data(
+        {
+            "system_prompt": bundle.system_prompt,
+            "task_prompt": bundle.task_prompt,
+            "messages": bundle.messages,
+        }
+    )
 
 
 def materialize_prompt_artifacts(
@@ -221,6 +221,7 @@ def materialize_prompt_artifacts(
     workspace_prompt.write_text(runner_prompt_content)
 
 
+# @invar:allow shell_result: public prompt text compatibility adapter; output shape is regression-tested
 def _render_runner_prompt_md(
     *,
     role_id: str,
@@ -298,69 +299,17 @@ def _render_runner_prompt_md(
     return "\n".join(parts)
 
 
+# @invar:allow shell_result: public prompt contract compatibility adapter delegates line selection to Core
 def _output_contract_lines(output_contract: str) -> list[str]:
     """Return runner-visible output contract instructions."""
 
     if output_contract == "resolution_report":
-        return [
-            "Return ONLY one JSON object. Do not include Markdown, prose, or code fences.",
-            "Schema:",
-            "{",
-            '  "status": "unblocked|waiting|operator_required|halt",',
-            '  "summary": "non-empty human-readable summary",',
-            '  "evidence_refs": ["evidence reference strings"],',
-            '  "operator_message": null,',
-            '  "planner_request": null | {',
-            '    "reason": "why plan mutation is required",',
-            '    "affected_steps": ["step ids"],',
-            '    "evidence_refs": ["evidence refs"],',
-            '    "constraints": ["bounded constraints"],',
-            '    "mutations": [',
-            (
-                '      {"action": "add-step|edit-step|remove-step|move-step|add-phase|'
-                'edit-phase|skip-step|complete-phase", "arguments": {}, "reason": "why"}'
-            ),
-            "    ]",
-            "  }",
-            "}",
-            "Use status=operator_required when automatic closure is unsafe or unverifiable.",
-        ]
+        return list(output_contract_lines_data(output_contract, ()))
 
     if output_contract == "structured_review_result":
-        return [
-            "Return ONLY one JSON object. Do not include Markdown, prose, or code fences.",
-            "Schema:",
-            "{",
-            '  "review_outcome": "pass|needs_fix|needs_replan|operator_required",',
-            '  "summary": "non-empty human-readable summary",',
-            '  "findings": ["finding strings"],',
-            '  "evidence_refs": ["evidence reference strings"],',
-            '  "planner_request": null | {',
-            '    "reason": "required only when review_outcome is needs_replan",',
-            '    "affected_steps": ["step ids"],',
-            '    "evidence_refs": ["evidence refs"],',
-            '    "constraints": ["bounded constraints"],',
-            '    "mutations": [',
-            (
-                '      {"action": "add-step|edit-step|remove-step|move-step|add-phase|'
-                'edit-phase|skip-step|complete-phase", "arguments": {}, "reason": "why"}'
-            ),
-            "    ]",
-            "  }",
-            "}",
-            "Use review_outcome=needs_replan when passing the gate requires adding, "
-            "editing, or skipping plan work.",
-        ]
+        return list(output_contract_lines_data(output_contract, ()))
 
-    return [
-        "Return YAML exactly:",
-        "```yaml",
-        'status: "SUCCESS|FAIL"',
-        "evidence: |",
-        "  <filled evidence with files changed and verification outputs>",
-        'error: "<if FAIL, raw error; else empty>"',
-        "```",
-    ]
+    return list(output_contract_lines_data(output_contract, ()))
 
 
 # ---------------------------------------------------------------------
@@ -368,6 +317,7 @@ def _output_contract_lines(output_contract: str) -> list[str]:
 # ---------------------------------------------------------------------
 
 
+# @invar:allow shell_result: public launch argv compatibility adapter preserves tuple API for subprocess callers
 def build_opencode_launch_argv(
     *,
     workspace: Path,
@@ -406,6 +356,15 @@ def build_opencode_launch_argv(
         Tuple of argv strings for ``subprocess.Popen``.
     """
     cfg = config or OpenCodeLaunchConfig()
+    if cfg == OpenCodeLaunchConfig():
+        return _build_default_opencode_launch_argv(
+            workspace=workspace,
+            agent_id=agent_id,
+            session_id=session_id,
+        )
+
+    # Custom launch config remains a shell adapter concern because the Core
+    # helper intentionally pins only the default public OpenCode contract.
     argv: list[str] = [
         "opencode",
         "run",
@@ -436,6 +395,34 @@ def build_opencode_launch_argv(
     return tuple(argv)
 
 
+# @invar:allow shell_result: launch argv adapter bridges Core prompt data to historical OpenCode argv order
+def _build_default_opencode_launch_argv(
+    *,
+    workspace: Path,
+    agent_id: str,
+    session_id: str | None,
+) -> tuple[str, ...]:
+    """Build exact default OpenCode argv through Core prompt contract data."""
+    argv = list(
+        build_opencode_launch_argv_data(
+            "opencode",
+            str(workspace.resolve()),
+            resume=session_id is not None,
+            session_id=session_id,
+        )
+    )
+    # Replace the Core helper's minimal file-only shape with the historical
+    # public argv order pinned by ``OpenCodeLaunchConfig``.
+    cfg = OpenCodeLaunchConfig()
+    result = ["opencode", "run", "--format", cfg.format_flag, cfg.dir_flag_key, str(workspace.resolve())]
+    if session_id is not None:
+        result.extend([cfg.session_flag_key, session_id])
+    result.extend([cfg.agent_flag_key, agent_id, "--file", cfg.file_flag, "--"])
+    result.append(argv[-1])
+    return tuple(result)
+
+
+# @invar:allow shell_result: environment merge is true Shell boundary and public API returns dict
 def build_opencode_launch_env(
     *,
     handoff_env: RunnerHandoffEnv,
@@ -488,6 +475,7 @@ class PromptArtifactValidation:
     workspace_prompt_path: str = ""
 
 
+# @invar:allow shell_result: recovery validation reads prompt artifact files and preserves public validation DTO API
 def validate_prompt_artifacts_for_recovery(
     *,
     artifact_root: Path,

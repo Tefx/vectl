@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import typer
+import json
 from returns.result import Result, Success
 from rich.console import Console
 
 from vectl import __version__
 from vectl.cli_agents_md import agents_md_cmd, init
 from vectl.cli_orchestration import (
+    _build_orchestration_runtime_app,
     orch_case_list,
     orch_case_respond,
     orch_case_show,
@@ -35,6 +37,10 @@ from vectl.cli_orchestration import (
     orch_resume,
     orch_run,
     orch_runs,
+)
+from vectl.cli_orchestration_runtime_helpers import (
+    _build_orchestration_runtime_app_or_die,
+    _step_id_for_run,
 )
 from vectl.cli_plan import (
     add_phase_cmd,

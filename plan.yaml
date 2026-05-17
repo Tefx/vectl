@@ -93355,7 +93355,7 @@ phases:
       escape; guard status passed.'
   - id: cli-surface-preservation-uiux-audit
     name: CLI surface preservation UI/UX audit
-    status: claimed
+    status: pending
     description: 'VALIDATION / UIUX AUDIT. As an independent `uiux-auditor`, audit
       the CLI output/readability surfaces touched by the CLI remediation steps before
       the full invar guard and phase gate run.
@@ -93532,8 +93532,6 @@ phases:
     - fix-cli-plan-domain
     - fix-cli-render-agent-domain
     agent: uiux-auditor
-    claimed_by: uiux-auditor
-    claimed_at: '2026-05-17T14:17:54.982284+00:00'
   - id: fix-io-storage-claims-residual
     name: Fix claims residual invar guard findings
     status: done

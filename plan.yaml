@@ -94946,7 +94946,7 @@ phases:
       hidden; no new broad allow masking introduced.'
   - id: invar_guard_remediation.fix-events-control-app-driver-budget-residuals
     name: Fix event/control/app/driver escape-budget residuals
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Complete the structural escape-budget remediation
       slice for event/control surfaces, `orch_app.py`, and the driver loop according
       to the authority decision and Core contracts.
@@ -95088,6 +95088,183 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T17:27:25.090231+00:00'
+    done_at: '2026-05-17T17:53:31.013909+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: file not present in isolated worktree.
+
+      - AGENTS.md — Key passage: `plan.yaml` is managed state and must not be edited
+      directly; use only orchestrator-owned vectl operations.
+
+      - INVAR.md — Key passage: Core code requires `@pre`, `@post`, doctest; Shell
+      owns I/O and should return `Result` unless policy-dispositioned.
+
+      - docs/invar_guard_remediation/escape_budget_authority_decision.md — Key passage:
+      events/control pure helpers require Core extraction; event/control I/O adapters
+      may remain narrow adapters; orch_app/driver function-size debt is policy/narrow-adapter
+      residual with targeted regression proof.
+
+
+      ## Slice Evidence
+
+      **Authority decision rows implemented**:
+
+      - events.py row 48/49: pure schema wrappers now alias contracted Core functions;
+      remaining JSONL loader shell_result is narrow I/O adapter.
+
+      - control_channel.py row 51/52: pure component normalization aliases contracted
+      Core schema; request/receipt/control callable adapters preserve public behavior
+      while reducing shell_result hatch residuals; remaining JSON reader shell_result
+      is narrow malformed-file adapter.
+
+      - orch_app.py row 36/37 and driver.py row 39/40: policy residuals not rewritten;
+      runtime paths verified by targeted app/driver tests.
+
+      - contract package compatibility gap fixed: `src/vectl/core/__init__.py` preserves
+      legacy `from vectl import core` facade required by `orch_app.py`/`core_adapter.py`.
+
+
+      **Core contracts filled**:
+
+      - `src/vectl/core/orchestration/event_schema.py` — event schema helpers consumed
+      by shell aliases; @pre/@post/doctests retained.
+
+      - `src/vectl/core/orchestration/control_channel_schema.py` — control schema
+      helpers consumed by shell adapters; @pre/@post/doctests retained.
+
+      - `src/vectl/core/orchestration/routing_presenters.py` — routing presenter helpers
+      verified by app tests; @pre/@post/doctests retained.
+
+
+      **Contract deviation records**:
+
+      - type: contract_gap; artifact: `src/vectl/core/__init__.py`; restored legacy
+      core facade exports because introducing `src/vectl/core/` shadowed `src/vectl/core.py`,
+      breaking existing callers. Impact: preserves public app/driver routing without
+      runtime stubs.
+
+
+      **Worker verification**:
+
+      ```text
+
+      .venv/bin/pytest tests/orchestration/unit/test_events.py tests/orchestration/unit/test_control_channel.py
+      tests/orchestration/unit/test_drive_control_consumption.py tests/orchestration/unit/test_driver_loop_proof.py
+      tests/orchestration/unit/test_orch_app.py tests/orchestration/integration/test_orch_app_routing_seam.py
+      tests/repro/test_orch_cli_control_consumption.py
+
+      ============================= 154 passed in 21.55s =============================
+
+
+      .venv/bin/pytest tests/orchestration/test_drive_events_config_observability.py
+      -q
+
+      ============================== 57 passed in 0.20s ==============================
+
+
+      .venv/bin/invar guard --changed --agent
+
+      status=passed; files_checked=3; errors=0; warnings=2; escape_hatches shell_result=2
+
+
+      .venv/bin/invar guard --agent src/vectl/orchestration/events.py
+
+      status=passed; errors=0; warnings=1; remaining shell_result hatch: load_event_jsonl
+      JSONL I/O adapter.
+
+
+      .venv/bin/invar guard --agent src/vectl/orchestration/control_channel.py
+
+      status=passed; errors=0; warnings=1; remaining shell_result hatch: _read_json_object
+      malformed pending-file adapter.
+
+      ```
+
+
+      **Mainline final-state verification after squash merge**:
+
+      ```text
+
+      .venv/bin/pytest tests/orchestration/unit/test_events.py tests/orchestration/unit/test_control_channel.py
+      tests/orchestration/unit/test_drive_control_consumption.py tests/orchestration/unit/test_driver_loop_proof.py
+      tests/orchestration/unit/test_orch_app.py tests/orchestration/integration/test_orch_app_routing_seam.py
+      tests/repro/test_orch_cli_control_consumption.py tests/orchestration/test_drive_events_config_observability.py
+
+      ============================= 211 passed in 15.85s =============================
+
+
+      .venv/bin/invar guard --changed --agent
+
+      status=passed; errors=0; warnings=2; infos=1; escape_hatches shell_result=2.
+      Info was for pre-existing untracked `test_mod.py`.
+
+
+      .venv/bin/invar guard --agent src/vectl/orchestration/events.py
+
+      status=passed; errors=0; warnings=1; shell_result=1.
+
+
+      .venv/bin/invar guard --agent src/vectl/orchestration/control_channel.py
+
+      status=passed; errors=0; warnings=1; shell_result=1.
+
+      ```
+
+
+      **Behavioral proof register**:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | events/control schema | public schema and timeout behavior preserved | event/control
+      unit tests | 154 worker tests; 211 mainline tests | PASS | structural extraction
+      + narrow adapter | tests + guard |
+
+      | pause/resume/stop | active control semantics preserved | drive control consumption
+      tests | 154 worker tests; 211 mainline tests | PASS | unchanged runtime path
+      | tests |
+
+      | app/driver routing | real core/runtime paths reached | orch_app unit + routing
+      seam integration | 154 worker tests; 211 mainline tests | PASS | facade compatibility
+      fix | tests |
+
+      | residual budget | changed target residuals closed/improved | changed-file
+      invar guard | worker and mainline guards passed | PASS | STRUCTURED_RESIDUAL_DISPOSITION
+      | authority rows |
+
+
+      ## checklist_receipt
+
+      All description and verification checklist items were marked done from worker
+      receipt and mainline verification.
+
+
+      ## Commit hash(es)
+
+      - Worker branch: dd29f584392c85bb6105714b705fbfab6677d766
+
+      - Mainline squash: 15b4296
+
+
+      ## Files changed
+
+      - src/vectl/core/__init__.py
+
+      - src/vectl/orchestration/events.py
+
+      - src/vectl/orchestration/control_channel.py
+
+
+      ## Gaps/Notes
+
+      - `orch_app.py` and `driver.py` still show authority-approved function-size/file-size
+      policy residuals when individually guarded; targeted runtime regression evidence
+      passed.
+
+      - No blockers. verdict: PASS; blockers: []; gate_open_allowed: true; orchestrator_action_hint:
+      COMPLETE.'
   - id: invar_guard_remediation.fix-inspection-prompt-budget-residuals
     name: Fix inspection/prompt escape-budget residuals
     status: claimed

@@ -96827,7 +96827,7 @@ phases:
       - [x] No broad suppression, budget lowering, or shell/Core boundary drift is
       used.
 
-      - [ ] Residual disposition register is updated for each owned file.
+      - [x] Residual disposition register is updated for each owned file.
 
 
       ## Completion Criteria (stub exclusion)

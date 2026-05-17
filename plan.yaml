@@ -90797,13 +90797,15 @@ phases:
       - verdict: SUCCESS for inventory collection.\n- blockers: none for this step.\n\
       - product implementation files modified: false."
   - id: invar_guard_remediation.verify-full-guard
-    name: Verify full invar guard green
+    name: Verify full invar guard closure
     status: pending
     description: 'As an independent verifier, run the authoritative full invar guard
-      from a fresh perspective after every domain remediation step completes.
+      from a fresh perspective after every domain remediation step and the escape-budget
+      residual strategy complete.
 
 
-      Scope: full-plan-check protecting the final gate.
+      Scope: full-plan-check protecting the final gate and downstream deterministic-checklist
+      phases.
 
 
       Required command:
@@ -90811,67 +90813,118 @@ phases:
       - `uvx invar-tools guard --all`
 
 
-      If MCP wrapper and CLI disagree, treat CLI full scan as authoritative only when
-      CLI output is pasted and wrapper instability is documented separately.
+      This step must confirm that domain steps did not silently shift failures into
+      unowned files, add uncontracted Core code, or hide real defects behind broad
+      allow markers.
 
 
-      This step must also confirm that the domain steps did not silently shift failures
-      into unowned files, add uncontracted Core code, or hide real defects behind
-      broad allow markers.'
-    verification: '- `uvx invar-tools guard --all` exits zero.
+      Closure policy:
 
-      - Doctest passes and CrossHair/property phases are not skipped due to prior
+      - Preferred: full guard exits zero.
+
+      - Alternative: if the final gate policy allows structured residual disposition,
+      every remaining finding must be mapped to a non-blocking disposition with non-intersection
+      proof under invar policy; otherwise the finding is BLOCKING and requires a new
+      owner before gate OPEN.
+
+
+      ## Completion Criteria
+
+      - [ ] All remediation domain steps and `invar_guard_remediation.escape-budget-full-guard-retest`
+      are complete before this verifier runs.
+
+      - [ ] Authoritative `uvx invar-tools guard --all` output is pasted from current
+      mainline.
+
+      - [ ] Doctest/CrossHair/property phases are not skipped due to prior failures
+      unless the tool explicitly reports no applicable checks.
+
+      - [ ] No uncontracted `**/core/**` code was introduced.
+
+      - [ ] Any remaining warning/info/failure has a precise non-blocking disposition
+      or a blocking owner; no residual is dismissed as pre-existing/out-of-scope.'
+    verification: '- [ ] `uvx invar-tools guard --all` exits zero OR all remaining
+      findings have structured non-blocking residual disposition accepted by the stated
+      phase gate policy.
+
+      - [ ] Doctest passes and CrossHair/property phases are not skipped due to prior
       failures, unless the tool explicitly reports no applicable checks.
 
-      - No uncontracted `**/core/**` code was introduced.
+      - [ ] No uncontracted `**/core/**` code was introduced.
 
-      - Any remaining warning/info is absent or has a precise non-blocking disposition
-      that still allows full guard to exit zero.'
+      - [ ] Any remaining warning/info/failure has a precise disposition with owner
+      or non-intersection proof.
+
+      - [ ] Verification evidence includes a behavioral proof register for runtime/contract-sensitive
+      obligations.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
-      - INVAR.md — <passage read>
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
 
 
-      ## Full Guard Command
+      If no refs were provided, state: "No refs for this step."
 
-      ```text
+
+      ## Full Plan Check Evidence
+
+
+      **Command executed**:
+
+      ```
 
       uvx invar-tools guard --all
 
       ```
 
 
-      ## Actual Output
+      **Actual output**:
 
-      ```text
+      ```
 
-      <paste full command output or artifact path plus summary>
+      <paste full output>
 
       ```
 
 
-      ## Closure Checks
-
-      - Exit code: <0/nonzero>
-
-      - Doctest: <passed/failed>
-
-      - CrossHair: <ran/skipped + reason>
-
-      - Property tests: <ran/skipped + reason>
-
-      - Remaining findings: <none OR exact non-blocking disposition accepted by guard>
+      ## Residual / Closure Register
 
 
-      ## Domain Drift Check
+      | Finding | File | Status | Owner or non-intersection proof | Gate impact |
 
-      - Findings shifted to unowned files: <none OR list>
+      |---|---|---|---|---|
 
-      - New/changed `**/core/**` without @pre/@post/doctest: <none OR list>
+      | <finding> | <path> | PROVEN/NON_BLOCKING/BLOCKING | <step/proof> | OPEN/BLOCK
+      |
 
-      - Broad allow markers without specific rationale: <none OR list>'
+
+      ## Behavioral Proof Register
+
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | <ref> | <claim> | <proof expected> | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
+      | <owner/disposition> | <OPEN/BLOCK basis> |
+
+
+      ## Headline
+
+      - [ ] PASS: full guard green.
+
+      - [ ] PASS_WITH_DISPOSITION: residuals are explicitly non-blocking under invar
+      policy and do not intersect the final gate.
+
+      - [ ] BLOCK: unresolved blocker-class findings remain.
+
+      '
     refs:
     - INVAR.md
+    - AGENTS.md
     depends_on:
     - fix-plan-mutation-query-domain
     - fix-lifecycle-duplicate-domain
@@ -90894,7 +90947,8 @@ phases:
     - fix-small-root-support-domain
     - fix-small-policy-archive-domain
     - cli-surface-preservation-uiux-audit
-    agent: integration-verifier-tacit
+    - invar_guard_remediation.escape-budget-full-guard-retest
+    agent: integration-verifier
   - id: invar_guard_remediation.gate
     name: Gate invar guard remediation
     status: pending

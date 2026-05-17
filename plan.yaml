@@ -95396,7 +95396,7 @@ phases:
       \ and prompt/argv/output-contract snapshots are provided.\n- [x] Removed escape-hatch\
       \ justifications are restored/repaired only for true Shell boundaries and not\
       \ used as broad suppression.\n- [x] No public/model-visible prompt behavior\
-      \ or CLI/operator-visible argv behavior regresses.\n- [ ] Any residual finding\
+      \ or CLI/operator-visible argv behavior regresses.\n- [x] Any residual finding\
       \ has explicit PROVEN_CLOSED, NON_INTERSECTING, or BLOCKING_OWNER_NEEDED disposition\
       \ with owner."
     verification: '- [ ] Main path: targeted prompt/inspection tests pass with actual

@@ -97877,6 +97877,151 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     agent: python-senior
+  - id: split-orch-app-and-core-plan-compat-surfaces
+    name: Split orch app and core plan compatibility facades
+    status: pending
+    description: "Focused residual implementation slice for current post-salvage composition-root\
+      \ and core-plan compatibility blockers.\n\nstep_type: implementation\nsymbolic_testing:\
+      \ true\nreduction_step: true\nagent_source: default\npost_salvage_context:\n\
+      \  main_salvage_commit: 1618486\n  guard_baseline: file_size 9/5; weighted 40/15\n\
+      \n## Owned Residuals\n- `src/vectl/orch_app.py` — documented composition root/public\
+      \ CLI routing facade; current hatch reason says compatibility migration needed.\n\
+      - `src/vectl/core_plan_mutations.py` — compatibility module keeping lifecycle/add/edit/remove/clipboard/agents-md/recovery\
+      \ APIs.\n- Any current `entry_point_too_thick`, `dead_param`, or `shell_complexity`\
+      \ contributors directly attributable to these composition/compatibility facades.\n\
+      \n## Scope\nExtract cohesive internals while preserving the original facade\
+      \ modules as stable compatibility boundaries. Keep documented app construction,\
+      \ CLI routing, mutation APIs, lifecycle/add/edit/remove/clipboard/agents-md/recovery\
+      \ imports, and public behavior intact. This is a reduction step: verified non-regressive\
+      \ improvement is acceptable even if repo-wide guard closure still requires later\
+      \ slices.\n\n## Compatibility Migration Requirements\n- Import compatibility\
+      \ for original `vectl.orch_app` and `vectl.core_plan_mutations` public symbols.\n\
+      - CLI app boot and representative top-level help/surface smoke through the real\
+      \ app path.\n- Mutation facade smoke for representative add/edit/remove/lifecycle/clipboard/recovery\
+      \ API paths without changing data formats.\n- Preserve `vectl.core` facade compatibility\
+      \ relevant to previous `RecoverResult` regression.\n\n## State and Runtime Semantics\n\
+      - Preserve CLI/operator-visible behavior and routing order.\n- Preserve lifecycle/recovery\
+      \ behavior and plan mutation semantics.\n- Preserve explicit clear/null overwrite\
+      \ semantics and compatibility wrappers where present.\n- Do not silently change\
+      \ last-writer-wins or persistence behavior.\n\n## Gate Preview (what downstream\
+      \ gates WILL reject)\n1. A split that boots internal tests but breaks public\
+      \ app construction or facade imports.\n2. Removal/renaming of compatibility\
+      \ APIs without migration proof.\n3. Hidden changes to lifecycle/recovery/mutation\
+      \ semantics.\n4. Budget movement via suppression or policy bypass.\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable. Each deliverable MUST contain substantive logic that processes\
+      \ its inputs and produces outputs that vary based on those inputs. Private stub\
+      \ classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\
+      \n## Checklist\n- [ ] Capture BEFORE guard excerpts for owned residual rows\
+      \ and weighted contributors.\n- [ ] Decompose `orch_app.py` and/or `core_plan_mutations.py`\
+      \ only through compatibility-preserving internals.\n- [ ] Smoke-prove original\
+      \ facade imports and representative mutation APIs.\n- [ ] Smoke-prove CLI/app\
+      \ boot and top-level help through the real routing facade.\n- [ ] Run targeted\
+      \ tests covering core mutation/lifecycle/recovery and app routing surfaces.\n\
+      - [ ] Capture AFTER guard excerpts for owned residual rows and weighted contributors.\n\
+      - [ ] Confirm no budget lowering, suppression, ignored files, deleted findings,\
+      \ stub facades, or import-breaking public surface changes."
+    verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
+      owned residual rows, `file_size`, weighted budget, and relevant `dead_param`/`entry_point_too_thick`/`shell_complexity`
+      contributors.
+
+      - [ ] Original `vectl.orch_app` and `vectl.core_plan_mutations` imports and
+      representative public symbols are smoke-proven.
+
+      - [ ] Real CLI/app boot and representative top-level help output are pasted.
+
+      - [ ] Representative mutation/lifecycle/recovery compatibility smoke proof is
+      pasted.
+
+      - [ ] Targeted tests for touched app/mutation/lifecycle/recovery surfaces pass
+      with exact output pasted.
+
+      - [ ] No invar budget lowering, suppression, ignored files, deleted findings,
+      import-breaking extraction, runtime narrowing, or operator-visible behavior
+      deletion occurred.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      ## Orch App/Core Plan Compatibility Residual Evidence
+
+
+      ### BEFORE Guard Excerpts
+
+      ```text
+
+      <paste owned rows plus summary/file_size/weighted/dead_param/entry_point_too_thick/shell_complexity
+      excerpts>
+
+      ```
+
+
+      ### Import and Runtime Compatibility Smoke Proofs
+
+      **Facade imports**:
+
+      ```text
+
+      <commands and output for vectl.orch_app and vectl.core_plan_mutations public
+      symbols>
+
+      ```
+
+      **CLI/app boot/help**:
+
+      ```text
+
+      <real invocation and pasted help/output excerpts>
+
+      ```
+
+      **Mutation/lifecycle/recovery compatibility**:
+
+      ```text
+
+      <representative commands or Python smoke output>
+
+      ```
+
+
+      ### Targeted Tests
+
+      ```text
+
+      <exact commands and output>
+
+      ```
+
+
+      ### AFTER Guard Excerpts
+
+      ```text
+
+      <paste owned rows plus summary/file_size/weighted/dead_param/entry_point_too_thick/shell_complexity
+      excerpts>
+
+      ```
+
+
+      ### Suppression Check
+
+      - [ ] no budget lowering
+
+      - [ ] no widened escape hatches
+
+      - [ ] no ignored files/deleted findings
+
+      - [ ] no import-breaking public surface changes
+
+      - [ ] no runtime/CLI/operator-visible behavior narrowing'
+    depends_on:
+    - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

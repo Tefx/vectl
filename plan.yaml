@@ -97690,7 +97690,7 @@ phases:
       slices and cold retest.'
   - id: invar_guard_remediation.full-guard-escape-budget-batched-retest
     name: Retest full guard after focused residual remediation
-    status: pending
+    status: claimed
     description: "Independent cold retest after post-salvage focused escape-budget\
       \ residual remediation slices complete.\n\nstep_type: test\nstep_intent: retest_green\n\
       expected_result: green\nverification_scope: full-plan-check\nagent_source: default\n\
@@ -97846,6 +97846,8 @@ phases:
     - split-orchestration-config-runtime-persistence-surfaces
     - split-orchestration-driver-state-machine-surface
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-17T23:05:05.218819+00:00'
   - id: split-mcp-and-cli-public-surfaces
     name: Split MCP and CLI public surfaces without compatibility loss
     status: done

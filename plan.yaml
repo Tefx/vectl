@@ -92718,6 +92718,131 @@ phases:
     audit, and spec conformance.
   depends_on:
   - det_check_tests
+  steps:
+  - id: det_check_impl_core_inventory
+    name: Complete core checklist inventory service
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in `src/vectl/core_checklist.py` per the contract from phase
+      `det_check_contracts` and the expected-red tests from phase `det_check_tests`.
+
+
+      UPSTREAM ARTIFACTS (from contract/test phases):
+
+      - `docs/RFC-deterministic-checklists.md` — selector modes, revision scope, error
+      model, and orchestrator receipt contract are AUTHORITATIVE.
+
+      - `src/vectl/core_checklist.py` — signatures, dataclasses, errors, and docstrings
+      from `det_check_contract_lock` are AUTHORITATIVE.
+
+      - `tests/test_checklist.py` — expected-red inventory/revision/selector tests
+      from `det_check_tests_core_red` are PROTECTED.
+
+
+      YOUR SCOPE: Replace stub markers (NotImplementedError / pass / ...) with working
+      logic for inventory parsing, line-ending canonicalization, revision calculation,
+      snapshot-scoped item IDs, supported-field handling, and structured error construction.
+      Use Edit tool to modify bodies only where contract artifacts already define
+      the public surface.
+
+
+      Hardened acceptance for mutable state/revision semantics:
+
+      - [ ] Revision input is exactly canonicalized raw Markdown for `description`
+      and `verification`; unrelated metadata is excluded.
+
+      - [ ] Missing/empty fields produce empty inventories and stable revision behavior.
+
+      - [ ] `evidence_template` is explicitly unsupported/deferred for first version.
+
+      - [ ] No module-level mutable registry/cache is introduced for inventory state.
+
+      - [ ] Concurrent callers cannot share or corrupt inventory snapshots.
+
+      - [ ] Cleanup/reset semantics are unnecessary because inventory objects are
+      pure values; evidence states this explicitly.
+
+      - [ ] Snapshot-scoped item IDs are deterministic for the same snapshot and not
+      persisted as stable cross-snapshot IDs.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      If a contract artifact is wrong or incomplete, document a deviation record (type,
+      what, why, impact) — do NOT silently rewrite.'
+    verification: '- [ ] Run `pytest tests/test_checklist.py -k ''inventory or revision
+      or snapshot or field'' -q` and show the inventory/revision tests now pass green.
+
+      - [ ] Run `invar guard --changed` or repo-equivalent focused invar guard for
+      changed core files and report output.
+
+      - [ ] Evidence proves missing/empty field behavior and `evidence_template` deferred
+      behavior.
+
+      - [ ] Evidence proves no product mutation logic outside the core checklist inventory
+      service was completed in this step.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_plan_mutations.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_checklist.py — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+
+      ## Implementation Evidence
+
+      - Files changed:
+
+      - Commands executed:
+
+      ```bash
+
+      pytest tests/test_checklist.py -k ''inventory or revision or snapshot or field''
+      -q
+
+      invar guard --changed
+
+      ```
+
+      - Actual output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+      - Deviation records: <none or list>
+
+      - Stub exclusion proof: <describe input-varying logic>
+
+      - State safety: <pure values/no module mutable state or explain protections>
+
+
+      ## Checklist
+
+      - [ ] Core inventory tests green.
+
+      - [ ] Revision semantics match contract.
+
+      - [ ] No unsupported `evidence_template` parsing shipped.'
+    agent: python-senior
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

@@ -96341,7 +96341,7 @@ phases:
       \ implementation slices own closure."
   - id: invar_guard_remediation.fix-inspection-drive-query-result-boundaries
     name: Fix inspection and drive query Result-boundary budgets
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION / Focused residual slice for inspection and drive
       query Result-boundary closure.
 
@@ -96484,6 +96484,8 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-residual-budget-blockers
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T19:51:03.251175+00:00'
   - id: invar_guard_remediation.fix-contracts-file-size-decomposition
     name: Fix contracts.py file-size decomposition
     status: claimed

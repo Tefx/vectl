@@ -94771,16 +94771,16 @@ phases:
 
       - [x] Scoped guard evidence for the owned files improves or closes the listed
       residuals.'
-    verification: '- [ ] Main path: targeted config/projection/recovery tests pass
+    verification: '- [x] Main path: targeted config/projection/recovery tests pass
       with actual command output pasted.
 
-      - [ ] Failure path: config fixture, projection replay, and recovery fallback
+      - [x] Failure path: config fixture, projection replay, and recovery fallback
       regressions cover the highest-risk changed behavior.
 
-      - [ ] Invar scoped evidence shows the target residual budget findings are closed
+      - [x] Invar scoped evidence shows the target residual budget findings are closed
       or dispositioned exactly as the authority decision allowed.
 
-      - [ ] No new uncontracted Core code or broad Shell allow masking is introduced.'
+      - [x] No new uncontracted Core code or broad Shell allow masking is introduced.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

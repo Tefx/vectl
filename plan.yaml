@@ -97845,6 +97845,7 @@ phases:
     - split-orch-app-and-core-plan-compat-surfaces
     - split-orchestration-config-runtime-persistence-surfaces
     - split-orchestration-driver-state-machine-surface
+    - invar_guard_remediation.fix-full-guard-weighted-budget-residuals
     agent: integration-verifier
   - id: split-mcp-and-cli-public-surfaces
     name: Split MCP and CLI public surfaces without compatibility loss

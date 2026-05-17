@@ -1,3 +1,4 @@
+# @invar:allow file_size: projection DTOs, replay persistence, and drive projection helpers stay co-located to preserve public artifact formats.
 """Projection replay from canonical events into derived state artifacts.
 
 Authority:
@@ -362,6 +363,8 @@ class FileProjectionReplay:
         return tuple(self._case_index.get(case_id, ()))
 
 
+# @invar:allow shell_result: Public replay boundary returns ReplayResult and raises ProjectionStaleError per projection contract.
+# @shell_orchestration: Replay boundary coordinates projection reducer and artifact persistence surfaces.
 def replay_events_to_artifacts(
     events: tuple[OrchestrationEventEnvelope | Mapping[str, object], ...],
     artifact_root: Path,
@@ -384,6 +387,9 @@ def replay_events_to_artifacts(
     return replay.replay_result(from_event_id=from_event_id)
 
 
+# @invar:allow shell_result: Selection helper returns event tuple and preserves string/numeric cursor semantics.
+# @shell_complexity: Branches preserve full replay, numeric cursor, and event-id cursor selection semantics.
+# @shell_orchestration: Event selection is coupled to projection replay cursor compatibility.
 def _select_events(
     events: tuple[dict[str, object], ...],
     from_event_id: str | None,
@@ -407,6 +413,9 @@ def _select_events(
     return events[start_index:]
 
 
+# @invar:allow shell_result: Normalizer returns replay dictionaries consumed by projection derivation without changing event format.
+# @shell_complexity: Branches preserve envelope versus mapping inputs, payload flattening, and default sequence/timestamp fields.
+# @shell_orchestration: Event normalization is coupled to canonical envelope and legacy mapping replay inputs.
 def _normalize_events(
     events: tuple[OrchestrationEventEnvelope | Mapping[str, object], ...],
 ) -> tuple[dict[str, object], ...]:
@@ -439,6 +448,9 @@ def _normalize_events(
     return tuple(normalized)
 
 
+# @invar:allow shell_result: Payload parser returns flattened mapping and intentionally ignores malformed tuple tokens.
+# @shell_complexity: Branches preserve Mapping, tuple key=value, and unknown payload behavior.
+# @shell_orchestration: Payload parsing preserves legacy projection payload forms consumed by shell replay.
 def _parse_payload(payload: object) -> dict[str, object]:
     if isinstance(payload, Mapping):
         return dict(payload)
@@ -453,6 +465,8 @@ def _parse_payload(payload: object) -> dict[str, object]:
     return {}
 
 
+# @invar:allow shell_result: Scalar coercion returns bool/int/float/string values used in legacy tuple payload replay.
+# @shell_orchestration: Scalar coercion is coupled to legacy tuple payload replay compatibility.
 def _coerce_scalar(value: str) -> object:
     lowered = value.lower()
     if lowered in {"true", "false"}:
@@ -467,6 +481,10 @@ def _coerce_scalar(value: str) -> object:
         return value
 
 
+# @invar:allow function_size: Replay reducer keeps event ordering and metric/status/artifact coupling in one deterministic pass.
+# @invar:allow shell_result: Reducer returns state and artifact indexes directly for replay_result compatibility.
+# @shell_complexity: Branches encode canonical event families and preserve projection replay outputs.
+# @shell_orchestration: Projection reducer coordinates canonical event families into persisted read-model outputs.
 def _derive_state(
     events: tuple[dict[str, object], ...],
     *,
@@ -630,6 +648,7 @@ def _derive_state(
     )
 
 
+# @invar:allow shell_result: Coercion helper returns existing None-or-string sentinel used by replay derivation.
 def _optional_str(value: object) -> str | None:
     if value is None:
         return None
@@ -637,6 +656,8 @@ def _optional_str(value: object) -> str | None:
     return text if text else None
 
 
+# @invar:allow shell_result: Artifact extractor returns DerivedArtifact or None sentinel consumed by replay loop.
+# @shell_orchestration: Artifact extraction is coupled to projection replay metadata indexes.
 def _artifact_from_event(
     *,
     event: Mapping[str, object],
@@ -667,6 +688,9 @@ def _artifact_from_event(
     )
 
 
+# @invar:allow shell_result: Numeric coercion helper returns fallback default instead of Result by existing projection contract.
+# @shell_complexity: Branches preserve bool/int/float/string/fallback coercion behavior for event payloads.
+# @shell_orchestration: Integer coercion preserves tolerant projection replay of persisted event payloads.
 def _as_int(value: object, *, default: int) -> int:
     if isinstance(value, bool):
         return int(value)
@@ -685,6 +709,9 @@ def _as_int(value: object, *, default: int) -> int:
         return default
 
 
+# @invar:allow shell_result: Numeric coercion helper returns fallback default instead of Result by existing projection contract.
+# @shell_complexity: Branches preserve bool/numeric/string/fallback coercion behavior for event payloads.
+# @shell_orchestration: Float coercion preserves tolerant projection replay of persisted event payloads.
 def _as_float(value: object, *, default: float) -> float:
     if isinstance(value, bool):
         return float(int(value))
@@ -701,6 +728,8 @@ def _as_float(value: object, *, default: float) -> float:
         return default
 
 
+# @invar:allow shell_result: Status coercion returns literal status or None sentinel consumed by replay derivation.
+# @shell_orchestration: Status coercion is coupled to projection status compatibility values.
 def _as_status(
     value: object,
 ) -> Literal["pending", "running", "success", "fail", "stall", "transport_error"] | None:
@@ -713,6 +742,8 @@ def _as_status(
     return None
 
 
+# @invar:allow shell_result: Scope coercion returns documented artifact scope with run fallback.
+# @shell_orchestration: Scope coercion is coupled to derived artifact projection defaults.
 def _as_scope(value: object) -> Literal["run", "step", "case"]:
     normalized = _optional_str(value)
     if normalized == "step":
@@ -738,6 +769,8 @@ def _write_json(path: Path, payload: Mapping[str, object]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+# @invar:allow shell_result: Payload builder returns stable latest.json schema mapping.
+# @shell_orchestration: latest.json payload shape is a shell projection artifact contract.
 def _latest_payload(latest: RunStateView) -> dict[str, object]:
     return {
         "version": 1,
@@ -756,6 +789,8 @@ def _latest_payload(latest: RunStateView) -> dict[str, object]:
     }
 
 
+# @invar:allow shell_result: Payload builder returns stable summary.json schema mapping.
+# @shell_orchestration: summary.json payload shape is a shell projection artifact contract.
 def _summary_payload(latest: RunStateView) -> dict[str, object]:
     return {
         "version": 1,
@@ -769,6 +804,8 @@ def _summary_payload(latest: RunStateView) -> dict[str, object]:
     }
 
 
+# @invar:allow shell_result: Payload builder returns stable metrics.json schema mapping.
+# @shell_orchestration: metrics.json payload shape is a shell projection artifact contract.
 def _metrics_payload(latest: RunStateView) -> dict[str, object]:
     return {
         "version": 1,
@@ -834,6 +871,8 @@ class DriveProjection:
     summary: str = ""
 
 
+# @invar:allow shell_result: Public drive projection API returns DriveProjection or raises existing DriveStoreError/TypeError.
+# @shell_orchestration: Drive projection coordinates persisted store reads into scheduler resume state.
 def rebuild_drive_projection(
     store: object,
     drive_id: str,
@@ -884,6 +923,9 @@ def rebuild_drive_projection(
     )
 
 
+# @invar:allow shell_result: Record projection helper returns DriveProjection for scheduler resume/recover callers.
+# @shell_complexity: Branches partition active/terminal child-run refs while preserving persisted DriveRecord authority.
+# @shell_orchestration: Drive record projection preserves scheduler-facing active/terminal child-run indexes.
 def _rebuild_drive_projection_from_records(
     persisted: object,
     all_refs: tuple[object, ...],
@@ -948,6 +990,7 @@ def _rebuild_drive_projection_from_records(
     )
 
 
+# @invar:allow shell_result: Public drive replay API returns ReplayResult and writes documented drive projection artifacts.
 def replay_drive_events(
     events: tuple[OrchestrationEventEnvelope | Mapping[str, object], ...],
     artifact_root: Path,

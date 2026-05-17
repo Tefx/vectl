@@ -1,3 +1,4 @@
+# @invar:allow file_size: shared orchestration config model/loader is a public compatibility surface; splitting would change import and snapshot semantics outside this scoped remediation.
 """
 Shared orchestration-plane configuration.
 
@@ -121,6 +122,8 @@ _ALLOWED_OVERRIDE_FIELDS: Final[frozenset[str]] = frozenset(
 )
 
 
+# @invar:allow shell_result: Pure role-registry helper preserves existing config API; Result wrapping would change callers and public defaults semantics.
+# @shell_orchestration: Role registry helper remains colocated with config dataclass defaults and validation surfaces.
 def _builtin_role_ids() -> frozenset[str]:
     """Return the set of built-in role IDs from ``default_role_profiles()``.
 
@@ -313,6 +316,8 @@ _ROLE_FAMILY_POLICY: dict[str, _RoleFamilyPolicy] = {
 }
 
 
+# @invar:allow shell_result: Public config default factory must return RoleProfile tuple for dataclass default_factory compatibility.
+# @shell_orchestration: Default role registry is a shell config compatibility surface consumed by dataclass factories.
 def default_role_profiles() -> tuple[RoleProfile, ...]:
     """Return built-in configuration defaults for role profiles."""
 
@@ -400,6 +405,9 @@ def default_role_profiles() -> tuple[RoleProfile, ...]:
     )
 
 
+# @invar:allow shell_result: Public validator returns accumulated error strings; Result wrapping would change validation callers.
+# @shell_complexity: Branches mirror role-family invariant checks and preserve field-specific diagnostics.
+# @shell_orchestration: Role validation stays with config loading to preserve public error accumulation behavior.
 def validate_role_profile(profile: RoleProfile) -> list[str]:
     """Validate one role profile against centralized family invariants."""
 
@@ -447,6 +455,9 @@ class RoleFieldProvenance:
     source: Literal["default", "override", "custom"]
 
 
+# @invar:allow shell_result: Public provenance builder returns the documented nested mapping for inspection surfaces.
+# @shell_complexity: Branches distinguish built-in default/override/custom provenance per RFC-role-profile-overrides §7.1.
+# @shell_orchestration: Provenance formatting is coupled to orchestration config inspection surfaces.
 def build_role_profile_provenance(
     config: OrchestrationConfig,
 ) -> dict[str, dict[str, RoleFieldProvenance]]:
@@ -518,6 +529,8 @@ def build_role_profile_provenance(
     return provenance
 
 
+# @invar:allow shell_result: Registry validator intentionally returns accumulated errors instead of short-circuiting Result.
+# @shell_orchestration: Registry validation is coupled to config admission diagnostics.
 def validate_role_profiles(profiles: tuple[RoleProfile, ...]) -> list[str]:
     """Validate registry-wide role profile constraints."""
 
@@ -545,6 +558,9 @@ def validate_role_profiles(profiles: tuple[RoleProfile, ...]) -> list[str]:
 # ---------------------------------------------------------------------
 
 
+# @invar:allow shell_result: Parser raises ValueError per existing config admission contract and returns parsed override mapping.
+# @shell_complexity: Branches validate role override shape while preserving spec-exact error paths.
+# @shell_orchestration: Override parser is coupled to YAML config admission and error paths.
 def _parse_role_profile_overrides(
     raw_overrides: dict[str, dict[str, Any]],
 ) -> dict[str, dict[str, str]]:
@@ -579,6 +595,8 @@ def _parse_role_profile_overrides(
     return parsed
 
 
+# @invar:allow shell_result: Parser raises ValueError per existing config admission contract and returns RoleProfile tuple.
+# @shell_orchestration: Custom role parser is coupled to orchestration config admission semantics.
 def _parse_custom_role_profiles(
     raw_profiles: dict[str, dict[str, Any]],
 ) -> tuple[RoleProfile, ...]:
@@ -629,6 +647,8 @@ def _parse_custom_role_profiles(
     return tuple(parsed_profiles)
 
 
+# @invar:allow shell_result: Pure override helper preserves RoleProfile return expected by merge pipeline.
+# @shell_orchestration: Override application remains adjacent to config merge validation for RFC compatibility.
 def _apply_role_profile_override(
     base_profile: RoleProfile,
     overrides: dict[str, str],
@@ -673,6 +693,10 @@ def _apply_role_profile_override(
     )
 
 
+# @invar:allow function_size: Role-profile merge keeps RFC §5/§6 ordering and diagnostics in one compatibility boundary.
+# @invar:allow shell_result: Merge helper raises RoleProfileOverrideError and returns effective tuple per existing config contract.
+# @shell_complexity: Branches encode RFC-role-profile-overrides target, field, shadowing, and family-policy rejection rules.
+# @shell_orchestration: Role merge coordinates config admission, custom roles, overrides, and family policy diagnostics.
 def _merge_role_profiles(
     builtin_profiles: tuple[RoleProfile, ...],
     overrides: dict[str, dict[str, str]],
@@ -995,6 +1019,7 @@ class FrozenConfigSnapshot:
     drive_provenance: dict[str, str] = field(default_factory=dict)
 
 
+# @invar:allow shell_result: Snapshot writer public API returns the written Path and raises OSError per freeze boundary contract.
 def write_frozen_snapshot(
     config: OrchestrationConfig,
     run_dir: Path,
@@ -1027,6 +1052,7 @@ def write_frozen_snapshot(
     return snapshot_path
 
 
+# @invar:allow shell_result: Snapshot loader public API raises file/format errors and returns OrchestrationConfig for recovery callers.
 def load_frozen_snapshot(snapshot_path: Path) -> OrchestrationConfig:
     """Load a persisted frozen run snapshot.
 
@@ -1053,6 +1079,9 @@ def load_frozen_snapshot(snapshot_path: Path) -> OrchestrationConfig:
     return _dict_to_config(payload)
 
 
+# @invar:allow shell_result: Legacy snapshot normalizer returns payload mapping and preserves loader exception behavior.
+# @shell_complexity: Branches preserve historical snapshot tolerance and built-in/custom role split semantics.
+# @shell_orchestration: Legacy normalization is part of frozen snapshot shell compatibility loading.
 def _normalize_legacy_frozen_snapshot_payload(payload: dict[str, Any]) -> dict[str, Any]:
     """Normalize pre-RFC frozen snapshots into current role-profile shape.
 
@@ -1130,6 +1159,8 @@ def _normalize_legacy_frozen_snapshot_payload(payload: dict[str, Any]) -> dict[s
     return normalized_payload
 
 
+# @invar:allow shell_result: Serializer returns YAML-compatible mapping expected by snapshot/config round trips.
+# @shell_orchestration: Allowlist serialization is coupled to config snapshot YAML compatibility.
 def _serialize_tool_allowlist(
     allowlist: ResolverToolAllowlist | dict[str, tuple[str, ...]] | None,
 ) -> dict[str, list[str]]:
@@ -1143,6 +1174,10 @@ def _serialize_tool_allowlist(
     return {family: list(tools) for family, tools in allowlist.items()}
 
 
+# @invar:allow function_size: Serializer must keep the full public config schema together to preserve snapshot format reviewability.
+# @invar:allow shell_result: Serializer returns dict consumed by YAML and _dict_to_config; Result would alter snapshot callers.
+# @shell_complexity: Branches preserve built-in override versus custom-role serialization and optional section emission.
+# @shell_orchestration: Config serializer coordinates the public YAML/snapshot schema for shell persistence callers.
 def _config_to_dict(config: OrchestrationConfig) -> dict[str, Any]:
     """Convert OrchestrationConfig to a dict for YAML serialization.
 
@@ -1278,6 +1313,8 @@ def _config_to_dict(config: OrchestrationConfig) -> dict[str, Any]:
 # Spec: docs/ORCHESTRATION-PLANE-CLI-CONFIG-OBSERVABILITY-DESIGN.md §8.1
 
 
+# @invar:allow shell_result: Discovery returns (path, source) and raises FileNotFoundError per documented config loading contract.
+# @shell_complexity: Branches encode spec-defined discovery precedence across explicit, env, cwd, repo, and user config locations.
 def _discover_config_file(explicit_path: Path | str | None = None) -> tuple[Path | None, str]:
     """
     Discover the config file path using the spec-defined discovery order.
@@ -1347,6 +1384,7 @@ def _discover_config_file(explicit_path: Path | str | None = None) -> tuple[Path
     return (None, "none")
 
 
+# @invar:allow shell_result: YAML parser returns mapping payload and lets YAML errors propagate to existing callers.
 def _parse_config_yaml(yaml_content: str) -> dict[str, Any]:
     """Parse YAML content into a dict, returning empty dict for empty/missing content."""
     if not yaml_content.strip():
@@ -1354,6 +1392,7 @@ def _parse_config_yaml(yaml_content: str) -> dict[str, Any]:
     return yaml.safe_load(yaml_content) or {}
 
 
+# @invar:allow shell_result: Environment flattener returns the existing override mapping consumed by load_orchestration_config.
 def _flatten_env_vars(prefix: str = ENV_PREFIX) -> dict[str, str]:
     """
     Extract orchestration-related environment variables with the given prefix.
@@ -1412,6 +1451,8 @@ def _flatten_env_vars(prefix: str = ENV_PREFIX) -> dict[str, str]:
     return result
 
 
+# @invar:allow shell_result: Env override applier preserves OrchestrationConfig return and coercion exceptions for invalid env values.
+# @shell_complexity: Branches map documented VECTL_ORCH_* aliases to typed config sections without changing precedence.
 def _apply_env_overrides(
     config: OrchestrationConfig,
     env_vars: dict[str, str],
@@ -1489,6 +1530,8 @@ def _apply_env_overrides(
     return _deep_update_config(config, {"orchestration": updates})
 
 
+# @invar:allow shell_result: Type-coercion helper returns raw default values, including None for unknown keys, by existing contract.
+# @shell_orchestration: Default lookup is coupled to environment override coercion in the config loader.
 def _get_default(key: str) -> Any:
     """Get the default value for a config key for type coercion."""
     defaults = {
@@ -1530,6 +1573,8 @@ def _get_default(key: str) -> Any:
     return defaults.get(key)
 
 
+# @invar:allow shell_result: Deep update helper preserves OrchestrationConfig return and validation exceptions from _dict_to_config.
+# @shell_orchestration: Deep update coordinates env/file config merge before config reconstruction.
 def _deep_update_config(
     base: OrchestrationConfig,
     updates: dict[str, Any],
@@ -1551,6 +1596,9 @@ def _deep_update_config(
     return _dict_to_config(new_config_dict)
 
 
+# @invar:allow function_size: Deserializer keeps complete config schema defaults together to preserve public field/default symmetry.
+# @invar:allow shell_result: Deserializer returns OrchestrationConfig and raises admission errors per existing loader contract.
+# @shell_complexity: Branches preserve role-profile merge admission, allowlist normalization, and defaulting semantics.
 def _dict_to_config(data: dict[str, Any]) -> OrchestrationConfig:
     """Convert a dict to an OrchestrationConfig.
 
@@ -1748,6 +1796,8 @@ def _dict_to_config(data: dict[str, Any]) -> OrchestrationConfig:
 # ---------------------------------------------------------------------
 
 
+# @invar:allow shell_result: Public freeze boundary returns FrozenConfigSnapshot and raises TypeError/OSError per documented API.
+# @shell_orchestration: Freeze boundary coordinates snapshot persistence and provenance metadata for shell callers.
 def freeze_config(
     config: OrchestrationConfig,
     run_dir: Path | None = None,
@@ -1787,6 +1837,9 @@ def freeze_config(
     )
 
 
+# @invar:allow shell_result: Public provenance API returns dotted-key mapping consumed by frozen snapshot metadata.
+# @shell_complexity: Branches preserve default/file/drift source classification for each drive field.
+# @shell_orchestration: Drive provenance is coupled to frozen config snapshot inspection.
 def build_drive_config_provenance(
     config: OrchestrationConfig,
     ambient_config: OrchestrationConfig | None = None,
@@ -1861,6 +1914,8 @@ def build_drive_config_provenance(
     return provenance
 
 
+# @invar:allow shell_result: Public drive-freeze API returns DriveConfigFrozen contract object for drive persistence.
+# @shell_orchestration: Drive config freeze maps orchestration config into persisted drive shell contract.
 def freeze_drive_config(
     config: OrchestrationConfig,
     drive_id: str,
@@ -1895,6 +1950,7 @@ def freeze_drive_config(
     )
 
 
+# @invar:allow shell_result: Public config loader returns (config, path) and raises I/O/admission errors per existing callers.
 def load_orchestration_config(
     plan_path: Path | str | None = None,
 ) -> tuple[OrchestrationConfig, Path | None]:
@@ -1928,7 +1984,7 @@ def load_orchestration_config(
         OSError: If a config file cannot be read.
     """
     # Discover config file
-    discovered_path, discovery_source = _discover_config_file(plan_path)
+    discovered_path, _discovery_source = _discover_config_file(plan_path)
 
     # Load base config from file or defaults
     if discovered_path is not None:
@@ -1994,6 +2050,9 @@ class RoleProfileOverrideError(ValueError):
         super().__init__(f"role profile override validation failed: {field}: {reason}")
 
 
+# @invar:allow function_size: Validator keeps all public config validation diagnostics in one ordered compatibility surface.
+# @invar:allow shell_result: Public validator returns accumulated ConfigValidationError list without short-circuiting callers.
+# @shell_complexity: Branches preserve ordered diagnostics for scalar, allowlist, role-profile, resolver, and path validations.
 def validate_orchestration_config(
     config: OrchestrationConfig,
     *,

@@ -97522,7 +97522,7 @@ phases:
       \ `entry_point_too_thick`, and `shell_complexity` contributor to one of the\
       \ focused residual implementation steps.\n- [x] Confirm no downstream retest/gate\
       \ can proceed until all focused residual implementation steps and the cold retest\
-      \ complete.\n- [ ] Include no product-code edits except incidental evidence\
+      \ complete.\n- [x] Include no product-code edits except incidental evidence\
       \ artifacts are expected from this classification step."
     verification: '- [ ] Evidence includes current-mainline BEFORE guard excerpts
       with `file_size 9/5`, weighted `40/15`, or an explicit fresh-current delta.

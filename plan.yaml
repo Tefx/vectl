@@ -97524,22 +97524,22 @@ phases:
       \ can proceed until all focused residual implementation steps and the cold retest\
       \ complete.\n- [x] Include no product-code edits except incidental evidence\
       \ artifacts are expected from this classification step."
-    verification: '- [ ] Evidence includes current-mainline BEFORE guard excerpts
+    verification: '- [x] Evidence includes current-mainline BEFORE guard excerpts
       with `file_size 9/5`, weighted `40/15`, or an explicit fresh-current delta.
 
-      - [ ] Evidence mentions salvaged main commit `1618486` and branch provenance
+      - [x] Evidence mentions salvaged main commit `1618486` and branch provenance
       commit `49aa644b897c3ff08ba39d74a5da036e1fe6bfe2`.
 
-      - [ ] All nine listed post-salvage residual file_size hatches are classified
+      - [x] All nine listed post-salvage residual file_size hatches are classified
       or replaced by a fresh-current guard-derived list.
 
-      - [ ] Every blocker-class residual has an assigned focused implementation owner;
+      - [x] Every blocker-class residual has an assigned focused implementation owner;
       none are dismissed as pre-existing/out-of-scope.
 
-      - [ ] The register maps weighted contributors `file_size`, `dead_param`, `entry_point_too_thick`,
+      - [x] The register maps weighted contributors `file_size`, `dead_param`, `entry_point_too_thick`,
       and `shell_complexity` to owners.
 
-      - [ ] No budget lowering, broad suppression, ignored files, or stale branch-local
+      - [x] No budget lowering, broad suppression, ignored files, or stale branch-local
       proof is accepted.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

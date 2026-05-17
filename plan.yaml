@@ -90948,6 +90948,7 @@ phases:
     - fix-small-policy-archive-domain
     - cli-surface-preservation-uiux-audit
     - invar_guard_remediation.escape-budget-full-guard-retest
+    - invar_guard_remediation.fix-full-guard-residual-budget-blockers
     agent: integration-verifier
   - id: invar_guard_remediation.gate
     name: Gate invar guard remediation closure

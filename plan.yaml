@@ -93793,6 +93793,100 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: software-architect
+  - id: invar_guard_remediation.escape-budget-core-contracts
+    name: Define core extraction contracts for escape-budget closure
+    status: pending
+    description: 'CONTRACT step. Define acceptance-only Core extraction contracts
+      required by `invar_guard_remediation.escape-budget-authority-decision` before
+      any implementation fills logic.
+
+
+      Scope:
+
+      - Add or adjust only contract-level artifacts for pure logic extracted from
+      the residual orchestration files.
+
+      - Allowed outputs: public/internal function signatures, type annotations, docstrings,
+      @pre contracts, @post contracts, doctests, and stubs using `pass`, `...`, or
+      `raise NotImplementedError`.
+
+      - Forbidden outputs: completed business logic, file/network/env/subprocess I/O,
+      runtime wiring, or changed public/model-visible output text.
+
+
+      Core requirements:
+
+      - Any new or changed function under `src/vectl/core/**` MUST have non-vacuous
+      @pre and @post contracts before implementation.
+
+      - At least one doctest MUST exercise the normal path and at least one failure/edge
+      path for each new Core function family.
+
+      - Contracts must preserve behavior for config/projection, path/recovery, event/control,
+      prompt/materialization, and recovery fallback semantics identified by the authority
+      decision.
+
+
+      ## Completion Criteria
+
+      - [ ] Contract artifacts exist for every structural Core extraction target from
+      the decision step.
+
+      - [ ] No implementation logic is introduced beyond stubs.
+
+      - [ ] Each Core contract references real parameters and includes non-vacuous
+      comparisons.
+
+      - [ ] Doctests are present before implementation and document expected behavior.
+
+      - [ ] Public/model-visible outputs are locked and not changed by this contract
+      step.'
+    verification: '- [ ] Contract step contains signatures, @pre/@post contracts,
+      doctests, and stubs only.
+
+      - [ ] No runnable business logic, Shell I/O, or output contract change is introduced.
+
+      - [ ] Doctest expectations expose the downstream implementation gap without
+      pretending full guard is green.
+
+      - [ ] Evidence maps each contract artifact to the authority-decision table row
+      it satisfies.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Contract Artifact Register
+
+
+      | Decision row | Contract path | Function/signature | @pre summary | @post summary
+      | Doctest coverage | Stub marker |
+
+      |---|---|---|---|---|---|---|
+
+      | <row> | <path> | <signature> | <pre> | <post> | <normal+edge/failure> | <pass/.../NotImplementedError>
+      |
+
+
+      ## Contract Purity Confirmation
+
+      - Product implementation logic added: NO (required)
+
+      - Shell I/O added to Core: NO (required)
+
+      - Public/model-visible output changed: NO unless authority decision explicitly
+      required it
+
+      '
+    depends_on:
+    - invar_guard_remediation.escape-budget-authority-decision
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

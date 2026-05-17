@@ -95393,7 +95393,7 @@ phases:
       - [x] `why_previous_fix_failed`, `why_comment_deletion_is_not_closure`, and\
       \ `reversal_risk` are present in evidence.\n- [x] Exact full-guard prompt_materialization\
       \ excerpts before and after are pasted.\n- [x] Targeted prompt/inspection tests\
-      \ and prompt/argv/output-contract snapshots are provided.\n- [ ] Removed escape-hatch\
+      \ and prompt/argv/output-contract snapshots are provided.\n- [x] Removed escape-hatch\
       \ justifications are restored/repaired only for true Shell boundaries and not\
       \ used as broad suppression.\n- [ ] No public/model-visible prompt behavior\
       \ or CLI/operator-visible argv behavior regresses.\n- [ ] Any residual finding\

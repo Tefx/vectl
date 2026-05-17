@@ -94105,3 +94105,114 @@ phases:
 
       - [ ] No product code changed.'
     agent: doc-reviewer
+  - id: det_check_full_plan_check
+    name: Run checklist full-plan verification
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), run the repo-appropriate
+      full-plan verification boundary after deterministic checklist implementation
+      and docs.
+
+
+      verification_scope: full-plan-check
+
+      Protects downstream final review and release readiness.
+
+
+      Required checks:
+
+      - [ ] Focused checklist tests pass green.
+
+      - [ ] CLI/MCP/orchestration focused tests pass green.
+
+      - [ ] Full relevant Python test suite or documented repo-appropriate subset
+      passes.
+
+      - [ ] Invar guard is run with the authoritative project command if relevant
+      after core/shell changes.
+
+      - [ ] Any broad verifier failure receives explicit remediation ownership or
+      explicit non-intersection evidence; do not dismiss as pre-existing/out-of-scope
+      without gate-intersection analysis.'
+    verification: '- [ ] full-plan-check protecting final review: run `pytest tests/test_checklist.py
+      tests/test_cli.py tests/test_mcp.py -k ''checklist or deterministic or batch
+      or revision'' -q` and report output.
+
+      - [ ] Run `pytest tests/orchestration tests/repro -k ''checklist or receipt
+      or prompt'' -q` if orchestration receipt tests exist and report output.
+
+      - [ ] Run the repo-appropriate broad test command (for example `pytest -q`)
+      or explicitly justify a narrower command.
+
+      - [ ] Run `invar guard` or the repository-authoritative invar guard command
+      after core/shell changes and report output.
+
+      - [ ] Provide remediation ownership for any blocker-class broad failure that
+      intersects final gate.'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier (independent of implementation)
+
+      **Scope**: full-plan-check for deterministic checklist handling
+
+      **Independence Level**: L2
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - tests/test_checklist.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_cli.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_mcp.py — key passage or "NOT READ: <reason>"
+
+
+      ### Test Execution
+
+      Commands executed:
+
+      ```bash
+
+      pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py -k ''checklist
+      or deterministic or batch or revision'' -q
+
+      pytest tests/orchestration tests/repro -k ''checklist or receipt or prompt''
+      -q
+
+      pytest -q
+
+      invar guard
+
+      ```
+
+      Actual output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ### Broad Failure Disposition
+
+      | Failure | Provenance | Gate intersection | Disposition | Owner/closure path
+      |
+
+      | --- | --- | --- | --- | --- |
+
+
+      ### Headline
+
+      - [ ] PASS: Full-plan check green or only explicitly non-intersecting debt remains.
+
+      - [ ] FAIL: Blocking failures or proof gaps remain.'
+    depends_on:
+    - det_check_docs_update
+    agent: integration-verifier

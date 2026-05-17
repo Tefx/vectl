@@ -96787,6 +96787,165 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-residual-budget-blockers
     agent: python-senior
+  - id: invar_guard_remediation.fix-orch-app-driver-budget-closure
+    name: Fix orch_app and driver budget closure
+    status: pending
+    description: 'IMPLEMENTATION / Focused residual slice for `orch_app.py` and orchestration
+      `driver.py` budget closure.
+
+
+      work_type: technical_debt_remediation
+
+      step_type: implementation
+
+      symbolic_testing: true
+
+      agent_source: default
+
+
+      Owned blocker families:
+
+      - `src/vectl/orch_app.py` escape-hatch budget residuals (`function_size`, `shell_result`).
+
+      - `src/vectl/orchestration/driver.py` escape-hatch budget residuals (`function_size`).
+
+      - Project-level budget impact attributable to app/driver closure, without hiding
+      other slices'' residuals.
+
+
+      Scope boundaries:
+
+      - Preserve runtime/entrypoint lifecycle semantics for orchestration app and
+      driver surfaces.
+
+      - Do not narrow runnable behavior into handler-only cleanup; startup, control
+      flow, dispatch, and user/operator-visible outcomes must remain compatible.
+
+      - Do not lower budgets, add broad suppressions, or remove visibility of guard
+      findings.
+
+      - Any pure extraction under `**/core/**` requires non-vacuous contracts and
+      doctests before implementation logic.
+
+
+      Required implementation approach:
+
+      - Use the slice boundary register from `invar_guard_remediation.fix-full-guard-residual-budget-blockers`.
+
+      - Extract pure decision helpers or orchestration policies only where doing so
+      reduces function/shell_result pressure while preserving lifecycle behavior.
+
+      - Add/update focused driver/app tests or smoke-style checks proving entrypoint/control
+      behavior still works after extraction.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Handler-only cleanup that breaks runnable orchestration app or driver lifecycle
+      semantics.
+
+      2. Full-guard improvement in `orch_app.py` or `driver.py` that worsens project-level
+      `shell_result` or weighted budget.
+
+      3. Evidence that omits exact launch/control-path or focused driver/app regression
+      proof.
+
+      4. Broad escape hatches, budget lowering, or deleted findings.
+
+
+      ## Completion Criteria
+
+      - [ ] BEFORE `uvx invar-tools guard --all` excerpt for `orch_app.py`, `driver.py`,
+      and project-level budget counters is pasted from current mainline.
+
+      - [ ] AFTER `uvx invar-tools guard --all` excerpt shows closure or explicit
+      residual ownership for these families without project-level budget regression.
+
+      - [ ] Targeted app/driver regression tests or smoke checks pass and output is
+      pasted.
+
+      - [ ] Runtime/control/lifecycle behavior is preserved with explicit evidence.
+
+      - [ ] No broad suppression, budget lowering, or handler-only narrowing is used.
+
+      - [ ] Residual disposition register is updated for orch_app/driver/project-level
+      findings.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
+    verification: '- [ ] `orch_app.py` and `driver.py` residuals are closed or dispositioned
+      with pasted BEFORE/AFTER `uvx invar-tools guard --all` excerpts.
+
+      - [ ] Targeted app/driver regression or smoke evidence proves runtime/control/lifecycle
+      behavior still works.
+
+      - [ ] Project-level budget counters do not regress from this slice.
+
+      - [ ] No broad suppression, budget lowering, or stub-only implementation is
+      accepted.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Slice Evidence
+
+
+      **BEFORE full-guard excerpt**:
+
+      ```text
+
+      <paste uvx invar-tools guard --all excerpt for orch_app.py, driver.py, and project-level
+      counters>
+
+      ```
+
+
+      **Runtime/control-path proof**:
+
+      ```text
+
+      <paste exact commands/tests/smoke output>
+
+      ```
+
+
+      **AFTER full-guard excerpt**:
+
+      ```text
+
+      <paste uvx invar-tools guard --all excerpt for the same families>
+
+      ```
+
+
+      **Residual disposition register**:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      **Suppression/budget-change statement**:
+
+      <confirm none, or justify narrow authority-backed exception>'
+    depends_on:
+    - invar_guard_remediation.fix-full-guard-residual-budget-blockers
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

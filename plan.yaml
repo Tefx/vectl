@@ -96546,7 +96546,7 @@ phases:
 
       - [x] Public contract symbol compatibility is proven for known consumers.
 
-      - [ ] No broad suppression, budget lowering, or duplicate contract definitions
+      - [x] No broad suppression, budget lowering, or duplicate contract definitions
       are used.
 
       - [ ] Residual disposition register is updated for contracts file-size findings.

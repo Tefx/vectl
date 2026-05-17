@@ -94489,7 +94489,7 @@ phases:
       - docs/invar_guard_remediation/escape_budget_authority_decision.md'
   - id: invar_guard_remediation.escape-budget-core-contracts
     name: Define core extraction contracts for escape-budget closure
-    status: pending
+    status: claimed
     description: 'CONTRACT step. Define acceptance-only Core extraction contracts
       required by `invar_guard_remediation.escape-budget-authority-decision` before
       any implementation fills logic.
@@ -94581,6 +94581,8 @@ phases:
     depends_on:
     - invar_guard_remediation.escape-budget-authority-decision
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T16:32:30.904664+00:00'
   - id: invar_guard_remediation.fix-config-projection-recovery-budget-residuals
     name: Fix config/projection/recovery escape-budget residuals
     status: pending

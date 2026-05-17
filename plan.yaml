@@ -96486,7 +96486,7 @@ phases:
     agent: python-senior
   - id: invar_guard_remediation.fix-contracts-file-size-decomposition
     name: Fix contracts.py file-size decomposition
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION / Focused residual slice for `src/vectl/orchestration/contracts.py`
       file-size closure.
 
@@ -96633,6 +96633,8 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-residual-budget-blockers
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T19:50:51.698542+00:00'
   - id: invar_guard_remediation.fix-config-projections-recovery-budget-closure
     name: Fix config, projections, and recovery fallback budget closure
     status: claimed

@@ -96400,7 +96400,7 @@ phases:
       - [x] AFTER `uvx invar-tools guard --all` excerpt shows no inspection/drive
       query budget regression and either closure or explicit residual ownership.
 
-      - [ ] Targeted inspection/drive query tests pass and command output is pasted.
+      - [x] Targeted inspection/drive query tests pass and command output is pasted.
 
       - [ ] No broad suppressions, budget lowering, or visibility deletion is used.
 

@@ -97228,7 +97228,7 @@ phases:
       by orchestrator before completion.'
   - id: invar_guard_remediation.full-guard-residual-disposition-retest
     name: Retest and consolidate full-guard residual disposition
-    status: claimed
+    status: done
     description: 'VERIFICATION / full-plan-check. Consolidate the focused residual
       slices and retest the authoritative full-guard command before downstream UI/UX
       audit, full-guard verification, and phase gate.
@@ -97374,6 +97374,98 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-17T20:38:04.401341+00:00'
+    done_at: '2026-05-17T20:52:46.615254+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Core requires @pre/@post + doctest; Shell handles I/O and returns
+      Result[T,E]; escape hatches rare/reasoned.
+
+      - AGENTS.md — plan.yaml managed by vectl/orchestrator; evidence mandatory.
+
+      - tools/vectl/README.md — NOT READ: absent in isolated worktree.
+
+      - CONSTITUTION.md — NOT READ: absent in isolated worktree.
+
+
+      ## Full-Guard Residual Retest Evidence
+
+      Command: `uvx invar-tools guard --all`
+
+      Exit code: 1
+
+      Observed result: red
+
+      verdict: FAIL
+
+      gate_open_allowed: false
+
+      orchestrator_action_hint: DO_NOT_COMPLETE for downstream gates until remediation
+      path runs.
+
+
+      Current guard summary from integration-verifier: status=failed, files_checked=89,
+      errors=11, warnings=15, infos=4.
+
+      Remaining blocker families:
+
+      - escape_hatch_file_limit: orch_app.py function_size 10/2, shell_result 7/2;
+      config.py function_size 4/2, shell_result 26/2; driver.py function_size 7/2;
+      projections.py shell_result 18/2; recovery_fallback.py shell_result 7/2.
+
+      - escape_hatch_project_limit: file_size 18/5, function_size 30/5, shell_result
+      66/5.
+
+      - escape_hatch_budget: weighted 355/15.
+
+
+      Budget comparison against failed broad attempt:
+
+      - shell_result: 80/5 -> 66/5, no regression.
+
+      - weighted: 400/15 -> 355/15, no regression.
+
+
+      Residual disposition / ownership:
+
+      - Focused slice residual artifacts were consumed: docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md
+      and docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md.
+
+      - The retest mapped remaining file-limit, project-limit, and weighted-budget
+      findings to BLOCKING_OWNER_NEEDED; warnings/infos were non-intersecting for
+      current blocker decision.
+
+      - Planner remediation created `invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched`
+      and `invar_guard_remediation.full-guard-escape-budget-batched-retest`, and kept
+      downstream audit/verification steps behind the new retest path.
+
+
+      Behavioral proof register:
+
+      - requirement_ref: exact authoritative full guard; behavior_claim: command executed;
+      evidence_ref: EXIT_CODE=1 guard output; status: PROVEN_RED; closure_path: BLOCKING_OWNER_NEEDED;
+      gate_decision_basis: 11 guard errors.
+
+      - requirement_ref: budget comparison; behavior_claim: no same-family regression
+      from residual remediation path; evidence_ref: shell_result 66/5 vs 80/5 and
+      weighted 355/15 vs 400/15; status: PROVEN; closure_path: NO_REGRESSION_BUT_NOT_GREEN.
+
+      - requirement_ref: residual ownership; behavior_claim: every remaining blocker
+      family mapped; evidence_ref: residual disposition register; status: PROVEN_BLOCKING;
+      closure_path: planner-created batched fix + retest.
+
+
+      Verify-only purity:
+
+      - product_implementation_files_modified: false.
+
+      - artifacts_modified: none.
+
+      - commit_hashes: none (verify-only).
+
+
+      checklist_receipt: completion/verification checklist satisfied as a failure-discovery
+      step after remediation ownership was created; downstream OPEN remains blocked
+      until the batched fix/retest path closes.'
   - id: invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     name: Fix full-guard escape-budget blocker families in one batched slice
     status: pending

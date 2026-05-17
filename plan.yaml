@@ -96397,7 +96397,7 @@ phases:
       - [x] BEFORE `uvx invar-tools guard --all` excerpt for inspection/drive query
       residuals is pasted from current mainline.
 
-      - [ ] AFTER `uvx invar-tools guard --all` excerpt shows no inspection/drive
+      - [x] AFTER `uvx invar-tools guard --all` excerpt shows no inspection/drive
       query budget regression and either closure or explicit residual ownership.
 
       - [ ] Targeted inspection/drive query tests pass and command output is pasted.

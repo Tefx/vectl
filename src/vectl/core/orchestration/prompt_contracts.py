@@ -29,6 +29,55 @@ _OPENCODE_BOOTSTRAP_MESSAGE_START = (
 _OPENCODE_BOOTSTRAP_MESSAGE_RESUME = (
     "Continue this session by executing the attached runner prompt in the current workspace."
 )
+_RESOLUTION_REPORT_CONTRACT_LINES = (
+    "Return ONLY one JSON object. Do not include Markdown, prose, or code fences.",
+    "Schema:",
+    "{",
+    '  "status": "unblocked|waiting|operator_required|halt",',
+    '  "summary": "non-empty human-readable summary",',
+    '  "evidence_refs": ["evidence reference strings"],',
+    '  "operator_message": null,',
+    '  "planner_request": null | {',
+    '    "reason": "why plan mutation is required",',
+    '    "affected_steps": ["step ids"],',
+    '    "evidence_refs": ["evidence refs"],',
+    '    "constraints": ["bounded constraints"],',
+    '    "mutations": [',
+    '      {"action": "add-step|edit-step|remove-step|move-step|add-phase|edit-phase|skip-step|complete-phase", "arguments": {}, "reason": "why"}',
+    "    ]",
+    "  }",
+    "}",
+    "Use status=operator_required when automatic closure is unsafe or unverifiable.",
+)
+_STRUCTURED_REVIEW_CONTRACT_LINES = (
+    "Return ONLY one JSON object. Do not include Markdown, prose, or code fences.",
+    "Schema:",
+    "{",
+    '  "review_outcome": "pass|needs_fix|needs_replan|operator_required",',
+    '  "summary": "non-empty human-readable summary",',
+    '  "findings": ["finding strings"],',
+    '  "evidence_refs": ["evidence reference strings"],',
+    '  "planner_request": null | {',
+    '    "reason": "required only when review_outcome is needs_replan",',
+    '    "affected_steps": ["step ids"],',
+    '    "evidence_refs": ["evidence refs"],',
+    '    "constraints": ["bounded constraints"],',
+    '    "mutations": [',
+    '      {"action": "add-step|edit-step|remove-step|move-step|add-phase|edit-phase|skip-step|complete-phase", "arguments": {}, "reason": "why"}',
+    "    ]",
+    "  }",
+    "}",
+    "Use review_outcome=needs_replan when passing the gate requires adding, editing, or skipping plan work.",
+)
+_YAML_CONTRACT_LINES = (
+    "Return YAML exactly:",
+    "```yaml",
+    'status: "SUCCESS|FAIL"',
+    "evidence: |",
+    "  <filled evidence with files changed and verification outputs>",
+    'error: "<if FAIL, raw error; else empty>"',
+    "```",
+)
 
 
 @pre(lambda run_id, agent_name, workspace_path: bool(run_id.strip()) and bool(agent_name.strip()) and bool(workspace_path.strip()))
@@ -133,59 +182,13 @@ def output_contract_lines(output_format: str, required_fields: Sequence[str]) ->
     'Return YAML exactly:'
     """
     if output_format == "resolution_report":
-        return (
-            "Return ONLY one JSON object. Do not include Markdown, prose, or code fences.",
-            "Schema:",
-            "{",
-            '  "status": "unblocked|waiting|operator_required|halt",',
-            '  "summary": "non-empty human-readable summary",',
-            '  "evidence_refs": ["evidence reference strings"],',
-            '  "operator_message": null,',
-            '  "planner_request": null | {',
-            '    "reason": "why plan mutation is required",',
-            '    "affected_steps": ["step ids"],',
-            '    "evidence_refs": ["evidence refs"],',
-            '    "constraints": ["bounded constraints"],',
-            '    "mutations": [',
-            '      {"action": "add-step|edit-step|remove-step|move-step|add-phase|edit-phase|skip-step|complete-phase", "arguments": {}, "reason": "why"}',
-            "    ]",
-            "  }",
-            "}",
-            "Use status=operator_required when automatic closure is unsafe or unverifiable.",
-        )
+        return _RESOLUTION_REPORT_CONTRACT_LINES
     if output_format == "structured_review_result":
-        return (
-            "Return ONLY one JSON object. Do not include Markdown, prose, or code fences.",
-            "Schema:",
-            "{",
-            '  "review_outcome": "pass|needs_fix|needs_replan|operator_required",',
-            '  "summary": "non-empty human-readable summary",',
-            '  "findings": ["finding strings"],',
-            '  "evidence_refs": ["evidence reference strings"],',
-            '  "planner_request": null | {',
-            '    "reason": "required only when review_outcome is needs_replan",',
-            '    "affected_steps": ["step ids"],',
-            '    "evidence_refs": ["evidence refs"],',
-            '    "constraints": ["bounded constraints"],',
-            '    "mutations": [',
-            '      {"action": "add-step|edit-step|remove-step|move-step|add-phase|edit-phase|skip-step|complete-phase", "arguments": {}, "reason": "why"}',
-            "    ]",
-            "  }",
-            "}",
-            "Use review_outcome=needs_replan when passing the gate requires adding, editing, or skipping plan work.",
-        )
+        return _STRUCTURED_REVIEW_CONTRACT_LINES
     fields = tuple(required_fields) or ("status", "evidence", "error")
     if output_format == "json":
         return ("Return ONLY one JSON object.", f"Required fields: {json.dumps(fields)}")
-    return (
-        "Return YAML exactly:",
-        "```yaml",
-        'status: "SUCCESS|FAIL"',
-        "evidence: |",
-        "  <filled evidence with files changed and verification outputs>",
-        'error: "<if FAIL, raw error; else empty>"',
-        "```",
-    )
+    return _YAML_CONTRACT_LINES
 
 
 @pre(lambda executable, prompt_path, resume=False, session_id=None: bool(executable.strip()) and bool(prompt_path.strip()) and (not resume or bool(str(session_id or "").strip())))

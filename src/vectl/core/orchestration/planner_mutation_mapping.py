@@ -25,6 +25,8 @@ _SUPPORTED_ACTIONS = {
     "skip-step",
     "complete-phase",
 }
+_STEP_EDIT_FIELDS = {"name", "description", "verification", "evidence_template", "agent", "depends_on", "refs"}
+_PHASE_EDIT_FIELDS = {"name", "depends_on", "context"}
 
 
 @pre(lambda value: value is not None)
@@ -65,24 +67,14 @@ def interpret_planner_mutation(action: str, arguments: Mapping[str, object]) -> 
         phase_id = str(arguments.get("phase_id", ""))
         step_id = arguments.get("step_id")
         name = str(arguments.get("name", ""))
-        return {
-            "facade_method": "add_step",
-            "description_template": "add-step: phase={phase_id} step={generated_id} name={name}",
-            "description": f"add-step: phase={phase_id} step={step_id or ''} name={name}",
-            "affected_step_id": str(step_id) if step_id is not None else "",
-        }
+        return {"facade_method": "add_step", "description_template": "add-step: phase={phase_id} step={generated_id} name={name}", "description": f"add-step: phase={phase_id} step={step_id or ''} name={name}", "affected_step_id": str(step_id) if step_id is not None else ""}
     if action == "edit-step":
         step_id = str(arguments.get("step_id", ""))
         changes = arguments.get("changes", {})
         if not isinstance(changes, Mapping):
             raise ValueError(f"edit-step changes must be dict, got {type(changes)}")
-        fields = tuple(key for key in changes.keys() if key in {"name", "description", "verification", "evidence_template", "agent", "depends_on", "refs"})
-        return {
-            "facade_method": "edit_step",
-            "description": f"edit-step: step={step_id} fields={fields}",
-            "affected_step_id": step_id,
-            "fields": fields,
-        }
+        fields = tuple(key for key in changes.keys() if key in _STEP_EDIT_FIELDS)
+        return {"facade_method": "edit_step", "description": f"edit-step: step={step_id} fields={fields}", "affected_step_id": step_id, "fields": fields}
     if action == "remove-step":
         step_id = str(arguments.get("step_id", ""))
         return {"facade_method": "remove_step", "description": f"remove-step: step={step_id}", "affected_step_id": step_id}
@@ -93,18 +85,13 @@ def interpret_planner_mutation(action: str, arguments: Mapping[str, object]) -> 
     if action == "add-phase":
         phase_id = arguments.get("phase_id")
         name = str(arguments.get("name", ""))
-        return {
-            "facade_method": "add_phase",
-            "description_template": "add-phase: phase={generated_id} name={name}",
-            "description": f"add-phase: phase={phase_id or ''} name={name}",
-            "affected_step_id": "",
-        }
+        return {"facade_method": "add_phase", "description_template": "add-phase: phase={generated_id} name={name}", "description": f"add-phase: phase={phase_id or ''} name={name}", "affected_step_id": ""}
     if action == "edit-phase":
         phase_id = str(arguments.get("phase_id", ""))
         changes = arguments.get("changes", {})
         if not isinstance(changes, Mapping):
             raise ValueError(f"edit-phase changes must be dict, got {type(changes)}")
-        fields = tuple(key for key in changes.keys() if key in {"name", "depends_on", "context"})
+        fields = tuple(key for key in changes.keys() if key in _PHASE_EDIT_FIELDS)
         return {"facade_method": "edit_phase", "description": f"edit-phase: phase={phase_id} fields={fields}", "affected_step_id": "", "fields": fields}
     if action == "skip-step":
         step_id = str(arguments.get("step_id", ""))
@@ -113,9 +100,4 @@ def interpret_planner_mutation(action: str, arguments: Mapping[str, object]) -> 
 
     phase_id = str(arguments.get("phase_id", ""))
     reason = str(arguments.get("reason", "planner auto-complete"))
-    return {
-        "facade_method": "complete_phase",
-        "description_template": "complete-phase: phase={phase_id} completed_steps={completed_ids}",
-        "description": f"complete-phase: phase={phase_id} reason={reason}",
-        "affected_step_id": "",
-    }
+    return {"facade_method": "complete_phase", "description_template": "complete-phase: phase={phase_id} completed_steps={completed_ids}", "description": f"complete-phase: phase={phase_id} reason={reason}", "affected_step_id": ""}

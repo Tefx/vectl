@@ -159,7 +159,11 @@ class PlanCoreAdapter:
         )
 
         return CoreSnapshot(
-            plan_complete=_is_plan_complete(plan),
+            plan_complete=all(
+                step.status in (StepStatus.DONE, StepStatus.SKIPPED)
+                for phase in plan.phases
+                for step in phase.steps
+            ),
             claimable_step_ids=claimable_step_ids,
             in_progress_step_ids=in_progress_step_ids,
             blocked_step_ids=blocked_step_ids,
@@ -294,24 +298,6 @@ class PlanCoreAdapter:
             verify=step.verify,
             agent=step.agent,
         )
-
-
-# @invar:allow shell_result: core-adapter read presenter preserves bool snapshot field for public CoreSnapshot API
-def _is_plan_complete(plan: Plan) -> bool:
-    """Return whether all steps are terminal in authoritative plan state.
-
-    Args:
-        plan: Authoritative plan model.
-
-    Returns:
-        True when each step is either done or skipped.
-    """
-    return all(
-        step.status in (StepStatus.DONE, StepStatus.SKIPPED)
-        for phase in plan.phases
-        for step in phase.steps
-    )
-
 
 # ---------------------------------------------------------------------
 # Planner mutation application through vectl facade only
@@ -461,118 +447,159 @@ class PlanPlannerMutationApplier:
             PlanError: If the mutation cannot be applied through core.
             ValueError: If the mutation action is not recognized.
         """
-        plan, file_hash = load_plan_definition(self._plan_path)
         args = mutation.arguments
         mapping = interpret_planner_mutation(mutation.action, args)
+        facade_method = str(mapping.get("facade_method", ""))
+        plan, file_hash = load_plan_definition(self._plan_path)
 
-        if mutation.action == "add-step":
-            phase_id = str(args.get("phase_id", ""))
-            step_id = args.get("step_id")
-            name = str(args.get("name", ""))
-            description = str(args.get("description", ""))
-            depends_on = _as_str_list(args.get("depends_on"))
-            refs = _as_str_list(args.get("refs"))
-            verification = str(args.get("verification", ""))
-            agent = args.get("agent")
-            plan, generated_id = add_step(
-                plan,
-                phase_id,
-                name,
-                step_id=str(step_id) if step_id is not None else None,
-                description=description,
-                depends_on=depends_on,
-                verification=verification,
-                refs=refs,
-                agent=str(agent) if agent is not None else None,
-            )
-            save_plan(plan, self._plan_path, expected_hash=file_hash)
-            template = str(mapping.get("description_template", ""))
-            return template.format(phase_id=phase_id, generated_id=generated_id, name=name)
+        appliers = {
+            "add_step": self._apply_add_step,
+            "edit_step": self._apply_edit_step,
+            "remove_step": self._apply_remove_step,
+            "move_step": self._apply_move_step,
+            "add_phase": self._apply_add_phase,
+            "edit_phase": self._apply_edit_phase,
+            "skip_step": self._apply_skip_step,
+            "complete_phase": self._apply_complete_phase,
+        }
+        applier = appliers.get(facade_method)
+        if applier is None:
+            raise ValueError(f"Unsupported planner mutation action: {mutation.action}")
+        return applier(plan, file_hash, args, mapping)
 
-        if mutation.action == "edit-step":
-            step_id = str(args.get("step_id", ""))
-            changes = args.get("changes", {})
-            if not isinstance(changes, dict):
-                raise ValueError(f"edit-step changes must be dict, got {type(changes)}")
-            edit_kwargs: dict[str, object] = {}
-            if "name" in changes:
-                edit_kwargs["name"] = str(changes["name"])
-            if "description" in changes:
-                edit_kwargs["description"] = str(changes["description"])
-            if "verification" in changes:
-                edit_kwargs["verification"] = str(changes["verification"])
-            if "evidence_template" in changes:
-                edit_kwargs["evidence_template"] = str(changes["evidence_template"])
-            if "agent" in changes:
-                edit_kwargs["agent"] = (
-                    str(changes["agent"]) if changes["agent"] is not None else None
-                )
-            if "depends_on" in changes:
-                edit_kwargs["depends_on"] = list(_as_str_list(changes["depends_on"]))
-            if "refs" in changes:
-                edit_kwargs["refs"] = list(_as_str_list(changes["refs"]))
-            plan = edit_step(plan, step_id, **edit_kwargs)  # type: ignore[arg-type]
-            save_plan(plan, self._plan_path, expected_hash=file_hash)
-            return f"edit-step: step={step_id} fields={tuple(edit_kwargs.keys())}"
+    def _apply_add_step(
+        self,
+        plan: Plan,
+        file_hash: str,
+        args: dict[str, object],
+        mapping: object,
+    ) -> str:
+        """Apply add-step through the official core facade."""
+        phase_id = str(args.get("phase_id", ""))
+        step_id = args.get("step_id")
+        name = str(args.get("name", ""))
+        agent = args.get("agent")
+        plan, generated_id = add_step(
+            plan,
+            phase_id,
+            name,
+            step_id=str(step_id) if step_id is not None else None,
+            description=str(args.get("description", "")),
+            depends_on=self._as_str_list(args.get("depends_on")),
+            verification=str(args.get("verification", "")),
+            refs=self._as_str_list(args.get("refs")),
+            agent=str(agent) if agent is not None else None,
+        )
+        save_plan(plan, self._plan_path, expected_hash=file_hash)
+        template = str(mapping.get("description_template", "")) if isinstance(mapping, dict) else ""
+        return template.format(phase_id=phase_id, generated_id=generated_id, name=name)
 
-        if mutation.action == "remove-step":
-            step_id = str(args.get("step_id", ""))
-            plan = remove_step(plan, step_id, force=True)
-            save_plan(plan, self._plan_path, expected_hash=file_hash)
-            return f"remove-step: step={step_id}"
+    def _apply_edit_step(
+        self,
+        plan: Plan,
+        file_hash: str,
+        args: dict[str, object],
+        mapping: object,
+    ) -> str:
+        """Apply edit-step through the official core facade."""
+        _ = mapping
+        step_id = str(args.get("step_id", ""))
+        changes = self._require_dict(args.get("changes", {}), "edit-step changes")
+        edit_kwargs = self._step_edit_kwargs(changes)
+        plan = edit_step(plan, step_id, **edit_kwargs)  # type: ignore[arg-type]
+        save_plan(plan, self._plan_path, expected_hash=file_hash)
+        return f"edit-step: step={step_id} fields={tuple(edit_kwargs.keys())}"
 
-        if mutation.action == "move-step":
-            step_id = str(args.get("step_id", ""))
-            target_phase = str(args.get("target_phase", ""))
-            plan = move_step(plan, step_id, target_phase)
-            save_plan(plan, self._plan_path, expected_hash=file_hash)
-            return f"move-step: step={step_id} to={target_phase}"
+    def _apply_remove_step(
+        self,
+        plan: Plan,
+        file_hash: str,
+        args: dict[str, object],
+        mapping: object,
+    ) -> str:
+        """Apply remove-step through the official core facade."""
+        _ = mapping
+        step_id = str(args.get("step_id", ""))
+        plan = remove_step(plan, step_id, force=True)
+        save_plan(plan, self._plan_path, expected_hash=file_hash)
+        return f"remove-step: step={step_id}"
 
-        if mutation.action == "add-phase":
-            name = str(args.get("name", ""))
-            raw_phase_id = args.get("phase_id")
-            add_phase_id: str | None = str(raw_phase_id) if raw_phase_id is not None else None
-            plan, generated_id = add_phase(
-                plan,
-                name,
-                phase_id=add_phase_id,
-            )
-            save_plan(plan, self._plan_path, expected_hash=file_hash)
-            template = str(mapping.get("description_template", ""))
-            return template.format(generated_id=generated_id, name=name)
+    def _apply_move_step(
+        self,
+        plan: Plan,
+        file_hash: str,
+        args: dict[str, object],
+        mapping: object,
+    ) -> str:
+        """Apply move-step through the official core facade."""
+        _ = mapping
+        step_id = str(args.get("step_id", ""))
+        target_phase = str(args.get("target_phase", ""))
+        plan = move_step(plan, step_id, target_phase)
+        save_plan(plan, self._plan_path, expected_hash=file_hash)
+        return f"move-step: step={step_id} to={target_phase}"
 
-        if mutation.action == "edit-phase":
-            phase_id = str(args.get("phase_id", ""))
-            changes = args.get("changes", {})
-            if not isinstance(changes, dict):
-                raise ValueError(f"edit-phase changes must be dict, got {type(changes)}")
-            phase_kwargs: dict[str, object] = {}
-            if "name" in changes:
-                phase_kwargs["name"] = str(changes["name"])
-            if "depends_on" in changes:
-                phase_kwargs["depends_on"] = list(_as_str_list(changes["depends_on"]))
-            if "context" in changes:
-                phase_kwargs["context"] = str(changes["context"])
-            plan = edit_phase(plan, phase_id, **phase_kwargs)  # type: ignore[arg-type]
-            save_plan(plan, self._plan_path, expected_hash=file_hash)
-            return f"edit-phase: phase={phase_id} fields={tuple(phase_kwargs.keys())}"
+    def _apply_add_phase(
+        self,
+        plan: Plan,
+        file_hash: str,
+        args: dict[str, object],
+        mapping: object,
+    ) -> str:
+        """Apply add-phase through the official core facade."""
+        name = str(args.get("name", ""))
+        raw_phase_id = args.get("phase_id")
+        phase_id = str(raw_phase_id) if raw_phase_id is not None else None
+        plan, generated_id = add_phase(plan, name, phase_id=phase_id)
+        save_plan(plan, self._plan_path, expected_hash=file_hash)
+        template = str(mapping.get("description_template", "")) if isinstance(mapping, dict) else ""
+        return template.format(generated_id=generated_id, name=name)
 
-        if mutation.action == "skip-step":
-            step_id = str(args.get("step_id", ""))
-            reason = str(args.get("reason", ""))
-            plan = skip_step(plan, step_id, reason)
-            save_plan(plan, self._plan_path, expected_hash=file_hash)
-            return f"skip-step: step={step_id} reason={reason}"
+    def _apply_edit_phase(
+        self,
+        plan: Plan,
+        file_hash: str,
+        args: dict[str, object],
+        mapping: object,
+    ) -> str:
+        """Apply edit-phase through the official core facade."""
+        _ = mapping
+        phase_id = str(args.get("phase_id", ""))
+        changes = self._require_dict(args.get("changes", {}), "edit-phase changes")
+        phase_kwargs = self._phase_edit_kwargs(changes)
+        plan = edit_phase(plan, phase_id, **phase_kwargs)  # type: ignore[arg-type]
+        save_plan(plan, self._plan_path, expected_hash=file_hash)
+        return f"edit-phase: phase={phase_id} fields={tuple(phase_kwargs.keys())}"
 
-        if mutation.action == "complete-phase":
-            phase_id = str(args.get("phase_id", ""))
-            reason = str(args.get("reason", "planner auto-complete"))
-            plan, completed_ids = complete_phase(plan, phase_id, reason)
-            save_plan(plan, self._plan_path, expected_hash=file_hash)
-            template = str(mapping.get("description_template", ""))
-            return template.format(phase_id=phase_id, completed_ids=completed_ids)
+    def _apply_skip_step(
+        self,
+        plan: Plan,
+        file_hash: str,
+        args: dict[str, object],
+        mapping: object,
+    ) -> str:
+        """Apply skip-step through the official core facade."""
+        _ = mapping
+        step_id = str(args.get("step_id", ""))
+        reason = str(args.get("reason", ""))
+        plan = skip_step(plan, step_id, reason)
+        save_plan(plan, self._plan_path, expected_hash=file_hash)
+        return f"skip-step: step={step_id} reason={reason}"
 
-        raise ValueError(f"Unsupported planner mutation action: {mutation.action}")
+    def _apply_complete_phase(
+        self,
+        plan: Plan,
+        file_hash: str,
+        args: dict[str, object],
+        mapping: object,
+    ) -> str:
+        """Apply complete-phase through the official core facade."""
+        phase_id = str(args.get("phase_id", ""))
+        reason = str(args.get("reason", "planner auto-complete"))
+        plan, completed_ids = complete_phase(plan, phase_id, reason)
+        save_plan(plan, self._plan_path, expected_hash=file_hash)
+        template = str(mapping.get("description_template", "")) if isinstance(mapping, dict) else ""
+        return template.format(phase_id=phase_id, completed_ids=completed_ids)
 
     def _extract_step_id(self, mutation: PlannerMutationItem) -> str | None:
         """Extract the primary step_id from a mutation's arguments.
@@ -588,21 +615,45 @@ class PlanPlannerMutationApplier:
             return str(step_id)
         return None
 
+    @staticmethod
+    def _as_str_list(value: object) -> list[str]:
+        """Coerce a value to a list of strings through the Core helper."""
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return planner_as_str_list(value)
+        if isinstance(value, (list, tuple)):
+            return planner_as_str_list(value)
+        return planner_as_str_list(str(value))
 
-# @invar:allow shell_result: compatibility adapter delegates planner argument coercion to Core while preserving private call shape
-def _as_str_list(value: object) -> list[str]:
-    """Coerce a value to a list of strings.
+    @staticmethod
+    def _require_dict(value: object, label: str) -> dict[str, object]:
+        """Require a planner argument object to be a dict for core facade kwargs."""
+        if not isinstance(value, dict):
+            raise ValueError(f"{label} must be dict, got {type(value)}")
+        return value
 
-    Args:
-        value: Value to coerce. Accepts list, tuple, or None.
+    def _step_edit_kwargs(self, changes: dict[str, object]) -> dict[str, object]:
+        """Build edit-step keyword arguments from planner change data."""
+        edit_kwargs: dict[str, object] = {}
+        for field in ("name", "description", "verification", "evidence_template"):
+            if field in changes:
+                edit_kwargs[field] = str(changes[field])
+        if "agent" in changes:
+            edit_kwargs["agent"] = str(changes["agent"]) if changes["agent"] is not None else None
+        if "depends_on" in changes:
+            edit_kwargs["depends_on"] = list(self._as_str_list(changes["depends_on"]))
+        if "refs" in changes:
+            edit_kwargs["refs"] = list(self._as_str_list(changes["refs"]))
+        return edit_kwargs
 
-    Returns:
-        List of strings.
-    """
-    if value is None:
-        return []
-    if isinstance(value, str):
-        return planner_as_str_list(value)
-    if isinstance(value, (list, tuple)):
-        return planner_as_str_list(value)
-    return planner_as_str_list(str(value))
+    def _phase_edit_kwargs(self, changes: dict[str, object]) -> dict[str, object]:
+        """Build edit-phase keyword arguments from planner change data."""
+        phase_kwargs: dict[str, object] = {}
+        if "name" in changes:
+            phase_kwargs["name"] = str(changes["name"])
+        if "depends_on" in changes:
+            phase_kwargs["depends_on"] = list(self._as_str_list(changes["depends_on"]))
+        if "context" in changes:
+            phase_kwargs["context"] = str(changes["context"])
+        return phase_kwargs

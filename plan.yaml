@@ -98528,7 +98528,7 @@ phases:
       \ results.\n- [x] Run import smoke through the original `vectl.orchestration.driver`\
       \ path.\n- [x] Run representative runtime/barrier/resume smoke proof and paste\
       \ actual output.\n- [x] Capture AFTER guard excerpts for driver residual rows\
-      \ and weighted contributors.\n- [ ] Confirm no budget lowering, suppression,\
+      \ and weighted contributors.\n- [x] Confirm no budget lowering, suppression,\
       \ ignored files, deleted findings, stub-only wrapper, runtime narrowing, or\
       \ operator-visible behavior deletion."
     verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include

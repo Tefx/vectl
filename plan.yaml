@@ -96177,7 +96177,7 @@ phases:
       - [x] Rollback guard states whether any discarded-branch artifacts are present
       on mainline and what downstream steps must avoid.
 
-      - [ ] Residual disposition schema is present with requirement_ref, behavior_claim,
+      - [x] Residual disposition schema is present with requirement_ref, behavior_claim,
       runtime_proof_expected, evidence_ref, status, closure_path, and gate_decision_basis.
 
       - [ ] No product-code remediation is claimed by this planning/investigation

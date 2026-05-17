@@ -97468,7 +97468,7 @@ phases:
       until the batched fix/retest path closes.'
   - id: invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     name: Fix residual file-size escape-budget root cause after two salvages
-    status: claimed
+    status: pending
     description: "Root-cause-oriented third remediation attempt for the remaining\
       \ full-guard escape-hatch budget blockers after two salvageable partial-progress\
       \ attempts.\n\nstep_type: implementation\nsymbolic_testing: true\nloop_count:\
@@ -97716,8 +97716,6 @@ phases:
     depends_on:
     - invar_guard_remediation.full-guard-residual-disposition-retest
     agent: python-senior
-    claimed_by: python-senior
-    claimed_at: '2026-05-17T21:33:42.840324+00:00'
   - id: invar_guard_remediation.full-guard-escape-budget-batched-retest
     name: Retest full guard after batched escape-budget remediation
     status: pending

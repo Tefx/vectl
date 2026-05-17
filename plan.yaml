@@ -96407,7 +96407,7 @@ phases:
       - [x] Any new `**/core/**` extraction has non-vacuous `@pre`/`@post` contracts
       and at least one doctest.
 
-      - [ ] Residual disposition register is updated for inspection/drive query findings.
+      - [x] Residual disposition register is updated for inspection/drive query findings.
 
 
       ## Completion Criteria (stub exclusion)

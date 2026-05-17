@@ -34,13 +34,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-import yaml
-
 from vectl.core.orchestration.routing_presenters import (
     artifact_ref_mediation_calls as _core_artifact_ref_mediation_calls,
     build_resolution_case_data,
     build_review_parse_failure_case_data,
     normalize_review_resolution_case_data,
+)
+from vectl.core.orchestration.runner_payloads import (
+    extract_resolution_report_payload as _extract_resolution_report_payload,
+    extract_structured_review_payload as _extract_structured_review_payload,
 )
 from vectl.io import load_plan_definition
 from vectl.models import StepStatus
@@ -149,7 +151,6 @@ from vectl.orchestration.recovery import (
     recovery_action_status,
     recovery_case_status,
 )
-from vectl.orchestration.resolution_reports import validate_resolution_report_payload
 from vectl.orchestration.resolver import map_payload_to_report
 from vectl.orchestration.resolver_gateway import (
     AuditedResolverGateway,
@@ -5520,177 +5521,6 @@ class OrchestrationApp:
 # ---------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------
-
-
-# @shell_orchestration: Runner-output JSON scanning remains colocated with shell payload extraction helpers to preserve parsing compatibility.
-def _iter_json_values_from_text(text: str):
-    """Yield JSON values embedded in runner text."""
-
-    decoder = json.JSONDecoder()
-    index = 0
-    while index < len(text):
-        char = text[index]
-        if char not in "[{":
-            index += 1
-            continue
-        try:
-            payload, end = decoder.raw_decode(text[index:])
-        except json.JSONDecodeError:
-            index += 1
-            continue
-        yield payload
-        index += max(end, 1)
-
-
-_STRUCTURED_REVIEW_PROTOCOL_KEYS = frozenset(
-    {"type", "sessionID", "timestamp", "part", "parts", "message", "messages", "data"}
-)
-
-
-# @invar:allow shell_result: Private string normalizer is pure parsing for runner-output compatibility, not an I/O boundary.
-# @shell_orchestration: Markdown fence stripping is runner-output parsing glue for shell review/resolver payload extraction.
-def _strip_runner_markdown_fence(raw_output: str) -> str:
-    stripped = raw_output.strip()
-    if not stripped.startswith("```"):
-        return stripped
-    lines = stripped.splitlines()
-    if len(lines) < 3 or not lines[-1].strip().startswith("```"):
-        return stripped
-    return "\n".join(lines[1:-1]).strip()
-
-
-# @invar:allow shell_result: Private predicate keeps payload-shape checks as bool for recursive parser callers.
-# @shell_orchestration: Structured-review shape detection stays near runner-output extraction to preserve envelope filtering.
-def _looks_like_structured_review_payload(value: dict[str, object]) -> bool:
-    if _STRUCTURED_REVIEW_PROTOCOL_KEYS.intersection(value.keys()):
-        return False
-    if value.get("review_outcome") not in {
-        "pass",
-        "needs_fix",
-        "needs_replan",
-        "operator_required",
-    }:
-        return False
-    return isinstance(value.get("summary"), str)
-
-
-# @invar:allow shell_result: Recursive parser returns the discovered payload directly for existing review-routing callers.
-# @shell_complexity: Branches preserve nested dict/list/string traversal and embedded JSON handling for runner envelopes.
-# @shell_orchestration: Recursive payload discovery remains app-level runner-output routing glue.
-def _find_structured_review_payload(
-    value: object,
-    *,
-    parse_strings: bool = True,
-) -> dict[str, object] | None:
-    """Find a StructuredReviewResult-shaped payload inside runner values."""
-
-    if isinstance(value, dict):
-        candidate = cast(dict[str, object], value)
-        if _looks_like_structured_review_payload(candidate):
-            return candidate
-        for nested in value.values():
-            found = _find_structured_review_payload(nested, parse_strings=parse_strings)
-            if found is not None:
-                return found
-        return None
-    if isinstance(value, list | tuple):
-        for nested in value:
-            found = _find_structured_review_payload(nested, parse_strings=parse_strings)
-            if found is not None:
-                return found
-        return None
-    if isinstance(value, str) and parse_strings:
-        return _extract_structured_review_payload(value)
-    return None
-
-
-# @invar:allow shell_result: Review extraction API returns optional payload consumed by existing StructuredReviewResult mapping.
-# @shell_complexity: Branches preserve ordered JSON, embedded JSON, and YAML fallback parsing semantics.
-# @shell_orchestration: Review payload extraction handles shell runner wrappers before app-level review routing.
-def _extract_structured_review_payload(raw_output: str) -> dict[str, object] | None:
-    """Extract a structured-review payload from JSON/YAML or OpenCode envelopes."""
-
-    candidate = _strip_runner_markdown_fence(raw_output)
-    if not candidate:
-        return None
-
-    try:
-        parsed = json.loads(candidate)
-    except json.JSONDecodeError:
-        parsed = None
-    if parsed is not None:
-        found = _find_structured_review_payload(parsed, parse_strings=False)
-        if found is not None:
-            return found
-
-    for parsed_value in _iter_json_values_from_text(candidate):
-        found = _find_structured_review_payload(parsed_value)
-        if found is not None:
-            return found
-
-    try:
-        parsed_yaml = yaml.safe_load(candidate)
-    except yaml.YAMLError:
-        return None
-    return _find_structured_review_payload(parsed_yaml, parse_strings=False)
-
-
-# @invar:allow shell_result: Recursive resolver parser returns optional payload directly for report mapping compatibility.
-# @shell_complexity: Branches preserve validation-first traversal across nested runner envelopes and embedded strings.
-# @shell_orchestration: ResolutionReport payload discovery remains app-level resolver runner-output glue.
-def _find_resolution_report_payload(value: object) -> dict[str, object] | None:
-    """Find a ResolutionReport-shaped payload inside nested runner values."""
-
-    if isinstance(value, dict):
-        try:
-            validate_resolution_report_payload(value)
-        except ValueError:
-            pass
-        else:
-            return cast(dict[str, object], value)
-        for nested in value.values():
-            found = _find_resolution_report_payload(nested)
-            if found is not None:
-                return found
-        return None
-    if isinstance(value, list | tuple):
-        for nested in value:
-            found = _find_resolution_report_payload(nested)
-            if found is not None:
-                return found
-        return None
-    if isinstance(value, str):
-        for nested in _iter_json_values_from_text(value):
-            found = _find_resolution_report_payload(nested)
-            if found is not None:
-                return found
-    return None
-
-
-# @invar:allow shell_result: Resolver extraction API returns optional payload consumed by map_payload_to_report callers.
-# @shell_complexity: Branches preserve raw JSON and OpenCode stdout-wrapper parsing compatibility.
-# @shell_orchestration: Resolver report extraction handles shell runner summaries before mapping to domain reports.
-def _extract_resolution_report_payload(output_summary: str) -> dict[str, object] | None:
-    """Extract a ResolutionReport payload from runtime output summary text.
-
-    OpenCodeRunner wraps successful stdout as a human summary, e.g.
-    ``OpenCode completed successfully (exit 0); stdout={...}``. Resolver
-    parsing must consume that wrapper while still accepting pure JSON from
-    non-OpenCode test runners.
-    """
-
-    stripped = output_summary.strip()
-    candidates = [stripped]
-    stdout_marker = "; stdout="
-    if stdout_marker in stripped:
-        candidates.append(stripped.rsplit(stdout_marker, 1)[1].strip())
-
-    for candidate in candidates:
-        for payload in _iter_json_values_from_text(candidate):
-            found = _find_resolution_report_payload(payload)
-            if found is not None:
-                return found
-    return None
 
 
 # @invar:allow function_size: Composition root must wire control, roster, runtime, resolver, config, and driver dependencies in one public factory.

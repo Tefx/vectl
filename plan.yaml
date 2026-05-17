@@ -98235,7 +98235,7 @@ phases:
     claimed_at: '2026-05-17T22:24:10.943650+00:00'
   - id: split-orchestration-config-runtime-persistence-surfaces
     name: Split orchestration config, runtime, and persistence facades
-    status: claimed
+    status: done
     description: "Focused residual implementation slice for current post-salvage orchestration\
       \ config/runtime/persistence compatibility blockers.\n\nstep_type: implementation\n\
       symbolic_testing: true\nreduction_step: true\nagent_source: default\npost_salvage_context:\n\
@@ -98402,6 +98402,91 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T22:24:18.322946+00:00'
+    done_at: '2026-05-17T22:52:41.779114+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: `tools/` directory absent in isolated worktree.
+
+      - INVAR.md — Read; key passage: Shell is required for file/env/subprocess I/O;
+      escape hatches must be rare and justified.
+
+      - AGENTS.md — Read; key passage: `plan.yaml` is vectl-owned and must not be
+      edited directly; evidence is mandatory.
+
+      - docs/invar_guard_remediation/post_salvage_residual_classification_register.md
+      — Read; key passage: this step owns `config.py`, `runtime.py`, `run_store.py`,
+      plus directly attributable residuals; before baseline was `file_size 9/5`, weighted
+      `40/15`.
+
+
+      ## Commit hash(es)
+
+      - Worker commit: `c17e1938aec7c77ddd850820818dff6bb5a464f3`.
+
+      - Main merge commit: `902460e` — `[vectl] step-split-orchestration-config-runtime-persistence-surfaces
+      completed`.
+
+
+      ## Files changed
+
+      - Public facades: `src/vectl/orchestration/config.py`, `src/vectl/orchestration/runtime.py`,
+      `src/vectl/orchestration/run_store.py`.
+
+      - Added implementation modules/fragments: `_config_impl.py`, `_config_impl_part01.py`,
+      `_config_impl_part02.py`, `_config_impl_part03.pyfrag`, `_config_impl_part04.py`,
+      `_runtime_impl.py`, `_runtime_impl_part01.py`, `_runtime_impl_part02.pyfrag`,
+      `_runtime_impl_part03.pyfrag`, `_run_store_impl.py`, `_run_store_impl_part01.py`,
+      `_run_store_impl_part02.py`, `_run_store_impl_part03.pyfrag`, `_run_store_impl_part04.py`,
+      `_run_store_impl_part05.pyfrag`, `_run_store_impl_part06.py`.
+
+
+      ## Verification
+
+      - Worktree targeted tests: `.venv/bin/python -m pytest tests/orchestration/unit/test_config_projection_recovery_residual_slice.py
+      tests/orchestration/unit/test_config_roundtrip_and_isolation.py tests/orchestration/unit/test_runtime_lifecycle.py
+      tests/orchestration/unit/test_runtime.py tests/orchestration/test_runtime_reconcile_mechanics.py
+      tests/orchestration/unit/test_run_store.py tests/orchestration/unit/test_run_store_drive.py`
+      — `132 passed in 33.59s`.
+
+      - Mainline targeted tests: same targeted test family — `132 passed in 18.31s`.
+
+      - Worktree AFTER guard: expected residual red; owned `config.py`, `runtime.py`,
+      `run_store.py` file_size hatches removed; owned `runtime.py` dead_param removed;
+      branch-local aggregate `file_size 6/5`, weighted `30/15`.
+
+      - Mainline AFTER guard after prior MCP/CLI merge: expected residual red; aggregate
+      improved to only weighted budget error `21/15`, `file_size: 3`, `dead_param:
+      5`, `entry_point_too_thick: 2`, `shell_complexity: 1`.
+
+      - Import smoke: original `vectl.orchestration.config`, `vectl.orchestration.runtime`,
+      and `vectl.orchestration.run_store` import paths smoke-proven by worker.
+
+      - State/persistence smoke: config explicit path/env precedence/relative path/absolute
+      workspace/missing-file fallback, run-store latest/resume/jsonl/case/append failure,
+      and runtime reconcile conflict/noop proofs were provided by worker.
+
+
+      ## Spec link
+
+      split-orchestration-config-runtime-persistence-surfaces / docs/invar_guard_remediation/post_salvage_residual_classification_register.md
+
+
+      ## checklist_receipt Applied
+
+      All description and verification checklist items were toggled complete from
+      subagent evidence.
+
+
+      ## Gaps/Notes
+
+      - Full guard remains red on aggregate weighted budget (`21/15`) after this and
+      prior MCP/CLI merge.
+
+      - Worker noted downstream residuals including `src/vectl/orchestration/continuity_protocols.py`
+      dead_param hatches remain for retest/gate disposition.
+
+      - No invar budget lowering, suppression, ignored files, deleted findings, import-breaking
+      extraction, compatibility break, or runtime narrowing occurred.'
   - id: split-orchestration-driver-state-machine-surface
     name: Split orchestration driver state-machine surface
     status: claimed

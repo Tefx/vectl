@@ -94526,7 +94526,7 @@ phases:
       - [x] Contract artifacts exist for every structural Core extraction target from
       the decision step.
 
-      - [ ] No implementation logic is introduced beyond stubs.
+      - [x] No implementation logic is introduced beyond stubs.
 
       - [ ] Each Core contract references real parameters and includes non-vacuous
       comparisons.

@@ -92633,6 +92633,83 @@ phases:
       \ item_id/revision receipt flow where touched\n- Downstream implementation owner:\
       \ det_check_impl_cli_mcp / det_check_impl_orch_receipts"
     agent: python-executor
+  - id: det_check_tests_gate
+    name: Gate expected-red checklist tests
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether expected-red
+      checklist tests expose the declared contract gaps without product implementation
+      leakage.
+
+
+      Acceptance checklist:
+
+      - [ ] Both expected-red test steps changed only tests/fixtures/helpers.
+
+      - [ ] Red failures map to declared deterministic checklist gaps.
+
+      - [ ] No product implementation files were changed in this phase.
+
+      - [ ] Legacy human keyword compatibility tests remain present.
+
+      - [ ] Downstream implementation steps have clear test anchors.'
+    verification: '- [ ] phase-check protecting `det_check_impl`: verify expected-red
+      evidence is specific, mapped to declared gaps, and test-only.
+
+      - [ ] Confirm no expected-red failure is unrelated infrastructure noise.
+
+      - [ ] Confirm implementation can proceed with explicit contract/test anchors.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - tests/test_checklist.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_cli.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_mcp.py — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Gate Report
+
+      | Step ID | Test-only scope | Red maps to gap | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | det_check_tests_core_red | yes/no | yes/no | <notes> |
+
+      | det_check_tests_surfaces_red | yes/no | yes/no | <notes> |
+
+
+      ## Gate Decision Basis
+
+      - requirement_ref:
+
+      - behavior_claim:
+
+      - runtime_proof_expected: expected-red only; green proof owned by det_check_impl
+      verification
+
+      - evidence_ref:
+
+      - status: PROVEN/UNPROVEN/UNCERTAIN_BLOCKING
+
+      - closure_path:
+
+      - gate_decision_basis:
+
+
+      ### Checklist
+
+      - [ ] OPEN: expected-red tests are valid and implementation may proceed.
+
+      - [ ] BLOCKED: test definitions need repair before implementation.'
+    depends_on:
+    - det_check_tests_core_red
+    - det_check_tests_surfaces_red
+    agent: gate-reviewer
 - id: det_check_impl
   name: 'Deterministic Checklist Handling: Implementation and Surface Wiring'
   status: locked

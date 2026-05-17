@@ -95304,7 +95304,7 @@ phases:
       COMPLETE.'
   - id: invar_guard_remediation.fix-inspection-prompt-budget-residuals
     name: Fix prompt_materialization guard residual
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION / residual closure. Complete a narrow prompt-materialization
       residual slice after salvaged partial progress from commit `7b7ea4e` proved
       the prior broad inspection/prompt/core_adapter retry made useful progress but
@@ -95583,6 +95583,8 @@ phases:
     - invar_guard_remediation.escape-budget-core-contracts
     - invar_guard_remediation.fix-events-control-app-driver-budget-residuals
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T18:17:35.631600+00:00'
   - id: invar_guard_remediation.escape-budget-full-guard-retest
     name: Retest escape-budget closure with full guard
     status: pending

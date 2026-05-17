@@ -95016,7 +95016,7 @@ phases:
       - [x] At least one routing/driver recovery regression is covered if app/driver
       flow is touched.
 
-      - [ ] Scoped guard evidence for the owned files improves or closes the listed
+      - [x] Scoped guard evidence for the owned files improves or closes the listed
       residuals.'
     verification: '- [ ] Main path: targeted event/control/app/driver tests pass with
       actual command output pasted.

@@ -92261,3 +92261,11 @@ phases:
     changes.
   depends_on:
   - det_check_contracts
+- id: det_check_impl
+  name: 'Deterministic Checklist Handling: Implementation and Surface Wiring'
+  status: locked
+  gate: Implementation phase gates canonical core service, deterministic single/batch
+    mutations, CLI/MCP surfaces, orchestrator receipts, wiring, liveness, UI/output
+    audit, and spec conformance.
+  depends_on:
+  - det_check_tests

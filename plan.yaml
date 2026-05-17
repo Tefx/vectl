@@ -97467,141 +97467,263 @@ phases:
       step after remediation ownership was created; downstream OPEN remains blocked
       until the batched fix/retest path closes.'
   - id: invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
-    name: Fix full-guard escape-budget blocker families in one batched slice
+    name: Fix residual full-guard escape-budget project blockers after salvage
     status: pending
-    description: "Batched implementation remediation after failed full-guard retest.\n\
-      \nstep_type: implementation\nsymbolic_testing: true\nprior_loop: invar_guard_remediation.full-guard-residual-disposition-retest\n\
-      remaining_blocker: full `uvx invar-tools guard --all` still fails on escape-hatch\
-      \ file/project/budget families.\nwhy_new_loop: the verify-only full-plan-check\
-      \ proved residual blocker-class findings still intersect downstream gates and\
-      \ require one unified remediation slice rather than piecemeal sibling loops.\n\
-      \n## Failed Retest Evidence to Preserve\n- Exact command: `uvx invar-tools guard\
-      \ --all`\n- Exit code: `1`\n- Guard summary: `status=failed`, `errors=11`, `warnings=15`,\
-      \ `infos=4`, `files_checked=89`\n- Counter comparison vs failed broad attempt\
-      \ baseline:\n  - `shell_result` improved `80/5 -> 66/5` (no regression)\n  -\
-      \ `weighted` improved `400/15 -> 355/15` (no regression)\n- Retest conclusion:\
-      \ `verdict: FAIL`; `gate_open_allowed: false`; `orchestrator_action_hint: DO_NOT_COMPLETE`\n\
-      - CrossHair/property tests were skipped by guard because of prior failures;\
-      \ symbolic proof did not complete.\n\n## Blocker Families to Fix (ALL of these,\
-      \ not just the first)\n\n### B1: escape_hatch_file_limit\nLocations and counters:\n\
-      - `src/vectl/orch_app.py`: `function_size 10/2`, `shell_result 7/2`\n- `src/vectl/orchestration/config.py`:\
-      \ `function_size 4/2`, `shell_result 26/2`\n- `src/vectl/orchestration/driver.py`:\
-      \ `function_size 7/2`\n- `src/vectl/orchestration/projections.py`: `shell_result\
-      \ 18/2`\n- `src/vectl/orchestration/recovery_fallback.py`: `shell_result 7/2`\n\
-      Required remediation: reduce or remove escape-hatch pressure by extracting real\
-      \ behavior-preserving core/shell seams, tightening contracts, and preserving\
-      \ runtime semantics rather than suppressing findings.\nGrep hint: search the\
-      \ touched files for `@invar:allow`, `shell_result`, `function_size`, and oversized\
-      \ orchestration helpers before editing.\n\n### B2: escape_hatch_project_limit\n\
-      Counters:\n- project `file_size 18/5`\n- project `function_size 30/5`\n- project\
-      \ `shell_result 66/5`\nRequired remediation: drive project-level escape-hatch\
-      \ counts down as a consequence of real local remediations; do not hide project\
-      \ counters by deleting findings, disabling guard coverage, or broadening allow-lists.\n\
-      Grep hint: search the repository for `@invar:allow` and group remaining findings\
-      \ by family before and after edits.\n\n### B3: escape_hatch_budget\nCounter:\n\
-      - weighted budget `355/15`\nRequired remediation: reduce weighted budget materially\
-      \ through behavior-preserving decomposition and contract strengthening. If any\
-      \ residual remains, it must be explicitly dispositioned with non-intersection\
-      \ proof under invar policy.\nGrep hint: preserve the full before/after guard\
-      \ budget excerpts and explain each weighted-budget delta.\n\n## Invariants and\
-      \ Surface Preservation\n- Preserve public orchestration inspection semantics.\n\
-      - Preserve CLI/operator-visible behavior.\n- Preserve config precedence.\n-\
-      \ Preserve projection output semantics.\n- Preserve recovery fallback behavior.\n\
-      - Preserve app/driver lifecycle behavior.\n- Preserve runtime/entrypoint behavior;\
-      \ do NOT narrow server/app/driver lifecycle work into handler-only internals.\n\
-      \n## Prohibited Remediation Patterns\n- No broad suppressions, widened escape\
-      \ hatches, budget lowering, guard disabling, deleted findings, or ignored files.\n\
-      - No stub-only implementation; substantive logic must process inputs and produce\
-      \ outputs that vary by input.\n- No handler-only narrowing of app/driver lifecycle\
-      \ semantics.\n- No public-interface redesign unless required to preserve invar\
-      \ policy and backed by targeted tests.\n- No removal of operator-visible behavior\
-      \ to reduce counters.\n\n## Gate-Intersection Reasoning Required\nRemaining\
-      \ residuals that would fail downstream `cli-surface-preservation-uiux-audit`,\
-      \ `invar_guard_remediation.escape-budget-full-guard-retest`, `invar_guard_remediation.verify-full-guard`,\
-      \ or `invar_guard_remediation.gate` are blocker-class. They cannot be called\
-      \ non-blocking merely because they are pre-existing, out-of-scope, improved,\
-      \ or lower-count. Any residual must include explicit proof that it does not\
-      \ intersect those downstream gates.\n\n## Residual Disposition Register Update\
-      \ Required\nUpdate the residual disposition register/artifact for every remaining\
-      \ finding with:\n- `requirement_ref`\n- `behavior_claim`\n- `runtime_proof_expected`\n\
-      - `evidence_ref`\n- `status`\n- `closure_path`\n- `gate_decision_basis`\n\n\
-      ## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
-      \ completion is NOT acceptable. Each deliverable MUST contain substantive logic\
-      \ that processes its inputs and produces outputs that vary based on those inputs.\
-      \ Private stub classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy\
-      \ this requirement.\n\n## Checklist\n- [ ] Capture exact BEFORE `uvx invar-tools\
-      \ guard --all` excerpt including summary, blocker families, and budget counters.\n\
-      - [ ] Remediate all listed `escape_hatch_file_limit` locations without broad\
-      \ suppressions or deleted findings.\n- [ ] Remediate project-level `escape_hatch_project_limit`\
-      \ pressure through real code/contract changes, not threshold changes.\n- [ ]\
-      \ Remediate `escape_hatch_budget` weighted pressure and explain each budget\
-      \ delta.\n- [ ] Preserve orchestration inspection, CLI/operator-visible behavior,\
-      \ config precedence, projection outputs, recovery fallback, and app/driver lifecycle\
-      \ behavior.\n- [ ] Add or update targeted tests for each touched surface: orch\
-      \ app, orchestration config, driver lifecycle, projections, and recovery fallback.\n\
-      - [ ] Update residual disposition registers with all required semantic fields\
-      \ for every remaining finding.\n- [ ] Capture exact AFTER `uvx invar-tools guard\
-      \ --all` excerpt.\n- [ ] Provide final budget comparison table showing baseline,\
-      \ before, after, and non-regression status.\n- [ ] If any residual remains,\
-      \ provide non-intersection proof against downstream UI/UX audit, escape-budget\
-      \ retest, full-guard retest, and gate."
-    verification: '- [ ] Exact BEFORE `uvx invar-tools guard --all` excerpt is present.
+    description: "Batched implementation remediation retry after salvaged partial\
+      \ progress from commit `3a155e9`.\n\nstep_type: implementation\nsymbolic_testing:\
+      \ true\nprior_loop: invar_guard_remediation.full-guard-residual-disposition-retest\n\
+      salvaged_progress_commit: 3a155e9\nremaining_blocker: current mainline `uvx\
+      \ invar-tools guard --all` still fails only on residual project-level escape-budget\
+      \ families: `escape_hatch_project_limit` file_size `17/5`, function_size `7/5`,\
+      \ shell_result `8/5`, and `escape_hatch_budget` weighted `109/15`.\n\n## Salvaged\
+      \ Progress to Preserve\n- First execution was squash-salvaged into main as commit\
+      \ `3a155e9` after verified net-positive partial progress.\n- Targeted tests\
+      \ in main after salvage: `139 passed`.\n- Listed file-level blockers for `orch_app`,\
+      \ `config`, `driver`, `projections`, and `recovery_fallback` are closed and\
+      \ MUST NOT be redone as primary work.\n- Current executor scope is the residual\
+      \ project-level budget tail only.\n\n## why_previous_fix_failed\nThe first attempt\
+      \ reduced blocker pressure materially but stopped before proving downstream-safe\
+      \ closure. Residual project-level budget findings still intersect the downstream\
+      \ escape-budget retest, full-guard retest, UI/UX audit, and phase gate. The\
+      \ attempt explicitly provided no non-intersection proof for remaining residuals,\
+      \ so the step could not complete even though its partial code/test progress\
+      \ was salvageable.\n\n## residual_strategy\nTreat this retry as a closure-focused\
+      \ residual pass, not a broad redo.\n1. Start from current mainline, including\
+      \ salvage commit `3a155e9`.\n2. Capture exact BEFORE `uvx invar-tools guard\
+      \ --all` excerpts from current mainline before editing.\n3. Inventory ONLY the\
+      \ current residual project-level counters:\n   - `escape_hatch_project_limit`:\
+      \ file_size `17/5`\n   - `escape_hatch_project_limit`: function_size `7/5`\n\
+      \   - `escape_hatch_project_limit`: shell_result `8/5`\n   - `escape_hatch_budget`:\
+      \ weighted `109/15`\n4. Reduce remaining counters through real behavior-preserving\
+      \ decomposition, contract strengthening, or targeted remediation.\n5. If any\
+      \ residual remains, provide strict non-intersection proof against downstream\
+      \ UI/UX audit, escape-budget retest, full-guard retest, and gate; otherwise\
+      \ the verdict is FAIL.\n\n## Do NOT Reopen Closed File-Level Blockers\n- Do\
+      \ NOT redo the already-closed file-level blockers for `src/vectl/orch_app.py`,\
+      \ `src/vectl/orchestration/config.py`, `src/vectl/orchestration/driver.py`,\
+      \ `src/vectl/orchestration/projections.py`, or `src/vectl/orchestration/recovery_fallback.py`\
+      \ unless a current BEFORE guard excerpt proves a new residual in that file.\n\
+      - If touching any of those surfaces for residual project-level closure, keep\
+      \ the edit narrowly tied to the current residual counter and preserve the salvaged\
+      \ behavior.\n\n## Required Current Residual Blockers\n### R1: escape_hatch_project_limit\
+      \ / file_size\nCurrent salvaged baseline: `17/5`.\nRequired outcome: close the\
+      \ residual or prove why remaining file-size escape pressure does not intersect\
+      \ downstream gates.\n\n### R2: escape_hatch_project_limit / function_size\n\
+      Current salvaged baseline: `7/5`.\nRequired outcome: close the residual or prove\
+      \ why remaining function-size escape pressure does not intersect downstream\
+      \ gates.\n\n### R3: escape_hatch_project_limit / shell_result\nCurrent salvaged\
+      \ baseline: `8/5`.\nRequired outcome: close the residual or prove why remaining\
+      \ shell-result escape pressure does not intersect downstream gates.\n\n### R4:\
+      \ escape_hatch_budget / weighted\nCurrent salvaged baseline: `109/15`.\nRequired\
+      \ outcome: close the residual or prove why remaining weighted budget pressure\
+      \ does not intersect downstream gates.\n\n## Required Baseline Comparison Table\n\
+      Final evidence MUST include one table with these columns:\n- family\n- failed\
+      \ broad baseline\n- pre-salvage prior baseline\n- salvaged baseline `3a155e9`\n\
+      - BEFORE current mainline\n- AFTER current mainline\n- delta from salvaged baseline\n\
+      - gate disposition\n\nUse these known baseline values:\n- shell_result failed\
+      \ broad baseline `80/5`; pre-salvage prior `66/5`; salvaged baseline `8/5`\n\
+      - weighted failed broad baseline `400/15`; pre-salvage prior `355/15`; salvaged\
+      \ baseline `109/15`\n- function_size pre-salvage prior `30/5`; salvaged baseline\
+      \ `7/5`\n- file_size pre-salvage prior `18/5`; salvaged baseline `17/5`\n\n\
+      ## Residual Disposition Register Required\nFor every remaining finding after\
+      \ the retry, evidence MUST include a structured register with:\n- `requirement_ref`\n\
+      - `behavior_claim`\n- `runtime_proof_expected`\n- `evidence_ref`\n- `status`\n\
+      - `closure_path`\n- `gate_decision_basis`\n\nAllowed statuses: `PROVEN`, `FIXED`,\
+      \ or `NON_INTERSECTING_WITH_PROOF`. Any `NEEDS_TEST`, `UNPROVEN`, `UNCERTAIN_BLOCKING`,\
+      \ or unexplained residual means FAIL for this step.\n\n## Gate-Intersection\
+      \ Rule\nResiduals are blocker-class unless proven otherwise. If any residual\
+      \ remains, evidence MUST prove non-intersection against ALL of:\n- downstream\
+      \ UI/UX audit (`cli-surface-preservation-uiux-audit` or equivalent remaining\
+      \ audit)\n- `invar_guard_remediation.escape-budget-full-guard-retest`\n- `invar_guard_remediation.verify-full-guard`\n\
+      - `invar_guard_remediation.gate`\n\nIf this proof is absent or partial, verdict\
+      \ MUST be FAIL.\n\n## Required Tests and Commands\n- Run `uvx invar-tools guard\
+      \ --all` BEFORE edits and preserve exact excerpts showing summary and current\
+      \ residual counters.\n- Run targeted tests for every touched surface and report\
+      \ exact test names/results.\n- Run `uvx invar-tools guard --all` AFTER edits\
+      \ and preserve exact excerpts showing summary and residual counters.\n\n## Prohibited\
+      \ Remediation Patterns\n- No broad suppressions, widened escape hatches, budget\
+      \ lowering, guard disabling, ignored files, or deleted findings.\n- No stub-only\
+      \ implementation; substantive logic must process inputs and produce outputs\
+      \ that vary by input.\n- No handler-only narrowing of app/driver lifecycle or\
+      \ CLI/operator-visible behavior.\n- No public-interface redesign unless required\
+      \ to preserve invar policy and backed by targeted tests.\n- No removal of operator-visible\
+      \ behavior to reduce counters.\n\n## Invariants and Surface Preservation\n-\
+      \ Preserve public orchestration inspection semantics.\n- Preserve CLI/operator-visible\
+      \ behavior.\n- Preserve config precedence.\n- Preserve projection output semantics.\n\
+      - Preserve recovery fallback behavior.\n- Preserve app/driver lifecycle behavior.\n\
+      - Preserve runtime/entrypoint behavior; do NOT narrow server/app/driver lifecycle\
+      \ work into handler-only internals.\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each\
+      \ deliverable MUST contain substantive logic that processes its inputs and produces\
+      \ outputs that vary based on those inputs. Private stub classes (`_Runtime*`,\
+      \ `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\n## Checklist\n\
+      - [ ] Confirm current mainline includes salvage commit `3a155e9` context and\
+      \ do not redo already-closed file-level blockers as primary work.\n- [ ] Capture\
+      \ exact BEFORE `uvx invar-tools guard --all` excerpt from current mainline including\
+      \ summary, residual project-level blocker families, and budget counters.\n-\
+      \ [ ] Inventory residuals limited to file_size `17/5`, function_size `7/5`,\
+      \ shell_result `8/5`, and weighted `109/15`, unless BEFORE guard proves a different\
+      \ current mainline residual.\n- [ ] Remediate residual project-level pressure\
+      \ through behavior-preserving code/contract/test changes, not threshold changes\
+      \ or suppressions.\n- [ ] Run targeted tests for every touched surface and include\
+      \ exact test names/results.\n- [ ] Preserve orchestration inspection, CLI/operator-visible\
+      \ behavior, config precedence, projection outputs, recovery fallback, and app/driver\
+      \ lifecycle behavior.\n- [ ] Capture exact AFTER `uvx invar-tools guard --all`\
+      \ excerpt from current mainline including summary and residual counters.\n-\
+      \ [ ] Provide final comparison table with failed broad baseline, pre-salvage\
+      \ prior baseline, salvaged baseline `3a155e9`, BEFORE, and AFTER.\n- [ ] Provide\
+      \ residual disposition register with `requirement_ref`, `behavior_claim`, `runtime_proof_expected`,\
+      \ `evidence_ref`, `status`, `closure_path`, and `gate_decision_basis` for every\
+      \ remaining finding.\n- [ ] If any residual remains, prove non-intersection\
+      \ against downstream UI/UX audit, escape-budget retest, full-guard retest, and\
+      \ gate; otherwise mark verdict FAIL.\n- [ ] Confirm no broad suppression, budget\
+      \ lowering, deleted findings, stub-only implementation, or handler-only narrowing\
+      \ was used."
+    verification: '- [ ] Exact BEFORE `uvx invar-tools guard --all` excerpt from current
+      mainline is present and includes summary plus residual counters.
 
-      - [ ] Exact AFTER `uvx invar-tools guard --all` excerpt is present.
+      - [ ] Exact AFTER `uvx invar-tools guard --all` excerpt from current mainline
+      is present and includes summary plus residual counters.
 
-      - [ ] All three blocker families are addressed in one unified remediation slice.
+      - [ ] Evidence shows the retry did not redo already-closed file-level blockers
+      for `orch_app`, `config`, `driver`, `projections`, or `recovery_fallback` except
+      where current BEFORE guard proved a residual.
 
-      - [ ] Targeted tests for each touched surface are named and reported with results.
+      - [ ] Remaining work focuses on current residual project-level blockers: file_size
+      `17/5`, function_size `7/5`, shell_result `8/5`, and weighted `109/15`.
 
-      - [ ] Final budget comparison table is present and shows no regression from
-      both baselines.
+      - [ ] Targeted tests for every touched surface are named and reported with exact
+      results.
+
+      - [ ] Final comparison table includes failed broad baseline, pre-salvage prior
+      baseline, salvaged baseline `3a155e9`, BEFORE current mainline, AFTER current
+      mainline, delta, and gate disposition.
 
       - [ ] Residual disposition register contains `requirement_ref`, `behavior_claim`,
       `runtime_proof_expected`, `evidence_ref`, `status`, `closure_path`, and `gate_decision_basis`
       for every remaining finding.
 
-      - [ ] No broad suppressions, budget lowering, deleted findings, stub-only implementation,
-      or handler-only narrowing are used.
+      - [ ] If any residual remains, non-intersection proof covers downstream UI/UX
+      audit, escape-budget retest, full-guard retest, and gate; absent or partial
+      proof is a FAIL verdict.
+
+      - [ ] No broad suppressions, budget lowering, deleted findings, guard disabling,
+      ignored files, stub-only implementation, or handler-only narrowing are used.
 
       - [ ] Main path evidence covers preserved orchestration behavior; failure path
       evidence covers remaining guard blockers or proves non-intersection.'
-    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
-      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
-      \ were provided, state: \"No refs for this step.\"\n\n## Batched Full-Guard\
-      \ Escape-Budget Fix Evidence\n\nsymbolic_testing: true\ncommand_lock: `uvx invar-tools\
-      \ guard --all`\n\n### BEFORE Guard Excerpt\n```text\n<paste exact BEFORE excerpt:\
-      \ command, exit code, summary, blocker families, budget counters>\n```\n\n###\
-      \ Root Cause vs Symptom\n- Root cause: <underlying escape-hatch pressure and\
-      \ boundary issue>\n- Symptom: `escape_hatch_file_limit`, `escape_hatch_project_limit`,\
-      \ `escape_hatch_budget` failures\n- Why previous broad attempt still failed:\
-      \ <explain>\n- Why this fix is not surface-level: <explain>\n\n### Blocker Family\
-      \ Closure\n| Family | Before | Remediation | After | Status | Evidence Ref |\n\
-      | --- | --- | --- | --- | --- | --- |\n| escape_hatch_file_limit | <counters>\
-      \ | <changes> | <counters> | CLOSED/RESIDUAL | <tests/guard lines> |\n| escape_hatch_project_limit\
-      \ | <counters> | <changes> | <counters> | CLOSED/RESIDUAL | <tests/guard lines>\
-      \ |\n| escape_hatch_budget | <counters> | <changes> | <counters> | CLOSED/RESIDUAL\
-      \ | <tests/guard lines> |\n\n### Targeted Tests by Surface\n| Surface | Files\
-      \ touched | Tests/commands run | Output excerpt | Semantics preserved |\n| ---\
-      \ | --- | --- | --- | --- |\n| orch app / lifecycle | <paths> | <commands> |\
-      \ <excerpt> | yes/no |\n| orchestration config / precedence | <paths> | <commands>\
-      \ | <excerpt> | yes/no |\n| driver lifecycle | <paths> | <commands> | <excerpt>\
-      \ | yes/no |\n| projections / output semantics | <paths> | <commands> | <excerpt>\
-      \ | yes/no |\n| recovery fallback | <paths> | <commands> | <excerpt> | yes/no\
-      \ |\n\n### Residual Disposition Register\nFor each remaining finding:\n```yaml\n\
-      - requirement_ref: <spec/invar/plan ref>\n  behavior_claim: <claim>\n  runtime_proof_expected:\
-      \ <proof expected>\n  evidence_ref: <guard/test evidence>\n  status: PROVEN|NEEDS_TEST|UNPROVEN|UNCERTAIN_BLOCKING|NON_BLOCKING_WITH_NON_INTERSECTION_PROOF\n\
-      \  closure_path: <fix/retest/non-intersection path>\n  gate_decision_basis:\
-      \ <why downstream gates may or may not open>\n```\n\n### AFTER Guard Excerpt\n\
-      ```text\n<paste exact AFTER excerpt from `uvx invar-tools guard --all`>\n```\n\
-      \n### Final Budget Comparison\n| Counter | Failed broad baseline | Before this\
-      \ step | After this step | Non-regression? |\n| --- | --- | --- | --- | ---\
-      \ |\n| shell_result | 80/5 | 66/5 | <after> | yes/no |\n| weighted | 400/15\
-      \ | 355/15 | <after> | yes/no |\n| file_size | <baseline> | 18/5 | <after> |\
-      \ yes/no |\n| function_size | <baseline> | 30/5 | <after> | yes/no |\n\n###\
-      \ Checklist\n- [ ] BEFORE guard excerpt included\n- [ ] AFTER guard excerpt\
-      \ included\n- [ ] All blocker families addressed\n- [ ] Targeted tests included\
-      \ for each touched surface\n- [ ] Residual dispositions complete for any remaining\
-      \ findings\n- [ ] No prohibited remediation pattern used"
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - No refs were provided for this step.
+
+
+      ## Current Mainline Guard BEFORE
+
+      Paste exact `uvx invar-tools guard --all` excerpt from current mainline before
+      edits:
+
+      ```text
+
+      <summary, residual blocker families, and budget counters>
+
+      ```
+
+
+      ## Closed File-Level Blocker Preservation
+
+      - [ ] Already-closed file-level blockers from salvage commit `3a155e9` were
+      not redone as primary work.
+
+      - [ ] Any touch to `orch_app`, `config`, `driver`, `projections`, or `recovery_fallback`
+      is justified by a current BEFORE residual.
+
+
+      ## Targeted Tests
+
+      | Touched surface | Test command/name | Result | Evidence excerpt |
+
+      | --- | --- | --- | --- |
+
+      | <surface> | <test> | PASS/FAIL | <excerpt> |
+
+
+      ## Current Mainline Guard AFTER
+
+      Paste exact `uvx invar-tools guard --all` excerpt from current mainline after
+      edits:
+
+      ```text
+
+      <summary, residual blocker families, and budget counters>
+
+      ```
+
+
+      ## Budget Comparison Table
+
+      | Family | Failed broad baseline | Pre-salvage prior baseline | Salvaged baseline
+      `3a155e9` | BEFORE current mainline | AFTER current mainline | Delta from salvaged
+      | Gate disposition |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | shell_result | 80/5 | 66/5 | 8/5 | <value> | <value> | <delta> | <FIXED/NON_INTERSECTING_WITH_PROOF/FAIL>
+      |
+
+      | weighted | 400/15 | 355/15 | 109/15 | <value> | <value> | <delta> | <FIXED/NON_INTERSECTING_WITH_PROOF/FAIL>
+      |
+
+      | function_size | <not provided> | 30/5 | 7/5 | <value> | <value> | <delta>
+      | <FIXED/NON_INTERSECTING_WITH_PROOF/FAIL> |
+
+      | file_size | <not provided> | 18/5 | 17/5 | <value> | <value> | <delta> | <FIXED/NON_INTERSECTING_WITH_PROOF/FAIL>
+      |
+
+
+      ## Residual Disposition Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | <ref> | <claim> | <proof> | <evidence> | PROVEN/FIXED/NON_INTERSECTING_WITH_PROOF
+      | <path> | <basis> |
+
+
+      If any residual remains, include proof that it does not intersect ALL downstream
+      checks:
+
+      - UI/UX audit
+
+      - escape-budget retest
+
+      - full-guard retest
+
+      - phase gate
+
+
+      ## Prohibited Pattern Confirmation
+
+      - [ ] No broad suppression, widened escape hatch, budget lowering, guard disabling,
+      ignored files, or deleted findings.
+
+      - [ ] No stub-only implementation.
+
+      - [ ] No handler-only narrowing of lifecycle/runtime behavior.
+
+      - [ ] No operator-visible behavior removed to reduce counters.
+
+
+      ## Headline
+
+      - [ ] PASS: residuals fixed or every remaining residual has complete non-intersection
+      proof.
+
+      - [ ] FAIL: any residual remains without complete non-intersection proof against
+      downstream UI/UX audit, escape-budget retest, full-guard retest, and gate.'
     depends_on:
     - invar_guard_remediation.full-guard-residual-disposition-retest
     agent: python-senior

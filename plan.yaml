@@ -95691,7 +95691,7 @@ phases:
     agent: integration-verifier
   - id: invar_guard_remediation.investigate-prompt-materialization-shell-result-root-cause
     name: Investigate prompt_materialization shell_result root cause
-    status: claimed
+    status: done
     description: 'INVESTIGATION / Loop 3+ root-cause analysis before any additional
       prompt_materialization implementation retry.
 
@@ -95874,6 +95874,172 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T18:35:13.862796+00:00'
+    done_at: '2026-05-17T18:41:23.574009+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Shell owns I/O, Core is pure data transformation, Shell functions
+      should return `Result[T, E]`, and `shell_result` repairs require Result return
+      or rare justified escape hatch.
+
+      - AGENTS.md — `plan.yaml` is managed state; no direct plan edits or vectl CLI/MCP
+      plan tools were used by the worker.
+
+      - src/vectl/orchestration/prompt_materialization.py — file contains seven pure/public
+      adapters without `@invar:allow shell_result`, plus two retained `shell_result`
+      allows on `build_opencode_launch_env` and `validate_prompt_artifacts_for_recovery`.
+
+      - tests/orchestration/unit/test_prompt_artifact_contract.py — tests pin public
+      adapter APIs and runner-visible contracts: direct DTO/string/tuple/dict returns,
+      path/env/argv/content behavior, materialization/recovery round trips.
+
+      - docs/invar_guard_remediation/escape_budget_authority_decision.md — line 56
+      requires structural Core extraction for pure prompt helpers while preserving
+      public names; line 57 classifies materialization/env/recovery boundaries as
+      narrow adapter allows; Core functions need @pre/@post/doctests.
+
+      - tools/vectl/README.md — NOT READ: file absent in isolated worktree.
+
+      - CONSTITUTION.md — NOT READ: file absent in isolated worktree.
+
+
+      ## Root-Cause Investigation Report
+
+      **Current mainline/evidence base:** isolated worktree HEAD `6a1591df54105729017a0667c3297d8d92ff9ffe`
+      on branch `vectl/step-invar_guard_remediation.investigate-prompt-materialization-shell-result-root-cause`;
+      salvage `2ecf45c` is ancestor; final worker status clean.
+
+
+      ### blocker_fingerprint
+
+      Worker captured current `uvx invar-tools guard --all` prompt_materialization
+      excerpt showing:
+
+      - file_size_warning for `src/vectl/orchestration/prompt_materialization.py`
+      (567 lines).
+
+      - raw `shell_result` errors for `resolve_prompt_artifact_paths`, `build_runner_handoff_env`,
+      `compute_prompt_bundle_sha256`, `_render_runner_prompt_md`, `_output_contract_lines`,
+      `build_opencode_launch_argv`, `_build_default_opencode_launch_argv`.
+
+      - `shell_too_complex` infos for `_render_runner_prompt_md` and `validate_prompt_artifacts_for_recovery`.
+
+      - `escape_hatch_file_limit` error: `File rule budget shell_result: 2/2`.
+
+      - retained escape-hatch details for `build_opencode_launch_env` (environment
+      merge true Shell boundary) and `validate_prompt_artifacts_for_recovery` (reads
+      prompt artifact files and preserves public validation DTO API).
+
+
+      ### Function Classification
+
+      | Function | Classification | Rationale | Closure Strategy |
+
+      |---|---|---|---|
+
+      | resolve_prompt_artifact_paths | pure compatibility adapter | transforms paths/run_id/workspace
+      into PromptArtifactPaths; no I/O | Core-owned contracted path calculation; wrapper
+      preserves DTO API |
+
+      | build_runner_handoff_env | pure compatibility adapter | builds RunnerHandoffEnv
+      from supplied identifiers/paths; no env read | Core-owned env-data function;
+      wrapper preserves return type |
+
+      | compute_prompt_bundle_sha256 | pure compatibility adapter | deterministic
+      hash over supplied bundle data; no I/O | keep hashing in contracted Core; wrapper
+      returns str |
+
+      | _render_runner_prompt_md | pure compatibility adapter, incompletely extracted
+      | pure string formatting of prompt bundle/messages/output contract | extract
+      full renderer semantics to Core; preserve exact Markdown output |
+
+      | _output_contract_lines | pure compatibility adapter | selects static output
+      contract lines; no I/O | keep line selection in Core; preserve list[str] semantics
+      |
+
+      | build_opencode_launch_argv | pure compatibility adapter with path-normalization
+      caveat | builds tuple argv; no subprocess launch | Core owns tuple construction
+      from normalized strings/config data |
+
+      | _build_default_opencode_launch_argv | pure compatibility adapter with path-normalization
+      caveat | bridges Core argv data to historical order; no subprocess | fold historical
+      order into Core or isolate path normalization |
+
+      | materialize_prompt_artifacts | true Shell boundary | writes JSON/Markdown
+      files and creates dirs | keep Shell; use narrow policy if later flagged |
+
+      | build_opencode_launch_env | true Shell boundary | reads/merges os.environ
+      when parent_env absent | keep narrow allow unless intentional Result API migration
+      is specified |
+
+      | validate_prompt_artifacts_for_recovery | true Shell boundary with mixed validation
+      | reads prompt bundle/runner files and validates payload | keep narrow shell_result
+      allow; optionally extract pure validation/reason construction |
+
+
+      ### why_previous_fix_failed
+
+      Deleting seven `@invar:allow shell_result` comments reduced the escape-hatch
+      count but did not change Invar''s classification of this module as Shell. Shell
+      functions returning ordinary DTO/string/list/tuple values still trigger `shell_result`
+      unless they return `Result[T, E]` or carry an allow; deletion converted seven
+      budgeted suppressions into seven raw errors.
+
+
+      ### why_comment_deletion_is_not_closure
+
+      Budget-counter disappearance is not rule closure. With comments present, guard
+      reported budget pressure. After deletion, guard emitted individual shell_result
+      errors for the same adapter functions while the file budget counted only two
+      remaining true Shell-boundary allows. Removing comments can lower a budget numerator
+      but cannot satisfy Shell Result semantics.
+
+
+      ### reversal_risk
+
+      The removed comments inventory compatibility intent for public adapter returns
+      and model-visible prompt/argv behavior. They should be restored or replaced
+      only as part of code-level closure, not broadly reintroduced as permanent suppressions.
+
+
+      ### environment_consistency_check
+
+      Evidence was collected in the fresh isolated worktree; `git merge-base --is-ancestor
+      2ecf45c HEAD` and `git merge-base --is-ancestor 6a1591df HEAD` returned 0; final
+      `git status --short` was clean; guard evidence came from `uvx invar-tools guard
+      --all` at current HEAD.
+
+
+      ### next_fix_constraint
+
+      Strategy A selected: convert pure compatibility adapters to Core-owned contracted
+      functions with `@pre`, `@post`, and doctests; preserve public prompt_materialization
+      names/return types unless explicit API migration is approved; do not repeat
+      comment deletion as closure; do not migrate public adapters to Result unless
+      compatibility tests/docs prove intentional migration; golden regressions must
+      preserve paths/env, SHA-256, rendered Markdown, output-contract lines, and OpenCode
+      argv order.
+
+
+      ## checklist_receipt
+
+      All investigation description and verification checklist items were marked complete
+      based on worker evidence.
+
+
+      ## Commit hash(es)
+
+      none — investigation-only step; no code/docs changes
+
+
+      ## Files changed
+
+      none
+
+
+      ## Gaps/Notes
+
+      Full guard remains red repo-wide; this investigation intentionally did not modify
+      code or docs and exists to constrain the next implementation retry.'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

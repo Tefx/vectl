@@ -91135,7 +91135,7 @@ phases:
     agent: gate-reviewer
   - id: fix-plan-mutation-query-domain
     name: Fix plan mutation/query invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to plan mutation/query
       logic.
 
@@ -91215,6 +91215,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T15:30:41.373757+00:00'
   - id: fix-lifecycle-duplicate-domain
     name: Fix lifecycle and duplicate-ID invar domain
     status: done

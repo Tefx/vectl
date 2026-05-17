@@ -98136,7 +98136,7 @@ phases:
     claimed_at: '2026-05-17T22:24:10.943650+00:00'
   - id: split-orchestration-config-runtime-persistence-surfaces
     name: Split orchestration config, runtime, and persistence facades
-    status: pending
+    status: claimed
     description: "Focused residual implementation slice for current post-salvage orchestration\
       \ config/runtime/persistence compatibility blockers.\n\nstep_type: implementation\n\
       symbolic_testing: true\nreduction_step: true\nagent_source: default\npost_salvage_context:\n\
@@ -98301,6 +98301,8 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T22:24:18.322946+00:00'
   - id: split-orchestration-driver-state-machine-surface
     name: Split orchestration driver state-machine surface
     status: pending

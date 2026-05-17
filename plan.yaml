@@ -93320,7 +93320,7 @@ phases:
       - Verdict: SUCCESS.'
   - id: fix-io-storage-merge-driver-residual
     name: Fix merge driver residual invar guard findings
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION residual closure for the salvaged IO/storage domain.
 
 
@@ -93505,6 +93505,87 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-17T14:18:56.498503+00:00'
+    done_at: '2026-05-17T14:38:50.662622+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Shell Result, shell complexity, and shell_complexity_debt rules
+      read.
+
+      - AGENTS.md — plan/orchestrator state ownership read; no direct plan mutation
+      by worker.
+
+      - src/vectl/merge_driver.py — read and remediated within owned scope.
+
+      - tests/test_merge_driver.py — read/used for merge-driver regression coverage.
+
+
+      ## Worktree Evidence
+
+      - Worker status: SUCCESS.
+
+      - Worker commit: 89ee7ebb.
+
+      - Squash merge commit on main: e3088d3 ([vectl] step-fix-io-storage-merge-driver-residual
+      completed).
+
+      - Files changed: src/vectl/merge_driver.py.
+
+
+      ## Finding Disposition
+
+      - shell_result: 16 private helper findings closed with Result-returning helpers;
+      1 public merge_plans integer exit API preserved with narrow local allow.
+
+      - shell_too_complex: 5 findings closed with targeted justifications preserving
+      merge conflict/status semantics.
+
+      - shell_complexity_debt attributable to merge-driver complexity closed under
+      targeted guard.
+
+
+      ## Mainline Final-State Verification
+
+      Commands executed after squash merge on main:
+
+      ```text
+
+      uv run invar guard src/vectl/merge_driver.py --agent
+
+      uv run python -m pytest tests/test_merge_driver.py -q
+
+      uv run python -m compileall src/vectl/merge_driver.py
+
+      ```
+
+      Results:
+
+      - invar guard: passed; errors=0, warnings=0, infos=0; one governed shell_result
+      escape hatch for public Git-compatible integer exit status.
+
+      - pytest: 14 passed in 0.47s.
+
+      - compileall: passed.
+
+
+      ## Highest-Risk Failure Path
+
+      - Conflict paths, missing/invalid input paths, marker write failures, and merged-plan
+      write failures remain mapped to integer status behavior; tests/test_merge_driver.py
+      passed.
+
+
+      ## Residuals
+
+      - None for src/vectl/merge_driver.py.
+
+      - Other repo guard residuals remain outside owned file.
+
+
+      ## Product Scope Confirmation
+
+      - Owned product file only: src/vectl/merge_driver.py.
+
+      - Verdict: SUCCESS.'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

@@ -93065,7 +93065,7 @@ phases:
       - Verdict: SUCCESS.'
   - id: fix-io-storage-io-residual
     name: Fix IO residual invar guard findings
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION residual closure for the salvaged IO/storage domain.
 
 
@@ -93241,6 +93241,83 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-17T14:18:24.355029+00:00'
+    done_at: '2026-05-17T14:37:21.501752+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Shell Result boundary and complexity rules read.
+
+      - AGENTS.md — plan/orchestrator state ownership read; no direct plan mutation
+      by worker.
+
+      - src/vectl/io.py — read and remediated within owned scope.
+
+      - tests/test_io.py — read/used for IO regression coverage.
+
+
+      ## Worktree Evidence
+
+      - Worker status: SUCCESS.
+
+      - Worker commit: 900c78c5.
+
+      - Squash merge commit on main: bc9df6a ([vectl] step-fix-io-storage-io-residual
+      completed).
+
+      - Files changed: src/vectl/io.py.
+
+
+      ## Finding Disposition
+
+      - shell_result: 10 findings closed via Result-compatible annotations while preserving
+      runtime API behavior.
+
+      - shell_too_complex: 3 findings closed with source-backed complexity rationales.
+
+      - No broad file-level masking added.
+
+
+      ## Mainline Final-State Verification
+
+      Commands executed after squash merge on main:
+
+      ```text
+
+      uv run invar guard src/vectl/io.py --agent
+
+      uv run python -m pytest tests/test_io.py -q
+
+      uv run python -m compileall src/vectl/io.py
+
+      ```
+
+      Results:
+
+      - invar guard: passed; errors=0, warnings=0, infos=0.
+
+      - pytest: 31 passed in 0.88s.
+
+      - compileall: passed.
+
+
+      ## Highest-Risk Failure Path
+
+      - Partial-write/backup behavior remains covered by tests/test_io.py: atomic
+      save/backup, backup content matching, linked-worktree backup skipping, and crash-safety
+      cleanup of temp files.
+
+
+      ## Residuals
+
+      - None for src/vectl/io.py.
+
+      - Other repo guard residuals remain outside owned file.
+
+
+      ## Product Scope Confirmation
+
+      - Owned product file only: src/vectl/io.py.
+
+      - Verdict: SUCCESS.'
   - id: fix-io-storage-merge-driver-residual
     name: Fix merge driver residual invar guard findings
     status: claimed

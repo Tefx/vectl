@@ -96989,7 +96989,7 @@ phases:
       and toggled/updated by orchestrator before completion.'
   - id: invar_guard_remediation.fix-orch-app-driver-budget-closure
     name: Fix orch_app and driver budget closure
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION / Focused residual slice for `orch_app.py` and orchestration
       `driver.py` budget closure.
 
@@ -97148,6 +97148,81 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T20:18:42.986074+00:00'
+    done_at: '2026-05-17T20:37:37.787283+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Core code requires @pre/@post and doctest; Shell handles I/O; Shell
+      functions should return Result[T,E]; escape hatches rare/reasoned.
+
+      - AGENTS.md — plan.yaml is managed state and must not be edited directly; evidence
+      mandatory; phase-local verification does not prove repo-wide readiness.
+
+      - tools/vectl/README.md — NOT READ: tools/vectl/README.md not present in isolated
+      worktree.
+
+      - CONSTITUTION.md — NOT READ: not present in isolated worktree.
+
+
+      ## Implementation / Verification
+
+      - Worktree commit: 681cc39b (Extract orch app runner payload parsing).
+
+      - Mainline squash commit: e67a5d8 ([vectl] step-invar_guard_remediation.fix-orch-app-driver-budget-closure
+      completed).
+
+      - Files changed: src/vectl/core/orchestration/runner_payloads.py; src/vectl/orch_app.py;
+      docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md.
+
+      - BEFORE uvx invar-tools guard --all excerpt from worker: orch_app.py function_size
+      10/2, shell_result 13/2; driver.py function_size 7/2; project file_size 18/5,
+      function_size 31/5, shell_result 72/5, weighted 376/15.
+
+      - AFTER uvx invar-tools guard --all excerpt from worker: orch_app.py function_size
+      10/2, shell_result 7/2; driver.py function_size 7/2; project file_size 18/5,
+      function_size 31/5, shell_result 66/5, weighted 358/15. Remaining owned residuals
+      explicitly dispositioned; project shell_result and weighted budget improved;
+      no project-level regression.
+
+      - Worker targeted tests: `.venv/bin/python -m pytest tests/orchestration/unit/test_orch_app.py::test_resolve_case_parses_opencode_stdout_wrapped_resolution_report
+      tests/orchestration/unit/test_orch_app.py::test_resolve_case_ignores_opencode_protocol_envelope
+      tests/orchestration/unit/test_orch_app.py::test_resolve_case_ignores_invalid_status_summary_envelope
+      tests/orchestration/unit/test_driver_loop_proof.py` → 31 passed in 0.29s.
+
+      - Mainline final-state verification after squash merge: `uv run python -m pytest
+      tests/orchestration/unit/test_orch_app.py::test_resolve_case_parses_opencode_stdout_wrapped_resolution_report
+      tests/orchestration/unit/test_orch_app.py::test_resolve_case_ignores_opencode_protocol_envelope
+      tests/orchestration/unit/test_orch_app.py::test_resolve_case_ignores_invalid_status_summary_envelope
+      tests/orchestration/unit/test_driver_loop_proof.py` → 31 passed in 0.31s.
+
+
+      ## Runtime/control proof
+
+      App resolver path still parses OpenCode stdout-wrapped reports, protocol envelopes,
+      and nested report payloads. Driver lifecycle proof covers start, persisted store
+      state, duplicate admission, dispatch/done/terminal behavior, resume, recover,
+      transition validation, and app delegation. Runtime launch/control/drive state-machine
+      behavior was not narrowed to handler-only cleanup.
+
+
+      ## Residual disposition
+
+      `docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md` updated
+      with requirement_ref, behavior_claim, runtime_proof_expected, evidence_ref,
+      status, closure_path, and gate_decision_basis for orch_app.py shell_result/function_size,
+      driver.py function_size, and project counters.
+
+
+      ## Suppression/budget statement
+
+      No broad suppression, budget lowering, deleted findings, or stub-only implementation
+      used. Six existing orch_app.py shell_result escape hatches were removed by extracting
+      pure parsing logic into contracted Core helpers with doctests.
+
+
+      ## checklist_receipt
+
+      All completion and verification checklist items were satisfied and toggled/updated
+      by orchestrator before completion.'
   - id: invar_guard_remediation.full-guard-residual-disposition-retest
     name: Retest and consolidate full-guard residual disposition
     status: pending

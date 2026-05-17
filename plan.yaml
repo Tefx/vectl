@@ -90997,6 +90997,9 @@ phases:
     - fix-cli-render-agent-domain
     - fix-mcp-tooling-domain
     - fix-io-storage-domain
+    - fix-io-storage-claims-residual
+    - fix-io-storage-io-residual
+    - fix-io-storage-merge-driver-residual
     - fix-plan-path-migration-domain
     - fix-small-root-support-domain
     - fix-small-policy-archive-domain

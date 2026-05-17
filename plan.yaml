@@ -92360,6 +92360,93 @@ phases:
 
       - [ ] Downstream implementation artifacts listed for `upstream_artifacts`.'
     agent: python-executor
+  - id: det_check_contract_gate
+    name: Gate deterministic checklist contract
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the deterministic
+      checklist contract phase meets the quality bar for expected-red test authoring.
+
+
+      Review scope:
+
+      - Contract purity and no runnable business logic.
+
+      - Ownership, field support, revision, selector, error, batch, and orchestrator
+      receipt semantics from the approved architecture brief.
+
+      - Downstream artifact names are concrete enough for implementation `upstream_artifacts`.
+
+
+      Acceptance checklist:
+
+      - [ ] Contract covers all approved architecture brief bullets.
+
+      - [ ] Contract-only artifacts are clearly separated from later implementation.
+
+      - [ ] No unresolved public-surface authority conflict remains.
+
+      - [ ] Evidence includes specific refs and key passages.'
+    verification: '- [ ] local-check protecting `det_check_tests`: contract artifacts
+      exist and define deterministic checklist acceptance without implementation logic.
+
+      - [ ] Gate decision basis lists any unresolved selector/revision/error semantics
+      and blocks if they affect tests or implementation.
+
+      - [ ] Evidence quality is adequate for red test authors to proceed.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_plan_mutations.py — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      **Reviewer**: gate-reviewer (independent of contract author)
+
+      **Phase**: det_check_contracts
+
+
+      ### Execution Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | det_check_contract_lock | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+
+      ### Gate Decision Basis
+
+      - requirement_ref:
+
+      - behavior_claim:
+
+      - runtime_proof_expected: not yet; contract phase only
+
+      - evidence_ref:
+
+      - status: PROVEN/UNPROVEN/UNCERTAIN_BLOCKING
+
+      - closure_path:
+
+      - gate_decision_basis:
+
+
+      ### Checklist
+
+      - [ ] OPEN: contract phase passes, proceed to expected-red tests.
+
+      - [ ] BLOCKED: contract gaps must be resolved before tests.'
+    depends_on:
+    - det_check_contract_lock
+    agent: gate-reviewer
 - id: det_check_tests
   name: 'Deterministic Checklist Handling: Expected-Red Test Definitions'
   status: locked

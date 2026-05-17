@@ -95768,7 +95768,7 @@ phases:
       - [x] Each listed function is classified as pure adapter, true Shell boundary,
       or mixed boundary with rationale.
 
-      - [ ] Evidence includes `why_previous_fix_failed`, `why_comment_deletion_is_not_closure`,
+      - [x] Evidence includes `why_previous_fix_failed`, `why_comment_deletion_is_not_closure`,
       and `reversal_risk` fields.
 
       - [ ] Removed escape-hatch justifications are inventoried as restore/repair

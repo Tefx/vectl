@@ -95306,7 +95306,7 @@ phases:
       COMPLETE.'
   - id: invar_guard_remediation.fix-inspection-prompt-budget-residuals
     name: Fix prompt_materialization shell_result root cause
-    status: claimed
+    status: done
     description: "IMPLEMENTATION / Loop 3+ root-cause closure for the prompt_materialization\
       \ shell_result blocker family.\n\nwork_type: technical_debt_remediation\nstep_type:\
       \ implementation\nsymbolic_testing: true\nagent_source: default\n\nAuthoritative\
@@ -95560,6 +95560,130 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T19:03:48.801964+00:00'
+    done_at: '2026-05-17T19:24:40.065552+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- INVAR.md — Core is pure data\
+      \ transformation, Shell owns I/O, and shell_result repairs require Result[T,\
+      \ E] or a narrow justified exception.\n- AGENTS.md — plan.yaml is managed state;\
+      \ worker did not directly edit orchestrator state.\n- src/vectl/orchestration/prompt_materialization.py\
+      \ — prompt/materialization public adapters and true Shell boundaries under remediation.\n\
+      - tests/orchestration/unit/test_prompt_artifact_contract.py — pins path/env/argv/materialization/recovery\
+      \ public behavior.\n- tests/orchestration/unit/test_inspection_queries.py —\
+      \ pins explicit inspection boundary passthrough behavior.\n\n## Root-Cause Closure\
+      \ Evidence\n\n### Required Fields\n- why_previous_fix_failed: deleting shell_result\
+      \ comments reduced escape-hatch counters but did not satisfy Invar Shell semantics;\
+      \ Shell-classified functions returning direct DTO/string/list/tuple values still\
+      \ fail unless converted to Result-returning Shell boundaries or moved to contracted\
+      \ Core.\n- why_comment_deletion_is_not_closure: budget-counter disappearance\
+      \ is not code-level closure. Before this implementation, prompt_materialization\
+      \ still had shell_result/file-budget findings; after the implementation, full\
+      \ guard had no prompt_materialization.py findings.\n- reversal_risk: public/model-visible\
+      \ prompt text, output-contract lines, artifact paths, digest behavior, recovery\
+      \ reason precedence, and OpenCode argv order were preserved by keeping public\
+      \ names/direct-return compatibility while moving ambient env/file reads into\
+      \ narrow shell Result functions and pure validation/rendering into contracted\
+      \ Core.\n\n### Implementation commits\n- Worker branch commit: e47fd55b5c827a042088e79b50527fced4efa68d\
+      \ — Fix prompt materialization invar shell boundaries.\n- Main salvage commit:\
+      \ 2d1c3a2 — [vectl] salvage partial progress from step-invar_guard_remediation.fix-inspection-prompt-budget-residuals.\n\
+      \n### Files changed\n- src/vectl/orchestration/prompt_materialization.py\n-\
+      \ src/vectl/core/orchestration/prompt_contracts.py\n- src/vectl/core/orchestration/prompt_recovery.py\n\
+      - src/vectl/shell/__init__.py\n- src/vectl/shell/orchestration/__init__.py\n\
+      - src/vectl/shell/orchestration/prompt_artifacts.py\n\n### Full Guard Prompt\
+      \ Materialization Excerpts\nBefore implementation (`UV_PROJECT_ENVIRONMENT=.venv\
+      \ uvx invar-tools guard --all`):\n```text\n{\n  \"file\": \"src/vectl/orchestration/prompt_materialization.py\"\
+      ,\n  \"line\": null,\n  \"rule\": \"escape_hatch_file_limit\",\n  \"severity\"\
+      : \"error\",\n  \"message\": \"File rule budget shell_result: 2/2\",\n  \"fix\"\
+      : null\n}\n{\n  \"file\": \"src/vectl/orchestration/prompt_materialization.py\"\
+      ,\n  \"line\": 73,\n  \"rule\": \"shell_result\",\n  \"reason\": \"environment\
+      \ merge is true Shell boundary and public API returns dict\"\n}\n{\n  \"file\"\
+      : \"src/vectl/orchestration/prompt_materialization.py\",\n  \"line\": 101,\n\
+      \  \"rule\": \"shell_result\",\n  \"reason\": \"recovery validation reads prompt\
+      \ artifact files and preserves public validation DTO API\"\n}\n```\n\nAfter\
+      \ implementation (`UV_PROJECT_ENVIRONMENT=.venv uvx invar-tools guard --all`):\n\
+      ```text\ngrep for prompt_materialization.py in final guard output: no matches.\n\
+      Remaining prompt-adjacent finding is src/vectl/core/orchestration/prompt_contracts.py\
+      \ file_size_warning: File has 488 lines (97% of 500 limit).\n```\n\n### Mainline\
+      \ verification after salvage merge\nTargeted prompt/inspection tests in main:\n\
+      ```text\nUV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/orchestration/unit/test_prompt_artifact_contract.py\
+      \ tests/orchestration/unit/test_inspection_queries.py\ncollected 63 items\n\
+      ============================== 63 passed in 0.23s ==============================\n\
+      ```\n\nFull guard in main after salvage:\n```text\nUV_PROJECT_ENVIRONMENT=.venv\
+      \ uvx invar-tools guard --all\nsummary: files_checked=83, errors=22, warnings=12,\
+      \ infos=6\nprompt_materialization.py findings: none observed in final output.\n\
+      ```\n\n### Code-Level Closure Register\n| Function / boundary | Before guard\
+      \ status | Closure action | Classification | Proof |\n| --- | --- | --- | ---\
+      \ | --- |\n| resolve_prompt_artifact_paths | pure adapter blocker family | kept\
+      \ Core-owned contracted path calculation with public wrapper | Pure Core compatibility\
+      \ adapter | targeted tests passed |\n| build_runner_handoff_env | pure adapter\
+      \ blocker family | kept Core-owned DTO/env data builder with public wrapper\
+      \ | Pure Core compatibility adapter | env DTO snapshot unchanged; targeted tests\
+      \ passed |\n| compute_prompt_bundle_sha256 | pure adapter blocker family | kept\
+      \ deterministic hashing in contracted Core | Pure Core | digest snapshot unchanged\
+      \ |\n| _render_runner_prompt_md | pure renderer blocker family | pure renderer\
+      \ semantics in Core with contracts | Pure Core prompt renderer | prompt snapshot\
+      \ unchanged |\n| _output_contract_lines | pure output contract blocker family\
+      \ | preserved exact line selection in Core | Pure Core | output contract snapshot\
+      \ unchanged |\n| build_opencode_launch_argv | pure argv adapter blocker family\
+      \ | Core owns argv tuple construction; wrapper preserves public behavior | Pure\
+      \ Core argv materialization | argv snapshots unchanged |\n| _build_default_opencode_launch_argv\
+      \ | pure argv adapter blocker family | preserved historical argv order | Pure\
+      \ Core argv materialization | argv snapshots unchanged |\n| build_opencode_launch_env\
+      \ | true Shell boundary | moved ambient env read to shell Result boundary; public\
+      \ wrapper preserves dict compatibility | Narrow Shell + compatibility wrapper\
+      \ | targeted tests passed |\n| validate_prompt_artifacts_for_recovery | true\
+      \ Shell boundary | moved artifact file reads to shell Result functions and validation\
+      \ to contracted Core | Shell read + Core validation | targeted tests passed\
+      \ |\n\n### Prompt / argv / output-contract snapshots\nWorker evidence reports\
+      \ before/after snapshots were identical for:\n- Prompt Markdown envelope beginning\
+      \ `# Runner Prompt: role-1`, with exact System/Task/Context/Output Contract/Execution\
+      \ Rules ordering.\n- Output contract lines for `freeform_evidence`, `resolution_report`,\
+      \ and `structured_review_result`.\n- OpenCode start argv: `('opencode', 'run',\
+      \ '--format', 'json', '--dir', '/ws', '--agent', 'agent-1', '--file', '.vectl/orch/runner_prompt.md',\
+      \ '--', 'Read the attached runner prompt file, execute the requested task in\
+      \ the current workspace, and then exit.')`\n- OpenCode resume argv: `('opencode',\
+      \ 'run', '--format', 'json', '--dir', '/ws', '--session', 'sess-1', '--agent',\
+      \ 'agent-1', '--file', '.vectl/orch/runner_prompt.md', '--', 'Continue this\
+      \ session by executing the attached runner prompt in the current workspace.')`\n\
+      - Digest snapshot unchanged: `6b95035cfe14103f10ee4460f4dd92713a432a767308a6b79df6d934af91bd2d`.\n\
+      \n### Escape-hatch restoration/repair register\n| Allow comment | Action | Purpose\
+      \ / owner | Guard effect | Broad suppression? |\n| --- | --- | --- | --- | ---\
+      \ |\n| Seven prior pure adapter shell_result comments | Still removed | Pure\
+      \ adapters are Core-owned in prompt_contracts.py | no raw prompt_materialization\
+      \ function findings | No |\n| build_opencode_launch_env allow | Removed | Env\
+      \ read moved to Shell Result boundary | removed prompt_materialization budget\
+      \ count | No |\n| validate_prompt_artifacts_for_recovery allow | Removed | File\
+      \ reads moved to Shell Result; validation to Core | removed prompt_materialization\
+      \ budget count and complexity info | No |\n| New allows | None added | N/A |\
+      \ N/A | N/A |\n\n## Structured Residual Disposition Register\n- requirement_ref:\
+      \ src/vectl/orchestration/prompt_materialization.py raw shell_result and file-budget\
+      \ findings.\n  behavior_claim: prompt/output/argv/model-visible behavior could\
+      \ regress if public wrappers drift.\n  runtime_proof_expected: targeted prompt/inspection\
+      \ tests plus prompt/argv/output-contract snapshots.\n  evidence_ref: targeted\
+      \ tests passed on worker and mainline; snapshots unchanged; final guard no longer\
+      \ reports prompt_materialization.py.\n  status: PROVEN_CLOSED.\n  closure_path:\
+      \ I/O moved to Shell Result functions; pure validation/rendering moved to contracted\
+      \ Core while preserving public wrappers.\n  gate_decision_basis: prompt_materialization-specific\
+      \ blocker may proceed.\n- requirement_ref: remaining full-guard residuals outside\
+      \ prompt_materialization from mainline guard: inspection_queries.py shell_result/shell_too_complex,\
+      \ contracts.py file_size, orch_app/config/driver/projections/recovery_fallback\
+      \ escape-hatch budgets, and project-level budgets.\n  behavior_claim: these\
+      \ are not prompt_materialization behavior, but they do intersect downstream\
+      \ full-guard/gate checks.\n  runtime_proof_expected: downstream before/after\
+      \ uvx invar-tools guard --all plus targeted domain tests.\n  evidence_ref: mainline\
+      \ full guard summary errors=22 warnings=12 infos=6 after salvage.\n  status:\
+      \ BLOCKING_OWNER_NEEDED.\n  closure_path: planner added `invar_guard_remediation.fix-full-guard-residual-budget-blockers`\
+      \ as one batched residual owner; downstream `escape-budget-full-guard-retest`,\
+      \ `verify-full-guard`, and `gate` now depend on it.\n  gate_decision_basis:\
+      \ downstream full-guard/gate must wait for the new residual owner; this step\
+      \ is complete for prompt_materialization root-cause closure.\n\n## checklist_receipt\n\
+      - Failure-mode checklist: all items checked by orchestrator based on worker\
+      \ evidence and planner residual ownership.\n- Verification checklist: all items\
+      \ checked by orchestrator based on worker evidence, mainline targeted tests,\
+      \ mainline guard output, and new residual blocker ownership.\n\n## Gaps/Notes\n\
+      - Repo-wide guard remains red, but remaining blocker-class residuals are now\
+      \ explicitly owned by `invar_guard_remediation.fix-full-guard-residual-budget-blockers`\
+      \ before downstream full-guard/gate steps.\n- Untracked `.codex/`, `test_mod.py`,\
+      \ and `test_mod_2.py` were present before merge and were not included in this\
+      \ step."
   - id: invar_guard_remediation.escape-budget-full-guard-retest
     name: Retest escape-budget closure with full guard
     status: pending

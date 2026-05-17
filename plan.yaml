@@ -96809,7 +96809,7 @@ phases:
     claimed_at: '2026-05-17T19:50:42.116896+00:00'
   - id: invar_guard_remediation.fix-orch-app-driver-budget-closure
     name: Fix orch_app and driver budget closure
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION / Focused residual slice for `orch_app.py` and orchestration
       `driver.py` budget closure.
 
@@ -96966,6 +96966,8 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-residual-budget-blockers
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T19:51:12.698839+00:00'
   - id: invar_guard_remediation.full-guard-residual-disposition-retest
     name: Retest and consolidate full-guard residual disposition
     status: pending

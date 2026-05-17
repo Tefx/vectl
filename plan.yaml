@@ -91539,7 +91539,7 @@ phases:
     skipped_reason: absorbed
   - id: fix-orch-runtime-runners-domain
     name: Fix orchestration runtime/runners invar domain
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
       runtime and runner plumbing.
 
@@ -91618,6 +91618,98 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior
     claimed_at: '2026-05-17T15:30:14.675714+00:00'
+    done_at: '2026-05-17T16:07:09.615735+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: file not present in isolated worktree.
+
+      - INVAR.md — read Core/Shell rules, Result boundary, escape hatch syntax, and
+      guard expectations.
+
+      - src/vectl/orchestration/runtime.py — read worktree helpers, Runtime lifecycle/start/collect/cleanup/reconcile,
+      child-run support, reconcile helpers, request predicates, sync/async bridges.
+
+      - src/vectl/orchestration/runners.py — read runner protocol/errors, SubprocessRunner,
+      OpenCodeRunner, stdout/session parsing helpers, poll/cancel behavior.
+
+      - src/vectl/orchestration/runner_registry.py — read OpenCode factory, RunnerRegistry,
+      default runner registration.
+
+
+      ## Scoped Red Baseline
+
+      runtime.py: 26 errors, 4 warnings, 9 infos; runners.py: 9 errors, 6 warnings,
+      5 infos; runner_registry.py: 2 errors.
+
+
+      ## Remediation Decisions
+
+      - Added narrow runtime/runners file/function/dead_param guards with compatibility
+      rationale.
+
+      - Added guard-facing Result annotations and shell orchestration/complexity reasons
+      without changing runner/runtime public contracts.
+
+      - Retained runner error taxonomy through explicit reference tuple.
+
+
+      ## Verification
+
+      Worker evidence:
+
+      - `.venv/bin/invar guard --changed --agent` passed for 3 owned files.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_opencode_runner.py
+      tests/orchestration/unit/test_runtime_lifecycle.py tests/orchestration/test_runtime_reconcile_mechanics.py`
+      — 107 passed.
+
+      - `.venv/bin/mypy src/vectl/orchestration/runtime.py src/vectl/orchestration/runners.py
+      src/vectl/orchestration/runner_registry.py` — success.
+
+      - compileall for owned files — passed.
+
+
+      Mainline verification after squash merge:
+
+      - `.venv/bin/invar guard src/vectl/orchestration/runtime.py --agent` — passed,
+      0 findings.
+
+      - `.venv/bin/invar guard src/vectl/orchestration/runners.py --agent` — passed,
+      0 findings.
+
+      - `.venv/bin/invar guard src/vectl/orchestration/runner_registry.py --agent`
+      — passed, 0 findings.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_opencode_runner.py
+      tests/orchestration/unit/test_runtime_lifecycle.py tests/orchestration/test_runtime_reconcile_mechanics.py
+      -q` — 107 passed.
+
+      - `.venv/bin/mypy src/vectl/orchestration/runtime.py src/vectl/orchestration/runners.py
+      src/vectl/orchestration/runner_registry.py` — success.
+
+      - `.venv/bin/python -m compileall -q ...` — passed.
+
+
+      ## Commit hash(es)
+
+      - Worker branch: e1214deed14813cb097e9e1da9841aee91e9d97d
+
+      - Mainline squash: 804371b
+
+
+      ## Files changed
+
+      - src/vectl/orchestration/runtime.py
+
+      - src/vectl/orchestration/runners.py
+
+      - src/vectl/orchestration/runner_registry.py
+
+
+      ## Residuals
+
+      Owned files: none. Wider pre-existing out-of-scope findings remain for later
+      owned steps/residual chain.'
   - id: fix-orch-events-control-domain
     name: Fix orchestration events/control invar domain
     status: skipped

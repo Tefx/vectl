@@ -91857,7 +91857,7 @@ phases:
       - Verdict: SUCCESS.'
   - id: fix-cli-plan-domain
     name: Fix CLI plan invar domain
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to the plan-management
       CLI surface.
 
@@ -91925,6 +91925,83 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-17T13:37:28.338069+00:00'
+    done_at: '2026-05-17T14:02:35.416376+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Shell Result boundary and escape hatch requirements read.
+
+      - AGENTS.md — plan/orchestrator state ownership read; no direct plan.yaml edits
+      by worker.
+
+      - src/vectl/cli_plan.py — read and remediated within owned scope.
+
+      - docs/invar_guard_remediation/failure_inventory.md — baseline row read: file_size/error:1,
+      function_size/warning:3, shell_result/error:11, shell_too_complex/info:23, dead_param/warning:1,
+      dead_assign/warning:3.
+
+
+      ## Worktree Evidence
+
+      - Worker status: SUCCESS.
+
+      - Worker commit: 460b96e4.
+
+      - Squash merge commit on main: 4518d6c ([vectl] step-fix-cli-plan-domain completed).
+
+      - Files changed: src/vectl/cli_plan.py.
+
+
+      ## Remediation Decisions
+
+      - Added targeted shell complexity/orchestration governance for CLI handlers
+      while preserving output formats.
+
+      - Removed private return annotations and added shell_orchestration markers where
+      needed.
+
+      - Extracted validation/filtering/gate helper logic for function-size remediation.
+
+      - Implemented phase-scoped review filtering instead of deleting the public --phase
+      option.
+
+      - Removed unused assignments.
+
+
+      ## Mainline Final-State Verification
+
+      Commands executed after squash merge on main:
+
+      ```text
+
+      uv run invar guard src/vectl/cli_plan.py --agent
+
+      uv run python -m pytest tests/test_cli.py tests/test_review.py tests/test_duplicate_id_migration_contract.py
+      tests/test_duplicate_id_migration_engine.py -q
+
+      ```
+
+      Results:
+
+      - invar guard: passed; files_checked=1; errors=0; warnings=0; infos=0; governed
+      escape hatches file_size=1 and function_size=1 with explicit reasons.
+
+      - pytest: 290 passed in 13.39s.
+
+
+      ## Residuals
+
+      - Full-repo guard remains expected-red outside this owned file.
+
+      - No plan/orchestrator state files were modified by worker.
+
+      - No vectl CLI commands were run.
+
+
+      ## Product Scope Confirmation
+
+      - Owned product file only: src/vectl/cli_plan.py.
+
+      - Verdict: SUCCESS.'
   - id: fix-cli-render-agent-domain
     name: Fix CLI render/agents invar domain
     status: claimed

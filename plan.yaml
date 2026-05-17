@@ -91643,7 +91643,7 @@ phases:
     claimed_at: '2026-05-17T14:56:27.110725+00:00'
   - id: fix-orch-recovery-continuity-domain
     name: Fix orchestration recovery/continuity invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to recovery,
       fallback, and continuity artifact logic.
 
@@ -91720,6 +91720,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T14:56:37.257836+00:00'
   - id: fix-orch-app-driver-domain
     name: Fix orch app and driver invar domain
     status: claimed

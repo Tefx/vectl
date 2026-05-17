@@ -91135,7 +91135,7 @@ phases:
     agent: gate-reviewer
   - id: fix-plan-mutation-query-domain
     name: Fix plan mutation/query invar domain
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to plan mutation/query
       logic.
 
@@ -91217,6 +91217,87 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior
     claimed_at: '2026-05-17T15:30:41.373757+00:00'
+    done_at: '2026-05-17T16:09:20.831881+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: file absent; root README.md read for plan.yaml/CAS
+      guidance.
+
+      - INVAR.md — read Core/Shell rules, shell Result guidance, and escape hatch
+      syntax.
+
+      - src/vectl/core_plan_mutations.py — read lifecycle adapters, add/add-bulk/edit/remove/move/checklist/clipboard/agents/recovery
+      sections.
+
+      - src/vectl/core_plan_queries.py — read validate/review/query/render/DAG/diff
+      sections.
+
+
+      ## Scoped Red Baseline
+
+      core_plan_mutations.py: 35 errors, 2 warnings, 13 infos; core_plan_queries.py:
+      27 errors, 1 warning, 13 infos.
+
+
+      ## Remediation Decisions
+
+      - Removed dead assignment in update_checklist.
+
+      - Avoided pathlib shell auto-classification in compatibility modules.
+
+      - Added narrow file/function/complexity rationale.
+
+      - Extracted edit_step and diff_plans helper logic while preserving public behavior.
+
+
+      ## Verification
+
+      Worker evidence:
+
+      - `.venv/bin/invar guard src/vectl/core_plan_mutations.py --agent` — passed,
+      0 findings.
+
+      - `.venv/bin/invar guard src/vectl/core_plan_queries.py --agent` — passed, 0
+      findings.
+
+      - `.venv/bin/pytest tests/test_validation.py tests/test_diff.py tests/test_agent_field.py::TestGetNextStepsAgent
+      tests/test_agent_field.py::TestAddStepAgent tests/test_agent_field.py::TestAddStepsBulkAgent
+      tests/test_agent_field.py::TestEditStepAgent -q` — 76 passed.
+
+      - Broader exploratory run noted one `src/vectl/cli_plan.py` empty-agent failure
+      outside owned files and not in this step''s acceptance path.
+
+
+      Mainline verification after squash merge:
+
+      - `.venv/bin/invar guard src/vectl/core_plan_mutations.py --agent` — passed,
+      0 findings.
+
+      - `.venv/bin/invar guard src/vectl/core_plan_queries.py --agent` — passed, 0
+      findings.
+
+      - `.venv/bin/pytest tests/test_validation.py tests/test_diff.py tests/test_agent_field.py::TestGetNextStepsAgent
+      tests/test_agent_field.py::TestAddStepAgent tests/test_agent_field.py::TestAddStepsBulkAgent
+      tests/test_agent_field.py::TestEditStepAgent -q` — 76 passed.
+
+
+      ## Commit hash(es)
+
+      - Worker branch: 231e49fd01b788287b82675ac25d4507a9e7ee89
+
+      - Mainline squash: fb11f71
+
+
+      ## Files changed
+
+      - src/vectl/core_plan_mutations.py
+
+      - src/vectl/core_plan_queries.py
+
+
+      ## Residuals
+
+      None in owned files.'
   - id: fix-lifecycle-duplicate-domain
     name: Fix lifecycle and duplicate-ID invar domain
     status: done

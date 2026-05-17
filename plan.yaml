@@ -93565,6 +93565,128 @@ phases:
     depends_on:
     - det_check_impl_cli_mcp
     agent: uiux-auditor
+  - id: det_check_impl_wiring_audit
+    name: Audit checklist wiring completeness
+    status: pending
+    description: 'Wiring completeness audit: verify every new deterministic checklist
+      public symbol and surface is reachable at runtime.
+
+
+      Required checks:
+
+      - [ ] Export reachability: any new public checklist symbol has a real import/caller
+      outside its own module or is intentionally private.
+
+      - [ ] CLI registration: deterministic checklist options/subcommands are registered
+      in the CLI entrypoint path.
+
+      - [ ] MCP registration: additive deterministic checklist fields/operations are
+      reachable through the MCP tool wrapper.
+
+      - [ ] Config consumption: no new config field is parsed without a non-test consumer.
+
+      - [ ] Contract consumption: core `@pre`/`@post` contracts reference real parameters
+      and contain non-vacuous comparisons.
+
+      - [ ] Orchestration prompt/receipt wiring reaches actual prompt materialization
+      or receipt validation, not dead helper code.
+
+
+      Use grep/import-trace output as evidence, not assertions.'
+    verification: '- [ ] phase-check protecting `det_check_impl_gate`: produce wiring
+      audit evidence for exports, CLI registration, MCP registration, config consumption,
+      contracts, and orchestration receipt reachability.
+
+      - [ ] Block if any new public checklist symbol or surface is unreachable at
+      runtime.
+
+      - [ ] Block if any identity-lambda or vacuous core contract is introduced.'
+    evidence_template: '## Wiring Audit Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_server.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/dispatch_policy.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/prompt_materialization.py — key passage or "NOT READ:
+      <reason>"
+
+
+      **Orphan exports**:
+
+      ```
+
+      <grep/import-trace output or "none found">
+
+      ```
+
+      **Unregistered CLI surfaces**:
+
+      ```
+
+      <grep output or "none found">
+
+      ```
+
+      **Unregistered MCP surfaces**:
+
+      ```
+
+      <grep output or "none found">
+
+      ```
+
+      **Unconsumed config fields**:
+
+      ```
+
+      <grep output or "none found">
+
+      ```
+
+      **Identity-lambda or vacuous contracts**:
+
+      ```
+
+      <grep output or "none found">
+
+      ```
+
+      **Orchestration receipt dead paths**:
+
+      ```
+
+      <grep/import-trace output or "none found">
+
+      ```
+
+      **Headline**: PASS | PASS_WITH_DEBT | FAIL
+
+
+      ## Checklist
+
+      - [ ] Reachability verified.
+
+      - [ ] No blocking orphans found.
+
+      - [ ] Any residual debt has explicit non-intersection evidence.'
+    depends_on:
+    - det_check_impl_core_inventory
+    - det_check_impl_single_mutation
+    - det_check_impl_batch_mutation
+    - det_check_impl_cli_mcp
+    - det_check_impl_orch_receipts
+    agent: wiring-auditor
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

@@ -96819,7 +96819,7 @@ phases:
       - [x] AFTER `uvx invar-tools guard --all` excerpt shows closure or explicit
       residual ownership for these files without project-level budget regression.
 
-      - [ ] Targeted config/projection/recovery tests pass and command output is pasted.
+      - [x] Targeted config/projection/recovery tests pass and command output is pasted.
 
       - [ ] Failure-mode checklist evidence covers main path and highest-risk failure
       path.

@@ -95762,7 +95762,7 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] Full guard prompt_materialization excerpt is captured from current mainline
+      - [x] Full guard prompt_materialization excerpt is captured from current mainline
       before the next implementation retry.
 
       - [ ] Each listed function is classified as pure adapter, true Shell boundary,

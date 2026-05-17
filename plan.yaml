@@ -94303,7 +94303,7 @@ phases:
       - Verdict: SUCCESS.'
   - id: invar_guard_remediation.escape-budget-authority-decision
     name: Escape-hatch budget authority decision
-    status: claimed
+    status: done
     description: 'AUTHORITY ADJUDICATION / PROOF CLOSURE. Decide the shared remediation
       strategy for the escape-hatch budget and shell_result budget blocker family
       after salvaged partial invar remediation.
@@ -94411,6 +94411,82 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-05-17T16:15:45.908428+00:00'
+    done_at: '2026-05-17T16:32:06.945914+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: file absent in isolated worktree.
+
+      - INVAR.md — read Core @pre/@post/doctest requirement and Shell Result rule.
+
+      - All listed residual files — read and mapped in `docs/invar_guard_remediation/escape_budget_authority_decision.md`.
+
+      - CONSTITUTION.md — NOT READ: file absent.
+
+
+      ## Escape-Budget Authority Decision
+
+      Full decision table written to `docs/invar_guard_remediation/escape_budget_authority_decision.md`,
+      covering:
+
+      - src/vectl/orch_app.py
+
+      - src/vectl/orchestration/driver.py
+
+      - src/vectl/orchestration/config.py
+
+      - src/vectl/orchestration/projections.py
+
+      - src/vectl/orchestration/events.py
+
+      - src/vectl/orchestration/control_channel.py
+
+      - src/vectl/orchestration/inspection_queries.py
+
+      - src/vectl/orchestration/prompt_materialization.py
+
+      - src/vectl/orchestration/core_adapter.py
+
+      - src/vectl/orchestration/recovery_fallback.py
+
+
+      ## Gate Intersection
+
+      - Remaining blocker-class findings that intersect final guard: shell_result/shell_pure_logic
+      pure helpers in listed orchestration files are BLOCKING until structurally extracted
+      or narrowly allowed as true Shell adapters.
+
+      - Non-intersection proof: file_size/file_size_warning and true Shell coordination
+      function_size findings are policy residuals when backed by adapter-boundary
+      evidence and targeted regression tests.
+
+      - Final closure path: STRUCTURED_RESIDUAL_DISPOSITION unless downstream implementation
+      also reaches full guard green.
+
+
+      ## Checklist Receipt
+
+      All description and verification checklist items were marked done based on the
+      returned receipt and artifact evidence.
+
+
+      ## Mainline verification after squash merge
+
+      - `test -f docs/invar_guard_remediation/escape_budget_authority_decision.md`
+      — passed.
+
+      - `python -m py_compile` for listed residual Python files — passed.
+
+
+      ## Commit hash(es)
+
+      - Worker branch: 4741025dab9b12ebc6d8677e9e30042082c79e4a
+
+      - Mainline squash: 84128eb
+
+
+      ## Files changed
+
+      - docs/invar_guard_remediation/escape_budget_authority_decision.md'
   - id: invar_guard_remediation.escape-budget-core-contracts
     name: Define core extraction contracts for escape-budget closure
     status: pending

@@ -98489,7 +98489,7 @@ phases:
       extraction, compatibility break, or runtime narrowing occurred.'
   - id: split-orchestration-driver-state-machine-surface
     name: Split orchestration driver state-machine surface
-    status: claimed
+    status: done
     description: "Focused residual implementation slice for current post-salvage orchestration\
       \ driver state-machine and barrier/resume/recovery budget blockers.\n\nstep_type:\
       \ implementation\nsymbolic_testing: true\nreduction_step: true\nagent_source:\
@@ -98633,6 +98633,109 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T22:24:23.786975+00:00'
+    done_at: '2026-05-17T22:55:30.866675+00:00'
+    evidence: '## refs Read Confirmation
+
+      - AGENTS.md — Read; key passage: `plan.yaml` is vectl-owned and must not be
+      directly edited; evidence is mandatory. Worker did not inspect or modify plan/orchestrator
+      state.
+
+      - INVAR.md — Read; key passage: run guard after changes; Shell is required for
+      I/O; escape hatches must be rare and justified.
+
+      - tools/vectl/README.md — NOT READ: file not present in isolated worktree.
+
+      - docs/invar_guard_remediation/post_salvage_residual_classification_register.md
+      — Read; key passage: `src/vectl/orchestration/driver.py` owned by this step
+      as active-drive state machine/barriers/resume/recovery surface; before baseline
+      file_size `9/5`, weighted `40/15`.
+
+
+      ## Commit hash(es)
+
+      - Worker commit: `0d607bc7dd12085f8b15b2c04cf5887d4b8c719a` — `split orchestration
+      driver state surfaces`.
+
+      - Main merge commit: `3ce677a` — `[vectl] step-split-orchestration-driver-state-machine-surface
+      completed`.
+
+
+      ## Files changed
+
+      - `src/vectl/orchestration/driver.py`
+
+      - `src/vectl/orchestration/driver_control.py`
+
+      - `src/vectl/orchestration/driver_impl.py`
+
+      - `src/vectl/orchestration/driver_loop.py`
+
+      - `src/vectl/orchestration/driver_planner.py`
+
+      - `src/vectl/orchestration/driver_planning_helpers.py`
+
+      - `src/vectl/orchestration/driver_recovery.py`
+
+      - `src/vectl/orchestration/driver_resolution_helpers.py`
+
+      - `src/vectl/orchestration/driver_resolver.py`
+
+      - `src/vectl/orchestration/driver_resume.py`
+
+      - `src/vectl/orchestration/driver_review.py`
+
+      - `src/vectl/orchestration/driver_transitions.py`
+
+      - `src/vectl/orchestration/driver_types.py`
+
+
+      ## Verification
+
+      - Worktree targeted tests: `.venv/bin/python -m pytest tests/orchestration/unit/test_driver_loop_proof.py
+      tests/orchestration/unit/test_drive_recovery_semantics.py tests/orchestration/unit/test_drive_control_consumption.py
+      tests/orchestration/unit/test_resolver_loop_integration.py tests/orchestration/unit/test_planner_loop_integration.py
+      tests/orchestration/unit/test_runtime_lifecycle.py -q -k ''not TestAsStrList''`
+      — `164 passed, 5 deselected in 9.18s`.
+
+      - Worktree focused runtime/barrier/resume smoke: selected drive control, recovery
+      semantics, resolver loop, and planner loop tests — `28 passed in 0.24s`.
+
+      - Mainline targeted tests after prior MCP/CLI and config/runtime merges: same
+      driver/runtime target set — `164 passed, 5 deselected in 5.22s`.
+
+      - Worktree AFTER guard: expected residual red; `driver.py` file_size hatch removed;
+      branch-local aggregate improved to `file_size 8/5`, weighted `37/15`.
+
+      - Mainline AFTER guard after prior merges: expected residual red; aggregate
+      improved to `file_size 2/5`, weighted `18/15`; only aggregate weighted budget
+      remains over limit.
+
+      - Import smoke: original `vectl.orchestration.driver` public path and key public
+      symbols smoke-proven by worker (`public-import-smoke=ok`).
+
+      - Preservation: worker confirmed active-drive state machine, barrier ordering/resolver/planner
+      paths, resume/recovery behavior, dispatch contracts, events, and operator-visible
+      status were preserved.
+
+
+      ## Spec link
+
+      split-orchestration-driver-state-machine-surface / docs/invar_guard_remediation/post_salvage_residual_classification_register.md
+
+
+      ## checklist_receipt Applied
+
+      All description and verification checklist items were toggled complete from
+      subagent evidence.
+
+
+      ## Gaps/Notes
+
+      - Full guard remains red on aggregate weighted budget only (`18/15`) after this
+      and prior residual slices; `file_size` is now within budget (`2/5`).
+
+      - No invar budget lowering, suppression, ignored files, deleted findings, stub-only
+      wrapper, runtime narrowing, or operator-visible behavior deletion occurred.'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

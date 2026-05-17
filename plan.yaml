@@ -95013,7 +95013,7 @@ phases:
       - [x] At least one failure-path/control timeout regression is covered if control
       behavior is touched.
 
-      - [ ] At least one routing/driver recovery regression is covered if app/driver
+      - [x] At least one routing/driver recovery regression is covered if app/driver
       flow is touched.
 
       - [ ] Scoped guard evidence for the owned files improves or closes the listed

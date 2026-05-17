@@ -97880,7 +97880,7 @@ phases:
       \ `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\n## Checklist\n\
       - [x] Capture BEFORE guard excerpts for owned residual rows and weighted contributors.\n\
       - [x] Reduce owned public-surface file-size/weighted pressure through cohesive\
-      \ internal extraction only.\n- [ ] Preserve original MCP and CLI public imports,\
+      \ internal extraction only.\n- [x] Preserve original MCP and CLI public imports,\
       \ registrations, schema/payload formats, and help surfaces.\n- [ ] Run targeted\
       \ tests for touched MCP/CLI modules and paste exact results.\n- [ ] Run import\
       \ smoke checks for original public module paths and paste exact commands/results.\n\

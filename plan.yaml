@@ -97468,7 +97468,7 @@ phases:
       until the batched fix/retest path closes.'
   - id: invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     name: Fix full-guard escape-budget blocker families in one batched slice
-    status: claimed
+    status: pending
     description: "Batched implementation remediation after failed full-guard retest.\n\
       \nstep_type: implementation\nsymbolic_testing: true\nprior_loop: invar_guard_remediation.full-guard-residual-disposition-retest\n\
       remaining_blocker: full `uvx invar-tools guard --all` still fails on escape-hatch\
@@ -97605,8 +97605,6 @@ phases:
     depends_on:
     - invar_guard_remediation.full-guard-residual-disposition-retest
     agent: python-senior
-    claimed_by: python-senior
-    claimed_at: '2026-05-17T20:53:22.259645+00:00'
   - id: invar_guard_remediation.full-guard-escape-budget-batched-retest
     name: Retest full guard after batched escape-budget remediation
     status: pending

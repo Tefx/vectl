@@ -96558,15 +96558,15 @@ phases:
       deliverable MUST contain substantive logic that processes its inputs and produces
       outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
       `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
-    verification: '- [ ] `contracts.py` file-size residual is closed or dispositioned
+    verification: '- [x] `contracts.py` file-size residual is closed or dispositioned
       under invar policy with pasted BEFORE/AFTER `uvx invar-tools guard --all` excerpts.
 
-      - [ ] Targeted import/consumer tests pass with pasted output.
+      - [x] Targeted import/consumer tests pass with pasted output.
 
-      - [ ] Public contract compatibility is proven and no duplicate/wrapper churn
+      - [x] Public contract compatibility is proven and no duplicate/wrapper churn
       is introduced.
 
-      - [ ] Evidence includes the mandatory residual disposition register for this
+      - [x] Evidence includes the mandatory residual disposition register for this
       slice.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

@@ -48,7 +48,6 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------
 
 
-# @invar:allow shell_result: public compatibility adapter delegates pure path calculation to Core and preserves PromptArtifactPaths API
 def resolve_prompt_artifact_paths(
     *,
     artifact_root: Path,
@@ -87,7 +86,6 @@ def resolve_prompt_artifact_paths(
 # ---------------------------------------------------------------------
 
 
-# @invar:allow shell_result: public compatibility adapter delegates env calculation to Core and preserves RunnerHandoffEnv API
 def build_runner_handoff_env(
     *,
     run_id: str,
@@ -133,7 +131,6 @@ def build_runner_handoff_env(
 # ---------------------------------------------------------------------
 
 
-# @invar:allow shell_result: public compatibility adapter preserves SHA-256 string API while Core owns digest logic
 def compute_prompt_bundle_sha256(bundle: PromptBundle) -> str:
     """Compute deterministic SHA-256 digest over a prompt bundle.
 
@@ -221,7 +218,6 @@ def materialize_prompt_artifacts(
     workspace_prompt.write_text(runner_prompt_content)
 
 
-# @invar:allow shell_result: public prompt text compatibility adapter; output shape is regression-tested
 def _render_runner_prompt_md(
     *,
     role_id: str,
@@ -299,7 +295,6 @@ def _render_runner_prompt_md(
     return "\n".join(parts)
 
 
-# @invar:allow shell_result: public prompt contract compatibility adapter delegates line selection to Core
 def _output_contract_lines(output_contract: str) -> list[str]:
     """Return runner-visible output contract instructions."""
 
@@ -317,7 +312,6 @@ def _output_contract_lines(output_contract: str) -> list[str]:
 # ---------------------------------------------------------------------
 
 
-# @invar:allow shell_result: public launch argv compatibility adapter preserves tuple API for subprocess callers
 def build_opencode_launch_argv(
     *,
     workspace: Path,
@@ -395,7 +389,6 @@ def build_opencode_launch_argv(
     return tuple(argv)
 
 
-# @invar:allow shell_result: launch argv adapter bridges Core prompt data to historical OpenCode argv order
 def _build_default_opencode_launch_argv(
     *,
     workspace: Path,

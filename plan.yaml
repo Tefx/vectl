@@ -91851,7 +91851,7 @@ phases:
     claimed_at: '2026-05-17T14:56:37.257836+00:00'
   - id: fix-orch-app-driver-domain
     name: Fix orch app and driver invar domain
-    status: claimed
+    status: skipped
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to the high-level
       orchestration app and drive loop driver.
 
@@ -91926,6 +91926,7 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior
     claimed_at: '2026-05-17T14:56:07.439234+00:00'
+    skipped_reason: absorbed
   - id: fix-cli-orchestration-domain
     name: Fix CLI orchestration invar domain
     status: done

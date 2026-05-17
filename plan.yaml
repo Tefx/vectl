@@ -98276,7 +98276,7 @@ phases:
       \ runtime lifecycle, reconcile behavior, and JSONL persistence formats.\n- [x]\
       \ Run targeted tests for config projection/recovery, runtime lifecycle, run\
       \ store, and touched persistence paths.\n- [x] Run import smoke checks for original\
-      \ public module paths.\n- [ ] Run config fixture, runtime lifecycle, and run-store\
+      \ public module paths.\n- [x] Run config fixture, runtime lifecycle, and run-store\
       \ JSONL smoke proofs with pasted output.\n- [ ] Capture AFTER guard excerpts\
       \ for owned residual rows and weighted contributors.\n- [ ] Confirm no budget\
       \ lowering, suppression, ignored files, deleted findings, compatibility break,\

@@ -92821,7 +92821,7 @@ phases:
     claimed_at: '2026-05-17T14:17:54.982284+00:00'
   - id: fix-io-storage-claims-residual
     name: Fix claims residual invar guard findings
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION residual closure for the salvaged IO/storage domain.
 
 
@@ -92984,6 +92984,85 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-17T14:18:09.567590+00:00'
+    done_at: '2026-05-17T14:35:27.541373+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Shell Result boundary, shell complexity, and escape hatch requirements
+      read.
+
+      - AGENTS.md — plan/orchestrator state ownership read; no plan state modified
+      by worker.
+
+      - src/vectl/claims.py — read and remediated within owned scope.
+
+      - tests/test_claims.py — read/used for claims regression coverage.
+
+
+      ## Worktree Evidence
+
+      - Worker status: SUCCESS.
+
+      - Worker commit: a62ea5f.
+
+      - Squash merge commit on main: b16dadb ([vectl] step-fix-io-storage-claims-residual
+      completed).
+
+      - Files changed: src/vectl/claims.py.
+
+
+      ## Finding Disposition
+
+      - shell_result: 19 residual findings closed while preserving legacy public return
+      values.
+
+      - shell_too_complex: 3 residual findings closed with targeted local rationales.
+
+      - No broad file-level masking added.
+
+
+      ## Mainline Final-State Verification
+
+      Commands executed after squash merge on main:
+
+      ```text
+
+      uv run invar guard src/vectl/claims.py --agent
+
+      uv run python -m pytest tests/test_claims.py -q
+
+      uv run python -m compileall src/vectl/claims.py
+
+      ```
+
+      Results:
+
+      - invar guard: passed; errors=0, warnings=0, infos=0.
+
+      - pytest: 14 passed in 0.22s.
+
+      - compileall: passed.
+
+
+      ## Highest-Risk Failure Path
+
+      - Atomic persistence failure path remains covered by tests/test_claims.py::test_acquire_release_claim
+      via os.replace failure behavior and existing-file preservation.
+
+      - Concurrent same-step claim contention covered by tests/test_claims.py::test_concurrent_claims.
+
+
+      ## Residuals
+
+      - None for src/vectl/claims.py.
+
+      - Other repo guard residuals remain outside owned file.
+
+
+      ## Product Scope Confirmation
+
+      - Owned product file only: src/vectl/claims.py.
+
+      - Verdict: SUCCESS.'
   - id: fix-io-storage-io-residual
     name: Fix IO residual invar guard findings
     status: claimed

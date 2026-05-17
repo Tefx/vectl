@@ -95008,7 +95008,7 @@ phases:
 
       ## Required Regression Evidence
 
-      - [ ] Targeted event/control/app/driver tests pass on mainline paths.
+      - [x] Targeted event/control/app/driver tests pass on mainline paths.
 
       - [ ] At least one failure-path/control timeout regression is covered if control
       behavior is touched.

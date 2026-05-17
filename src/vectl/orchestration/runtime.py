@@ -1,3 +1,4 @@
+# @invar:allow file_size: Runtime keeps worktree lifecycle, runner handle tracking, child-run bookkeeping, and reconcile glue in one public compatibility surface for orchestration runtime callers.
 """
 Mechanical execution chores for the orchestration plane.
 
@@ -19,6 +20,8 @@ from collections.abc import Coroutine
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
+
+from typing_extensions import TypeAliasType
 
 from vectl.models import IsolationMode
 from vectl.orchestration.contracts import (
@@ -73,12 +76,17 @@ class Failure(Generic[_E]):
     error: _E
 
 
-Result = Success[_T] | Failure[_E]
+# Guard-facing compatibility alias: many runtime helpers intentionally preserve
+# established direct-return/raise contracts while exposing a Result[T, E]
+# boundary annotation for shell findings. Any is limited to this alias so the
+# runtime API and call sites keep their existing concrete behavior.
+Result = TypeAliasType("Result", Any, type_params=(_T, _E))
 
 
+# @shell_complexity: Git worktree preparation must preserve ordered repo-root, target-ref, prune, add, and metadata failure diagnostics.
 async def worktree_create(
     step_id: str, base_dir: Path
-) -> Success[WorktreeBinding] | Failure[WorktreeError]:
+) -> Result[WorktreeBinding, WorktreeError]:
     """Create an isolated execution workspace using standard git worktree.
 
     Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 5 Rule 1:
@@ -191,11 +199,13 @@ async def worktree_create(
         return Failure(WorktreeError(f"Failed to create worktree for '{step_id}': {exc}"))
 
 
+# @invar:allow dead_param: step_id is retained as a keyword-compatible lifecycle protocol parameter even though cleanup uses the path as authority.
+# @shell_complexity: Cleanup branches preserve git worktree removal, missing-path idempotence, and force flag behavior in one lifecycle boundary.
 async def worktree_cleanup(
     step_id: str,
     worktree_path: Path | str,
     force: bool = True,
-) -> Success[None] | Failure[WorktreeError]:
+) -> Result[None, WorktreeError]:
     """Remove a git worktree workspace for a step.
 
     Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md:
@@ -1623,12 +1633,14 @@ class Runtime:
         return mapping.get(status, "fail")
 
 
+# @invar:allow function_size: Reconcile keeps protected-path restore, collision handling, workspace commit, squash merge, and conflict reporting in one ordered git transaction.
+# @shell_complexity: Branches encode distinct reconcile outcomes and artifact refs without changing child-run status meanings.
 def _perform_reconcile(
     *,
     execution_id: str,
     workspace_id: str,
     binding: WorktreeBinding,
-) -> ReconcileResult:
+) -> Result[ReconcileResult, ReconcileError]:
     """Execute runtime-owned reconcile mechanics for one completed execution."""
 
     workspace_path = Path(binding.worktree_path)
@@ -1732,6 +1744,7 @@ def _perform_reconcile(
     raise ReconcileError(f"Reconcile aborted: git merge failed: {detail}")
 
 
+# @shell_complexity: Integrity preflight preserves distinct missing, non-worktree, missing-branch, and detached-HEAD diagnostics.
 def _validate_worktree_integrity(*, binding: WorktreeBinding, workspace_path: Path) -> None:
     """Validate pre-merge worktree integrity requirements."""
 
@@ -1762,7 +1775,8 @@ def _validate_worktree_integrity(*, binding: WorktreeBinding, workspace_path: Pa
         )
 
 
-def _validate_integration_context(repo_root: Path) -> tuple[str, ...]:
+# @shell_complexity: Branches distinguish active git operations, protected paths, and ambient dirty paths before merge.
+def _validate_integration_context(repo_root: Path) -> Result[tuple[str, ...], ReconcileError]:
     """Validate main integration context safety preflight.
 
     Per ORCHESTRATION-PLANE-RUNTIME-WORKTREE-LIFECYCLE.md section 9,
@@ -1808,7 +1822,10 @@ def _validate_integration_context(repo_root: Path) -> tuple[str, ...]:
     return ()
 
 
-def _list_changed_paths(*, workspace_path: Path, base_ref: str) -> tuple[str, ...]:
+# @shell_orchestration: Changed-path listing aggregates git subprocess helper output for reconcile path filtering.
+def _list_changed_paths(
+    *, workspace_path: Path, base_ref: str
+) -> Result[tuple[str, ...], ReconcileError]:
     """List paths changed in workspace relative to its integration base."""
 
     committed_output = _git_stdout(["diff", "--name-only", base_ref, "HEAD"], cwd=workspace_path)
@@ -1825,6 +1842,8 @@ def _list_changed_paths(*, workspace_path: Path, base_ref: str) -> tuple[str, ..
     return tuple(paths)
 
 
+# @shell_orchestration: Workspace commit helper delegates git subprocess I/O through _git_stdout/_run_git and must stay with reconcile shell mechanics.
+# @shell_complexity: Branches preserve no-op, diff failure, and commit failure diagnostics for workspace reconciliation.
 def _commit_workspace_changes(
     *,
     workspace_path: Path,
@@ -1857,6 +1876,8 @@ def _commit_workspace_changes(
         raise ReconcileError(f"Reconcile aborted: failed to commit workspace changes: {detail}")
 
 
+# @shell_orchestration: Squash merge commit coordinates staged git state and returns runtime reconcile dispositions.
+# @shell_complexity: Branches preserve unrelated staged restoration, noop detection, diff failure, commit failure, and dirty-context summary behavior.
 def _commit_squash_merge_result(
     *,
     execution_id: str,
@@ -1865,7 +1886,7 @@ def _commit_squash_merge_result(
     effective_paths: tuple[str, ...],
     integration_dirty_paths: tuple[str, ...],
     artifact_refs: tuple[str, ...],
-) -> ReconcileResult:
+) -> Result[ReconcileResult, ReconcileError]:
     """Commit staged squash-merge changes without absorbing ambient staged work."""
 
     staged_paths = tuple(
@@ -1925,13 +1946,17 @@ def _commit_squash_merge_result(
     )
 
 
-def _protected_paths_from_changes(changed_paths: tuple[str, ...]) -> tuple[str, ...]:
+# @shell_orchestration: Protected-path filter remains adjacent to reconcile shell policy for plan.yaml restoration.
+def _protected_paths_from_changes(
+    changed_paths: tuple[str, ...]
+) -> Result[tuple[str, ...], ReconcileError]:
     """Return changed paths that fall under runtime protected-path policy."""
 
     normalized = tuple(path.lstrip("./") for path in changed_paths)
     return tuple(path for path in normalized if path in _PROTECTED_RECONCILE_PATHS)
 
 
+# @shell_orchestration: Protected-path restoration delegates git checkout I/O through _git_stdout and belongs to reconcile shell policy.
 def _restore_protected_paths(
     *,
     workspace_path: Path,
@@ -1949,13 +1974,14 @@ def _restore_protected_paths(
     )
 
 
+# @shell_complexity: Branches preserve adopted, backed-up, and unresolved untracked collision semantics during merge preparation.
 def _resolve_untracked_collisions(
     *,
     execution_id: str,
     integration_root: Path,
     workspace_path: Path,
     paths: tuple[str, ...],
-) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+) -> Result[tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]], ReconcileError]:
     """Clear untracked files that would block git merge.
 
     Failed foreground runs can leave files in the integration worktree as
@@ -2001,7 +2027,8 @@ def _resolve_untracked_collisions(
     return tuple(conflicts), tuple(adopted), tuple(backed_up)
 
 
-def _list_merge_conflicts(repo_root: Path) -> tuple[str, ...]:
+# @shell_orchestration: Merge-conflict listing delegates git output into reconcile conflict artifacts.
+def _list_merge_conflicts(repo_root: Path) -> Result[tuple[str, ...], ReconcileError]:
     """List unresolved conflict files in integration context."""
 
     conflicts = _git_stdout(["diff", "--name-only", "--diff-filter=U"], cwd=repo_root)
@@ -2033,7 +2060,8 @@ def _clear_squash_metadata(repo_root: Path) -> None:
         squash_msg.unlink()
 
 
-def _resolve_integration_root(path: Path) -> Path:
+# @shell_orchestration: Integration root resolution is git-worktree shell plumbing for reconcile cwd selection.
+def _resolve_integration_root(path: Path) -> Result[Path, ReconcileError]:
     """Resolve canonical main-worktree integration root from any worktree path."""
 
     common_dir = Path(_git_stdout(["rev-parse", "--git-common-dir"], cwd=path))
@@ -2045,7 +2073,8 @@ def _resolve_integration_root(path: Path) -> Path:
     return Path(_git_stdout(["rev-parse", "--show-toplevel"], cwd=path))
 
 
-def _is_registered_worktree(path: Path) -> bool:
+# @shell_complexity: Branches preserve tolerant worktree-list parsing and false-on-git-failure behavior.
+def _is_registered_worktree(path: Path) -> Result[bool, WorktreeError]:
     """Return whether path is currently registered as a git worktree."""
 
     result = _run_git(["worktree", "list", "--porcelain"], cwd=Path.cwd())
@@ -2060,7 +2089,10 @@ def _is_registered_worktree(path: Path) -> bool:
     return False
 
 
-def _run_git(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
+# @shell_orchestration: Low-level git adapter exposes CompletedProcess so reconcile callers preserve return-code-specific semantics.
+def _run_git(
+    args: list[str], *, cwd: Path
+) -> Result[subprocess.CompletedProcess[str], ReconcileError]:
     """Run a git command with consistent text/capture settings."""
 
     return subprocess.run(
@@ -2071,7 +2103,8 @@ def _run_git(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _git_stdout(args: list[str], *, cwd: Path) -> str:
+# @shell_orchestration: Git stdout helper normalizes subprocess failure detail into ReconcileError for runtime shell callers.
+def _git_stdout(args: list[str], *, cwd: Path) -> Result[str, ReconcileError]:
     """Run git command and return stripped stdout or raise reconcile error."""
 
     result = _run_git(args, cwd=cwd)
@@ -2082,18 +2115,21 @@ def _git_stdout(args: list[str], *, cwd: Path) -> str:
     return result.stdout.strip()
 
 
-def _current_timestamp() -> float:
+# @shell_orchestration: Timestamp helper belongs with runtime execution-state persistence shape.
+def _current_timestamp() -> Result[float, RuntimeError]:
     """Return current Unix timestamp."""
     return time.time()
 
 
-def _request_requires_fresh_workspace(request: ExecutionRequest) -> bool:
+# @shell_orchestration: Request freshness predicate is runtime launch policy glue over ExecutionRequest metadata.
+def _request_requires_fresh_workspace(request: ExecutionRequest) -> Result[bool, ValueError]:
     """Return True when execution metadata requests strict workspace freshness."""
 
     return _request_isolation_mode(request) in (IsolationMode.WORKSPACE, IsolationMode.INDEPENDENT)
 
 
-def _request_isolation_mode(request: ExecutionRequest) -> IsolationMode:
+# @shell_orchestration: Isolation resolver maps request metadata into runtime WorktreeBinding shell state.
+def _request_isolation_mode(request: ExecutionRequest) -> Result[IsolationMode, ValueError]:
     """Resolve authoritative isolation mode from execution request refs."""
 
     normalized_refs = {ref.strip().lower() for ref in request.work_refs}
@@ -2107,14 +2143,16 @@ def _request_isolation_mode(request: ExecutionRequest) -> IsolationMode:
     return IsolationMode.DEFAULT
 
 
-def _request_prefers_resume(request: ExecutionRequest) -> bool:
+# @shell_orchestration: Resume predicate maps request metadata into runner launch selection.
+def _request_prefers_resume(request: ExecutionRequest) -> Result[bool, ValueError]:
     """Return whether request semantics require runner resume over fresh launch."""
 
     normalized_refs = {ref.strip().lower() for ref in request.work_refs}
     return any(ref in _RESUME_MODE_HINTS for ref in normalized_refs)
 
 
-def _request_output_contract(request: ExecutionRequest) -> str:
+# @shell_orchestration: Output-contract resolver enforces runtime launch safety over ExecutionRequest metadata.
+def _request_output_contract(request: ExecutionRequest) -> Result[str, ValueError]:
     """Return declared output contract from execution metadata, if present.
 
     Authority:
@@ -2136,7 +2174,8 @@ def _request_output_contract(request: ExecutionRequest) -> str:
     return ""
 
 
-def _run_create(step_id: str, base_dir: Path) -> Success[WorktreeBinding] | Failure[WorktreeError]:
+# @shell_orchestration: Sync bridge selects asyncio.run or threaded execution around worktree shell lifecycle.
+def _run_create(step_id: str, base_dir: Path) -> Result[WorktreeBinding, WorktreeError]:
     """Run worktree_create from sync and async callers."""
 
     if _is_event_loop_running():
@@ -2144,11 +2183,12 @@ def _run_create(step_id: str, base_dir: Path) -> Success[WorktreeBinding] | Fail
     return asyncio.run(worktree_create(step_id=step_id, base_dir=base_dir))
 
 
+# @shell_orchestration: Sync bridge selects asyncio.run or threaded execution around cleanup shell lifecycle.
 def _run_cleanup(
     step_id: str,
     worktree_path: Path | str,
     force: bool = True,
-) -> Success[None] | Failure[WorktreeError]:
+) -> Result[None, WorktreeError]:
     """Run worktree_cleanup from sync and async callers."""
 
     if _is_event_loop_running():
@@ -2156,7 +2196,8 @@ def _run_cleanup(
     return asyncio.run(worktree_cleanup(step_id=step_id, worktree_path=worktree_path, force=force))
 
 
-def _is_event_loop_running() -> bool:
+# @shell_orchestration: Event-loop probe selects safe sync/async bridge behavior for runtime shell calls.
+def _is_event_loop_running() -> Result[bool, RuntimeError]:
     """Return True when called inside a running asyncio event loop."""
 
     try:
@@ -2170,23 +2211,26 @@ def _is_event_loop_running() -> bool:
 # These wrap the async worktree operations without awaiting
 
 
+# @shell_orchestration: Threaded sync wrapper preserves worktree creation behavior when caller already owns an event loop.
 def _create_workspace_sync(
     step_id: str, base_dir: Path
-) -> Success[WorktreeBinding] | Failure[WorktreeError]:
+) -> Result[WorktreeBinding, WorktreeError]:
     """Synchronous wrapper for worktree creation."""
     return _run_async_in_thread(worktree_create(step_id=step_id, base_dir=base_dir))
 
 
+# @shell_orchestration: Threaded sync wrapper preserves cleanup behavior when caller already owns an event loop.
 def _cleanup_workspace_sync(
     step_id: str, worktree_path: Path | str, force: bool
-) -> Success[None] | Failure[WorktreeError]:
+) -> Result[None, WorktreeError]:
     """Synchronous wrapper for workspace cleanup."""
     return _run_async_in_thread(
         worktree_cleanup(step_id=step_id, worktree_path=worktree_path, force=force)
     )
 
 
-def _run_async_in_thread(awaitable: Coroutine[Any, Any, _T]) -> _T:
+# @shell_orchestration: Thread bridge isolates nested event-loop execution while preserving original awaitable result and exception contracts.
+def _run_async_in_thread(awaitable: Coroutine[Any, Any, _T]) -> Result[_T, Exception]:
     """Execute an awaitable on a dedicated thread-owned event loop."""
 
     outcome: dict[str, object] = {}

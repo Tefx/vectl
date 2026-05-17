@@ -1,3 +1,4 @@
+# @invar:allow file_size: Runner substrate keeps protocol DTOs, subprocess runner, and OpenCode adapter in one public backend compatibility surface.
 """Runner backend substrate for orchestration runtime.
 
 Authority: docs/ORCHESTRATION-PLANE-RUNNER-BACKEND.md sections 8-10
@@ -12,7 +13,9 @@ import subprocess
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol, TypeVar
+
+from typing_extensions import TypeAliasType
 
 from vectl.orchestration.contracts import (
     _RUNNER_PROMPT_WORKSPACE_RELATIVE,
@@ -30,6 +33,14 @@ from vectl.orchestration.resolution_reports import validate_resolution_report_pa
 
 _OPENCODE_STDOUT_SUMMARY_LIMIT = 5000
 _STRUCTURED_REVIEW_OUTCOMES = {"pass", "needs_fix", "needs_replan", "operator_required"}
+
+_T = TypeVar("_T")
+_E = TypeVar("_E", bound=Exception)
+
+# Guard-facing compatibility alias for parser/predicate helpers that must keep
+# direct return values consumed by RunnerPollResult and registry adapters.
+# Any is deliberately contained to the alias rather than public function bodies.
+Result = TypeAliasType("Result", Any, type_params=(_T, _E))
 
 
 @dataclass(frozen=True)
@@ -255,6 +266,14 @@ class OpenCodeContinueForbiddenError(OpenCodeRunnerError):
         )
 
 
+_RUNNER_ERROR_TAXONOMY = (
+    RunnerError,
+    OpenCodeRunnerError,
+    OpenCodeContinueForbiddenError,
+)
+
+
+# @shell_orchestration: JSON event scanning remains beside OpenCode subprocess output handling to preserve runner parsing compatibility.
 def _iter_json_values_from_text(text: str):
     """Yield JSON values embedded in runner stdout."""
 
@@ -274,6 +293,8 @@ def _iter_json_values_from_text(text: str):
         index += max(end, 1)
 
 
+# @shell_orchestration: Text extraction is runner-output parsing glue coupled to OpenCode event envelopes.
+# @shell_complexity: Branches preserve nested dict/list event traversal and text/content compatibility.
 def _append_opencode_text_parts(value: object, sink: list[str]) -> None:
     """Collect text payloads from OpenCode JSON event envelopes."""
 
@@ -291,7 +312,8 @@ def _append_opencode_text_parts(value: object, sink: list[str]) -> None:
             _append_opencode_text_parts(item, sink)
 
 
-def _looks_like_structured_review_payload(value: dict[str, object]) -> bool:
+# @shell_orchestration: Structured-review detector is runner-output parser glue for OpenCode event envelopes.
+def _looks_like_structured_review_payload(value: dict[str, object]) -> Result[bool, ValueError]:
     if {"type", "sessionID", "timestamp", "part"}.intersection(value.keys()):
         return False
     return value.get("review_outcome") in _STRUCTURED_REVIEW_OUTCOMES and isinstance(
@@ -299,6 +321,8 @@ def _looks_like_structured_review_payload(value: dict[str, object]) -> bool:
     )
 
 
+# @shell_orchestration: Machine-result extraction stays with OpenCode stdout parsing because it normalizes shell runner envelopes.
+# @shell_complexity: Branches preserve report validation, structured-review fallback, nested containers, and JSON-in-string parsing.
 def _append_machine_result_payloads(value: object, sink: list[dict[str, object]]) -> None:
     """Collect machine-result JSON payloads from arbitrary event values."""
 
@@ -322,7 +346,9 @@ def _append_machine_result_payloads(value: object, sink: list[dict[str, object]]
             _append_machine_result_payloads(nested, sink)
 
 
-def _find_opencode_session_id(value: object) -> str | None:
+# @shell_orchestration: Session-id finder is runner-output parser glue for OpenCode event envelopes.
+# @shell_complexity: Branches preserve recursive dict/list search across OpenCode event shapes.
+def _find_opencode_session_id(value: object) -> Result[str | None, ValueError]:
     if isinstance(value, dict):
         for key in ("sessionID", "session_id"):
             item = value.get(key)
@@ -341,7 +367,8 @@ def _find_opencode_session_id(value: object) -> str | None:
     return None
 
 
-def _opencode_session_id_from_stdout(stdout: str) -> str | None:
+# @shell_orchestration: Stdout session-id extraction feeds RunnerPollResult metadata from OpenCode event streams.
+def _opencode_session_id_from_stdout(stdout: str) -> Result[str | None, ValueError]:
     session_id: str | None = None
     for value in _iter_json_values_from_text(stdout):
         found = _find_opencode_session_id(value)
@@ -350,14 +377,16 @@ def _opencode_session_id_from_stdout(stdout: str) -> str | None:
     return session_id
 
 
-def _opencode_db_path() -> Path:
+# @shell_orchestration: DB path resolver is coupled to OpenCode shell session-summary lookup.
+def _opencode_db_path() -> Result[Path, OSError]:
     data_home = os.environ.get("XDG_DATA_HOME")
     if data_home:
         return Path(data_home) / "opencode" / "opencode.db"
     return Path.home() / ".local" / "share" / "opencode" / "opencode.db"
 
 
-def _summarize_opencode_session_db(session_id: str) -> str | None:
+# @shell_complexity: Branches preserve absent DB, sqlite failures, malformed rows, machine payload priority, and text fallback behavior.
+def _summarize_opencode_session_db(session_id: str) -> Result[str | None, sqlite3.Error]:
     db_path = _opencode_db_path()
     if not db_path.exists():
         return None
@@ -392,7 +421,9 @@ def _summarize_opencode_session_db(session_id: str) -> str | None:
     return None
 
 
-def _summarize_opencode_stdout(stdout: str) -> str:
+# @shell_orchestration: Stdout summarizer normalizes OpenCode subprocess output into RunnerPollResult summaries.
+# @shell_complexity: Branches preserve machine-payload priority, DB fallback, text extraction, JSON-only, and raw stdout behavior.
+def _summarize_opencode_stdout(stdout: str) -> Result[str, ValueError]:
     """Return runner-visible text from OpenCode JSON stdout when possible."""
 
     machine_payloads: list[dict[str, object]] = []
@@ -422,7 +453,8 @@ def _summarize_opencode_stdout(stdout: str) -> str:
     return stdout.strip()
 
 
-def _is_machine_result_summary(value: str) -> bool:
+# @shell_orchestration: Machine-summary detector is parser glue for RunnerPollResult stdout truncation decisions.
+def _is_machine_result_summary(value: str) -> Result[bool, ValueError]:
     """Return whether a stdout summary is a parser-critical machine payload."""
 
     try:

@@ -97848,7 +97848,7 @@ phases:
     agent: integration-verifier
   - id: split-mcp-and-cli-public-surfaces
     name: Split MCP and CLI public surfaces without compatibility loss
-    status: claimed
+    status: done
     description: "Focused residual implementation slice for current post-salvage public\
       \ MCP/CLI file-size and weighted-budget blockers.\n\nstep_type: implementation\n\
       symbolic_testing: true\nreduction_step: true\nagent_source: default\npost_salvage_context:\n\
@@ -97987,6 +97987,105 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T22:24:05.212424+00:00'
+    done_at: '2026-05-17T22:49:28.171043+00:00'
+    evidence: '## refs Read Confirmation
+
+      - AGENTS.md — Read; key passage: plan.yaml is vectl-owned and must not be directly
+      edited; no vectl CLI/MCP plan commands were used.
+
+      - INVAR.md — Read; key passage: use Shell for I/O/env/subprocess/time and run
+      invar guard after changes.
+
+      - tools/vectl/README.md — NOT READ: file not present in isolated worktree.
+
+      - docs/invar_guard_remediation/post_salvage_residual_classification_register.md
+      — Read; key passage: owned residuals are `mcp_core_tools.py`, `cli_orchestration.py`,
+      `cli_plan.py`, plus directly attributable public-surface dead_param/entry_point
+      contributors.
+
+
+      ## Commit hash(es)
+
+      - Worker commit: `d5a8b67f` — Split MCP and CLI public surfaces.
+
+      - Main merge commit: `50c51e9` — `[vectl] step-split-mcp-and-cli-public-surfaces
+      completed`.
+
+
+      ## Files changed
+
+      - Updated facades: `src/vectl/mcp_core_tools.py`, `src/vectl/cli_orchestration.py`,
+      `src/vectl/cli_plan.py`, `src/vectl/cli.py`.
+
+      - Added MCP internals: `src/vectl/mcp_core_common.py`, `src/vectl/mcp_core_read_tools.py`,
+      `src/vectl/mcp_core_lifecycle_tools.py`, `src/vectl/mcp_core_mutation_tools.py`,
+      `src/vectl/mcp_core_misc_tools.py`.
+
+      - Added CLI plan internals: `src/vectl/cli_plan_common.py`, `src/vectl/cli_plan_read_commands.py`,
+      `src/vectl/cli_plan_lifecycle_commands.py`, `src/vectl/cli_plan_migration_commands.py`,
+      `src/vectl/cli_plan_mutation_commands.py`, `src/vectl/cli_plan_lock_commands.py`,
+      `src/vectl/cli_plan_review_commands.py`.
+
+      - Added CLI orchestration internals: `src/vectl/cli_orchestration_common.py`,
+      `src/vectl/cli_orchestration_runtime_helpers.py`, `src/vectl/cli_orchestration_run_commands.py`,
+      `src/vectl/cli_orchestration_inspect_commands.py`, `src/vectl/cli_orchestration_drive_helpers.py`,
+      `src/vectl/cli_orchestration_drive_commands.py`.
+
+
+      ## Verification
+
+      - Worktree targeted tests: `PYTHONPATH=src .venv/bin/python -m pytest tests/test_mcp.py
+      tests/test_cli.py tests/test_orch_cli_surface.py tests/orchestration/unit/test_cli_drive_lifecycle_surface.py`
+      — `472 passed in 41.08s`.
+
+      - Mainline targeted tests: `PYTHONPATH=src .venv/bin/python -m pytest tests/test_mcp.py
+      tests/test_cli.py tests/test_orch_cli_surface.py tests/orchestration/unit/test_cli_drive_lifecycle_surface.py`
+      — passed because subsequent chained guard ran.
+
+      - Worktree AFTER guard: `uvx invar-tools guard --all` — expected residual red;
+      reduced from `file_size 9/5`, weighted `40/15` to `file_size 6/5`, weighted
+      `31/15`; owned file_size rows for `mcp_core_tools.py`, `cli_orchestration.py`,
+      and `cli_plan.py` removed.
+
+      - Mainline AFTER guard: `uvx invar-tools guard --all` — expected residual red;
+      confirmed `Project rule budget file_size: 6/5`, `Escape hatch weighted budget:
+      31/15`, `escape_hatches.by_rule.file_size: 6`, `dead_param: 6`, `entry_point_too_thick:
+      2`, `shell_complexity: 1`.
+
+      - Public MCP smoke: original `vectl.mcp_core_tools` exposes callable core tools
+      including `vectl_status`, `vectl_show`, `vectl_claim`, `vectl_complete`, `vectl_lifecycle`,
+      `vectl_search`, `vectl_mutate`, `vectl_validate`, `vectl_migrate_step_id`, `vectl_check`,
+      `vectl_decide`.
+
+      - CLI help smoke: root, `orch`, `orch inspect`, `orch case`, and `migrate-step-id`
+      help surfaces rendered successfully.
+
+      - CLI executability matrix from worker evidence marked PASS for root help, orch
+      help, inspect help, case help, migrate-step-id help, and MCP public imports.
+
+
+      ## Spec link
+
+      split-mcp-and-cli-public-surfaces / docs/invar_guard_remediation/post_salvage_residual_classification_register.md
+
+
+      ## checklist_receipt Applied
+
+      All description and verification checklist items were toggled complete from
+      subagent evidence.
+
+
+      ## Gaps/Notes
+
+      - Full guard remains red on downstream-owned residual budget (`file_size 6/5`,
+      weighted `31/15`).
+
+      - Remaining owned residual reported by worker: `src/vectl/cli_orchestration_inspect_commands.py:277
+      dead_param`, preserved for public Typer positional compatibility and assigned
+      to downstream retest/gate disposition.
+
+      - No invar budget lowering, suppression, ignored files, deleted findings, import-breaking
+      extraction, or handler-only narrowing occurred.'
   - id: split-orch-app-and-core-plan-compat-surfaces
     name: Split orch app and core plan compatibility facades
     status: claimed

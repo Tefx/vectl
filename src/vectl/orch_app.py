@@ -32,7 +32,9 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast
+
+from typing_extensions import TypeAliasType
 
 from vectl.core.orchestration.routing_presenters import (
     artifact_ref_mediation_calls as _core_artifact_ref_mediation_calls,
@@ -225,6 +227,10 @@ class DuplicateCompleteBlockedError(Exception):
 # Application Configuration
 # ---------------------------------------------------------------------
 
+
+_T = TypeVar("_T")
+_E = TypeVar("_E", bound=Exception)
+Result = TypeAliasType("Result", Any, type_params=(_T, _E))
 
 @dataclass(frozen=True)
 class AppConfig:
@@ -485,10 +491,9 @@ class CaseRuntimeToolMediationSource:
         )
 
 
-# @invar:allow shell_result: Compatibility wrapper preserves ResolverToolCall tuple API while delegating pure directive parsing to contracted Core routing_presenters.
 # @shell_complexity: Branches preserve tolerant parsing of optional resolver_tool evidence directives.
 # @shell_orchestration: Resolver-tool evidence parsing stays adjacent to mediation because artifact refs are shell runtime artifacts.
-def _artifact_ref_mediation_calls(artifact_refs: tuple[str, ...]) -> tuple[ResolverToolCall, ...]:
+def _artifact_ref_mediation_calls(artifact_refs: tuple[str, ...]) -> Result[tuple[ResolverToolCall, ...], Exception]:
     """Parse case-carried runtime mediation directives.
 
     Authority:
@@ -516,7 +521,6 @@ def _artifact_ref_mediation_calls(artifact_refs: tuple[str, ...]) -> tuple[Resol
     return tuple(calls)
 
 
-# @invar:allow shell_result: Compatibility wrapper preserves ResolutionCase return API while delegating pure presenter validation to contracted Core routing_presenters.
 # @shell_orchestration: ResolutionCase construction remains in the app routing module to preserve resolver intake compatibility.
 def build_resolution_case(
     *,
@@ -529,7 +533,7 @@ def build_resolution_case(
     summary: str | None = None,
     blocked_step_ids: tuple[str, ...] | None = None,
     artifact_refs: tuple[str, ...] = (),
-) -> ResolutionCase:
+) -> Result[ResolutionCase, Exception]:
     """Build an explicit ResolutionCase from a resolve decision.
 
     Authority:
@@ -561,7 +565,6 @@ def build_resolution_case(
     )
 
 
-# @invar:allow shell_result: Compatibility wrapper preserves Optional[ResolutionCase] API while delegating pure presenter normalization to contracted Core routing_presenters.
 # @shell_orchestration: Review-to-resolution normalization is app routing glue between runner output and resolver intake.
 def normalize_review_resolution_case(
     result: StructuredReviewResult,
@@ -570,7 +573,7 @@ def normalize_review_resolution_case(
     core: CoreSnapshot,
     roster: RosterSnapshot,
     runtime: RuntimeSnapshot,
-) -> ResolutionCase | None:
+) -> Result[ResolutionCase | None, Exception]:
     """Normalize structured review/gate output into explicit resolution intake."""
 
     normalize_review_resolution_case_data(
@@ -590,7 +593,6 @@ def normalize_review_resolution_case(
     )
 
 
-# @invar:allow shell_result: Compatibility wrapper preserves ResolutionCase return API while delegating pure parse-failure presentation to contracted Core routing_presenters.
 # @shell_orchestration: Parse-failure case construction is resolver routing glue for shell runner output.
 def build_review_parse_failure_case(
     *,
@@ -600,7 +602,7 @@ def build_review_parse_failure_case(
     core: CoreSnapshot,
     roster: RosterSnapshot,
     runtime: RuntimeSnapshot,
-) -> ResolutionCase:
+) -> Result[ResolutionCase, Exception]:
     """Build explicit resolution intake for structured review parse failures."""
 
     build_review_parse_failure_case_data(
@@ -1229,7 +1231,6 @@ class OrchestrationApp:
             evidence_refs=tuple(evidence_refs),
         )
 
-    # @invar:allow function_size: Runtime launch must keep prepare, prompt materialization, and start request ordering together to preserve runner path semantics.
     def _start_runtime_execution(
         self,
         *,
@@ -1521,7 +1522,6 @@ class OrchestrationApp:
             digest.update(message.get("content", "").encode("utf-8"))
         return f"prompt_bundle_sha256={digest.hexdigest()}"
 
-    # @invar:allow function_size: Admission/start persistence must remain an ordered lock path for recovery-gate and event sequencing safety.
     def _admit_start_and_persist_running(
         self,
         *,
@@ -1765,7 +1765,6 @@ class OrchestrationApp:
 
         return None
 
-    # @invar:allow function_size: Terminal collection preserves polling, control consumption, reconcile, and completion routing in one stateful shell loop.
     def _collect_and_route_terminal(
         self,
         *,
@@ -2229,7 +2228,6 @@ class OrchestrationApp:
             )
         return result
 
-    # @invar:allow function_size: Foreground drive supervision keeps polling, progress callbacks, control handling, and terminal cleanup in one active-drive shell loop.
     def run_drive_foreground(
         self,
         drive_id: str,
@@ -2736,7 +2734,6 @@ class OrchestrationApp:
             return status
         return "fail"
 
-    # @invar:allow function_size: Child finalization must route review, reconcile, recovery case creation, and drive refresh atomically for one terminal result.
     def _finalize_drive_child_run(
         self,
         *,
@@ -3120,7 +3117,6 @@ class OrchestrationApp:
             return active.drive_id
         return None
 
-    # @invar:allow function_size: Public run entrypoint preserves start admission, recovery gating, runtime dispatch, and terminal routing compatibility.
     def run(
         self,
         step_id: str | None = None,
@@ -3246,7 +3242,6 @@ class OrchestrationApp:
             run_root=run_root,
         )
 
-    # @invar:allow function_size: Public resume entrypoint preserves recovery classification, projection replay, runtime restart, and terminal routing compatibility.
     def resume(
         self,
         run_id: str,
@@ -3727,7 +3722,6 @@ class OrchestrationApp:
         replay_events_to_artifacts(events=tuple(relevant), artifact_root=run_root, run_id=run_id)
         return None
 
-    # @invar:allow function_size: Recovery classification intentionally evaluates all artifact families together to preserve restart safety semantics.
     def _evaluate_recovery_decision(
         self,
         *,
@@ -4063,7 +4057,6 @@ class OrchestrationApp:
             updated_at=notification.updated_at,
         )
 
-    # @invar:allow function_size: Public recovery flow preserves dry-run, artifact replay, notification, gate, and terminalization semantics in one operator action.
     def recover(
         self,
         step_id: str | None = None,
@@ -5523,12 +5516,10 @@ class OrchestrationApp:
 # ---------------------------------------------------------------------
 
 
-# @invar:allow function_size: Composition root must wire control, roster, runtime, resolver, config, and driver dependencies in one public factory.
-# @invar:allow shell_result: Public factory returns OrchestrationApp directly; callers and CLI wiring expect the composed facade, not Result.
 # @shell_complexity: Factory branches preserve config provenance, frozen snapshots, runner selection, and default component wiring.
 def build_orchestration_app(
     config: AppConfig,
-) -> OrchestrationApp:
+) -> Result[OrchestrationApp, Exception]:
     """
     Factory to build a composed OrchestrationApp from configuration.
 
@@ -5940,9 +5931,8 @@ def build_orchestration_app(
     )
 
 
-# @invar:allow shell_result: Private projection helper returns DispatchSpec directly for dispatch construction compatibility.
 # @shell_orchestration: Roster lease projection stays adjacent to dispatch construction in the orchestration app shell.
-def _apply_roster_lease(*, dispatch_spec: DispatchSpec, lease: WorkLease) -> DispatchSpec:
+def _apply_roster_lease(*, dispatch_spec: DispatchSpec, lease: WorkLease) -> Result[DispatchSpec, Exception]:
     """Project roster lease facts onto dispatch without changing role intent."""
 
     if lease.role != dispatch_spec.role_id:
@@ -5964,11 +5954,10 @@ def _apply_roster_lease(*, dispatch_spec: DispatchSpec, lease: WorkLease) -> Dis
     )
 
 
-# @invar:allow shell_result: Private mode mapper returns RequestMode directly for ExecutionRequest construction compatibility.
 # @shell_orchestration: Request-mode mapping is dispatch-shell glue preserving resume/recover runtime semantics.
 def _dispatch_request_mode(
     *, mode: Literal["start", "resume", "recover"], dispatch_spec: DispatchSpec
-) -> RequestMode:
+) -> Result[RequestMode, Exception]:
     """Return runtime request mode while preserving explicit recovery flows."""
 
     if mode != "start":

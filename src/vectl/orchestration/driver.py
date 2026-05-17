@@ -1097,7 +1097,6 @@ class DriveDriver:
     # run_drive_loop
     # ------------------------------------------------------------------
 
-    # @invar:allow function_size: Drive loop coordinates control evaluation, barriers, dispatch admission, and child launch rollback as one state-machine pass.
     def run_drive_loop(self, drive_id: str) -> DriveLoopResult:
         """Execute one drive scheduling loop pass.
 
@@ -1416,7 +1415,6 @@ class DriveDriver:
             f"{exc.original_error}; case_id={case_id}{release_note}{limit_note}",
         )
 
-    # @invar:allow function_size: Terminal review must keep review-gate, authoritative completion, replan, and recovery-case routing together.
     def _review_terminal_child_run(self, record: DriveRecord) -> DriveLoopResult | None:
         """Route one terminal step child-run fact through post-execution review.
 
@@ -1634,7 +1632,6 @@ class DriveDriver:
     # Resolver-loop integration
     # ------------------------------------------------------------------
 
-    # @invar:allow function_size: Resolver continuation preserves case creation, child execution, report mapping, and barrier transition ordering.
     def _handle_resolve_decision(
         self,
         drive_id: str,
@@ -1872,7 +1869,6 @@ class DriveDriver:
     # Drive-scoped control consumption
     # ------------------------------------------------------------------
 
-    # @invar:allow function_size: Drive control consumption preserves pause, unpause, stop, and rejection semantics in one ordered control-channel loop.
     def _consume_drive_control(self, record: DriveRecord) -> DriveRecord:
         """Consume queued drive-scoped control messages and apply state transitions.
 
@@ -2087,7 +2083,6 @@ class DriveDriver:
     # Planner-loop integration
     # ------------------------------------------------------------------
 
-    # @invar:allow function_size: Planner continuation keeps barrier entry, facade mutation, lease invalidation, refresh, and transition ordering together.
     def _handle_replan_decision(
         self,
         drive_id: str,
@@ -2278,7 +2273,6 @@ class DriveDriver:
     # resume_drive
     # ------------------------------------------------------------------
 
-    # @invar:allow function_size: Resume restores active children, barrier status, operator pause state, and frontier in one recovery-safe transition.
     def resume_drive(self, drive_id: str) -> DriveResumeResult:
         """Resume an interrupted drive session.
 
@@ -2414,7 +2408,6 @@ class DriveDriver:
     # recover_drive
     # ------------------------------------------------------------------
 
-    # @invar:allow function_size: Drive recovery must reconcile active child artifacts, conflicts, barriers, and terminal failure paths together.
     def recover_drive(
         self,
         drive_id: str,

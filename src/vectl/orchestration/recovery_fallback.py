@@ -1,4 +1,3 @@
-# @invar:allow file_size: Recovery fallback persistence and decision surface remains co-located to preserve RFC recovery artifact compatibility.
 """Automatic recovery fallback semantics for OpenCode-backed orchestration.
 
 Authority: docs/RFC-opencode-orchestration-runner.md sections 10, 11, 12
@@ -28,12 +27,21 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, TypeVar, cast
+
+from typing_extensions import TypeAliasType
 
 from vectl.orchestration.contracts import (
     RecoveredVia,
     RecoveryAttempt,
     RecoveryContinuity,
+)
+from vectl.orchestration.recovery_artifacts import (
+    persist_recovery_attempt,
+    persist_recovery_continuity,
+    persist_recovery_fallback_result,
+    read_recovery_attempt,
+    read_recovery_continuity,
 )
 from vectl.orchestration.prompt_materialization import (
     PromptArtifactValidation,
@@ -41,6 +49,10 @@ from vectl.orchestration.prompt_materialization import (
 )
 
 logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
+_E = TypeVar("_E", bound=Exception)
+Result = TypeAliasType("Result", Any, type_params=(_T, _E))
 
 
 # ---------------------------------------------------------------------
@@ -81,13 +93,11 @@ class SessionValidationResult:
     agent_id: str = ""
 
 
-# @invar:allow function_size: Native-resume validation keeps ordered RFC checks and reason strings in one compatibility surface.
-# @invar:allow shell_result: Public recovery validation API returns SessionValidationResult consumed by existing recovery callers.
 # @shell_complexity: Branches preserve distinct RFC validation failure reasons for session and prompt artifacts.
 def validate_session_for_resume(
     *,
     run_root: Path,
-) -> SessionValidationResult:
+) -> Result[SessionValidationResult, OSError]:
     """Validate whether a session is eligible for native resume.
 
     Authority: docs/RFC-opencode-orchestration-runner.md section 10.1
@@ -277,7 +287,6 @@ class RecoveryFallbackResult:
     recover_attempt: RecoveryAttempt | None = None
 
 
-# @invar:allow shell_result: Public fallback API returns RecoveryFallbackResult truth labels rather than Result wrapper for compatibility.
 def recover_with_fallback(
     *,
     run_id: str,
@@ -287,7 +296,7 @@ def recover_with_fallback(
     run_root: Path,
     workspace: Path,
     timestamp: str | None = None,
-) -> RecoveryFallbackResult:
+) -> Result[RecoveryFallbackResult, OSError]:
     """Execute the automatic recovery fallback decision process.
 
     Authority: docs/RFC-opencode-orchestration-runner.md sections 10.1–10.4, §6.3
@@ -470,235 +479,6 @@ def recover_with_fallback(
         continuity=None,  # No continuity when both paths fail
         resume_attempt=resume_attempt,
         recover_attempt=recovery_attempt,
-    )
-
-
-# ---------------------------------------------------------------------
-# Recovery Artifact Persistence (§10.3, §10.4)
-# ---------------------------------------------------------------------
-
-_RECOVERY_DIR_NAME: str = "recovery"
-_CONTINUITY_FILENAME: str = "continuity.json"
-_RESUME_ATTEMPT_FILENAME: str = "resume_attempt.json"
-_RECOVER_ATTEMPT_FILENAME: str = "recover_attempt.json"
-
-
-# @invar:allow shell_result: Persistence helper historically returns the written artifact Path for recovery audit callers.
-def persist_recovery_continuity(
-    *,
-    run_root: Path,
-    continuity: RecoveryContinuity,
-) -> Path:
-    """Persist recovery path truth label at ``recovery/continuity.json``.
-
-    Authority: docs/RFC-opencode-orchestration-runner.md section 10.3
-
-    The system must not collapse ``native_session_resume`` and
-    ``fresh_relaunch`` into the same label. This function writes the
-    authoritative ``recovered_via`` truth so that downstream consumers
-    (summaries, event payloads, audit) can distinguish the actual path.
-
-    Args:
-        run_root: Artifact root for the run (e.g. ``.vectl/runs/<run_id>``).
-        continuity: The RecoveryContinuity record to persist.
-
-    Returns:
-        Path to the written continuity.json file.
-    """
-    recovery_dir = run_root / _RECOVERY_DIR_NAME
-    recovery_dir.mkdir(parents=True, exist_ok=True)
-    continuity_path = recovery_dir / _CONTINUITY_FILENAME
-
-    payload: dict[str, object] = {
-        "recovered_via": continuity.recovered_via,
-        "run_id": continuity.run_id,
-        "step_id": continuity.step_id,
-        "agent_id": continuity.agent_id,
-        "runner": continuity.runner,
-        "session_id": continuity.session_id,
-        "timestamp": continuity.timestamp,
-    }
-
-    continuity_path.write_text(
-        json.dumps(payload, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-
-    return continuity_path
-
-
-# @invar:allow shell_result: Persistence helper historically returns the written attempt Path for recovery audit callers.
-def persist_recovery_attempt(
-    *,
-    run_root: Path,
-    attempt: RecoveryAttempt,
-) -> Path:
-    """Persist individual resume or recover attempt record.
-
-    Authority: docs/RFC-opencode-orchestration-runner.md section 10.4
-
-    Records whether native session validation succeeded, why it may have
-    failed, whether fallback relaunch was used, and resulting identifiers.
-
-    Args:
-        run_root: Artifact root for the run (e.g. ``.vectl/runs/<run_id>``).
-        attempt: The RecoveryAttempt record to persist.
-
-    Returns:
-        Path to the written attempt JSON file.
-    """
-    recovery_dir = run_root / _RECOVERY_DIR_NAME
-    recovery_dir.mkdir(parents=True, exist_ok=True)
-
-    filename = (
-        _RESUME_ATTEMPT_FILENAME if attempt.attempt_kind == "resume" else _RECOVER_ATTEMPT_FILENAME
-    )
-    attempt_path = recovery_dir / filename
-
-    payload: dict[str, object] = {
-        "attempt_kind": attempt.attempt_kind,
-        "native_validation_ok": attempt.native_validation_ok,
-        "native_validation_failure_reason": attempt.native_validation_failure_reason,
-        "fallback_relaunch_used": attempt.fallback_relaunch_used,
-        "resulting_run_id": attempt.resulting_run_id,
-        "resulting_session_id": attempt.resulting_session_id,
-    }
-
-    attempt_path.write_text(
-        json.dumps(payload, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-
-    return attempt_path
-
-
-# @invar:allow shell_result: Aggregate persistence returns artifact-name to Path mapping consumed by recovery callers.
-# @shell_orchestration: Aggregate delegates persistence I/O helpers while preserving legacy artifact mapping return shape.
-def persist_recovery_fallback_result(
-    *,
-    run_root: Path,
-    result: RecoveryFallbackResult,
-) -> dict[str, Path]:
-    """Persist all recovery artifacts for a fallback result.
-
-    Authority: docs/RFC-opencode-orchestration-runner.md sections 10.3, 10.4
-
-    Persists:
-    - ``recovery/continuity.json`` (if continuity is available)
-    - ``recovery/resume_attempt.json`` (if resume was attempted)
-    - ``recovery/recover_attempt.json`` (always, for the recovery attempt)
-
-    Args:
-        run_root: Artifact root for the run.
-        result: The RecoveryFallbackResult to persist.
-
-    Returns:
-        Dictionary mapping artifact name to file path for all persisted artifacts.
-    """
-    persisted: dict[str, Path] = {}
-
-    if result.continuity is not None:
-        path = persist_recovery_continuity(
-            run_root=run_root,
-            continuity=result.continuity,
-        )
-        persisted["continuity"] = path
-
-    if result.resume_attempt is not None:
-        path = persist_recovery_attempt(
-            run_root=run_root,
-            attempt=result.resume_attempt,
-        )
-        persisted["resume_attempt"] = path
-
-    if result.recover_attempt is not None:
-        path = persist_recovery_attempt(
-            run_root=run_root,
-            attempt=result.recover_attempt,
-        )
-        persisted["recover_attempt"] = path
-
-    return persisted
-
-
-# @invar:allow shell_result: Reader API intentionally uses None for missing or invalid legacy continuity artifacts.
-# @shell_complexity: Branches preserve missing, unreadable, non-object, and invalid-label legacy artifact handling.
-def read_recovery_continuity(
-    *,
-    run_root: Path,
-) -> RecoveryContinuity | None:
-    """Read a previously persisted recovery continuity record.
-
-    Args:
-        run_root: Artifact root for the run.
-
-    Returns:
-        RecoveryContinuity if the file exists and parses, else None.
-    """
-    continuity_path = run_root / _RECOVERY_DIR_NAME / _CONTINUITY_FILENAME
-    if not continuity_path.exists():
-        return None
-
-    try:
-        data = json.loads(continuity_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return None
-
-    if not isinstance(data, dict):
-        return None
-
-    recovered_via_raw = data.get("recovered_via", "")
-    if recovered_via_raw not in ("native_session_resume", "fresh_relaunch"):
-        return None
-
-    return RecoveryContinuity(
-        recovered_via=recovered_via_raw,
-        run_id=str(data.get("run_id", "")),
-        step_id=str(data.get("step_id", "")),
-        agent_id=str(data.get("agent_id", "")),
-        runner=str(data.get("runner", "")),
-        session_id=data.get("session_id"),  # May be None for fresh_relaunch
-        timestamp=str(data.get("timestamp", "")),
-    )
-
-
-# @invar:allow shell_result: Reader API intentionally uses None for missing or invalid legacy attempt artifacts.
-# @shell_complexity: Branches preserve missing, unreadable, non-object, and parsed attempt compatibility handling.
-def read_recovery_attempt(
-    *,
-    run_root: Path,
-    attempt_kind: Literal["resume", "recover"],
-) -> RecoveryAttempt | None:
-    """Read a previously persisted recovery attempt record.
-
-    Args:
-        run_root: Artifact root for the run.
-        attempt_kind: Which attempt to read ("resume" or "recover").
-
-    Returns:
-        RecoveryAttempt if the file exists and parses, else None.
-    """
-    filename = _RESUME_ATTEMPT_FILENAME if attempt_kind == "resume" else _RECOVER_ATTEMPT_FILENAME
-    attempt_path = run_root / _RECOVERY_DIR_NAME / filename
-
-    if not attempt_path.exists():
-        return None
-
-    try:
-        data = json.loads(attempt_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return None
-
-    if not isinstance(data, dict):
-        return None
-
-    return RecoveryAttempt(
-        attempt_kind=cast(Literal["resume", "recover"], data.get("attempt_kind", attempt_kind)),
-        native_validation_ok=bool(data.get("native_validation_ok", False)),
-        native_validation_failure_reason=str(data.get("native_validation_failure_reason", "")),
-        fallback_relaunch_used=bool(data.get("fallback_relaunch_used", False)),
-        resulting_run_id=str(data.get("resulting_run_id", "")),
-        resulting_session_id=data.get("resulting_session_id"),
     )
 
 

@@ -94531,7 +94531,7 @@ phases:
       - [x] Each Core contract references real parameters and includes non-vacuous
       comparisons.
 
-      - [ ] Doctests are present before implementation and document expected behavior.
+      - [x] Doctests are present before implementation and document expected behavior.
 
       - [ ] Public/model-visible outputs are locked and not changed by this contract
       step.'

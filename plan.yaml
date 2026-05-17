@@ -93190,6 +93190,155 @@ phases:
     depends_on:
     - det_check_impl_batch_mutation
     agent: python-senior
+  - id: det_check_impl_orch_receipts
+    name: Wire orchestrator checklist receipts
+    status: pending
+    description: 'step_type: implementation
+
+      tags: ["integration"]
+
+
+      Fill in orchestration prompt/receipt integration bodies and documentation hooks
+      in `src/vectl/orchestration/dispatch_policy.py`, `src/vectl/orchestration/prompt_materialization.py`,
+      and related orchestration evidence/step-data modules per the contract from phase
+      `det_check_contracts` and expected-red surface tests from phase `det_check_tests`.
+
+
+      UPSTREAM ARTIFACTS (from contract/test phases):
+
+      - `docs/RFC-deterministic-checklists.md` — orchestrator-owned mutation and worker
+      receipt contract is AUTHORITATIVE.
+
+      - `src/vectl/core_checklist.py` — inventory item_id/revision types are AUTHORITATIVE.
+
+      - Orchestration receipt tests from `det_check_tests_surfaces_red` are PROTECTED.
+
+
+      YOUR SCOPE: Complete prompt and receipt handling so the orchestrator can inject
+      checklist inventory receipts keyed by `item_id` and `checklist_inventory_revision`,
+      collect worker receipts, and own subsequent deterministic mutation calls. Workers
+      must never be asked to perform natural-language fuzzy mapping for deterministic
+      checklist handling.
+
+
+      Acceptance checklist:
+
+      - [ ] Prompt materialization can include checklist inventory item IDs, fields,
+      indexes, states, and revision.
+
+      - [ ] Worker receipt format records `step_id`, `field`, `item_id`, `checklist_inventory_revision`,
+      and desired final state.
+
+      - [ ] Orchestrator-owned mutation boundary is explicit; worker receipts do not
+      mutate plan state directly.
+
+      - [ ] Receipt validation rejects missing revision/item_id for deterministic
+      paths.
+
+      - [ ] Natural-language fuzzy mapping is reserved only for legacy human keyword
+      compatibility, not orchestrator receipts.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Worker prompts that ask agents to identify checklist items by prose when
+      deterministic item IDs are available.
+
+      2. Receipt formats that omit revision or cannot detect stale inventories.
+
+      3. Orchestrator integrations that mutate checklists outside the canonical CLI/MCP/core
+      service boundary.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      If a contract artifact is wrong or incomplete, document a deviation record (type,
+      what, why, impact) — do NOT silently rewrite.'
+    verification: '- [ ] Run `pytest tests/orchestration tests/repro -k ''checklist
+      or receipt or prompt'' -q` or the focused orchestration receipt tests added
+      in `det_check_tests_surfaces_red` and show they pass green.
+
+      - [ ] Evidence includes a sample injected checklist inventory and a worker receipt
+      keyed by item_id/revision.
+
+      - [ ] Evidence confirms workers are not asked to do natural-language fuzzy mapping
+      for deterministic checklist receipts.
+
+      - [ ] Evidence confirms mutation authority remains orchestrator-owned.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/dispatch_policy.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/prompt_materialization.py — key passage or "NOT READ:
+      <reason>"
+
+      - src/vectl/orchestration/evidence.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/step_data.py — key passage or "NOT READ: <reason>"
+
+      - tests/orchestration/unit/test_review_gate_integration.py — key passage or
+      "NOT READ: <reason>"
+
+
+      ## Integration Evidence
+
+      - Commands executed:
+
+      ```bash
+
+      pytest tests/orchestration tests/repro -k ''checklist or receipt or prompt''
+      -q
+
+      ```
+
+      - Actual output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+      - Sample prompt inventory injection:
+
+      ```text
+
+      <paste sample>
+
+      ```
+
+      - Sample worker receipt:
+
+      ```text
+
+      <paste sample>
+
+      ```
+
+      - Mutation authority statement:
+
+
+      ## Checklist
+
+      - [ ] Receipt includes item_id and revision.
+
+      - [ ] Prompt avoids fuzzy mapping for deterministic path.
+
+      - [ ] Orchestrator remains mutation owner.'
+    depends_on:
+    - det_check_impl_cli_mcp
+    agent: python-senior
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

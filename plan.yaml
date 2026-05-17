@@ -96404,7 +96404,7 @@ phases:
 
       - [x] No broad suppressions, budget lowering, or visibility deletion is used.
 
-      - [ ] Any new `**/core/**` extraction has non-vacuous `@pre`/`@post` contracts
+      - [x] Any new `**/core/**` extraction has non-vacuous `@pre`/`@post` contracts
       and at least one doctest.
 
       - [ ] Residual disposition register is updated for inspection/drive query findings.

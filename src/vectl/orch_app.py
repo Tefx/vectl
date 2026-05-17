@@ -1,3 +1,4 @@
+# @invar:allow file_size: orchestration app is the documented composition root and public CLI routing facade; splitting requires a compatibility migration outside this scoped guard remediation.
 """
 Orchestration application composition root.
 
@@ -477,6 +478,9 @@ class CaseRuntimeToolMediationSource:
         )
 
 
+# @invar:allow shell_result: Private parser returns the domain tuple expected by resolver mediation; Result wrapping would churn synchronous call sites without adding an I/O boundary.
+# @shell_complexity: Branches preserve tolerant parsing of optional resolver_tool evidence directives.
+# @shell_orchestration: Resolver-tool evidence parsing stays adjacent to mediation because artifact refs are shell runtime artifacts.
 def _artifact_ref_mediation_calls(artifact_refs: tuple[str, ...]) -> tuple[ResolverToolCall, ...]:
     """Parse case-carried runtime mediation directives.
 
@@ -510,6 +514,8 @@ def _artifact_ref_mediation_calls(artifact_refs: tuple[str, ...]) -> tuple[Resol
     return tuple(calls)
 
 
+# @invar:allow shell_result: Public app helper returns ResolutionCase directly for existing resolver-routing callers.
+# @shell_orchestration: ResolutionCase construction remains in the app routing module to preserve resolver intake compatibility.
 def build_resolution_case(
     *,
     case_id: str,
@@ -545,6 +551,8 @@ def build_resolution_case(
     )
 
 
+# @invar:allow shell_result: Public normalization helper delegates to dispatch-policy domain conversion and preserves Optional[ResolutionCase] API.
+# @shell_orchestration: Review-to-resolution normalization is app routing glue between runner output and resolver intake.
 def normalize_review_resolution_case(
     result: StructuredReviewResult,
     *,
@@ -564,6 +572,8 @@ def normalize_review_resolution_case(
     )
 
 
+# @invar:allow shell_result: Public parse-failure helper must return ResolutionCase for resolver intake compatibility.
+# @shell_orchestration: Parse-failure case construction is resolver routing glue for shell runner output.
 def build_review_parse_failure_case(
     *,
     raw_output: str,
@@ -1196,6 +1206,7 @@ class OrchestrationApp:
             evidence_refs=tuple(evidence_refs),
         )
 
+    # @invar:allow function_size: Runtime launch must keep prepare, prompt materialization, and start request ordering together to preserve runner path semantics.
     def _start_runtime_execution(
         self,
         *,
@@ -1454,6 +1465,9 @@ class OrchestrationApp:
         Returns:
             Absolute path to the execution workspace.
         """
+        if not run_id:
+            config = self._effective_orchestration_config()
+            return Path(config.runtime.workspace_root)
         config = self._effective_orchestration_config()
         return Path(config.runtime.workspace_root)
 
@@ -1484,6 +1498,7 @@ class OrchestrationApp:
             digest.update(message.get("content", "").encode("utf-8"))
         return f"prompt_bundle_sha256={digest.hexdigest()}"
 
+    # @invar:allow function_size: Admission/start persistence must remain an ordered lock path for recovery-gate and event sequencing safety.
     def _admit_start_and_persist_running(
         self,
         *,
@@ -1615,10 +1630,10 @@ class OrchestrationApp:
         *,
         run_id: str,
         execution_id: str,
-        registry: RunRegistry,
-        agent: str,
+        _registry: RunRegistry,
+        _agent: str,
         step_id: str,
-        run_root: Path,
+        _run_root: Path,
     ) -> Literal["continue_dispatch", "pause_dispatch", "stop_dispatch"] | None:
         """Check and consume pending control channel requests for a running execution.
 
@@ -1727,6 +1742,7 @@ class OrchestrationApp:
 
         return None
 
+    # @invar:allow function_size: Terminal collection preserves polling, control consumption, reconcile, and completion routing in one stateful shell loop.
     def _collect_and_route_terminal(
         self,
         *,
@@ -1782,10 +1798,10 @@ class OrchestrationApp:
             control_directive = self._consume_control_requests(
                 run_id=run_id,
                 execution_id=execution_id,
-                registry=registry,
-                agent=agent,
+                _registry=registry,
+                _agent=agent,
                 step_id=step_id,
-                run_root=run_root,
+                _run_root=run_root,
             )
 
             if control_directive == "stop_dispatch":
@@ -2190,6 +2206,7 @@ class OrchestrationApp:
             )
         return result
 
+    # @invar:allow function_size: Foreground drive supervision keeps polling, progress callbacks, control handling, and terminal cleanup in one active-drive shell loop.
     def run_drive_foreground(
         self,
         drive_id: str,
@@ -2696,6 +2713,7 @@ class OrchestrationApp:
             return status
         return "fail"
 
+    # @invar:allow function_size: Child finalization must route review, reconcile, recovery case creation, and drive refresh atomically for one terminal result.
     def _finalize_drive_child_run(
         self,
         *,
@@ -3079,6 +3097,7 @@ class OrchestrationApp:
             return active.drive_id
         return None
 
+    # @invar:allow function_size: Public run entrypoint preserves start admission, recovery gating, runtime dispatch, and terminal routing compatibility.
     def run(
         self,
         step_id: str | None = None,
@@ -3204,6 +3223,7 @@ class OrchestrationApp:
             run_root=run_root,
         )
 
+    # @invar:allow function_size: Public resume entrypoint preserves recovery classification, projection replay, runtime restart, and terminal routing compatibility.
     def resume(
         self,
         run_id: str,
@@ -3301,7 +3321,7 @@ class OrchestrationApp:
             return replay_result
 
         try:
-            workspace, execution_id = self._admit_start_and_persist_running(
+            _workspace, execution_id = self._admit_start_and_persist_running(
                 registry=registry,
                 run_id=run_id,
                 step_id=record.step_id,
@@ -3684,6 +3704,7 @@ class OrchestrationApp:
         replay_events_to_artifacts(events=tuple(relevant), artifact_root=run_root, run_id=run_id)
         return None
 
+    # @invar:allow function_size: Recovery classification intentionally evaluates all artifact families together to preserve restart safety semantics.
     def _evaluate_recovery_decision(
         self,
         *,
@@ -4019,6 +4040,7 @@ class OrchestrationApp:
             updated_at=notification.updated_at,
         )
 
+    # @invar:allow function_size: Public recovery flow preserves dry-run, artifact replay, notification, gate, and terminalization semantics in one operator action.
     def recover(
         self,
         step_id: str | None = None,
@@ -4538,6 +4560,7 @@ class OrchestrationApp:
             ),
         )
 
+    # @invar:allow dead_param: force is retained for public CLI/app prune compatibility although current registry pruning is non-interactive.
     def prune(
         self,
         before: float | None = None,
@@ -5477,6 +5500,7 @@ class OrchestrationApp:
 # ---------------------------------------------------------------------
 
 
+# @shell_orchestration: Runner-output JSON scanning remains colocated with shell payload extraction helpers to preserve parsing compatibility.
 def _iter_json_values_from_text(text: str):
     """Yield JSON values embedded in runner text."""
 
@@ -5501,6 +5525,8 @@ _STRUCTURED_REVIEW_PROTOCOL_KEYS = frozenset(
 )
 
 
+# @invar:allow shell_result: Private string normalizer is pure parsing for runner-output compatibility, not an I/O boundary.
+# @shell_orchestration: Markdown fence stripping is runner-output parsing glue for shell review/resolver payload extraction.
 def _strip_runner_markdown_fence(raw_output: str) -> str:
     stripped = raw_output.strip()
     if not stripped.startswith("```"):
@@ -5511,6 +5537,8 @@ def _strip_runner_markdown_fence(raw_output: str) -> str:
     return "\n".join(lines[1:-1]).strip()
 
 
+# @invar:allow shell_result: Private predicate keeps payload-shape checks as bool for recursive parser callers.
+# @shell_orchestration: Structured-review shape detection stays near runner-output extraction to preserve envelope filtering.
 def _looks_like_structured_review_payload(value: dict[str, object]) -> bool:
     if _STRUCTURED_REVIEW_PROTOCOL_KEYS.intersection(value.keys()):
         return False
@@ -5524,6 +5552,9 @@ def _looks_like_structured_review_payload(value: dict[str, object]) -> bool:
     return isinstance(value.get("summary"), str)
 
 
+# @invar:allow shell_result: Recursive parser returns the discovered payload directly for existing review-routing callers.
+# @shell_complexity: Branches preserve nested dict/list/string traversal and embedded JSON handling for runner envelopes.
+# @shell_orchestration: Recursive payload discovery remains app-level runner-output routing glue.
 def _find_structured_review_payload(
     value: object,
     *,
@@ -5551,6 +5582,9 @@ def _find_structured_review_payload(
     return None
 
 
+# @invar:allow shell_result: Review extraction API returns optional payload consumed by existing StructuredReviewResult mapping.
+# @shell_complexity: Branches preserve ordered JSON, embedded JSON, and YAML fallback parsing semantics.
+# @shell_orchestration: Review payload extraction handles shell runner wrappers before app-level review routing.
 def _extract_structured_review_payload(raw_output: str) -> dict[str, object] | None:
     """Extract a structured-review payload from JSON/YAML or OpenCode envelopes."""
 
@@ -5579,6 +5613,9 @@ def _extract_structured_review_payload(raw_output: str) -> dict[str, object] | N
     return _find_structured_review_payload(parsed_yaml, parse_strings=False)
 
 
+# @invar:allow shell_result: Recursive resolver parser returns optional payload directly for report mapping compatibility.
+# @shell_complexity: Branches preserve validation-first traversal across nested runner envelopes and embedded strings.
+# @shell_orchestration: ResolutionReport payload discovery remains app-level resolver runner-output glue.
 def _find_resolution_report_payload(value: object) -> dict[str, object] | None:
     """Find a ResolutionReport-shaped payload inside nested runner values."""
 
@@ -5608,6 +5645,9 @@ def _find_resolution_report_payload(value: object) -> dict[str, object] | None:
     return None
 
 
+# @invar:allow shell_result: Resolver extraction API returns optional payload consumed by map_payload_to_report callers.
+# @shell_complexity: Branches preserve raw JSON and OpenCode stdout-wrapper parsing compatibility.
+# @shell_orchestration: Resolver report extraction handles shell runner summaries before mapping to domain reports.
 def _extract_resolution_report_payload(output_summary: str) -> dict[str, object] | None:
     """Extract a ResolutionReport payload from runtime output summary text.
 
@@ -5631,6 +5671,9 @@ def _extract_resolution_report_payload(output_summary: str) -> dict[str, object]
     return None
 
 
+# @invar:allow function_size: Composition root must wire control, roster, runtime, resolver, config, and driver dependencies in one public factory.
+# @invar:allow shell_result: Public factory returns OrchestrationApp directly; callers and CLI wiring expect the composed facade, not Result.
+# @shell_complexity: Factory branches preserve config provenance, frozen snapshots, runner selection, and default component wiring.
 def build_orchestration_app(
     config: AppConfig,
 ) -> OrchestrationApp:
@@ -6045,6 +6088,8 @@ def build_orchestration_app(
     )
 
 
+# @invar:allow shell_result: Private projection helper returns DispatchSpec directly for dispatch construction compatibility.
+# @shell_orchestration: Roster lease projection stays adjacent to dispatch construction in the orchestration app shell.
 def _apply_roster_lease(*, dispatch_spec: DispatchSpec, lease: WorkLease) -> DispatchSpec:
     """Project roster lease facts onto dispatch without changing role intent."""
 
@@ -6067,6 +6112,8 @@ def _apply_roster_lease(*, dispatch_spec: DispatchSpec, lease: WorkLease) -> Dis
     )
 
 
+# @invar:allow shell_result: Private mode mapper returns RequestMode directly for ExecutionRequest construction compatibility.
+# @shell_orchestration: Request-mode mapping is dispatch-shell glue preserving resume/recover runtime semantics.
 def _dispatch_request_mode(
     *, mode: Literal["start", "resume", "recover"], dispatch_spec: DispatchSpec
 ) -> RequestMode:

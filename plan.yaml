@@ -94302,3 +94302,119 @@ phases:
     depends_on:
     - det_check_full_plan_check
     agent: software-architect
+  - id: det_check_final_gate
+    name: Final gate deterministic checklist handling
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether deterministic
+      checklist handling is complete and safe to mark done.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Feature changes core checklist mutation semantics.
+
+      - Feature touches CLI, MCP, and orchestrator receipt flows.
+
+      - Final decision depends on full-plan verification and architecture authority
+      review.
+
+
+      Final gate checklist:
+
+      - [ ] Contract-first/test-first sequence was preserved: contract -> expected-red
+      tests -> implementation -> green verification.
+
+      - [ ] Documentation sync covers legacy vs deterministic paths and worker/orchestrator
+      receipt flow.
+
+      - [ ] Full-plan verification evidence is green or every residual failure has
+      explicit non-intersection evidence and owner.
+
+      - [ ] Architecture review confirms canonical service ownership and orchestrator
+      mutation authority.
+
+      - [ ] CLI/MCP liveness and UI/output audit evidence are present.
+
+      - [ ] No unresolved behavioral/runtime obligation is bypassed.'
+    verification: '- [ ] full-plan-check gate: review doc sync, full-plan verification,
+      and architecture review evidence.
+
+      - [ ] Gate decision basis lists each unresolved NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
+      item and blocks unless it is PROVEN or explicitly non-intersecting.
+
+      - [ ] Confirm final evidence includes commands run and actual outputs, not summaries
+      only.
+
+      - [ ] Confirm gate reviewer is independent from implementation agents.
+
+      - [ ] Final decision is OPEN only if deterministic checklist contract, tests,
+      implementation, docs, and runtime evidence are complete.'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer (independent of implementation)
+
+      **Phase**: det_check_finalization
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - README.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/dispatch_policy.py — key passage or "NOT READ: <reason>"
+
+
+      ### Execution Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | det_check_docs_update | ✅/⚠️/❌ | excellent/adequate/insufficient/missing |
+      <notes> |
+
+      | det_check_full_plan_check | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+      | det_check_arch_review | ✅/⚠️/❌ | excellent/adequate/insufficient/missing |
+      <notes> |
+
+
+      ### Gate Decision Basis
+
+      | requirement/proof obligation | evidence_ref | unresolved_status | blocks?
+      | rationale | closure_path |
+
+      | --- | --- | --- | --- | --- | --- |
+
+
+      ### Gate Decision
+
+      - [ ] OPEN: Deterministic checklist handling is complete.
+
+      - [ ] BLOCKED: Required remediation before completion.
+
+
+      ### Durability/State Note
+
+      - [ ] Plan mutation durability was orchestrator-owned; this gate does not manage
+      git.'
+    depends_on:
+    - det_check_docs_update
+    - det_check_full_plan_check
+    - det_check_arch_review
+    agent: gate-reviewer

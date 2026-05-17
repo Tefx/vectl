@@ -91131,6 +91131,7 @@ phases:
     - invar_guard_remediation.fix-config-projection-recovery-budget-residuals
     - invar_guard_remediation.fix-events-control-app-driver-budget-residuals
     - invar_guard_remediation.fix-inspection-prompt-budget-residuals
+    - invar_guard_remediation.fix-full-guard-residual-budget-blockers
     - invar_guard_remediation.escape-budget-full-guard-retest
     - invar_guard_remediation.verify-full-guard
     agent: gate-reviewer

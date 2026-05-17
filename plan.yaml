@@ -96836,16 +96836,16 @@ phases:
       deliverable MUST contain substantive logic that processes its inputs and produces
       outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
       `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
-    verification: '- [ ] Config/projections/recovery_fallback residuals are closed
+    verification: '- [x] Config/projections/recovery_fallback residuals are closed
       or dispositioned with pasted BEFORE/AFTER `uvx invar-tools guard --all` excerpts.
 
-      - [ ] Targeted tests cover the main path and highest-risk failure path for touched
+      - [x] Targeted tests cover the main path and highest-risk failure path for touched
       config/projection/recovery behavior.
 
-      - [ ] Evidence proves no project-level budget regression and no broad suppression/budget
+      - [x] Evidence proves no project-level budget regression and no broad suppression/budget
       lowering.
 
-      - [ ] Residual disposition register includes requirement_ref, behavior_claim,
+      - [x] Residual disposition register includes requirement_ref, behavior_claim,
       runtime_proof_expected, evidence_ref, status, closure_path, and gate_decision_basis.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

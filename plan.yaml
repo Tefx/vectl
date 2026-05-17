@@ -92651,7 +92651,7 @@ phases:
     skipped_reason: absorbed
   - id: fix-plan-path-migration-domain
     name: Fix plan path and migration invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to plan path
       and migration helpers.
 
@@ -92721,6 +92721,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T15:31:04.051649+00:00'
   - id: fix-small-root-support-domain
     name: Fix small root support invar domain
     status: pending

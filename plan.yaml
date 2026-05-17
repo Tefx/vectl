@@ -92001,7 +92001,7 @@ phases:
     agent: python-senior-tacit
   - id: fix-io-storage-domain
     name: Fix IO/storage support invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to IO, claims,
       and merge-driver support.
 
@@ -92079,6 +92079,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-17T13:37:40.527171+00:00'
   - id: fix-plan-path-migration-domain
     name: Fix plan path and migration invar domain
     status: pending

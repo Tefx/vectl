@@ -93208,14 +93208,14 @@ phases:
 
       ## State semantics and failure modes
 
-      - [ ] Merge conflict and no-conflict paths preserve existing behavior.
+      - Merge conflict and no-conflict paths preserve existing behavior.
 
-      - [ ] Missing/invalid input path behavior preserves existing exit/status semantics.
+      - Missing/invalid input path behavior preserves existing exit/status semantics.
 
-      - [ ] Partial/failed write behavior is preserved where applicable.
+      - Partial/failed write behavior is preserved where applicable.
 
-      - [ ] Last-writer/conflict precedence is unchanged unless explicitly evidenced
-      by tests.
+      - Last-writer/conflict precedence is unchanged unless explicitly evidenced by
+      tests.
 
 
       ## Completion Criteria (stub exclusion)
@@ -93225,35 +93225,35 @@ phases:
       while closing the listed invar rule families.
 
 
-      ## Checklist
+      ## Acceptance Requirements
 
-      - [ ] `src/vectl/merge_driver.py` has no ungoverned `shell_result` findings
+      - `src/vectl/merge_driver.py` has no ungoverned `shell_result` findings under
+      the targeted guard command.
+
+      - `src/vectl/merge_driver.py` has no ungoverned `shell_too_complex` findings
       under the targeted guard command.
 
-      - [ ] `src/vectl/merge_driver.py` has no ungoverned `shell_too_complex` findings
-      under the targeted guard command.
-
-      - [ ] The project-level `shell_complexity_debt` error attributable to merge-driver
+      - The project-level `shell_complexity_debt` error attributable to merge-driver
       complexity is closed or reduced to precise local non-blocking disposition accepted
       by invar policy.
 
-      - [ ] Any intentional allow markers are narrow, local, and include rationale;
-      no broad file-level masking was added.
+      - Any intentional allow markers are narrow, local, and include rationale; no
+      broad file-level masking was added.
 
-      - [ ] Existing merge-driver behavior remains covered by `tests/test_merge_driver.py`.
+      - Existing merge-driver behavior remains covered by `tests/test_merge_driver.py`.
 
-      - [ ] No files outside `src/vectl/merge_driver.py` were modified except tests
-      directly required for merge-driver regression evidence.'
-    verification: '- [ ] `uv run invar guard src/vectl/merge_driver.py --agent` exits
+      - No files outside `src/vectl/merge_driver.py` were modified except tests directly
+      required for merge-driver regression evidence.'
+    verification: '- `uv run invar guard src/vectl/merge_driver.py --agent` exits
       zero or only reports findings with precise local non-blocking dispositions accepted
       by invar policy.
 
-      - [ ] `uv run python -m pytest tests/test_merge_driver.py -q` passes.
+      - `uv run python -m pytest tests/test_merge_driver.py -q` passes.
 
-      - [ ] `uv run python -m compileall src/vectl/merge_driver.py` passes.
+      - `uv run python -m compileall src/vectl/merge_driver.py` passes.
 
-      - [ ] Evidence covers main merge path and the highest-risk failure path among
-      conflicts, missing/invalid input paths, and partial/failed writes.'
+      - Evidence covers main merge path and the highest-risk failure path among conflicts,
+      missing/invalid input paths, and partial/failed writes.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

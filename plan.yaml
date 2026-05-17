@@ -93039,6 +93039,157 @@ phases:
     depends_on:
     - det_check_impl_single_mutation
     agent: python-senior
+  - id: det_check_impl_cli_mcp
+    name: Wire checklist CLI and MCP surfaces
+    status: pending
+    description: 'step_type: implementation
+
+      tags: ["integration"]
+
+
+      Fill in surface adapter bodies in `src/vectl/cli_plan.py`, `src/vectl/mcp_core_tools.py`,
+      and related MCP registration wrappers per the contract from phase `det_check_contracts`
+      and the expected-red surface tests from phase `det_check_tests`.
+
+
+      UPSTREAM ARTIFACTS (from contract/test phases):
+
+      - `docs/RFC-deterministic-checklists.md` — CLI/MCP legacy vs deterministic surface
+      contract is AUTHORITATIVE.
+
+      - `src/vectl/core_checklist.py` — core service request/result types are AUTHORITATIVE.
+
+      - `tests/test_cli.py` and `tests/test_mcp.py` — expected-red CLI/MCP tests from
+      `det_check_tests_surfaces_red` are PROTECTED.
+
+
+      YOUR SCOPE: Complete the implementation within existing signatures where possible
+      and add only additive CLI/MCP options or schema fields required by the contract.
+      Legacy `keyword`/`add` human path must continue to work. Deterministic machine-readable
+      path must use `item_id` or `field+index`, desired state, and `checklist_inventory_revision`
+      without natural-language fuzzy mapping.
+
+
+      Integration evidence required:
+
+      - [ ] CLI legacy keyword toggle path still works.
+
+      - [ ] CLI deterministic inventory/mutation path emits machine-readable revision/item
+      data where applicable.
+
+      - [ ] MCP legacy call remains schema-compatible.
+
+      - [ ] MCP deterministic single and batch paths return structured result/errors.
+
+      - [ ] Surface adapters delegate to the core checklist service and do not duplicate
+      parser ownership.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Handler-only changes without a real CLI invocation or MCP tool call proof.
+
+      2. Re-deriving checklist item IDs or revisions separately in CLI/MCP.
+
+      3. Breaking legacy keyword toggle compatibility.
+
+      4. Machine-readable output that cannot be parsed or lacks retry guidance.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      If a contract artifact is wrong or incomplete, document a deviation record (type,
+      what, why, impact) — do NOT silently rewrite.'
+    verification: '- [ ] Run `pytest tests/test_cli.py tests/test_mcp.py -k ''check
+      or checklist or deterministic or batch or revision'' -q` and show CLI/MCP deterministic
+      tests pass green.
+
+      - [ ] Provide at least one real CLI command invocation output for legacy human
+      mode and one machine-readable deterministic mode.
+
+      - [ ] Provide at least one real MCP `vectl_check` tool-call proof or direct
+      MCP wrapper invocation showing additive deterministic fields.
+
+      - [ ] Confirm CLI/MCP adapters call the canonical core checklist service rather
+      than duplicating parser logic.'
+    evidence_template: '## Integration Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_server.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_cli.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_mcp.py — key passage or "NOT READ: <reason>"
+
+
+      **Command or test exercising the full path**:
+
+      ```bash
+
+      pytest tests/test_cli.py tests/test_mcp.py -k ''check or checklist or deterministic
+      or batch or revision'' -q
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste stdout/stderr>
+
+      ```
+
+
+      **Path exercised**: CLI/MCP surface → core checklist service → plan save/result
+
+
+      **Real CLI invocation output**:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+
+      **MCP invocation proof**:
+
+      ```
+
+      <paste request/response or wrapper output>
+
+      ```
+
+
+      ## Checklist
+
+      - [ ] Legacy path works.
+
+      - [ ] Deterministic path works.
+
+      - [ ] Structured errors include retry guidance.'
+    depends_on:
+    - det_check_impl_batch_mutation
+    agent: python-senior
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

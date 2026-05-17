@@ -96171,7 +96171,7 @@ phases:
       code or docs and exists to constrain the next implementation retry.'
   - id: invar_guard_remediation.fix-full-guard-residual-budget-blockers
     name: Fix full-guard residual budget blockers
-    status: claimed
+    status: pending
     description: "IMPLEMENTATION / Batched residual full-guard blocker ownership after\
       \ salvage of prompt_materialization progress.\n\nwork_type: technical_debt_remediation\n\
       step_type: implementation\nsymbolic_testing: true\nagent_source: default\n\n\
@@ -96395,8 +96395,6 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-inspection-prompt-budget-residuals
     agent: python-senior
-    claimed_by: python-senior
-    claimed_at: '2026-05-17T19:25:21.763565+00:00'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

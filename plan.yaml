@@ -96170,105 +96170,104 @@ phases:
       Full guard remains red repo-wide; this investigation intentionally did not modify
       code or docs and exists to constrain the next implementation retry.'
   - id: invar_guard_remediation.fix-full-guard-residual-budget-blockers
-    name: Fix full-guard residual budget blockers
+    name: Investigate discarded full-guard residual blocker loop and lock slice boundaries
     status: pending
-    description: "IMPLEMENTATION / Batched residual full-guard blocker ownership after\
-      \ salvage of prompt_materialization progress.\n\nwork_type: technical_debt_remediation\n\
-      step_type: implementation\nsymbolic_testing: true\nagent_source: default\n\n\
-      Gate-intersection rationale:\n- Mainline `uvx invar-tools guard --all` remains\
-      \ red after salvage (`errors=22, warnings=12, infos=6`).\n- These residuals\
-      \ intersect downstream required gates: `invar_guard_remediation.escape-budget-full-guard-retest`,\
-      \ `invar_guard_remediation.verify-full-guard`, and `invar_guard_remediation.gate`.\n\
-      - They MUST NOT be dismissed as pre-existing, out-of-scope, or non-blocking\
-      \ without proof. Any residual must be dispositioned as PROVEN_CLOSED, NON_INTERSECTING\
-      \ with proof, or BLOCKING_OWNER_NEEDED with owner.\n\nResidual blocker fingerprints\
-      \ owned by this step (ALL, not just the first):\n1. `src/vectl/orchestration/inspection_queries.py`\n\
-      \   - Raw `shell_result` errors for: `query_runs`, `query_cases`, `validate_child_run_in_drive`,\
-      \ `query_drive_status`, `query_drive_events`, `query_drive_logs`, `query_drive_artifacts`,\
-      \ `query_drive_actions`.\n   - `shell_too_complex` infos for: `query_drive_logs`,\
-      \ `query_drive_artifacts`.\n2. `src/vectl/orchestration/contracts.py`\n   -\
-      \ `file_size` error: 1247 lines > 600.\n3. `src/vectl/orch_app.py`\n   - Escape-hatch\
-      \ file budget errors: `function_size: 10/2`, `shell_result: 13/2`.\n4. `src/vectl/orchestration/config.py`\n\
-      \   - Escape-hatch file budget errors: `function_size: 4/2`, `shell_result:\
-      \ 26/2`.\n5. `src/vectl/orchestration/driver.py`\n   - Escape-hatch file budget\
-      \ error: `function_size: 7/2`.\n6. `src/vectl/orchestration/projections.py`\n\
-      \   - Escape-hatch file budget error: `shell_result: 18/2`.\n7. `src/vectl/orchestration/recovery_fallback.py`\n\
-      \   - Escape-hatch file budget errors: `function_size: 2/2`, `shell_result:\
-      \ 7/2`.\n8. Project-level escape-hatch budget errors:\n   - `file_size: 18/5`,\
-      \ `function_size: 31/5`, `shell_result: 72/5`, weighted budget `376/15`.\n\n\
-      Non-blocking/info context to track but not over-scope unless it intersects closure:\n\
-      - `src/vectl/core/orchestration/prompt_contracts.py` file_size_warning 488 lines\
-      \ (97% of 500).\n- `src/vectl/orchestration/control_channel.py` file_size_warning.\n\
-      - `src/vectl/core/orchestration/config_defaults.py` semantic_tautology warnings.\n\
-      - Untracked `test_mod.py` and `test_mod_2.py` test_only_export infos.\n\nAnti-churn\
-      \ rule:\n- Do NOT merely add broad suppressions, delete findings from visibility,\
-      \ or lower guard budgets.\n- Prefer structural Core/Shell extraction, smaller\
-      \ contracted Core modules, narrow Shell wrappers returning `Result[T, E]`, and\
-      \ authority-backed disposition for true compatibility boundaries.\n- Any new\
-      \ or restored escape hatch must be narrowly justified by true Shell behavior,\
-      \ have an owner, cite the guard effect, and explain why it is not broad suppression.\n\
-      - Any `**/core/**` extraction must include non-vacuous `@pre`/`@post` contracts\
-      \ and at least one doctest before implementation logic.\n\nRequired remediation\
-      \ strategy:\n- Treat this as a batched residual blocker closure step, not a\
-      \ local inspection-only cleanup.\n- Fix every blocker-class residual listed\
-      \ above or produce a structured residual disposition proving non-intersection\
-      \ under invar policy.\n- Use structural decomposition for oversized or over-budget\
-      \ files where feasible; keep runtime/entrypoint semantics intact for `orch_app.py`\
-      \ and orchestration driver surfaces.\n- Preserve public CLI/orchestration/operator-visible\
-      \ behavior unless an authority-backed change is documented and tested.\n- Do\
-      \ not redo the already-closed `prompt_materialization.py` blocker unless a regression\
-      \ introduced by this step reopens it.\n\nRequired evidence:\n- BEFORE excerpt:\
-      \ paste the current-mainline `uvx invar-tools guard --all` excerpt showing the\
-      \ listed residual fingerprints after salvage.\n- AFTER excerpt: paste the post-fix\
-      \ `uvx invar-tools guard --all` excerpt for the same families.\n- Targeted tests\
-      \ for each touched domain with commands and output, including inspection query\
-      \ tests for `inspection_queries.py` and focused tests for any contracts/config/driver/projection/recovery/orch_app\
-      \ paths modified.\n- Residual disposition register mapping every remaining finding\
-      \ to one of: PROVEN_CLOSED, NON_INTERSECTING with proof, or BLOCKING_OWNER_NEEDED\
-      \ with owner.\n- Explanation of why changes are root-cause closure rather than\
-      \ symptom-only suppression or budget lowering.\n\n## Failure-Mode Checklist\n\
-      - [ ] Every blocker-class residual fingerprint listed above is either closed\
-      \ or dispositioned with proof and owner.\n- [ ] BEFORE and AFTER `uvx invar-tools\
-      \ guard --all` excerpts are pasted for all residual families.\n- [ ] Targeted\
-      \ tests for each touched domain are run and output is pasted.\n- [ ] Residual\
-      \ disposition register includes requirement_ref, behavior_claim, runtime_proof_expected,\
-      \ evidence_ref, status, closure_path, and gate_decision_basis.\n- [ ] No broad\
-      \ suppressions, deleted visibility, or lowered budgets are used as closure.\n\
-      - [ ] Structural Core/Shell extraction or narrow authority-backed disposition\
-      \ is used for budget/shell_result families.\n- [ ] Any new `**/core/**` code\
-      \ has non-vacuous @pre/@post contracts and doctests.\n- [ ] Public CLI/orchestration/runtime\
-      \ behavior remains compatible or has explicit authority-backed migration evidence.\n\
-      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
-      \ completion is NOT acceptable. Each deliverable MUST contain substantive logic\
-      \ that processes its inputs and produces outputs that vary based on those inputs.\
-      \ Private stub classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy\
-      \ this requirement.\n\n## Gate Preview (what the gate WILL reject)\n1. A patch\
-      \ that only adds escape hatches, deletes comments/findings, or lowers budgets.\n\
-      2. Evidence that only shows targeted tests while full guard remains red without\
-      \ owner/disposition for every residual.\n3. Residual findings dismissed as pre-existing,\
-      \ out-of-scope, informational, or non-blocking without non-intersection proof.\n\
-      4. Core extractions without contracts/doctests.\n5. Runtime or orchestration\
-      \ behavior drift without authority-backed evidence and targeted regression proof."
-    verification: '- [ ] `uvx invar-tools guard --all` BEFORE and AFTER excerpts are
-      pasted and show closure or explicit owner/disposition for every listed blocker-class
-      residual.
+    description: 'PLANNING / INVESTIGATION. Convert the failed broad residual implementation
+      loop into a coordination and root-cause boundary step. Do not modify product
+      code except temporary local inspection artifacts that are discarded before completion.
 
-      - [ ] Targeted tests for every touched domain pass with actual command output
-      pasted.
 
-      - [ ] Residual disposition register maps every remaining full-guard finding
-      to PROVEN_CLOSED, NON_INTERSECTING with proof, or BLOCKING_OWNER_NEEDED with
-      owner.
+      work_type: technical_debt_remediation
 
-      - [ ] No broad suppression, deleted visibility, or budget lowering is used as
-      acceptance evidence.
+      step_type: planning
 
-      - [ ] Any `**/core/**` extraction includes non-vacuous @pre/@post contracts
-      and doctests.
+      symbolic_testing: true
 
-      - [ ] Downstream `escape-budget-full-guard-retest`, `verify-full-guard`, and
-      `gate` have enough evidence to decide OPEN/BLOCK without stale partial-success
-      assumptions.'
+      agent_source: default
+
+
+      Failure fingerprint being addressed:
+
+      - Discarded branch commit `68fcddb6486745572905c5f16248e0c64aa23e37` split `inspection_queries.py`
+      and got focused `27 passed`, but worsened the authoritative full-guard budget
+      from `shell_result 72/5 weighted 376/15` to `shell_result 80/5 weighted 400/15`.
+
+      - New/remaining budget problems appeared in `drive_inspection_queries.py` (`shell_result
+      6/2`) and `inspection_queries.py` (`shell_result 2/2`).
+
+      - Authoritative post-failure command family remains `uvx invar-tools guard --all`,
+      with reported summary `errors=15, warnings=19, infos=2` and blocker families
+      spanning `contracts.py`, `orch_app.py`, `config.py`, `driver.py`, `projections.py`,
+      `recovery_fallback.py`, project-level budgets, and inspection/drive query Result-boundary
+      issues.
+
+
+      Purpose:
+
+      - Produce a current-mainline blocker inventory and slice contract for the smaller
+      implementation steps that follow.
+
+      - Explicitly identify which parts of the discarded branch must NOT be repeated
+      or must be rolled back if present.
+
+      - Preserve deployability-bearing orchestration/CLI/driver semantics; do not
+      narrow runtime surfaces into handler-only cleanup.
+
+
+      Required outputs:
+
+      - blocker_fingerprint: current-mainline full-guard residual families with files
+      and budget counters.
+
+      - root_cause_hypothesis: why the previous broad batch worsened budgets and where
+      Result-boundary/shell_result ownership should land.
+
+      - why_previous_fix_failed: concrete explanation tied to the discarded branch
+      and budget regression.
+
+      - slice_boundary_register: mapping each residual family to exactly one downstream
+      owner step.
+
+      - rollback_guard: explicit instruction for downstream workers not to resurrect
+      the non-salvaged split shape unless it improves the same full-guard command
+      family.
+
+      - residual_disposition_schema: register columns to be reused by all downstream
+      slices: requirement_ref, behavior_claim, runtime_proof_expected, evidence_ref,
+      status, closure_path, gate_decision_basis.
+
+
+      ## Completion Criteria
+
+      - [ ] Current-mainline `uvx invar-tools guard --all` BEFORE excerpt is pasted
+      and includes the residual budget families being sliced.
+
+      - [ ] Evidence explains why the prior broad fix failed and why another all-in-one
+      implementation loop is forbidden.
+
+      - [ ] Slice boundary register assigns inspection/drive queries, `contracts.py`,
+      config/projections/recovery_fallback, and orch_app/driver/project-level residuals
+      to downstream owner steps.
+
+      - [ ] Rollback guard states whether any discarded-branch artifacts are present
+      on mainline and what downstream steps must avoid.
+
+      - [ ] Residual disposition schema is present with requirement_ref, behavior_claim,
+      runtime_proof_expected, evidence_ref, status, closure_path, and gate_decision_basis.
+
+      - [ ] No product-code remediation is claimed by this planning/investigation
+      step.'
+    verification: '- [ ] The step produces a current-mainline residual inventory and
+      does not claim implementation closure.
+
+      - [ ] The prior failed loop is explicitly analyzed via `why_previous_fix_failed`
+      and budget-regression evidence.
+
+      - [ ] Every blocker family is assigned to one downstream implementation owner
+      or explicit final disposition owner.
+
+      - [ ] Evidence includes the mandatory refs read confirmation and `uvx invar-tools
+      guard --all` BEFORE excerpt.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 
@@ -96278,120 +96277,51 @@ phases:
 
       - AGENTS.md — key passage or "NOT READ: <reason>"
 
-      - src/vectl/orchestration/inspection_queries.py — key passage or "NOT READ:
-      <reason>"
-
-      - src/vectl/orchestration/contracts.py — key passage or "NOT READ: <reason>"
-
-      - src/vectl/orch_app.py — key passage or "NOT READ: <reason>"
-
-      - src/vectl/orchestration/config.py — key passage or "NOT READ: <reason>"
-
-      - src/vectl/orchestration/driver.py — key passage or "NOT READ: <reason>"
-
-      - src/vectl/orchestration/projections.py — key passage or "NOT READ: <reason>"
-
-      - src/vectl/orchestration/recovery_fallback.py — key passage or "NOT READ: <reason>"
-
 
       If no refs were provided, state: "No refs for this step."
 
 
-      ## Full Guard Evidence
+      ## Investigation Evidence
 
 
-      **BEFORE command**:
+      **blocker_fingerprint**:
 
       ```text
 
-      uvx invar-tools guard --all
+      <paste current-mainline uvx invar-tools guard --all excerpt>
 
       ```
 
 
-      **BEFORE residual excerpt**:
+      **root_cause_hypothesis**:
 
-      ```text
-
-      <paste current-mainline excerpt for all listed residual families>
-
-      ```
+      <why residual budget families persist>
 
 
-      **AFTER command**:
+      **why_previous_fix_failed**:
 
-      ```text
-
-      uvx invar-tools guard --all
-
-      ```
+      <why discarded branch worsened shell_result/weighted budgets>
 
 
-      **AFTER residual excerpt**:
+      **slice_boundary_register**:
 
-      ```text
+      | Residual family | Owner step | Non-overlap rule |
 
-      <paste post-fix excerpt for all listed residual families>
-
-      ```
+      | --- | --- | --- |
 
 
-      ## Targeted Test Evidence
+      **rollback_guard**:
+
+      <what not to resurrect from the discarded branch>
 
 
-      For each touched domain, paste command and output:
+      **residual_disposition_schema**:
 
-      - inspection_queries:
-
-      ```text
-
-      <command + output>
-
-      ```
-
-      - contracts/config/orch_app/driver/projections/recovery_fallback as applicable:
-
-      ```text
-
-      <command + output>
-
-      ```
-
-
-      ## Root Cause vs Symptom
-
-
-      - Root cause(s): <why these blockers remained after salvage>
-
-      - Why this is not symptom-only: <why changes do not merely suppress/lower budgets>
-
-      - Structural closure used: <Core/Shell extraction, module split, narrow Result
-      boundary, or authority-backed disposition>
-
-
-      ## Residual Disposition Register
-
-
-      For every remaining guard finding:
-
-      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
-      status | closure_path | gate_decision_basis |
-
-      | --- | --- | --- | --- | --- | --- | --- |
-
-      | <guard finding + path> | <runtime/contract impact> | <command/test/proof>
-      | <evidence link/excerpt> | PROVEN_CLOSED / NON_INTERSECTING / BLOCKING_OWNER_NEEDED
-      | <why closed/non-intersecting/owner> | <why downstream gate may or may not
-      proceed> |
-
-
-      ## Headline
-
-      - [ ] PROVEN_CLOSED: full guard green for blocker families, or all residuals
-      have non-intersection proof.
-
-      - [ ] BLOCKING_OWNER_NEEDED: one or more residuals still intersect downstream
-      gates and need follow-up owner.'
+      requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref | status
+      | closure_path | gate_decision_basis'
+    refs:
+    - INVAR.md
+    - AGENTS.md
     depends_on:
     - invar_guard_remediation.fix-inspection-prompt-budget-residuals
     agent: python-senior

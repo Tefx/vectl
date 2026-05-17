@@ -96816,7 +96816,7 @@ phases:
       - [x] BEFORE `uvx invar-tools guard --all` excerpt for config/projections/recovery_fallback
       residuals is pasted from current mainline.
 
-      - [ ] AFTER `uvx invar-tools guard --all` excerpt shows closure or explicit
+      - [x] AFTER `uvx invar-tools guard --all` excerpt shows closure or explicit
       residual ownership for these files without project-level budget regression.
 
       - [ ] Targeted config/projection/recovery tests pass and command output is pasted.

@@ -98270,7 +98270,7 @@ phases:
       \ NOT acceptable. Each deliverable MUST contain substantive logic that processes\
       \ its inputs and produces outputs that vary based on those inputs. Private stub\
       \ classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\
-      \n## Checklist\n- [ ] Capture BEFORE guard excerpts for owned residual rows\
+      \n## Checklist\n- [x] Capture BEFORE guard excerpts for owned residual rows\
       \ and weighted contributors.\n- [ ] Decompose config/runtime/run_store surfaces\
       \ behind stable public modules.\n- [ ] Preserve config precedence/defaults,\
       \ runtime lifecycle, reconcile behavior, and JSONL persistence formats.\n- [\

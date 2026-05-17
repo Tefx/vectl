@@ -98022,6 +98022,173 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     agent: python-senior
+  - id: split-orchestration-config-runtime-persistence-surfaces
+    name: Split orchestration config, runtime, and persistence facades
+    status: pending
+    description: "Focused residual implementation slice for current post-salvage orchestration\
+      \ config/runtime/persistence compatibility blockers.\n\nstep_type: implementation\n\
+      symbolic_testing: true\nreduction_step: true\nagent_source: default\npost_salvage_context:\n\
+      \  main_salvage_commit: 1618486\n  guard_baseline: file_size 9/5; weighted 40/15\n\
+      \n## Owned Residuals\n- `src/vectl/orchestration/config.py` — public config\
+      \ model/loader compatibility surface.\n- `src/vectl/orchestration/runtime.py`\
+      \ — public runtime/worktree lifecycle/reconcile glue surface.\n- `src/vectl/orchestration/run_store.py`\
+      \ — run/drive JSONL persistence compatibility surface.\n- Any current `dead_param`,\
+      \ `entry_point_too_thick`, or `shell_complexity` contributors directly attributable\
+      \ to these surfaces.\n\n## Scope\nExtract cohesive internals behind stable public\
+      \ compatibility modules. Preserve config parsing/default/precedence semantics,\
+      \ runtime/worktree lifecycle behavior, reconcile glue, run/drive JSONL formats,\
+      \ recovery compatibility, and public import paths. This is a reduction step:\
+      \ completion can be satisfied by verified net-positive non-regressive reduction\
+      \ for this inventory, with remaining blocker-class debt reported to retest/gate\
+      \ disposition.\n\n## Hardened Acceptance: State/Persistence Failure Modes\n\
+      Explicitly verify:\n- Relative vs absolute path behavior for config/run-store\
+      \ inputs.\n- Missing-file fallback behavior.\n- Explicit clear/null overwrite\
+      \ semantics if touched.\n- Stale-definition vs new-state precedence.\n- Partial-write/CAS-conflict\
+      \ or JSONL append failure behavior where applicable.\n- Backward-compatible\
+      \ legacy config/run-store behavior.\n\n## Compatibility Migration Requirements\n\
+      - Import compatibility through original `vectl.orchestration.config`, `runtime`,\
+      \ and `run_store` paths.\n- Config loader smoke with a spec-exact/minimal fixture;\
+      \ no convenience-only fixture proof.\n- Runtime lifecycle smoke covering worktree/reconcile\
+      \ path touched by extraction.\n- Run-store JSONL persistence smoke covering\
+      \ read/write/resume compatibility.\n\n## Gate Preview (what downstream gates\
+      \ WILL reject)\n1. Split modules that change config precedence or defaults without\
+      \ proof.\n2. Persistence format changes without backward-compat smoke.\n3. Runtime\
+      \ lifecycle narrowing to helper-only behavior.\n4. Budget movement via suppression,\
+      \ threshold lowering, ignored files, or deleted findings.\n\n## Completion Criteria\
+      \ (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is\
+      \ NOT acceptable. Each deliverable MUST contain substantive logic that processes\
+      \ its inputs and produces outputs that vary based on those inputs. Private stub\
+      \ classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\
+      \n## Checklist\n- [ ] Capture BEFORE guard excerpts for owned residual rows\
+      \ and weighted contributors.\n- [ ] Decompose config/runtime/run_store surfaces\
+      \ behind stable public modules.\n- [ ] Preserve config precedence/defaults,\
+      \ runtime lifecycle, reconcile behavior, and JSONL persistence formats.\n- [\
+      \ ] Run targeted tests for config projection/recovery, runtime lifecycle, run\
+      \ store, and touched persistence paths.\n- [ ] Run import smoke checks for original\
+      \ public module paths.\n- [ ] Run config fixture, runtime lifecycle, and run-store\
+      \ JSONL smoke proofs with pasted output.\n- [ ] Capture AFTER guard excerpts\
+      \ for owned residual rows and weighted contributors.\n- [ ] Confirm no budget\
+      \ lowering, suppression, ignored files, deleted findings, compatibility break,\
+      \ or runtime narrowing."
+    verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
+      owned residual rows, `file_size`, weighted budget, and relevant `dead_param`/`entry_point_too_thick`/`shell_complexity`
+      contributors.
+
+      - [ ] Original `vectl.orchestration.config`, `vectl.orchestration.runtime`,
+      and `vectl.orchestration.run_store` imports are smoke-proven.
+
+      - [ ] Config loader smoke uses a spec-exact/minimal fixture and proves precedence/default
+      behavior for touched paths.
+
+      - [ ] Runtime lifecycle/reconcile smoke proof is pasted for touched paths.
+
+      - [ ] Run-store JSONL read/write/resume compatibility smoke proof is pasted.
+
+      - [ ] Targeted tests for config, runtime lifecycle, and run-store surfaces pass
+      with exact output pasted.
+
+      - [ ] Main path and highest-risk failure path evidence are both present for
+      persistence/state changes.
+
+      - [ ] No invar budget lowering, suppression, ignored files, deleted findings,
+      import-breaking extraction, compatibility break, or runtime narrowing occurred.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      ## Config/Runtime/Persistence Residual Evidence
+
+
+      ### BEFORE Guard Excerpts
+
+      ```text
+
+      <paste owned rows plus summary/file_size/weighted/dead_param/entry_point_too_thick/shell_complexity
+      excerpts>
+
+      ```
+
+
+      ### Import Compatibility Smoke Proofs
+
+      ```text
+
+      <commands/output for original config/runtime/run_store import paths>
+
+      ```
+
+
+      ### State/Persistence Smoke Proofs
+
+      **Config minimal fixture and precedence/default proof**:
+
+      ```text
+
+      <commands and output>
+
+      ```
+
+      **Runtime lifecycle/reconcile proof**:
+
+      ```text
+
+      <commands and output>
+
+      ```
+
+      **Run-store JSONL read/write/resume proof**:
+
+      ```text
+
+      <commands and output>
+
+      ```
+
+      **Highest-risk failure path proof**:
+
+      ```text
+
+      <missing-file/fallback/partial-write/CAS/stale-state proof as applicable>
+
+      ```
+
+
+      ### Targeted Tests
+
+      ```text
+
+      <exact commands and output>
+
+      ```
+
+
+      ### AFTER Guard Excerpts
+
+      ```text
+
+      <paste owned rows plus summary/file_size/weighted/dead_param/entry_point_too_thick/shell_complexity
+      excerpts>
+
+      ```
+
+
+      ### Suppression Check
+
+      - [ ] no budget lowering
+
+      - [ ] no widened escape hatches
+
+      - [ ] no ignored files/deleted findings
+
+      - [ ] no public import/config/runtime/persistence compatibility break'
+    depends_on:
+    - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

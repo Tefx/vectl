@@ -96096,7 +96096,7 @@ phases:
       code or docs and exists to constrain the next implementation retry.'
   - id: invar_guard_remediation.fix-full-guard-residual-budget-blockers
     name: Investigate discarded full-guard residual blocker loop and lock slice boundaries
-    status: claimed
+    status: done
     description: 'PLANNING / INVESTIGATION. Convert the failed broad residual implementation
       loop into a coordination and root-cause boundary step. Do not modify product
       code except temporary local inspection artifacts that are discarded before completion.
@@ -96252,6 +96252,93 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T19:44:05.384898+00:00'
+    done_at: '2026-05-17T19:50:12.608323+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- INVAR.md — READ. Core vs Shell\
+      \ rules require Shell for I/O and Shell functions should return Result[T, E];\
+      \ shell_result repairs require Result or justified escape hatch; escape hatches\
+      \ must be rare and reasoned.\n- AGENTS.md — READ. plan.yaml is managed state\
+      \ and must not be edited directly; evidence is mandatory and ambiguity is failure.\n\
+      - tools/vectl/README.md — NOT READ: file not present in isolated worktree.\n\
+      - CONSTITUTION.md — NOT READ: file not present in isolated worktree.\n\n## Investigation\
+      \ Evidence\n\nSource: `invar_guard_remediation.fix-full-guard-residual-budget-blockers`;\
+      \ command family `uvx invar-tools guard --all`; investigation-only.\nChange:\
+      \ no product code, docs, tests, plan state, or configuration modified by the\
+      \ worker.\nValidation: worker ran `uvx invar-tools guard --all` in the isolated\
+      \ worktree and `git status --short` produced no output.\n\n**blocker_fingerprint**:\n\
+      ```text\nCommand: uvx invar-tools guard --all\nResult: failed\nfiles_checked=81\n\
+      errors=22\nwarnings=12\ninfos=4\n\nPrimary current-mainline residual families:\n\
+      - src/vectl/orchestration/inspection_queries.py\n  - file_size error: 733 lines\
+      \ (max 700 for shell)\n  - shell_result errors: query_runs line 359, query_cases\
+      \ line 381, validate_child_run_in_drive line 487, query_drive_status line 520,\
+      \ query_drive_events line 565, query_drive_logs line 602, query_drive_artifacts\
+      \ line 636, query_drive_actions line 683\n  - shell_too_complex infos: query_drive_logs\
+      \ has 4 branches (max 3); query_drive_artifacts has 7 branches (max 3)\n- src/vectl/orchestration/contracts.py:\
+      \ file_size error 1247 lines (max 600)\n- escape-hatch file budget errors:\n\
+      \  - src/vectl/orch_app.py function_size: 10/2; shell_result: 13/2\n  - src/vectl/orchestration/config.py\
+      \ function_size: 4/2; shell_result: 26/2\n  - src/vectl/orchestration/driver.py\
+      \ function_size: 7/2\n  - src/vectl/orchestration/projections.py shell_result:\
+      \ 18/2\n  - src/vectl/orchestration/recovery_fallback.py function_size: 2/2;\
+      \ shell_result: 7/2\n- project-level escape-hatch budget errors: file_size 18/5;\
+      \ function_size 31/5; shell_result 72/5; weighted budget 376/15\nEscape hatch\
+      \ aggregate: count=130; shell_complexity=1; shell_result=72; entry_point_too_thick=2;\
+      \ file_size=18; function_size=31; dead_param=6; gating.status=exceeded.\n```\n\
+      \n**root_cause_hypothesis**:\nThe residual failures are multiple distinct families:\
+      \ unsuppressed Shell query functions returning direct domain values, large compatibility\
+      \ contract surfaces, and accumulated justified escape hatches in orchestration\
+      \ composition/runtime files exceeding per-file/project budgets. Broad extraction\
+      \ alone is unsafe because it can create new Shell files with the same direct-return\
+      \ APIs and increase project shell_result/weighted budgets.\n\n**why_previous_fix_failed**:\n\
+      Discarded branch commit `68fcddb6486745572905c5f16248e0c64aa23e37` split `inspection_queries.py`\
+      \ and got focused tests passing, but worsened authoritative full-guard budget\
+      \ from `shell_result 72/5 weighted 376/15` to `shell_result 80/5 weighted 400/15`.\
+      \ It treated file-size extraction as sufficient while moving drive-query functions\
+      \ into a new Shell surface without resolving Result boundary ownership. Another\
+      \ all-in-one loop is forbidden because focused tests can pass while full-guard\
+      \ budget regresses.\n\n**slice_boundary_register**:\n| Residual family | Owner\
+      \ step | Non-overlap rule |\n| --- | --- | --- |\n| inspection_queries.py file_size/shell_result/shell_too_complex\
+      \ and any future drive_inspection_queries split | invar_guard_remediation.fix-inspection-query-result-boundaries\
+      \ | Own only inspection/drive query module boundaries; prove full guard does\
+      \ not increase project shell_result/weighted budget; do not touch config/projections/recovery/orch_app/driver/contracts.\
+      \ |\n| contracts.py file_size 1247/600 | invar_guard_remediation.split-orchestration-contracts-compatibly\
+      \ | Own only contract DTO/protocol decomposition and import compatibility; do\
+      \ not alter runtime behavior or query Result handling. |\n| config.py function_size/shell_result\
+      \ budgets | invar_guard_remediation.reduce-config-shell-budget | Own config\
+      \ loader/default/snapshot/validation Result-vs-compatibility decisions; preserve\
+      \ loader/default_factory/exception semantics. |\n| projections.py shell_result\
+      \ budget | invar_guard_remediation.reduce-projections-shell-budget | Own projection\
+      \ replay/derivation/persistence Result-boundary or compatibility treatment;\
+      \ preserve artifact schemas and replay exceptions. |\n| recovery_fallback.py\
+      \ function_size/shell_result budgets | invar_guard_remediation.reduce-recovery-fallback-budget\
+      \ | Own recovery fallback validation/decision/persistence/reader decisions;\
+      \ preserve artifact compatibility and legacy sentinels. |\n| orch_app.py function_size/shell_result\
+      \ budgets | invar_guard_remediation.reduce-orch-app-composition-budget | Own\
+      \ composition-root wrappers and app entrypoint budget; do not narrow public\
+      \ CLI/app factory surfaces into handler-only cleanup. |\n| driver.py function_size\
+      \ budget | invar_guard_remediation.reduce-driver-state-machine-budget | Own\
+      \ drive state-machine function-size decomposition; preserve active-drive ordering,\
+      \ barriers, control, resume, and recovery semantics. |\n| project-level budgets\
+      \ | invar_guard_remediation.final-full-guard-budget-gate | Final disposition\
+      \ after slice owners land; use uvx invar-tools guard --all as gate basis. |\n\
+      | advisory warnings/infos outside fatal blockers | invar_guard_remediation.final-advisory-disposition\
+      \ | Do not mix into primary slices unless directly touched; final owner classifies\
+      \ blocking/deferred/separate. |\n\n**rollback_guard**:\nCurrent mainline does\
+      \ not contain discarded split artifacts: worker found only `src/vectl/orchestration/inspection_queries.py`;\
+      \ no `drive_inspection_queries.py` is present. Downstream workers must not resurrect\
+      \ the discarded split shape unless `uvx invar-tools guard --all` demonstrates\
+      \ no regression and preferably improvement in project shell_result and weighted\
+      \ budgets. Do not move direct-return drive query functions into a new Shell\
+      \ module while leaving them non-Result; do not claim success from focused tests\
+      \ alone; do not narrow runtime/CLI/driver compatibility surfaces merely for\
+      \ handler-local cleanup.\n\n**residual_disposition_schema**:\n`requirement_ref\
+      \ | behavior_claim | runtime_proof_expected | evidence_ref | status | closure_path\
+      \ | gate_decision_basis`\n\n## checklist_receipt\n- Current-mainline guard BEFORE\
+      \ excerpt: completed.\n- prior broad fix failure and all-in-one loop prohibition:\
+      \ completed.\n- slice boundary register assignments: completed.\n- rollback\
+      \ guard: completed.\n- residual disposition schema: completed.\n- no product-code\
+      \ remediation claimed: completed.\n- verification checklist: completed.\n\n\
+      ## Commit hash(es)\nnone — investigation-only step\n\n## Files changed\nnone\n\
+      \n## Gaps/Notes\nFull guard remains red by design for this planning step; downstream\
+      \ implementation slices own closure."
   - id: invar_guard_remediation.fix-inspection-drive-query-result-boundaries
     name: Fix inspection and drive query Result-boundary budgets
     status: pending

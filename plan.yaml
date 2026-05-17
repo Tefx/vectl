@@ -91486,7 +91486,7 @@ phases:
     agent: python-senior-tacit
   - id: fix-orch-events-control-domain
     name: Fix orchestration events/control invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
       events and control-channel logic.
 
@@ -91561,6 +91561,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-17T14:50:08.850055+00:00'
   - id: fix-orch-inspection-prompt-domain
     name: Fix orchestration inspection/prompt invar domain
     status: pending

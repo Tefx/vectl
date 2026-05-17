@@ -94746,7 +94746,7 @@ phases:
 
       ## Failure-Mode Checklist
 
-      - [ ] Config precedence/defaulting and explicit-clear/null semantics are preserved.
+      - [x] Config precedence/defaulting and explicit-clear/null semantics are preserved.
 
       - [ ] Projection replay ordering and event-derived output formats remain compatible.
 

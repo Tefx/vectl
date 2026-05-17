@@ -91084,7 +91084,7 @@ phases:
     agent: python-senior-tacit
   - id: fix-lifecycle-duplicate-domain
     name: Fix lifecycle and duplicate-ID invar domain
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to lifecycle
       and duplicate-step-ID domain logic.
 
@@ -91160,6 +91160,89 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-17T13:37:50.353927+00:00'
+    done_at: '2026-05-17T14:05:58.996777+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Core contracts and Shell I/O import/Result expectations read.
+
+      - AGENTS.md — plan/orchestrator state ownership read; no direct plan.yaml edits
+      by worker.
+
+      - src/vectl/lifecycle.py and src/vectl/core_duplicate_step_id.py — read and
+      remediated within owned scope.
+
+      - docs/invar_guard_remediation/failure_inventory.md — scoped baseline read for
+      owned files.
+
+
+      ## Worktree Evidence
+
+      - Worker status: SUCCESS.
+
+      - Worker commit: 9458257d.
+
+      - Squash merge commit on main: 0350d0c ([vectl] step-fix-lifecycle-duplicate-domain
+      completed).
+
+      - Files changed: src/vectl/lifecycle.py, src/vectl/core_duplicate_step_id.py.
+
+
+      ## Remediation Decisions
+
+      - Removed direct pathlib.Path imports from owned domain files to avoid shell
+      classification from type annotations.
+
+      - Preserved exception/tuple/model return contracts for public lifecycle/migration
+      APIs.
+
+      - Extracted _apply_claim_affinity and _acquire_claim_record from claim_step.
+
+      - Added one governed file_size allow for lifecycle co-location rationale.
+
+      - Added local Path type alias compatibility pattern without importing pathlib.
+
+
+      ## Mainline Final-State Verification
+
+      Commands executed after squash merge on main:
+
+      ```text
+
+      uv run invar guard src/vectl/lifecycle.py --agent
+
+      uv run invar guard src/vectl/core_duplicate_step_id.py --agent
+
+      uv run python -m pytest tests/test_logic.py tests/test_validation.py tests/test_duplicate_id_migration_engine.py
+      -q
+
+      uv run mypy src/vectl/lifecycle.py src/vectl/core_duplicate_step_id.py
+
+      ```
+
+      Results:
+
+      - invar guard: passed for both files; errors=0, warnings=0, infos=0. One governed
+      file_size escape hatch in lifecycle.py with explicit reason.
+
+      - pytest: 163 passed in 0.19s.
+
+      - mypy: Success, no issues found in 2 source files.
+
+
+      ## Residuals
+
+      - Full-repo guard remains expected-red outside owned files.
+
+      - No plan/orchestrator state files were modified by worker.
+
+      - No vectl CLI commands were run.
+
+
+      ## Product Scope Confirmation
+
+      - Owned product files only: src/vectl/lifecycle.py, src/vectl/core_duplicate_step_id.py.
+
+      - Verdict: SUCCESS.'
   - id: fix-run-store-domain
     name: Fix run store invar domain
     status: pending

@@ -92843,6 +92843,88 @@ phases:
 
       - [ ] No unsupported `evidence_template` parsing shipped.'
     agent: python-senior
+  - id: det_check_impl_single_mutation
+    name: Complete deterministic single checklist mutation
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies in `src/vectl/core_checklist.py` and the compatibility adapter
+      in `src/vectl/core_plan_mutations.py` per the contract from phase `det_check_contracts`
+      and the expected-red tests from phase `det_check_tests`.
+
+
+      UPSTREAM ARTIFACTS (from contract/test phases):
+
+      - `docs/RFC-deterministic-checklists.md` — deterministic single set-state selector
+      contract is AUTHORITATIVE.
+
+      - `src/vectl/core_checklist.py` — request/result/error signatures from `det_check_contract_lock`
+      are AUTHORITATIVE.
+
+      - `tests/test_checklist.py` — idempotency, stale revision, legacy toggle, invalid
+      selector, and marker-only tests from `det_check_tests_core_red` are PROTECTED.
+
+
+      YOUR SCOPE: Replace stub markers with working logic for deterministic single
+      set-state mutation and preserve legacy keyword toggle compatibility. Use Edit
+      tool to modify bodies only. Keep `update_checklist(..., check=..., append=...)`
+      behavior compatible for existing CLI/MCP legacy paths while adding deterministic
+      service entry points.
+
+
+      Failure-mode checklist:
+
+      - [ ] Stale `checklist_inventory_revision` rejects mutation before any marker
+      is changed.
+
+      - [ ] `item_id` selector resolves only within the submitted inventory snapshot.
+
+      - [ ] `field+index` selector rejects unsupported fields and out-of-range indexes.
+
+      - [ ] Target-state mutation is idempotent when the marker already matches.
+
+      - [ ] Legacy keyword toggle still toggles exactly one fuzzy match and preserves
+      ambiguous/no-match errors.
+
+      - [ ] Marker-only preservation changes only the checkbox marker.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      If a contract artifact is wrong or incomplete, document a deviation record (type,
+      what, why, impact) — do NOT silently rewrite.'
+    verification: '- [ ] Run `pytest tests/test_checklist.py -k ''single or idempotent
+      or stale or legacy or marker or selector'' -q` and show deterministic single
+      mutation tests pass green.
+
+      - [ ] Evidence shows stale revision and invalid selector failure paths, not
+      only happy path.
+
+      - [ ] Evidence shows legacy keyword toggle behavior remains compatible.
+
+      - [ ] Evidence shows mutation is marker-only by before/after string comparison.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- docs/RFC-deterministic-checklists.md — key passage or \"NOT READ:\
+      \ <reason>\"\n- src/vectl/core_checklist.py — key passage or \"NOT READ: <reason>\"\
+      \n- src/vectl/core_plan_mutations.py — key passage or \"NOT READ: <reason>\"\
+      \n- tests/test_checklist.py — key passage or \"NOT READ: <reason>\"\n\n## Implementation\
+      \ Evidence\n- Files changed:\n- Commands executed:\n```bash\npytest tests/test_checklist.py\
+      \ -k 'single or idempotent or stale or legacy or marker or selector' -q\ninvar\
+      \ guard --changed\n```\n- Actual output:\n```\n<paste output>\n```\n- Failure-path\
+      \ evidence:\n  - [ ] stale revision\n  - [ ] invalid selector\n  - [ ] ambiguous/no\
+      \ legacy match\n- Marker-only before/after sample:\n\n## Checklist\n- [ ] Deterministic\
+      \ single mutation green.\n- [ ] Legacy compatibility preserved.\n- [ ] No broad\
+      \ batch or surface wiring completed here."
+    depends_on:
+    - det_check_impl_core_inventory
+    agent: python-senior
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

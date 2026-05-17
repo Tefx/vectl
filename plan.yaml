@@ -96946,6 +96946,152 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-residual-budget-blockers
     agent: python-senior
+  - id: invar_guard_remediation.full-guard-residual-disposition-retest
+    name: Retest and consolidate full-guard residual disposition
+    status: pending
+    description: 'VERIFICATION / full-plan-check. Consolidate the focused residual
+      slices and retest the authoritative full-guard command before downstream UI/UX
+      audit, full-guard verification, and phase gate.
+
+
+      work_type: proof_closure
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: full-plan-check
+
+      symbolic_testing: true
+
+      agent_source: default
+
+
+      Scope:
+
+      - Consume evidence from all focused residual implementation slices.
+
+      - Run the exact authoritative command: `uvx invar-tools guard --all`.
+
+      - Produce one residual disposition register covering all blocker families, including
+      any remaining project-level budget counters.
+
+
+      Decision policy:
+
+      - PASS only if full guard is green OR every remaining finding has structured
+      non-blocking disposition with non-intersection proof under invar policy.
+
+      - If any blocker-class finding remains without non-intersection proof, report
+      BLOCKING_OWNER_NEEDED and name the owning residual family/step.
+
+      - No stale evidence from discarded branches, step worktrees, or partial salvage
+      attempts is acceptable.
+
+
+      ## Completion Criteria
+
+      - [ ] All focused residual slices are complete before this retest runs.
+
+      - [ ] Authoritative current-mainline `uvx invar-tools guard --all` output is
+      pasted verbatim.
+
+      - [ ] The register maps every remaining finding to PROVEN_CLOSED, NON_INTERSECTING
+      with proof, or BLOCKING_OWNER_NEEDED with owner.
+
+      - [ ] Budget counters are compared against the reported failed attempt and show
+      no new blocker-class regression from the residual remediation path.
+
+      - [ ] Closure evidence includes requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis.
+
+      - [ ] This step reports PASS only for full guard green or complete structured
+      non-blocking disposition.
+
+
+      ## Verification Scope Declaration
+
+      - full-plan-check protecting `cli-surface-preservation-uiux-audit`, `invar_guard_remediation.escape-budget-full-guard-retest`,
+      `invar_guard_remediation.verify-full-guard`, and `invar_guard_remediation.gate`.'
+    verification: '- [ ] Current-mainline `uvx invar-tools guard --all` output is
+      pasted verbatim.
+
+      - [ ] Full guard is green OR every residual has structured non-blocking disposition
+      with non-intersection proof.
+
+      - [ ] Any remaining blocker-class residual names a precise owner and blocks
+      downstream OPEN recommendations.
+
+      - [ ] Evidence compares budget counters against the failed broad attempt and
+      confirms no new same-family regression.
+
+      - [ ] Behavioral proof register includes requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Full-Guard Residual Retest Evidence
+
+
+      **Command**:
+
+      ```text
+
+      uvx invar-tools guard --all
+
+      ```
+
+
+      **Verbatim output**:
+
+      ```text
+
+      <paste full/current-mainline output or relevant complete excerpt with summary
+      and every non-green finding>
+
+      ```
+
+
+      **Budget comparison against failed broad attempt**:
+
+      | Counter | Failed attempt | Current | Regression? |
+
+      | --- | --- | --- | --- |
+
+      | shell_result | 80/5 | <current> | YES/NO |
+
+      | weighted | 400/15 | <current> | YES/NO |
+
+
+      **Residual disposition register**:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      **Downstream decision**:
+
+      PASS | PASS_WITH_NON_BLOCKING_RESIDUALS | BLOCKING_OWNER_NEEDED'
+    depends_on:
+    - invar_guard_remediation.fix-inspection-drive-query-result-boundaries
+    - invar_guard_remediation.fix-contracts-file-size-decomposition
+    - invar_guard_remediation.fix-config-projections-recovery-budget-closure
+    - invar_guard_remediation.fix-orch-app-driver-budget-closure
+    agent: integration-verifier
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

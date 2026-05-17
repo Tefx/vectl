@@ -93787,6 +93787,118 @@ phases:
     - det_check_impl_cli_mcp
     - det_check_impl_orch_receipts
     agent: blind-tester
+  - id: det_check_impl_spec_conformance
+    name: Verify checklist spec conformance
+    status: pending
+    description: 'Spec conformance verification via adversarial divergence hunting.
+
+
+      This is NOT "do tests pass" — it is "does the implementation match what the
+      deterministic checklist contract says."
+
+
+      Scope: only deterministic checklist handling contract sections touched by this
+      phase.
+
+
+      Focus checklist:
+
+      - [ ] Naming and format semantics for item IDs, revisions, selector fields,
+      and structured error codes are exact.
+
+      - [ ] Boundary values for empty fields, unsupported fields, stale revision,
+      and invalid selectors match contract.
+
+      - [ ] Omission drift: every MUST in `docs/RFC-deterministic-checklists.md` has
+      corresponding implementation or explicit deferred disposition.
+
+      - [ ] Contract surface drift: CLI/MCP request/response fields are additive and
+      legacy-compatible.
+
+      - [ ] Behavioral precedence claims are marked PROVEN only with runtime/test
+      evidence; otherwise NEEDS_TEST with closure path.'
+    verification: '- [ ] phase-check protecting `det_check_impl_gate`: produce a requirement-by-requirement
+      conformance table for the deterministic checklist contract.
+
+      - [ ] Flag DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND items with explicit closure
+      paths.
+
+      - [ ] Block gate if any blocker-class selector/revision/error/surface requirement
+      is not PROVEN or non-intersecting.'
+    evidence_template: '## Spec Conformance Report
+
+      **Phase**: det_check_impl
+
+      **Spec source**: docs/RFC-deterministic-checklists.md
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_plan_mutations.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/dispatch_policy.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/prompt_materialization.py — key passage or "NOT READ:
+      <reason>"
+
+
+      ## Requirements Register
+
+      | R# | Spec Section | Requirement | Level | Checkable? |
+
+      | --- | --- | --- | --- | --- |
+
+
+      ## Evidence Table
+
+      | R# | Spec Section | Requirement | Implementation | Verdict | Notes |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      Verdicts: CONFORMS | DIVERGES | PARTIAL | NEEDS_TEST | NOT_FOUND | AMBIGUOUS_SPEC
+      | SPEC_POSSIBLY_STALE
+
+
+      ## Coverage Summary
+
+      - Total requirements: N
+
+      - CONFORMS: N | DIVERGES: N | PARTIAL: N
+
+      - NEEDS_TEST: N | NOT_FOUND: N | AMBIGUOUS_SPEC: N
+
+      - Unchecked sections: [list]
+
+
+      ## Top Risks
+
+      [DIVERGES items ranked by severity]
+
+
+      ## Suggested Tests (for NEEDS_TEST items)
+
+
+      ## Checklist
+
+      - [ ] No blocker-class DIVERGES/PARTIAL/NOT_FOUND remains without remediation
+      ownership.'
+    depends_on:
+    - det_check_impl_core_inventory
+    - det_check_impl_single_mutation
+    - det_check_impl_batch_mutation
+    - det_check_impl_cli_mcp
+    - det_check_impl_orch_receipts
+    agent: spec-verifier
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

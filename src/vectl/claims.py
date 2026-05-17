@@ -91,6 +91,24 @@ class RepairClaimsResult:
         }
 
 
+__all__ = [
+    "ClaimEntry",
+    "RepairAction",
+    "RepairClaimsResult",
+    "RepairStatus",
+    "acquire_claim",
+    "cleanup_stale_claims",
+    "get_claim_info",
+    "get_current_branch",
+    "load_claims",
+    "load_claims_for_branch",
+    "release_claim",
+    "repair_claims",
+    "resolve_claims_path",
+    "save_claims",
+]
+
+
 def _claim_key(branch: str, step_id: str) -> str:
     return f"{branch}:{step_id}"
 
@@ -303,6 +321,94 @@ def get_current_branch() -> str:
     return branch or "unknown"
 
 
+def _repair_policy_text() -> str:
+    return (
+        "plan_precedence: for current branch, ensure claims entry exists iff "
+        "step is claimed in plan; "
+        "for matching keys, plan claimed_by/claimed_at overwrite stale claims fields; "
+        "outside branch/scope entries are preserved byte-for-byte in memory"
+    )
+
+
+def _desired_claims_for_branch(plan: Plan, branch: str) -> dict[str, ClaimEntry]:
+    plan_steps = {step.id: step for phase in plan.phases for step in phase.steps}
+    desired: dict[str, ClaimEntry] = {}
+    for step in plan_steps.values():
+        if step.status != StepStatus.CLAIMED or step.claimed_by is None:
+            continue
+        key = _claim_key(branch, step.id)
+        desired[key] = ClaimEntry(
+            step_id=step.id,
+            branch=branch,
+            agent=step.claimed_by,
+            claimed_at=step.claimed_at or _now_iso(),
+        )
+    return desired
+
+
+def _scoped_repair_keys(
+    claims: dict[str, ClaimEntry],
+    desired_for_branch: dict[str, ClaimEntry],
+    branch: str,
+    step_id: str | None,
+) -> set[str]:
+    if step_id is not None:
+        return {_claim_key(branch, step_id)}
+    return {key for key, entry in claims.items() if entry.branch == branch} | set(
+        desired_for_branch.keys()
+    )
+
+
+def _apply_claim_repairs(
+    claims: dict[str, ClaimEntry],
+    desired_for_branch: dict[str, ClaimEntry],
+    scoped_keys: set[str],
+) -> list[RepairAction]:
+    actions: list[RepairAction] = []
+    for key in sorted(scoped_keys):
+        before = claims.get(key)
+        desired = desired_for_branch.get(key)
+
+        if before is not None and desired is None:
+            claims.pop(key, None)
+            actions.append(
+                RepairAction(
+                    action="remove",
+                    key=key,
+                    reason="ghost_claim_or_non_claimed_step",
+                    before=before,
+                    after=None,
+                )
+            )
+            continue
+
+        if before is None and desired is not None:
+            claims[key] = desired
+            actions.append(
+                RepairAction(
+                    action="restore",
+                    key=key,
+                    reason="plan_claimed_missing_in_claims",
+                    before=None,
+                    after=desired,
+                )
+            )
+            continue
+
+        if before is not None and desired is not None and before != desired:
+            claims[key] = desired
+            actions.append(
+                RepairAction(
+                    action="update",
+                    key=key,
+                    reason="stale_claim_entry_plan_precedence",
+                    before=before,
+                    after=desired,
+                )
+            )
+    return actions
+
+
 def repair_claims(
     plan: Plan,
     plan_path: Path,
@@ -322,85 +428,16 @@ def repair_claims(
     if step_id is not None and plan.find_step(step_id) is None:
         raise PlanError(f"Step '{step_id}' not found")
 
-    policy = (
-        "plan_precedence: for current branch, ensure claims entry exists iff "
-        "step is claimed in plan; "
-        "for matching keys, plan claimed_by/claimed_at overwrite stale claims fields; "
-        "outside branch/scope entries are preserved byte-for-byte in memory"
-    )
+    policy = _repair_policy_text()
 
     branch = get_current_branch()
     missing_file = not claims_path.exists()
-    plan_steps = {step.id: step for phase in plan.phases for step in phase.steps}
-
-    desired_for_branch: dict[str, ClaimEntry] = {}
-    for step in plan_steps.values():
-        if step.status != StepStatus.CLAIMED:
-            continue
-        if step.claimed_by is None:
-            continue
-        key = _claim_key(branch, step.id)
-        desired_for_branch[key] = ClaimEntry(
-            step_id=step.id,
-            branch=branch,
-            agent=step.claimed_by,
-            claimed_at=step.claimed_at or _now_iso(),
-        )
-
-    actions: list[RepairAction] = []
+    desired_for_branch = _desired_claims_for_branch(plan, branch)
 
     with _locked_claims_file(claims_path):
         claims = _read_claims_file(claims_path)
-
-        scoped_keys: set[str]
-        if step_id is not None:
-            scoped_keys = {_claim_key(branch, step_id)}
-        else:
-            scoped_keys = {key for key, entry in claims.items() if entry.branch == branch} | set(
-                desired_for_branch.keys()
-            )
-
-        for key in sorted(scoped_keys):
-            before = claims.get(key)
-            desired = desired_for_branch.get(key)
-
-            if before is not None and desired is None:
-                claims.pop(key, None)
-                actions.append(
-                    RepairAction(
-                        action="remove",
-                        key=key,
-                        reason="ghost_claim_or_non_claimed_step",
-                        before=before,
-                        after=None,
-                    )
-                )
-                continue
-
-            if before is None and desired is not None:
-                claims[key] = desired
-                actions.append(
-                    RepairAction(
-                        action="restore",
-                        key=key,
-                        reason="plan_claimed_missing_in_claims",
-                        before=None,
-                        after=desired,
-                    )
-                )
-                continue
-
-            if before is not None and desired is not None and before != desired:
-                claims[key] = desired
-                actions.append(
-                    RepairAction(
-                        action="update",
-                        key=key,
-                        reason="stale_claim_entry_plan_precedence",
-                        before=before,
-                        after=desired,
-                    )
-                )
+        scoped_keys = _scoped_repair_keys(claims, desired_for_branch, branch, step_id)
+        actions = _apply_claim_repairs(claims, desired_for_branch, scoped_keys)
 
         changed = len(actions) > 0
         if changed and not dry_run:

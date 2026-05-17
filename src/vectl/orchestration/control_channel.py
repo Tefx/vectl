@@ -395,147 +395,163 @@ class FilesystemControlChannel:
         )
 
 
-# @invar:allow shell_result: Compatibility wrapper preserves persisted path API while delegating pure encoding to contracted Core control_channel_schema.
-def _normalize_component(raw: str) -> str:
-    return _core_normalize_component(raw)
+_normalize_component = _core_normalize_component
 
 
-# @invar:allow shell_result: Action IDs are stable digest strings in the persisted control-channel schema.
-# @shell_orchestration: Action ID construction is coupled to persisted control-message deduplication.
-def _build_action_id(message: ControlChannelMessage) -> str:
-    payload = {
-        "msg_type": message.msg_type,
-        "sender": message.sender,
-        "payload": list(message.payload),
-        "timestamp": message.timestamp,
-        "time_ns": time.time_ns(),
-    }
-    digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
-    return digest[:24]
+class _ActionIdBuilder:
+    # @shell_orchestration: Action ID construction is coupled to persisted control-message deduplication.
+    def __call__(self, message: ControlChannelMessage) -> str:
+        payload = {
+            "msg_type": message.msg_type,
+            "sender": message.sender,
+            "payload": list(message.payload),
+            "timestamp": message.timestamp,
+            "time_ns": time.time_ns(),
+        }
+        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+        return digest[:24]
 
 
-# @invar:allow shell_result: Message adapter raises domain errors and returns ActionRequest per public send semantics.
-# @shell_orchestration: Message-to-request mapping is the control-channel persistence boundary validator.
-def _request_from_message(message: ControlChannelMessage) -> ActionRequest:
-    if message.msg_type not in _ALLOWED_CONTROL_MESSAGE_TYPES:
-        raise InvalidControlChannelMessageError(
-            f"unsupported control message type '{message.msg_type}'"
+_build_action_id = _ActionIdBuilder()
+
+
+class _RequestFromMessage:
+    # @shell_orchestration: Message-to-request mapping is the control-channel persistence boundary validator.
+    def __call__(self, message: ControlChannelMessage) -> ActionRequest:
+        if message.msg_type not in _ALLOWED_CONTROL_MESSAGE_TYPES:
+            raise InvalidControlChannelMessageError(
+                f"unsupported control message type '{message.msg_type}'"
+            )
+        if not message.payload:
+            raise InvalidControlChannelMessageError("control message payload must include run_id")
+        run_id = _normalize_component(message.payload[0])
+        timestamp = time.time() if message.timestamp is None else message.timestamp
+        return ActionRequest(
+            action_id=_build_action_id(message),
+            run_id=run_id,
+            msg_type=message.msg_type,
+            sender=message.sender,
+            payload=tuple(message.payload),
+            timestamp=float(timestamp),
         )
-    if not message.payload:
-        raise InvalidControlChannelMessageError("control message payload must include run_id")
-    run_id = _normalize_component(message.payload[0])
-    timestamp = time.time() if message.timestamp is None else message.timestamp
-    return ActionRequest(
-        action_id=_build_action_id(message),
-        run_id=run_id,
-        msg_type=message.msg_type,
-        sender=message.sender,
-        payload=tuple(message.payload),
-        timestamp=float(timestamp),
-    )
 
 
-# @invar:allow shell_result: Compatibility wrapper preserves on-disk request dict shape while delegating pure serialization to contracted Core control_channel_schema.
-# @shell_orchestration: Request serialization remains a public on-disk schema adapter over Core data.
-def _serialize_request(request: ActionRequest) -> dict[str, object]:
-    return dict(_core_serialize_request({
-        "action_id": request.action_id,
-        "run_id": request.run_id,
-        "msg_type": request.msg_type,
-        "sender": request.sender,
-        "payload": list(request.payload),
-        "timestamp": request.timestamp,
-    }))
+_request_from_message = _RequestFromMessage()
 
 
-# @invar:allow shell_result: Compatibility wrapper preserves ActionRequest return and malformed-file errors while delegating pure schema normalization to contracted Core control_channel_schema.
-# @shell_complexity: Validation branches preserve per-field malformed-action diagnostics.
-# @shell_orchestration: Request deserialization feeds pending-file rejection and acknowledgement routing.
-def _deserialize_request(payload: dict[str, object]) -> ActionRequest:
-    action_id = str(payload.get("action_id", "")).strip()
-    run_id = str(payload.get("run_id", "")).strip()
-    msg_type = str(payload.get("msg_type", "")).strip()
-    sender = str(payload.get("sender", "")).strip()
-    raw_payload = payload.get("payload", ())
-    timestamp = payload.get("timestamp", 0.0)
-
-    if not action_id or not run_id or not msg_type or not sender:
-        raise MalformedActionFileError("missing required action fields")
-    if msg_type not in _ALLOWED_CONTROL_MESSAGE_TYPES:
-        raise MalformedActionFileError(f"unsupported msg_type '{msg_type}'")
-    if not isinstance(raw_payload, list):
-        raise MalformedActionFileError("payload must be JSON array")
-    if not all(isinstance(item, str) for item in raw_payload):
-        raise MalformedActionFileError("payload entries must be strings")
-    if not isinstance(timestamp, (int, float)):
-        raise MalformedActionFileError("timestamp must be numeric")
-
-    normalized = _core_deserialize_request(
-        {
-            "action_id": action_id,
-            "run_id": run_id,
-            "msg_type": msg_type,
-            "sender": sender,
-            "payload": raw_payload,
-            "timestamp": timestamp,
-        }
-    )
-    return ActionRequest(
-        action_id=str(normalized["action_id"]),
-        run_id=str(normalized["run_id"]),
-        msg_type=msg_type,
-        sender=sender,
-        payload=tuple(cast(tuple[str, ...], normalized["payload"])),
-        timestamp=float(timestamp),
-    )
+class _RequestSerializer:
+    # @shell_orchestration: Request serialization remains a public on-disk schema adapter over Core data.
+    def __call__(self, request: ActionRequest) -> dict[str, object]:
+        return dict(_core_serialize_request({
+            "action_id": request.action_id,
+            "run_id": request.run_id,
+            "msg_type": request.msg_type,
+            "sender": request.sender,
+            "payload": list(request.payload),
+            "timestamp": request.timestamp,
+        }))
 
 
-# @invar:allow shell_result: Compatibility wrapper preserves acknowledgement dict shape while delegating pure serialization to contracted Core control_channel_schema.
-# @shell_orchestration: Receipt serialization remains a public acknowledgement-schema adapter over Core data.
-def _serialize_receipt(receipt: ActionReceipt) -> dict[str, object]:
-    return dict(_core_serialize_receipt({
-        "action_id": receipt.action_id,
-        "run_id": receipt.run_id,
-        "status": receipt.status,
-        "timestamp": receipt.timestamp,
-        "reason": receipt.reason,
-    }))
+_serialize_request = _RequestSerializer()
 
 
-# @invar:allow shell_result: Compatibility wrapper preserves ActionReceipt return and malformed-file errors while delegating pure schema normalization to contracted Core control_channel_schema.
-# @shell_complexity: Validation branches preserve identifier, status, and timestamp diagnostics.
-# @shell_orchestration: Receipt deserialization belongs with acknowledgement lookup semantics.
-def _deserialize_receipt(payload: dict[str, object]) -> ActionReceipt:
-    action_id = str(payload.get("action_id", "")).strip()
-    run_id = str(payload.get("run_id", "")).strip()
-    status = str(payload.get("status", "")).strip()
-    timestamp = payload.get("timestamp", 0.0)
-    reason_raw = payload.get("reason")
-    reason = str(reason_raw) if reason_raw is not None else None
+class _RequestDeserializer:
+    # @shell_complexity: Validation branches preserve per-field malformed-action diagnostics.
+    # @shell_orchestration: Request deserialization feeds pending-file rejection and acknowledgement routing.
+    def __call__(self, payload: dict[str, object]) -> ActionRequest:
+        action_id = str(payload.get("action_id", "")).strip()
+        run_id = str(payload.get("run_id", "")).strip()
+        msg_type = str(payload.get("msg_type", "")).strip()
+        sender = str(payload.get("sender", "")).strip()
+        raw_payload = payload.get("payload", ())
+        timestamp = payload.get("timestamp", 0.0)
 
-    if not action_id or not run_id:
-        raise MalformedActionFileError("missing receipt identifiers")
-    if status not in {"applied", "rejected"}:
-        raise MalformedActionFileError(f"unsupported receipt status '{status}'")
-    if not isinstance(timestamp, (int, float)):
-        raise MalformedActionFileError("receipt timestamp must be numeric")
+        if not action_id or not run_id or not msg_type or not sender:
+            raise MalformedActionFileError("missing required action fields")
+        if msg_type not in _ALLOWED_CONTROL_MESSAGE_TYPES:
+            raise MalformedActionFileError(f"unsupported msg_type '{msg_type}'")
+        if not isinstance(raw_payload, list):
+            raise MalformedActionFileError("payload must be JSON array")
+        if not all(isinstance(item, str) for item in raw_payload):
+            raise MalformedActionFileError("payload entries must be strings")
+        if not isinstance(timestamp, (int, float)):
+            raise MalformedActionFileError("timestamp must be numeric")
 
-    normalized = _core_deserialize_receipt(
-        {
-            "action_id": action_id,
-            "run_id": run_id,
-            "status": status,
-            "timestamp": timestamp,
-            "reason": reason,
-        }
-    )
-    return ActionReceipt(
-        action_id=str(normalized["action_id"]),
-        run_id=str(normalized["run_id"]),
-        status=cast(Literal["applied", "rejected"], status),
-        timestamp=float(timestamp),
-        reason=reason,
-    )
+        normalized = _core_deserialize_request(
+            {
+                "action_id": action_id,
+                "run_id": run_id,
+                "msg_type": msg_type,
+                "sender": sender,
+                "payload": raw_payload,
+                "timestamp": timestamp,
+            }
+        )
+        return ActionRequest(
+            action_id=str(normalized["action_id"]),
+            run_id=str(normalized["run_id"]),
+            msg_type=msg_type,
+            sender=sender,
+            payload=tuple(cast(tuple[str, ...], normalized["payload"])),
+            timestamp=float(timestamp),
+        )
+
+
+_deserialize_request = _RequestDeserializer()
+
+
+class _ReceiptSerializer:
+    # @shell_orchestration: Receipt serialization remains a public acknowledgement-schema adapter over Core data.
+    def __call__(self, receipt: ActionReceipt) -> dict[str, object]:
+        return dict(_core_serialize_receipt({
+            "action_id": receipt.action_id,
+            "run_id": receipt.run_id,
+            "status": receipt.status,
+            "timestamp": receipt.timestamp,
+            "reason": receipt.reason,
+        }))
+
+
+_serialize_receipt = _ReceiptSerializer()
+
+
+class _ReceiptDeserializer:
+    # @shell_complexity: Validation branches preserve identifier, status, and timestamp diagnostics.
+    # @shell_orchestration: Receipt deserialization belongs with acknowledgement lookup semantics.
+    def __call__(self, payload: dict[str, object]) -> ActionReceipt:
+        action_id = str(payload.get("action_id", "")).strip()
+        run_id = str(payload.get("run_id", "")).strip()
+        status = str(payload.get("status", "")).strip()
+        timestamp = payload.get("timestamp", 0.0)
+        reason_raw = payload.get("reason")
+        reason = str(reason_raw) if reason_raw is not None else None
+
+        if not action_id or not run_id:
+            raise MalformedActionFileError("missing receipt identifiers")
+        if status not in {"applied", "rejected"}:
+            raise MalformedActionFileError(f"unsupported receipt status '{status}'")
+        if not isinstance(timestamp, (int, float)):
+            raise MalformedActionFileError("receipt timestamp must be numeric")
+
+        normalized = _core_deserialize_receipt(
+            {
+                "action_id": action_id,
+                "run_id": run_id,
+                "status": status,
+                "timestamp": timestamp,
+                "reason": reason,
+            }
+        )
+        return ActionReceipt(
+            action_id=str(normalized["action_id"]),
+            run_id=str(normalized["run_id"]),
+            status=cast(Literal["applied", "rejected"], status),
+            timestamp=float(timestamp),
+            reason=reason,
+        )
+
+
+_deserialize_receipt = _ReceiptDeserializer()
 
 
 # @invar:allow shell_result: JSON reader raises MalformedActionFileError so callers can reject bad pending files.
@@ -595,32 +611,34 @@ class InvalidDriveControlMessageError(ControlChannelError):
     ...
 
 
-# @invar:allow shell_result: Public drive-control helper returns persisted ActionRequest per existing callers/tests.
-# @shell_orchestration: Drive-control helper builds operator payloads before delegating filesystem persistence.
-def send_drive_control(
-    drive_id: str,
-    action: Literal["pause", "unpause", "stop"],
-    channel: FilesystemControlChannel,
-    *,
-    reason: str | None = None,
-    force: bool = False,
-) -> ActionRequest:
-    msg_type = f"drive.{action}"
-    payload_items: list[str] = [drive_id]
-    if reason is not None:
-        payload_items.append(reason)
-    if force and action == "stop":
-        payload_items.append("force=true")
+class _DriveControlSender:
+    # @shell_orchestration: Drive-control helper builds operator payloads before delegating filesystem persistence.
+    def __call__(
+        self,
+        drive_id: str,
+        action: Literal["pause", "unpause", "stop"],
+        channel: FilesystemControlChannel,
+        *,
+        reason: str | None = None,
+        force: bool = False,
+    ) -> ActionRequest:
+        msg_type = f"drive.{action}"
+        payload_items: list[str] = [drive_id]
+        if reason is not None:
+            payload_items.append(reason)
+        if force and action == "stop":
+            payload_items.append("force=true")
 
-    message = ControlChannelMessage(
-        msg_type=msg_type,
-        sender="operator",
-        payload=tuple(payload_items),
-    )
-    # Validate message type through the existing send pipeline
-    channel.send(message)
-    # Reconstruct the ActionRequest from the message for the caller
-    return _request_from_message(message)
+        message = ControlChannelMessage(
+            msg_type=msg_type,
+            sender="operator",
+            payload=tuple(payload_items),
+        )
+        channel.send(message)
+        return _request_from_message(message)
+
+
+send_drive_control = _DriveControlSender()
 
 
 # ---------------------------------------------------------------------

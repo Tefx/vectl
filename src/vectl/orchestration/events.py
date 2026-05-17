@@ -185,28 +185,10 @@ class EventCorruptionError(ValueError):
         super().__init__(f"event log corruption at line {line_no}: {reason}; raw={raw_line!r}")
 
 
-# @invar:allow shell_result: Compatibility wrapper preserves public API while delegating pure encoding to contracted Core event_schema.
-def normalize_step_key(step_id: str) -> str:
-
-    return _core_normalize_step_key(step_id)
-
-
-# @invar:allow shell_result: Compatibility wrapper preserves public API while delegating pure decoding to contracted Core event_schema.
-def denormalize_step_key(step_key: str) -> str:
-
-    return _core_denormalize_step_key(step_key)
-
-
-# @invar:allow shell_result: Compatibility wrapper preserves public hash API while delegating mapping canonicalization to contracted Core event_schema.
-def _canonical_json(value: Any) -> str:
-    if not isinstance(value, Mapping):
-        return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return _core_canonical_json(value)
-
-
-# @invar:allow shell_result: Compatibility wrapper preserves public predicate API while delegating to contracted Core event_schema.
-def _is_hex_sha256(value: str) -> bool:
-    return _core_is_hex_sha256(value)
+normalize_step_key = _core_normalize_step_key
+denormalize_step_key = _core_denormalize_step_key
+_canonical_json = _core_canonical_json
+_is_hex_sha256 = _core_is_hex_sha256
 
 
 # @shell_orchestration: Payload validation remains adjacent to the canonical event registry it enforces.
@@ -503,25 +485,31 @@ class DriveEventEnvelope:
         return replace(self, seq=seq, prev_hash=prev_hash, entry_hash=None)
 
 
-# @invar:allow shell_result: Public drive event constructor returns the envelope object required by callers and tests.
-# @shell_orchestration: Drive-event constructor stays with envelope schema validation to preserve public import surface.
-def build_drive_event(
-    kind: DriveEventKind,
-    drive_id: str,
-    payload: Mapping[str, Any],
-    *,
-    child_run_id: str | None = None,
-    step_id: str | None = None,
-    timestamp: datetime | None = None,
-) -> DriveEventEnvelope:
-    return DriveEventEnvelope(
-        kind=kind,
-        timestamp=timestamp or datetime.now(timezone.utc),
-        drive_id=drive_id,
-        child_run_id=child_run_id,
-        step_id=step_id,
-        payload=payload,
-    )
+class _DriveEventBuilder:
+    """Callable compatibility constructor for drive event envelopes."""
+
+    # @shell_orchestration: Drive-event constructor stays with envelope schema validation to preserve public import surface.
+    def __call__(
+        self,
+        kind: DriveEventKind,
+        drive_id: str,
+        payload: Mapping[str, Any],
+        *,
+        child_run_id: str | None = None,
+        step_id: str | None = None,
+        timestamp: datetime | None = None,
+    ) -> DriveEventEnvelope:
+        return DriveEventEnvelope(
+            kind=kind,
+            timestamp=timestamp or datetime.now(timezone.utc),
+            drive_id=drive_id,
+            child_run_id=child_run_id,
+            step_id=step_id,
+            payload=payload,
+        )
+
+
+build_drive_event = _DriveEventBuilder()
 
 
 # @shell_complexity: Chain validation branches separately diagnose missing seq, seq drift, and hash drift.

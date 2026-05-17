@@ -11,11 +11,18 @@ Traceback (most recent call last):
 deal.PreContractError: expected...
 """
 
-from collections.abc import Mapping, Sequence
 import hashlib
 import json
+from collections.abc import Mapping, Sequence
 
 from deal import post, pre
+
+from vectl.orchestration.contracts import (
+    OpenCodeLaunchConfig,
+    PromptArtifactPaths,
+    PromptBundle,
+    RunnerHandoffEnv,
+)
 
 _RUNS_INPUT_DIR = "input"
 _PROMPT_BUNDLE_FILENAME = "prompt_bundle.json"
@@ -80,6 +87,20 @@ _YAML_CONTRACT_LINES = (
 )
 
 
+@pre(lambda path_value: bool(str(path_value).strip()))
+@post(lambda result: bool(result.strip()))
+def _resolve_path_text(path_value: object) -> str:
+    """Return the historical resolved path text when the object supports it.
+
+    >>> _resolve_path_text("/ws")
+    '/ws'
+    """
+    resolver = getattr(path_value, "resolve", None)
+    if callable(resolver):
+        return str(resolver())
+    return str(path_value)
+
+
 @pre(lambda run_id, agent_name, workspace_path: bool(run_id.strip()) and bool(agent_name.strip()) and bool(workspace_path.strip()))
 @post(lambda result: isinstance(result, Mapping) and {"bundle_path", "runner_prompt_path", "workspace_prompt_path"}.issubset(result.keys()))
 def resolve_prompt_artifact_paths_data(
@@ -125,14 +146,30 @@ def build_runner_handoff_env_data(
     }
 
 
-@pre(lambda bundle_data: isinstance(bundle_data, Mapping) and all(isinstance(key, str) and key for key in bundle_data.keys()))
+@pre(
+    lambda bundle_data: (
+        isinstance(bundle_data, PromptBundle)
+        or (
+            isinstance(bundle_data, Mapping)
+            and all(isinstance(key, str) and key for key in bundle_data.keys())
+        )
+    )
+)
 @post(lambda result: len(result) == 64 and all(char in "0123456789abcdef" for char in result))
-def compute_prompt_bundle_sha256(bundle_data: Mapping[str, object]) -> str:
+def compute_prompt_bundle_sha256(bundle_data: Mapping[str, object] | PromptBundle) -> str:
     """Compute the canonical SHA-256 digest for prompt bundle data.
-    
+     
     >>> compute_prompt_bundle_sha256({"system_prompt": "s", "task_prompt": "t", "messages": ()}) == compute_prompt_bundle_sha256({"system_prompt": "s", "task_prompt": "t", "messages": ()})
     True
+    >>> compute_prompt_bundle_sha256(PromptBundle(system_prompt="s", task_prompt="t", messages=()))
+    '9ce55c6d574906a810c9828193ca49280658ddf7c256569a197ec33dceba1de7'
     """
+    if isinstance(bundle_data, PromptBundle):
+        bundle_data = {
+            "system_prompt": bundle_data.system_prompt,
+            "task_prompt": bundle_data.task_prompt,
+            "messages": bundle_data.messages,
+        }
     digest = hashlib.sha256()
     digest.update(str(bundle_data.get("system_prompt", "")).encode("utf-8"))
     digest.update(b"\x00")
@@ -148,18 +185,63 @@ def compute_prompt_bundle_sha256(bundle_data: Mapping[str, object]) -> str:
     return digest.hexdigest()
 
 
-@pre(lambda agent_name, task_text, output_contract: bool(agent_name.strip()) and bool(task_text.strip()) and bool(output_contract.strip()))
+@pre(
+    lambda role_id,
+    agent_id,
+    system_prompt,
+    task_prompt,
+    messages,
+    output_contract="freeform_evidence": bool(role_id.strip())
+    and bool(agent_id.strip())
+    and bool(output_contract.strip())
+    and isinstance(messages, Sequence)
+)
 @post(lambda result: bool(result.strip()) and "Output Contract" in result)
-def render_runner_prompt_md(agent_name: str, task_text: str, output_contract: str) -> str:
+def render_runner_prompt_md(
+    role_id: str,
+    agent_id: str,
+    system_prompt: str,
+    task_prompt: str,
+    messages: Sequence[Mapping[str, str]],
+    output_contract: str = "freeform_evidence",
+) -> str:
     """Render runner-visible Markdown while preserving output contract sections.
-    
-    >>> "## Output Contract" in render_runner_prompt_md("agent", "task", "freeform_evidence")
+     
+    >>> render_runner_prompt_md(role_id="role", agent_id="agent", system_prompt="sys", task_prompt="task", messages=())[0:21]
+    '# Runner Prompt: role'
+    >>> "**[user]**: ctx" in render_runner_prompt_md(role_id="role", agent_id="agent", system_prompt="", task_prompt="task", messages=({"role": "user", "content": "ctx"},))
     True
     """
-    parts = [f"# Runner Prompt: {agent_name}", "", f"- **Role**: {agent_name}", f"- **Agent**: {agent_name}", ""]
-    if task_text.strip():
-        parts.extend(["## Task", "", task_text.strip(), ""])
-    parts.extend(["## Output Contract", ""])
+    parts: list[str] = []
+    parts.append(f"# Runner Prompt: {role_id}")
+    parts.append("")
+    parts.append(f"- **Role**: {role_id}")
+    parts.append(f"- **Agent**: {agent_id}")
+    parts.append("")
+
+    if system_prompt.strip():
+        parts.append("## System Instructions")
+        parts.append("")
+        parts.append(system_prompt.strip())
+        parts.append("")
+
+    if task_prompt.strip():
+        parts.append("## Task")
+        parts.append("")
+        parts.append(task_prompt.strip())
+        parts.append("")
+
+    if messages:
+        parts.append("## Context")
+        parts.append("")
+        for msg in messages:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            parts.append(f"**[{role}]**: {content}")
+            parts.append("")
+
+    parts.append("## Output Contract")
+    parts.append("")
     parts.extend(output_contract_lines(output_contract, ()))
     parts.extend([
         "",
@@ -191,6 +273,17 @@ def output_contract_lines(output_format: str, required_fields: Sequence[str]) ->
     return _YAML_CONTRACT_LINES
 
 
+@pre(lambda output_contract: bool(output_contract.strip()))
+@post(lambda result: isinstance(result, list) and all(line.strip() for line in result))
+def output_contract_line_list(output_contract: str) -> list[str]:
+    """Return output contract instructions with legacy list return type.
+
+    >>> output_contract_line_list("resolution_report")[0]
+    'Return ONLY one JSON object. Do not include Markdown, prose, or code fences.'
+    """
+    return list(output_contract_lines(output_contract, ()))
+
+
 @pre(lambda executable, prompt_path, resume=False, session_id=None: bool(executable.strip()) and bool(prompt_path.strip()) and (not resume or bool(str(session_id or "").strip())))
 @post(lambda result: isinstance(result, tuple) and len(result) >= 2 and all(part.strip() for part in result))
 def build_opencode_launch_argv_data(
@@ -208,4 +301,173 @@ def build_opencode_launch_argv_data(
     if resume:
         argv.extend(["--session", str(session_id)])
     argv.append(_OPENCODE_BOOTSTRAP_MESSAGE_RESUME if resume else _OPENCODE_BOOTSTRAP_MESSAGE_START)
+    return tuple(argv)
+
+
+@pre(
+    lambda artifact_root, run_id, workspace: bool(str(artifact_root).strip())
+    and bool(run_id.strip())
+    and bool(str(workspace).strip())
+)
+@post(
+    lambda result: result.prompt_bundle_path.endswith("input/prompt_bundle.json")
+    and result.runner_prompt_path.endswith("input/runner_prompt.md")
+    and result.workspace_prompt_relative == _RUNNER_PROMPT_WORKSPACE_RELATIVE
+)
+def resolve_prompt_artifact_paths(
+    artifact_root: object,
+    run_id: str,
+    workspace: object,
+) -> PromptArtifactPaths:
+    """Resolve public prompt artifact paths without filesystem access.
+
+    >>> resolve_prompt_artifact_paths(artifact_root="/runs", run_id="run-1", workspace="/ws").workspace_prompt_relative
+    '.vectl/orch/runner_prompt.md'
+    """
+    data = resolve_prompt_artifact_paths_data(run_id, str(artifact_root), str(workspace))
+    return PromptArtifactPaths(
+        prompt_bundle_path=str(data["bundle_path"]),
+        runner_prompt_path=str(data["runner_prompt_path"]),
+        workspace_prompt_path=str(data["workspace_prompt_path"]),
+        workspace_prompt_relative=str(data["workspace_prompt_relative"]),
+    )
+
+
+@pre(
+    lambda run_id, step_id, agent_id, artifact_paths: bool(run_id.strip())
+    and bool(step_id.strip())
+    and bool(agent_id.strip())
+    and bool(artifact_paths.workspace_prompt_path.strip())
+    and bool(artifact_paths.prompt_bundle_path.strip())
+)
+@post(
+    lambda result: result.VECTL_ORCH_PROMPT_PATH.strip() != ""
+    and result.VECTL_ORCH_PROMPT_BUNDLE_PATH.strip() != ""
+)
+def build_runner_handoff_env(
+    run_id: str,
+    step_id: str,
+    agent_id: str,
+    artifact_paths: PromptArtifactPaths,
+) -> RunnerHandoffEnv:
+    """Build public runner handoff env DTO from resolved artifact paths.
+
+    >>> paths = resolve_prompt_artifact_paths(artifact_root="/runs", run_id="run-1", workspace="/ws")
+    >>> build_runner_handoff_env(run_id="run-1", step_id="s", agent_id="a", artifact_paths=paths).VECTL_ORCH_PROMPT_BUNDLE_PATH
+    '/runs/run-1/input/prompt_bundle.json'
+    """
+    data = dict(
+        build_runner_handoff_env_data(
+            run_id,
+            agent_id,
+            step_id,
+            artifact_paths.workspace_prompt_path,
+        )
+    )
+    data["VECTL_ORCH_PROMPT_BUNDLE_PATH"] = artifact_paths.prompt_bundle_path
+    return RunnerHandoffEnv(**data)
+
+
+@pre(
+    lambda role_id,
+    agent_id,
+    bundle,
+    output_contract="freeform_evidence": bool(role_id.strip())
+    and bool(agent_id.strip())
+    and bool(output_contract.strip())
+)
+@post(lambda result: bool(result.strip()) and result.startswith("# Runner Prompt:"))
+def render_runner_prompt_bundle_md(
+    role_id: str,
+    agent_id: str,
+    bundle: PromptBundle,
+    output_contract: str = "freeform_evidence",
+) -> str:
+    """Render a PromptBundle into the exact runner Markdown envelope.
+
+    >>> bundle = PromptBundle(system_prompt="sys", task_prompt="task", messages=())
+    >>> "## System Instructions" in render_runner_prompt_bundle_md(role_id="r", agent_id="a", bundle=bundle)
+    True
+    """
+    return render_runner_prompt_md(
+        role_id=role_id,
+        agent_id=agent_id,
+        system_prompt=bundle.system_prompt,
+        task_prompt=bundle.task_prompt,
+        messages=bundle.messages,
+        output_contract=output_contract,
+    )
+
+
+@pre(
+    lambda workspace, agent_id, session_id=None: bool(str(workspace).strip())
+    and bool(agent_id.strip())
+    and (session_id is None or bool(session_id.strip()))
+)
+@post(
+    lambda result: "--agent" in result
+    and "--file" in result
+    and _RUNNER_PROMPT_WORKSPACE_RELATIVE in result
+)
+def build_default_opencode_launch_argv(
+    workspace: object,
+    agent_id: str,
+    session_id: str | None,
+) -> tuple[str, ...]:
+    """Build the historical default OpenCode argv order.
+
+    >>> build_default_opencode_launch_argv(workspace='/ws', agent_id='agent', session_id=None)[:6]
+    ('opencode', 'run', '--format', 'json', '--dir', '/ws')
+    >>> '--session' in build_default_opencode_launch_argv(workspace='/ws', agent_id='agent', session_id='sess')
+    True
+    """
+    cfg = OpenCodeLaunchConfig()
+    workspace_path = _resolve_path_text(workspace)
+    result = ["opencode", "run", "--format", cfg.format_flag, cfg.dir_flag_key, workspace_path]
+    if session_id is not None:
+        result.extend([cfg.session_flag_key, session_id])
+    result.extend([cfg.agent_flag_key, agent_id, "--file", cfg.file_flag, "--"])
+    result.append(cfg.bootstrap_resume if session_id is not None else cfg.bootstrap_start)
+    return tuple(result)
+
+
+@pre(
+    lambda workspace, agent_id, session_id=None, config=None: bool(str(workspace).strip())
+    and bool(agent_id.strip())
+    and (session_id is None or bool(session_id.strip()))
+)
+@post(lambda result: isinstance(result, tuple) and result[0:2] == ("opencode", "run"))
+def build_opencode_launch_argv(
+    workspace: object,
+    agent_id: str,
+    session_id: str | None = None,
+    config: OpenCodeLaunchConfig | None = None,
+) -> tuple[str, ...]:
+    """Build OpenCode launch argv while preserving custom config compatibility.
+
+    >>> build_opencode_launch_argv(workspace='/ws', agent_id='agent')[-1]
+    'Read the attached runner prompt file, execute the requested task in the current workspace, and then exit.'
+    """
+    cfg = config or OpenCodeLaunchConfig()
+    if cfg == OpenCodeLaunchConfig():
+        return build_default_opencode_launch_argv(
+            workspace=workspace,
+            agent_id=agent_id,
+            session_id=session_id,
+        )
+
+    argv: list[str] = [
+        "opencode",
+        "run",
+        "--format",
+        cfg.format_flag,
+        cfg.dir_flag_key,
+        _resolve_path_text(workspace),
+    ]
+
+    if session_id is not None:
+        argv.extend([cfg.session_flag_key, session_id])
+
+    argv.extend([cfg.agent_flag_key, agent_id, "--file", cfg.file_flag, "--"])
+    argv.append(cfg.bootstrap_resume if session_id is not None else cfg.bootstrap_start)
     return tuple(argv)

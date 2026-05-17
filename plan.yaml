@@ -98125,7 +98125,7 @@ phases:
       \ and weighted contributors.\n- [x] Decompose `orch_app.py` and/or `core_plan_mutations.py`\
       \ only through compatibility-preserving internals.\n- [x] Smoke-prove original\
       \ facade imports and representative mutation APIs.\n- [x] Smoke-prove CLI/app\
-      \ boot and top-level help through the real routing facade.\n- [ ] Run targeted\
+      \ boot and top-level help through the real routing facade.\n- [x] Run targeted\
       \ tests covering core mutation/lifecycle/recovery and app routing surfaces.\n\
       - [ ] Capture AFTER guard excerpts for owned residual rows and weighted contributors.\n\
       - [ ] Confirm no budget lowering, suppression, ignored files, deleted findings,\

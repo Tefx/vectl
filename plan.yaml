@@ -93510,6 +93510,7 @@ phases:
     - fix-cli-render-agent-domain
     - invar_guard_remediation.fix-inspection-prompt-budget-residuals
     - invar_guard_remediation.full-guard-residual-disposition-retest
+    - invar_guard_remediation.full-guard-escape-budget-batched-retest
     agent: uiux-auditor
   - id: fix-io-storage-claims-residual
     name: Fix claims residual invar guard findings

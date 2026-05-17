@@ -94325,6 +94325,139 @@ phases:
     depends_on:
     - invar_guard_remediation.escape-budget-core-contracts
     agent: python-senior
+  - id: invar_guard_remediation.escape-budget-full-guard-retest
+    name: Retest escape-budget closure with full guard
+    status: pending
+    description: 'VERIFICATION / full-plan-check. Independently retest the shared
+      escape-hatch budget remediation family after authority decision, contract setup,
+      and all residual implementation slices complete.
+
+
+      Scope: protects `invar_guard_remediation.verify-full-guard` and `invar_guard_remediation.gate`
+      from proceeding on stale partial-success evidence.
+
+
+      Required command:
+
+      - `uvx invar-tools guard --all`
+
+
+      Decision policy:
+
+      - Preferred closure is `uvx invar-tools guard --all` green.
+
+      - If full guard remains red, evidence must include a structured residual disposition
+      register proving every remaining finding is non-blocking under invar policy
+      and does not intersect the final phase gate. If that proof is unavailable, mark
+      the residual BLOCKING and name its owner.
+
+      - Finding residual blockers is a successful verification outcome, but the phase
+      gate must remain blocked until owners/retest exist.
+
+
+      Independence Level: L2 semi-blind verification; this agent must not be any implementation
+      agent from the remediation slices.
+
+
+      ## Completion Criteria
+
+      - [ ] The authoritative full-guard command output is pasted verbatim.
+
+      - [ ] No stale evidence from branch worktrees is used as mainline proof.
+
+      - [ ] Each residual finding is mapped to PROVEN closure, BLOCKING owner, or
+      explicit non-intersection disposition.
+
+      - [ ] Public/model-visible contract risks from config/projection, path/recovery,
+      event/control, prompt/materialization, and recovery fallback are represented
+      in the proof register.
+
+      - [ ] The step reports PASS only for full guard green or complete structured
+      non-blocking residual disposition.'
+    verification: '- [ ] `uvx invar-tools guard --all` output is pasted and current-mainline,
+      not branch-local.
+
+      - [ ] Result is green OR every non-green finding has a structured residual disposition
+      proving non-blocking status under invar policy.
+
+      - [ ] No uncontracted `**/core/**` functions are introduced.
+
+      - [ ] No broad escape-hatch masking remains without authority-decision justification.
+
+      - [ ] Gate decision basis includes requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis for behavioral obligations.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Full Guard Retest
+
+
+      **Command executed**:
+
+      ```
+
+      uvx invar-tools guard --all
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste full output>
+
+      ```
+
+
+      ## Residual Disposition Register
+
+
+      | Finding | File | Invar family | Status | Closure path | Owner | Non-intersection
+      proof |
+
+      |---|---|---|---|---|---|---|
+
+      | <finding> | <path> | <family> | PROVEN/BLOCKING/NON_BLOCKING | <green/disposition/follow-up>
+      | <step id> | <proof or BLOCKING> |
+
+
+      ## Behavioral Proof Register
+
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | <ref> | <claim> | <proof expected> | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
+      | <owner/disposition> | <OPEN/BLOCK basis> |
+
+
+      ## Headline
+
+      - [ ] PASS: full guard green and no blocking residuals.
+
+      - [ ] PASS_WITH_DISPOSITION: guard red only for fully dispositioned non-blocking
+      findings allowed by invar policy.
+
+      - [ ] BLOCK: one or more blocker-class findings remain without owner or non-intersection
+      proof.
+
+      '
+    depends_on:
+    - invar_guard_remediation.fix-config-projection-recovery-budget-residuals
+    - invar_guard_remediation.fix-events-control-app-driver-budget-residuals
+    - invar_guard_remediation.fix-inspection-prompt-budget-residuals
+    agent: integration-verifier
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

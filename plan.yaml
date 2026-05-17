@@ -93469,6 +93469,102 @@ phases:
     - det_check_impl_cli_mcp
     - det_check_impl_orch_receipts
     agent: integration-verifier
+  - id: det_check_impl_uiux_audit
+    name: Audit checklist CLI output surfaces
+    status: pending
+    description: 'As an INDEPENDENT NATIVE MULTIMODAL AUDITOR (uiux-auditor), audit
+      human-visible CLI checklist output and machine-readable output shape after CLI/MCP
+      surface wiring.
+
+
+      Scope: CLI output formatting and human vs machine-readable checklist surfaces.
+      This is required because checklist handling changes a user-visible CLI/TUI-like
+      surface.
+
+
+      Audit checklist:
+
+      - [ ] Legacy human keyword toggle output remains understandable and points users
+      to `vectl show` or equivalent follow-up.
+
+      - [ ] Deterministic machine-readable output is parseable and free of ANSI escape
+      contamination.
+
+      - [ ] Error output for stale revision, invalid selector, and ambiguous legacy
+      keyword includes actionable retry guidance.
+
+      - [ ] Terminal capture or equivalent text artifact demonstrates required states.
+
+      - [ ] Human surface and machine-readable surface are clearly distinct; JSON/YAML
+      outputs are not polluted by Rich styling.'
+    verification: '- [ ] local-check protecting `det_check_impl_gate`: provide terminal
+      captures or equivalent rendered CLI artifacts for legacy success, deterministic
+      success, and structured error states.
+
+      - [ ] Verify machine-readable output parses cleanly with no ANSI escape sequences.
+
+      - [ ] Verify human output remains readable and actionable.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_cli.py — key passage or "NOT READ: <reason>"
+
+
+      ## Native CLI Output Audit
+
+      - Terminal capture: legacy success
+
+      ```text
+
+      <paste command/output>
+
+      ```
+
+      - Terminal capture: deterministic success
+
+      ```text
+
+      <paste command/output>
+
+      ```
+
+      - Terminal capture: stale revision or invalid selector error
+
+      ```text
+
+      <paste command/output>
+
+      ```
+
+      - Machine-readable parse proof:
+
+      ```bash
+
+      <paste command>
+
+      ```
+
+      ```text
+
+      <paste output>
+
+      ```
+
+
+      ## Checklist
+
+      - [ ] PASS: CLI output surfaces are clear and parse-safe.
+
+      - [ ] FAIL: Output formatting or parse-safety blocks gate.'
+    depends_on:
+    - det_check_impl_cli_mcp
+    agent: uiux-auditor
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

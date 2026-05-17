@@ -98278,7 +98278,7 @@ phases:
       \ store, and touched persistence paths.\n- [x] Run import smoke checks for original\
       \ public module paths.\n- [x] Run config fixture, runtime lifecycle, and run-store\
       \ JSONL smoke proofs with pasted output.\n- [x] Capture AFTER guard excerpts\
-      \ for owned residual rows and weighted contributors.\n- [ ] Confirm no budget\
+      \ for owned residual rows and weighted contributors.\n- [x] Confirm no budget\
       \ lowering, suppression, ignored files, deleted findings, compatibility break,\
       \ or runtime narrowing."
     verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include

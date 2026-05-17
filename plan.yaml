@@ -98127,7 +98127,7 @@ phases:
       \ facade imports and representative mutation APIs.\n- [x] Smoke-prove CLI/app\
       \ boot and top-level help through the real routing facade.\n- [x] Run targeted\
       \ tests covering core mutation/lifecycle/recovery and app routing surfaces.\n\
-      - [ ] Capture AFTER guard excerpts for owned residual rows and weighted contributors.\n\
+      - [x] Capture AFTER guard excerpts for owned residual rows and weighted contributors.\n\
       - [ ] Confirm no budget lowering, suppression, ignored files, deleted findings,\
       \ stub facades, or import-breaking public surface changes."
     verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include

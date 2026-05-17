@@ -98121,7 +98121,7 @@ phases:
       \ is NOT acceptable. Each deliverable MUST contain substantive logic that processes\
       \ its inputs and produces outputs that vary based on those inputs. Private stub\
       \ classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\
-      \n## Checklist\n- [ ] Capture BEFORE guard excerpts for owned residual rows\
+      \n## Checklist\n- [x] Capture BEFORE guard excerpts for owned residual rows\
       \ and weighted contributors.\n- [ ] Decompose `orch_app.py` and/or `core_plan_mutations.py`\
       \ only through compatibility-preserving internals.\n- [ ] Smoke-prove original\
       \ facade imports and representative mutation APIs.\n- [ ] Smoke-prove CLI/app\

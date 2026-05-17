@@ -98526,7 +98526,7 @@ phases:
       \ recovery, dispatch, or event semantics.\n- [x] Run targeted driver loop, runtime\
       \ lifecycle, recovery/resume, and orchestration unit tests with pasted exact\
       \ results.\n- [x] Run import smoke through the original `vectl.orchestration.driver`\
-      \ path.\n- [ ] Run representative runtime/barrier/resume smoke proof and paste\
+      \ path.\n- [x] Run representative runtime/barrier/resume smoke proof and paste\
       \ actual output.\n- [ ] Capture AFTER guard excerpts for driver residual rows\
       \ and weighted contributors.\n- [ ] Confirm no budget lowering, suppression,\
       \ ignored files, deleted findings, stub-only wrapper, runtime narrowing, or\

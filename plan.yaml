@@ -96821,7 +96821,7 @@ phases:
 
       - [x] Targeted config/projection/recovery tests pass and command output is pasted.
 
-      - [ ] Failure-mode checklist evidence covers main path and highest-risk failure
+      - [x] Failure-mode checklist evidence covers main path and highest-risk failure
       path.
 
       - [ ] No broad suppression, budget lowering, or shell/Core boundary drift is

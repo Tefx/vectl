@@ -94702,7 +94702,7 @@ phases:
       the expected-red stubs.'
   - id: invar_guard_remediation.fix-config-projection-recovery-budget-residuals
     name: Fix config/projection/recovery escape-budget residuals
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Complete the structural escape-budget remediation
       slice for config, projections, and recovery fallback according to the authority
       decision and Core contracts.
@@ -94840,6 +94840,110 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T16:53:45.169183+00:00'
+    done_at: '2026-05-17T17:21:57.503703+00:00'
+    evidence: '## Slice Evidence
+
+      Authority rows implemented for config defaults/serialization/validation, projection
+      reducer/payloads, and recovery fallback decision per `docs/invar_guard_remediation/escape_budget_authority_decision.md`.
+
+
+      ## Core contracts filled
+
+      Filled substantive pure logic in:
+
+      - src/vectl/core/orchestration/config_defaults.py
+
+      - src/vectl/core/orchestration/config_serialization.py
+
+      - src/vectl/core/orchestration/config_validation.py
+
+      - src/vectl/core/orchestration/projection_payloads.py
+
+      - src/vectl/core/orchestration/projection_reducer.py
+
+      - src/vectl/core/orchestration/recovery_fallback_decision.py
+
+
+      ## Behavioral proof register
+
+      - Config precedence/defaulting and explicit-clear/null semantics: targeted config
+      discovery/env/roundtrip tests passed.
+
+      - Projection replay ordering and event-derived output formats: projection replay
+      tests passed.
+
+      - Recovery fallback missing-file/path behavior: recovery fallback integration/unit
+      tests passed.
+
+      - Shell I/O outside Core: implemented Core modules use loaded mappings/sequences
+      only.
+
+      - Residual debt: shell adapter/file-size budget remains policy-mapped, not broadened.
+
+
+      ## Verification
+
+      Worker evidence:
+
+      - targeted config/projection/recovery tests — 97 passed.
+
+      - core doctests — 38 passed.
+
+      - `uvx invar-tools guard --changed` — passed; errors=0 warnings=2 infos=0.
+
+
+      Mainline verification after squash merge:
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_config_state_impl.py
+      tests/orchestration/unit/test_config_roundtrip_and_isolation.py tests/orchestration/unit/test_projections_impl.py
+      tests/orchestration/integration/test_recovery_fallback.py tests/orchestration/unit/test_recovery.py
+      -q` — 97 passed.
+
+      - `.venv/bin/python -m pytest --doctest-modules` for filled core modules — 38
+      passed.
+
+      - Per-file `.venv/bin/invar guard <file> --agent` for filled core modules —
+      passed with 0 errors; config_defaults.py has 2 no-arg semantic_tautology warnings
+      inherited from authority-required no-arg functions.
+
+
+      ## Checklist receipt
+
+      All description and verification checklist items were marked complete from worker
+      evidence.
+
+
+      ## Deviations
+
+      None.
+
+
+      ## Commit hash(es)
+
+      - Worker branch: b656d6b8
+
+      - Mainline squash: 4a9b388
+
+
+      ## Files changed
+
+      - src/vectl/core/orchestration/config_defaults.py
+
+      - src/vectl/core/orchestration/config_serialization.py
+
+      - src/vectl/core/orchestration/config_validation.py
+
+      - src/vectl/core/orchestration/projection_payloads.py
+
+      - src/vectl/core/orchestration/projection_reducer.py
+
+      - src/vectl/core/orchestration/recovery_fallback_decision.py
+
+
+      ## Residuals
+
+      Shell adapter/file-size budget debt remains authority-policy-mapped and not
+      hidden; no new broad allow masking introduced.'
   - id: invar_guard_remediation.fix-events-control-app-driver-budget-residuals
     name: Fix event/control/app/driver escape-budget residuals
     status: claimed

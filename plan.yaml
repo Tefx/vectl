@@ -97055,7 +97055,7 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] BEFORE `uvx invar-tools guard --all` excerpt for `orch_app.py`, `driver.py`,
+      - [x] BEFORE `uvx invar-tools guard --all` excerpt for `orch_app.py`, `driver.py`,
       and project-level budget counters is pasted from current mainline.
 
       - [ ] AFTER `uvx invar-tools guard --all` excerpt shows closure or explicit

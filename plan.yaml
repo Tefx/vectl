@@ -96797,7 +96797,7 @@ phases:
 
       ## Failure-Mode Checklist
 
-      - [ ] Relative vs absolute config/recovery paths retain documented behavior.
+      - [x] Relative vs absolute config/recovery paths retain documented behavior.
 
       - [ ] Missing-file fallback behavior is preserved or intentionally dispositioned
       with proof.

@@ -94766,7 +94766,7 @@ phases:
       - [x] At least one spec-exact/minimal config fixture is used if config parsing/loading
       is touched.
 
-      - [ ] At least one recovery fallback failure-path regression covers missing/legacy
+      - [x] At least one recovery fallback failure-path regression covers missing/legacy
       path behavior if fallback logic is touched.
 
       - [ ] Scoped guard evidence for the owned files improves or closes the listed

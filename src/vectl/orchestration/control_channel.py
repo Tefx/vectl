@@ -7,8 +7,14 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, cast
-from urllib.parse import quote
 
+from vectl.core.orchestration.control_channel_schema import (
+    deserialize_receipt as _core_deserialize_receipt,
+    deserialize_request as _core_deserialize_request,
+    normalize_component as _core_normalize_component,
+    serialize_receipt as _core_serialize_receipt,
+    serialize_request as _core_serialize_request,
+)
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
@@ -389,15 +395,9 @@ class FilesystemControlChannel:
         )
 
 
-# @invar:allow shell_result: Path-component normalizer must return the encoded string used in persisted layouts.
-# @shell_orchestration: Path normalization is part of run-local control-channel persistence safety.
+# @invar:allow shell_result: Compatibility wrapper preserves persisted path API while delegating pure encoding to contracted Core control_channel_schema.
 def _normalize_component(raw: str) -> str:
-    normalized = quote(
-        raw, safe="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-%"
-    )
-    if not normalized:
-        raise ValueError("path component cannot be empty")
-    return normalized
+    return _core_normalize_component(raw)
 
 
 # @invar:allow shell_result: Action IDs are stable digest strings in the persisted control-channel schema.
@@ -435,20 +435,20 @@ def _request_from_message(message: ControlChannelMessage) -> ActionRequest:
     )
 
 
-# @invar:allow shell_result: Request serializer returns JSON-ready dict required by on-disk schema.
-# @shell_orchestration: Request serialization is fixed by the on-disk control-channel schema.
+# @invar:allow shell_result: Compatibility wrapper preserves on-disk request dict shape while delegating pure serialization to contracted Core control_channel_schema.
+# @shell_orchestration: Request serialization remains a public on-disk schema adapter over Core data.
 def _serialize_request(request: ActionRequest) -> dict[str, object]:
-    return {
+    return dict(_core_serialize_request({
         "action_id": request.action_id,
         "run_id": request.run_id,
         "msg_type": request.msg_type,
         "sender": request.sender,
         "payload": list(request.payload),
         "timestamp": request.timestamp,
-    }
+    }))
 
 
-# @invar:allow shell_result: Request deserializer raises MalformedActionFileError per quarantine/rejection flow.
+# @invar:allow shell_result: Compatibility wrapper preserves ActionRequest return and malformed-file errors while delegating pure schema normalization to contracted Core control_channel_schema.
 # @shell_complexity: Validation branches preserve per-field malformed-action diagnostics.
 # @shell_orchestration: Request deserialization feeds pending-file rejection and acknowledgement routing.
 def _deserialize_request(payload: dict[str, object]) -> ActionRequest:
@@ -470,29 +470,39 @@ def _deserialize_request(payload: dict[str, object]) -> ActionRequest:
     if not isinstance(timestamp, (int, float)):
         raise MalformedActionFileError("timestamp must be numeric")
 
+    normalized = _core_deserialize_request(
+        {
+            "action_id": action_id,
+            "run_id": run_id,
+            "msg_type": msg_type,
+            "sender": sender,
+            "payload": raw_payload,
+            "timestamp": timestamp,
+        }
+    )
     return ActionRequest(
-        action_id=_normalize_component(action_id),
-        run_id=_normalize_component(run_id),
+        action_id=str(normalized["action_id"]),
+        run_id=str(normalized["run_id"]),
         msg_type=msg_type,
         sender=sender,
-        payload=tuple(raw_payload),
+        payload=tuple(cast(tuple[str, ...], normalized["payload"])),
         timestamp=float(timestamp),
     )
 
 
-# @invar:allow shell_result: Receipt serializer returns JSON-ready dict required by acknowledgement schema.
-# @shell_orchestration: Receipt serialization is fixed by the on-disk acknowledgement schema.
+# @invar:allow shell_result: Compatibility wrapper preserves acknowledgement dict shape while delegating pure serialization to contracted Core control_channel_schema.
+# @shell_orchestration: Receipt serialization remains a public acknowledgement-schema adapter over Core data.
 def _serialize_receipt(receipt: ActionReceipt) -> dict[str, object]:
-    return {
+    return dict(_core_serialize_receipt({
         "action_id": receipt.action_id,
         "run_id": receipt.run_id,
         "status": receipt.status,
         "timestamp": receipt.timestamp,
         "reason": receipt.reason,
-    }
+    }))
 
 
-# @invar:allow shell_result: Receipt deserializer raises MalformedActionFileError for existing acknowledgement contract.
+# @invar:allow shell_result: Compatibility wrapper preserves ActionReceipt return and malformed-file errors while delegating pure schema normalization to contracted Core control_channel_schema.
 # @shell_complexity: Validation branches preserve identifier, status, and timestamp diagnostics.
 # @shell_orchestration: Receipt deserialization belongs with acknowledgement lookup semantics.
 def _deserialize_receipt(payload: dict[str, object]) -> ActionReceipt:
@@ -510,9 +520,18 @@ def _deserialize_receipt(payload: dict[str, object]) -> ActionReceipt:
     if not isinstance(timestamp, (int, float)):
         raise MalformedActionFileError("receipt timestamp must be numeric")
 
+    normalized = _core_deserialize_receipt(
+        {
+            "action_id": action_id,
+            "run_id": run_id,
+            "status": status,
+            "timestamp": timestamp,
+            "reason": reason,
+        }
+    )
     return ActionReceipt(
-        action_id=_normalize_component(action_id),
-        run_id=_normalize_component(run_id),
+        action_id=str(normalized["action_id"]),
+        run_id=str(normalized["run_id"]),
         status=cast(Literal["applied", "rejected"], status),
         timestamp=float(timestamp),
         reason=reason,

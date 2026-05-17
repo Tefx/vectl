@@ -9,7 +9,14 @@ from datetime import datetime, timezone
 from fcntl import LOCK_EX, LOCK_UN, flock
 from pathlib import Path
 from typing import Any, Final, Literal, Protocol, cast
-from urllib.parse import quote, unquote
+
+from vectl.core.orchestration.event_schema import (
+    canonical_json as _core_canonical_json,
+    denormalize_step_key as _core_denormalize_step_key,
+    is_hex_sha256 as _core_is_hex_sha256,
+    normalize_step_key as _core_normalize_step_key,
+    validate_payload_shape,
+)
 
 
 @dataclass(frozen=True)
@@ -178,48 +185,40 @@ class EventCorruptionError(ValueError):
         super().__init__(f"event log corruption at line {line_no}: {reason}; raw={raw_line!r}")
 
 
-# @invar:allow shell_result: Public normalization API must return filesystem-safe step key string.
+# @invar:allow shell_result: Compatibility wrapper preserves public API while delegating pure encoding to contracted Core event_schema.
 def normalize_step_key(step_id: str) -> str:
 
-    return quote(step_id, safe="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-")
+    return _core_normalize_step_key(step_id)
 
 
-# @invar:allow shell_result: Public normalization API must return decoded step id string.
+# @invar:allow shell_result: Compatibility wrapper preserves public API while delegating pure decoding to contracted Core event_schema.
 def denormalize_step_key(step_key: str) -> str:
 
-    return unquote(step_key)
+    return _core_denormalize_step_key(step_key)
 
 
-# @invar:allow shell_result: Hash canonicalization helper must return a JSON string for existing event schema compatibility.
+# @invar:allow shell_result: Compatibility wrapper preserves public hash API while delegating mapping canonicalization to contracted Core event_schema.
 def _canonical_json(value: Any) -> str:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    if not isinstance(value, Mapping):
+        return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return _core_canonical_json(value)
 
 
-# @invar:allow shell_result: Hash validation predicate is used inside constructors that raise domain validation errors.
+# @invar:allow shell_result: Compatibility wrapper preserves public predicate API while delegating to contracted Core event_schema.
 def _is_hex_sha256(value: str) -> bool:
-    if len(value) != 64:
-        return False
-    return all(ch in "0123456789abcdef" for ch in value)
+    return _core_is_hex_sha256(value)
 
 
 # @shell_orchestration: Payload validation remains adjacent to the canonical event registry it enforces.
 def validate_payload(kind: str, payload: Mapping[str, Any]) -> None:
 
-    schema = CANONICAL_EVENT_REGISTRY.get(kind)
-    if schema is None:
+    if kind not in CANONICAL_EVENT_REGISTRY:
         raise EventValidationError(
             f"unknown event kind {kind!r}; expected one of {tuple(CANONICAL_EVENT_REGISTRY.keys())}"
         )
-
-    keys = set(payload.keys())
-    required = set(schema.required_payload_keys)
-    allowed = required | set(schema.optional_payload_keys)
-    missing = sorted(required - keys)
-    extras = sorted(keys - allowed)
-    if missing or extras:
-        raise EventValidationError(
-            f"payload schema drift for event {kind!r}: missing={missing}, unexpected={extras}"
-        )
+    diagnostics = validate_payload_shape(kind, payload)
+    if diagnostics:
+        raise EventValidationError(diagnostics[0])
 
 
 @dataclass(frozen=True)

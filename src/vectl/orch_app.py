@@ -36,6 +36,12 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 import yaml
 
+from vectl.core.orchestration.routing_presenters import (
+    artifact_ref_mediation_calls as _core_artifact_ref_mediation_calls,
+    build_resolution_case_data,
+    build_review_parse_failure_case_data,
+    normalize_review_resolution_case_data,
+)
 from vectl.io import load_plan_definition
 from vectl.models import StepStatus
 from vectl.orchestration.config import (
@@ -478,7 +484,7 @@ class CaseRuntimeToolMediationSource:
         )
 
 
-# @invar:allow shell_result: Private parser returns the domain tuple expected by resolver mediation; Result wrapping would churn synchronous call sites without adding an I/O boundary.
+# @invar:allow shell_result: Compatibility wrapper preserves ResolverToolCall tuple API while delegating pure directive parsing to contracted Core routing_presenters.
 # @shell_complexity: Branches preserve tolerant parsing of optional resolver_tool evidence directives.
 # @shell_orchestration: Resolver-tool evidence parsing stays adjacent to mediation because artifact refs are shell runtime artifacts.
 def _artifact_ref_mediation_calls(artifact_refs: tuple[str, ...]) -> tuple[ResolverToolCall, ...]:
@@ -496,25 +502,20 @@ def _artifact_ref_mediation_calls(artifact_refs: tuple[str, ...]) -> tuple[Resol
     """
 
     calls: list[ResolverToolCall] = []
-    prefix = "resolver_tool="
-    for ref in artifact_refs:
-        if not ref.startswith(prefix):
-            continue
-        directive = ref[len(prefix) :]
-        tool_path, separator, surface_text = directive.partition(":")
-        family, dot, tool_name = tool_path.partition(".")
-        if not family or not dot or not tool_name:
-            continue
-        surface: Literal["read", "write"] = "read"
-        if separator:
-            if surface_text not in {"read", "write"}:
-                continue
-            surface = cast(Literal["read", "write"], surface_text)
-        calls.append(ResolverToolCall(family=family, name=tool_name, surface=surface))
+    for call_data in _core_artifact_ref_mediation_calls(artifact_refs):
+        surface_text = str(call_data["surface"])
+        surface = cast(Literal["read", "write"], surface_text)
+        calls.append(
+            ResolverToolCall(
+                family=str(call_data["family"]),
+                name=str(call_data["name"]),
+                surface=surface,
+            )
+        )
     return tuple(calls)
 
 
-# @invar:allow shell_result: Public app helper returns ResolutionCase directly for existing resolver-routing callers.
+# @invar:allow shell_result: Compatibility wrapper preserves ResolutionCase return API while delegating pure presenter validation to contracted Core routing_presenters.
 # @shell_orchestration: ResolutionCase construction remains in the app routing module to preserve resolver intake compatibility.
 def build_resolution_case(
     *,
@@ -538,6 +539,14 @@ def build_resolution_case(
     if decision.kind != "resolve":
         raise ValueError("resolution cases may be built only from ControlDecision(kind='resolve')")
 
+    build_resolution_case_data(
+        kind="resolution_case",
+        source=case_source,
+        status=decision.kind,
+        step_id=case_id,
+        artifact_refs=artifact_refs,
+        diagnostics=(decision.reason,),
+    )
     return ResolutionCase(
         case_id=case_id,
         case_source=case_source,
@@ -551,7 +560,7 @@ def build_resolution_case(
     )
 
 
-# @invar:allow shell_result: Public normalization helper delegates to dispatch-policy domain conversion and preserves Optional[ResolutionCase] API.
+# @invar:allow shell_result: Compatibility wrapper preserves Optional[ResolutionCase] API while delegating pure presenter normalization to contracted Core routing_presenters.
 # @shell_orchestration: Review-to-resolution normalization is app routing glue between runner output and resolver intake.
 def normalize_review_resolution_case(
     result: StructuredReviewResult,
@@ -563,6 +572,14 @@ def normalize_review_resolution_case(
 ) -> ResolutionCase | None:
     """Normalize structured review/gate output into explicit resolution intake."""
 
+    normalize_review_resolution_case_data(
+        {
+            "kind": "structured_review_result",
+            "status": result.review_outcome,
+            "summary": result.summary,
+            "artifact_refs": result.evidence_refs,
+        }
+    )
     return normalize_review_result(
         result=result,
         case_id=case_id,
@@ -572,7 +589,7 @@ def normalize_review_resolution_case(
     )
 
 
-# @invar:allow shell_result: Public parse-failure helper must return ResolutionCase for resolver intake compatibility.
+# @invar:allow shell_result: Compatibility wrapper preserves ResolutionCase return API while delegating pure parse-failure presentation to contracted Core routing_presenters.
 # @shell_orchestration: Parse-failure case construction is resolver routing glue for shell runner output.
 def build_review_parse_failure_case(
     *,
@@ -585,6 +602,11 @@ def build_review_parse_failure_case(
 ) -> ResolutionCase:
     """Build explicit resolution intake for structured review parse failures."""
 
+    build_review_parse_failure_case_data(
+        step_id=case_id,
+        raw_response=raw_output,
+        error_message=f"role {role_id!r} returned unparseable structured review output",
+    )
     return normalize_parse_failure(
         raw_output=raw_output,
         role_id=role_id,

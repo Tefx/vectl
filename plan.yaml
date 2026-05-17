@@ -97064,7 +97064,7 @@ phases:
       - [x] Targeted app/driver regression tests or smoke checks pass and output is
       pasted.
 
-      - [ ] Runtime/control/lifecycle behavior is preserved with explicit evidence.
+      - [x] Runtime/control/lifecycle behavior is preserved with explicit evidence.
 
       - [ ] No broad suppression, budget lowering, or handler-only narrowing is used.
 

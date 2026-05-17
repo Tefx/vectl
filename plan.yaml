@@ -94029,3 +94029,79 @@ phases:
     architecture/gate review to close checklist handling feature.
   depends_on:
   - det_check_impl
+  steps:
+  - id: det_check_docs_update
+    name: Document deterministic checklist flows
+    status: pending
+    description: 'Sync project documentation with deterministic checklist handling
+      after implementation.
+
+
+      Documentation checklist:
+
+      - [ ] Document legacy human keyword toggle path separately from deterministic
+      item_id/revision path.
+
+      - [ ] Document supported first-version fields: `description` and `verification`
+      only.
+
+      - [ ] Document `evidence_template` as deferred/unsupported for first version.
+
+      - [ ] Document `checklist_inventory_revision` scope and stale-retry behavior.
+
+      - [ ] Document single and batch selector modes, marker-only invariants, and
+      structured errors.
+
+      - [ ] Document worker/orchestrator checklist receipt flow: orchestrator owns
+      mutation, workers return item_id/revision receipts, no natural-language fuzzy
+      mapping.
+
+      - [ ] README/CLI/MCP docs examples match actual behavior and parseable output.
+
+
+      Do not modify product code in this documentation step.'
+    verification: '- [ ] Confirm docs explain legacy vs deterministic checklist paths.
+
+      - [ ] Confirm docs explain worker/orchestrator checklist receipt flow and mutation
+      authority.
+
+      - [ ] Confirm examples match actual CLI/MCP field names and supported fields.
+
+      - [ ] Confirm no product implementation files were modified.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - README.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/dispatch_policy.py — key passage or "NOT READ: <reason>"
+
+
+      ## Documentation Sync Evidence
+
+      - Docs changed:
+
+      - Legacy path documented: yes/no
+
+      - Deterministic path documented: yes/no
+
+      - Receipt flow documented: yes/no
+
+      - Examples verified against implementation: yes/no
+
+
+      ## Checklist
+
+      - [ ] Documentation matches implemented behavior.
+
+      - [ ] No product code changed.'
+    agent: doc-reviewer

@@ -95390,7 +95390,7 @@ phases:
       \ and behavior preservation.\n\n## Failure-Mode Checklist\n- [x] Each listed\
       \ prompt_materialization function is closed by code-level Core/Shell boundary\
       \ repair or intentionally migrated Result-returning API with compatibility proof.\n\
-      - [ ] `why_previous_fix_failed`, `why_comment_deletion_is_not_closure`, and\
+      - [x] `why_previous_fix_failed`, `why_comment_deletion_is_not_closure`, and\
       \ `reversal_risk` are present in evidence.\n- [ ] Exact full-guard prompt_materialization\
       \ excerpts before and after are pasted.\n- [ ] Targeted prompt/inspection tests\
       \ and prompt/argv/output-contract snapshots are provided.\n- [ ] Removed escape-hatch\

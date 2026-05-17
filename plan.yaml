@@ -91380,7 +91380,7 @@ phases:
       - Verdict: SUCCESS.'
   - id: fix-run-store-domain
     name: Fix run store invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to orchestration
       run/drive persistence.
 
@@ -91455,6 +91455,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T15:31:28.199441+00:00'
   - id: fix-orch-config-projections-domain
     name: Fix orchestration config/projections invar domain
     status: skipped

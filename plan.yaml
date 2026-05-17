@@ -96539,7 +96539,7 @@ phases:
       - [x] BEFORE `uvx invar-tools guard --all` excerpt for `contracts.py` file-size
       is pasted from current mainline.
 
-      - [ ] AFTER `uvx invar-tools guard --all` excerpt shows `contracts.py` file-size
+      - [x] AFTER `uvx invar-tools guard --all` excerpt shows `contracts.py` file-size
       closure or explicit non-blocking disposition with proof.
 
       - [ ] Targeted import/consumer tests pass and command output is pasted.

@@ -97068,7 +97068,7 @@ phases:
 
       - [x] No broad suppression, budget lowering, or handler-only narrowing is used.
 
-      - [ ] Residual disposition register is updated for orch_app/driver/project-level
+      - [x] Residual disposition register is updated for orch_app/driver/project-level
       findings.
 
 

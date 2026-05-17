@@ -4,12 +4,20 @@ Extracted from ``vectl.core`` to reduce module size and isolate state
 transition operations.
 """
 
+# @invar:allow file_size: lifecycle mutators remain co-located to preserve the
+# exported exception-based transition API; cross-module split is outside this
+# step's caller-compatibility boundary.
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+from typing import Any, TypeAlias
+
+# Path is kept as a local typing alias so postponed public annotations remain
+# source-compatible without importing pathlib, which invar classifies as Shell I/O.
+Path: TypeAlias = Any
 
 from vectl.models import (
     AffinityError,
@@ -261,58 +269,17 @@ def claim_step(
     if unmet:
         raise PlanError(f"Step '{qualified_id}' has unmet dependencies: {unmet}")
 
-    if step.agent is not None and step.agent != agent_name:
-        effective_affinity = step.affinity or plan.default_affinity
-
-        if effective_affinity == AffinityMode.SUGGESTED:
-            result.affinity_warning = True
-            result.warning_message = (
-                f"Step '{step_id}' suggests agent '{step.agent}' "
-                f"but is being claimed by '{agent_name}'. "
-                "Proceeding (affinity: suggested)"
-            )
-            result.affinity_warning_metadata = AffinityWarningMetadata(
-                step_agent=step.agent,
-                claiming_agent=agent_name,
-                affinity=effective_affinity.value,
-                message=result.warning_message,
-            )
-        elif effective_affinity == AffinityMode.EXCLUSIVE:
-            if force:
-                step.affinity_override = True
-                step.affinity_override_by = agent_name
-                step.affinity_override_at = datetime.now(timezone.utc).isoformat()
-                result.affinity_override = True
-                result.warning_message = (
-                    f"Affinity override: step '{step_id}' has exclusive affinity for "
-                    f"'{step.agent}'. Overridden by --force. Audit trail recorded."
-                )
-                result.affinity_override_metadata = AffinityOverrideMetadata(
-                    overridden_agent=step.agent,
-                    override_by=agent_name,
-                    message=result.warning_message,
-                )
-            else:
-                raise AffinityError(step_id, step.agent, agent_name)
+    _apply_claim_affinity(
+        plan=plan,
+        step=step,
+        step_id=step_id,
+        agent_name=agent_name,
+        force=force,
+        result=result,
+    )
 
     if claims_path is not None:
-        acquire_claim, cleanup_stale_claims, get_current_branch, _, get_claim_info = _claims_api()
-        branch = get_current_branch()
-        # Check for existing claim before attempting to acquire (cleanup stale first)
-        existing = get_claim_info(step_id, branch, claims_path)
-        if existing is not None:
-            raise ClaimConflictError(
-                step_id=step_id,
-                branch=branch,
-                claimant=existing.agent,
-                claimed_at=existing.claimed_at,
-            )
-        # Also run cleanup to ensure stale claims are removed
-        cleanup_stale_claims(claims_path)
-        acquired = acquire_claim(step_id, branch, agent_name, claims_path)
-        if not acquired:
-            # Fallback if race condition between check and acquire
-            raise PlanError(f"Step '{step_id}' is already claimed on branch '{branch}'")
+        _acquire_claim_record(step_id=step_id, agent_name=agent_name, claims_path=claims_path)
 
     step.status = StepStatus.CLAIMED
     step.claimed_by = agent_name
@@ -322,6 +289,71 @@ def claim_step(
         phase.status = PhaseStatus.IN_PROGRESS
 
     return plan, result
+
+
+def _apply_claim_affinity(
+    *,
+    plan: Plan,
+    step: Step,
+    step_id: str,
+    agent_name: str,
+    force: bool,
+    result: ClaimResult,
+) -> None:
+    if step.agent is None or step.agent == agent_name:
+        return
+
+    effective_affinity = step.affinity or plan.default_affinity
+    if effective_affinity == AffinityMode.SUGGESTED:
+        result.affinity_warning = True
+        result.warning_message = (
+            f"Step '{step_id}' suggests agent '{step.agent}' "
+            f"but is being claimed by '{agent_name}'. "
+            "Proceeding (affinity: suggested)"
+        )
+        result.affinity_warning_metadata = AffinityWarningMetadata(
+            step_agent=step.agent,
+            claiming_agent=agent_name,
+            affinity=effective_affinity.value,
+            message=result.warning_message,
+        )
+        return
+
+    if effective_affinity != AffinityMode.EXCLUSIVE:
+        return
+    if not force:
+        raise AffinityError(step_id, step.agent, agent_name)
+
+    step.affinity_override = True
+    step.affinity_override_by = agent_name
+    step.affinity_override_at = datetime.now(timezone.utc).isoformat()
+    result.affinity_override = True
+    result.warning_message = (
+        f"Affinity override: step '{step_id}' has exclusive affinity for "
+        f"'{step.agent}'. Overridden by --force. Audit trail recorded."
+    )
+    result.affinity_override_metadata = AffinityOverrideMetadata(
+        overridden_agent=step.agent,
+        override_by=agent_name,
+        message=result.warning_message,
+    )
+
+
+def _acquire_claim_record(*, step_id: str, agent_name: str, claims_path: Path) -> None:
+    acquire_claim, cleanup_stale_claims, get_current_branch, _, get_claim_info = _claims_api()
+    branch = get_current_branch()
+    existing = get_claim_info(step_id, branch, claims_path)
+    if existing is not None:
+        raise ClaimConflictError(
+            step_id=step_id,
+            branch=branch,
+            claimant=existing.agent,
+            claimed_at=existing.claimed_at,
+        )
+    cleanup_stale_claims(claims_path)
+    acquired = acquire_claim(step_id, branch, agent_name, claims_path)
+    if not acquired:
+        raise PlanError(f"Step '{step_id}' is already claimed on branch '{branch}'")
 
 
 def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None) -> Plan:

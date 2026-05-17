@@ -92253,7 +92253,7 @@ phases:
       - Verdict: SUCCESS.'
   - id: fix-mcp-tooling-domain
     name: Fix MCP tooling invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to MCP tool
       surfaces.
 
@@ -92329,6 +92329,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-17T14:19:09.424569+00:00'
   - id: fix-io-storage-domain
     name: Fix IO/storage support invar domain
     status: skipped

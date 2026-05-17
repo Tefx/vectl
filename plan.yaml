@@ -93899,6 +93899,129 @@ phases:
     - det_check_impl_cli_mcp
     - det_check_impl_orch_receipts
     agent: spec-verifier
+  - id: det_check_impl_gate
+    name: Gate deterministic checklist implementation
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the deterministic
+      checklist implementation phase meets the quality bar for finalization.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Phase touches CLI/MCP output and orchestration surfaces.
+
+      - Phase changes core mutation semantics, revision checking, and batch atomicity.
+
+      - Phase must preserve legacy human keyword compatibility while adding deterministic
+      paths.
+
+
+      Cross-cutting focus:
+
+      - [ ] Core checklist service is canonical; CLI/MCP/orchestration do not re-derive
+      inventory/revision facts.
+
+      - [ ] Marker-only mutation invariant holds for single and batch paths.
+
+      - [ ] Batch mutation is all-or-nothing with per-selector diagnostics.
+
+      - [ ] CLI/MCP surfaces are runnable and legacy compatible.
+
+      - [ ] Orchestrator receipts use item_id/revision and avoid natural-language
+      fuzzy mapping.
+
+      - [ ] UI/output audit and liveness proof are present.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if behavioral runtime evidence is missing.'
+    verification: '- [ ] phase-check protecting `det_check_finalization`: all implementation
+      and verification steps completed with adequate evidence.
+
+      - [ ] Runnable CLI/MCP evidence identifies entrypoint/invocation, command/tool
+      call, and real path output.
+
+      - [ ] Gate decision basis covers unresolved NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
+      items and blocks unless they are PROVEN or have explicit non-intersection evidence.
+
+      - [ ] No implementation agent in this phase performed this gate review.
+
+      - [ ] Legacy keyword toggle compatibility and deterministic item_id/revision
+      paths are both green.'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer (independent of phase implementation)
+
+      **Phase**: det_check_impl
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/dispatch_policy.py — key passage or "NOT READ: <reason>"
+
+
+      ### Execution Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | det_check_impl_core_inventory | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+      | det_check_impl_single_mutation | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+      | det_check_impl_batch_mutation | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+      | det_check_impl_cli_mcp | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+      | det_check_impl_orch_receipts | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+      | verification/audits | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes>
+      |
+
+
+      ### Gate Decision Basis
+
+      | requirement_ref | evidence_ref | unresolved_status | blocks? | rationale |
+      closure_path |
+
+      | --- | --- | --- | --- | --- | --- |
+
+
+      ### Gate Decision
+
+      - [ ] OPEN: Phase passes gate, proceed to finalization.
+
+      - [ ] BLOCKED: Issues must be resolved before proceeding.'
+    depends_on:
+    - det_check_impl_core_inventory
+    - det_check_impl_single_mutation
+    - det_check_impl_batch_mutation
+    - det_check_impl_cli_mcp
+    - det_check_impl_orch_receipts
+    - det_check_impl_integration_proof
+    - det_check_impl_uiux_audit
+    - det_check_impl_wiring_audit
+    - det_check_impl_liveness_probe
+    - det_check_impl_spec_conformance
+    agent: gate-reviewer
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

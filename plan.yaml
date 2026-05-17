@@ -92269,3 +92269,10 @@ phases:
     audit, and spec conformance.
   depends_on:
   - det_check_tests
+- id: det_check_finalization
+  name: 'Deterministic Checklist Handling: Documentation and Final Review'
+  status: locked
+  gate: Finalization gate requires docs, repo-appropriate tests/invar guard, and independent
+    architecture/gate review to close checklist handling feature.
+  depends_on:
+  - det_check_impl

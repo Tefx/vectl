@@ -94755,7 +94755,7 @@ phases:
 
       - [x] Any partial structural extraction keeps Shell I/O outside `src/vectl/core/**`.
 
-      - [ ] Remaining residual debt, if any, is mapped to policy disposition with
+      - [x] Remaining residual debt, if any, is mapped to policy disposition with
       gate non-intersection proof rather than being hidden.
 
 

@@ -98273,8 +98273,8 @@ phases:
       \n## Checklist\n- [x] Capture BEFORE guard excerpts for owned residual rows\
       \ and weighted contributors.\n- [x] Decompose config/runtime/run_store surfaces\
       \ behind stable public modules.\n- [x] Preserve config precedence/defaults,\
-      \ runtime lifecycle, reconcile behavior, and JSONL persistence formats.\n- [\
-      \ ] Run targeted tests for config projection/recovery, runtime lifecycle, run\
+      \ runtime lifecycle, reconcile behavior, and JSONL persistence formats.\n- [x]\
+      \ Run targeted tests for config projection/recovery, runtime lifecycle, run\
       \ store, and touched persistence paths.\n- [ ] Run import smoke checks for original\
       \ public module paths.\n- [ ] Run config fixture, runtime lifecycle, and run-store\
       \ JSONL smoke proofs with pasted output.\n- [ ] Capture AFTER guard excerpts\

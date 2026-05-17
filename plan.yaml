@@ -92542,6 +92542,97 @@ phases:
       - Downstream implementation owner: det_check_impl_core_inventory / det_check_impl_single_mutation\
       \ / det_check_impl_batch_mutation"
     agent: python-executor
+  - id: det_check_tests_surfaces_red
+    name: Define CLI MCP and orchestration expected-red tests
+    status: pending
+    description: 'step_type: test_define_red
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Define expected-red tests for checklist CLI, MCP, and orchestrator receipt/injection
+      surfaces. This phase depends on `det_check_contracts`, so the contract from
+      `det_check_contract_lock` is upstream. This step MUST modify only tests, fixtures,
+      and test helpers; product implementation files are out of scope.
+
+
+      Test targets to add/update:
+
+      - `tests/test_cli.py` for human legacy path and deterministic machine-readable
+      CLI surface.
+
+      - `tests/test_mcp.py` for additive MCP schema compatibility and deterministic
+      check operations.
+
+      - orchestration tests under `tests/orchestration/` or `tests/repro/` for prompt
+      injection/worker receipt contract if orchestration surfaces are touched.
+
+
+      Expected-red coverage checklist:
+
+      - [ ] MCP schema remains backward compatible for legacy `keyword`/`add` calls
+      and adds deterministic request/response fields without removing legacy fields.
+
+      - [ ] CLI covers legacy human keyword toggle output and deterministic machine-readable
+      inventory/mutation output where applicable.
+
+      - [ ] CLI/MCP deterministic calls require `checklist_inventory_revision` and
+      return structured stale-revision retry guidance.
+
+      - [ ] Invalid selector-mode combinations fail with structured errors on both
+      CLI and MCP surfaces.
+
+      - [ ] Batch mutation returns atomic all-or-nothing results with per-selector
+      diagnostics on machine-readable surfaces.
+
+      - [ ] Orchestrator prompt/receipt tests prove receipts use item_id/revision
+      and no natural-language fuzzy mapping when orchestration surfaces are touched.
+
+      - [ ] Legacy human keyword toggle compatibility remains covered for CLI and
+      MCP.
+
+
+      Scope guardrails:
+
+      - [ ] Do not change `src/` implementation files in this test-definition step.
+
+      - [ ] Red failures must map to declared surface gaps, not unrelated import or
+      syntax errors.
+
+      - [ ] Do not mark expected-red tests as final green; lifecycle is closed by
+      downstream implementation and retest steps.'
+    verification: '- [ ] Run `pytest tests/test_cli.py tests/test_mcp.py -k ''check
+      or checklist or deterministic or batch or revision'' -q` and record that new
+      deterministic tests fail red for the declared missing surface implementation.
+
+      - [ ] If orchestration receipt tests are added, run their focused pytest selection
+      and record expected-red output.
+
+      - [ ] Confirm no product implementation files outside tests/fixtures/helpers
+      were modified.
+
+      - [ ] Confirm every red failure maps to one of the CLI/MCP/orchestration checklist
+      gaps in this step.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- docs/RFC-deterministic-checklists.md — key passage or \"NOT READ:\
+      \ <reason>\"\n- src/vectl/cli_plan.py — key passage or \"NOT READ: <reason>\"\
+      \n- src/vectl/mcp_core_tools.py — key passage or \"NOT READ: <reason>\"\n- src/vectl/orchestration/dispatch_policy.py\
+      \ — key passage or \"NOT READ: <reason>\"\n- src/vectl/orchestration/prompt_materialization.py\
+      \ — key passage or \"NOT READ: <reason>\"\n- tests/test_cli.py — key passage\
+      \ or \"NOT READ: <reason>\"\n- tests/test_mcp.py — key passage or \"NOT READ:\
+      \ <reason>\"\n\n## Expected-Red Surface Test Evidence\n- Modified files (must\
+      \ be tests/fixtures/helpers only):\n- Commands executed:\n```bash\npytest tests/test_cli.py\
+      \ tests/test_mcp.py -k 'check or checklist or deterministic or batch or revision'\
+      \ -q\npytest tests/orchestration tests/repro -k 'checklist or receipt or prompt'\
+      \ -q\n```\n- Actual output:\n```\n<paste output>\n```\n- expected_result: red\n\
+      - Exposed gaps:\n  - [ ] MCP additive schema compatibility\n  - [ ] CLI human\
+      \ vs machine-readable surfaces\n  - [ ] structured stale revision / invalid\
+      \ mode errors\n  - [ ] atomic batch diagnostics on surfaces\n  - [ ] orchestrator\
+      \ item_id/revision receipt flow where touched\n- Downstream implementation owner:\
+      \ det_check_impl_cli_mcp / det_check_impl_orch_receipts"
+    agent: python-executor
 - id: det_check_impl
   name: 'Deterministic Checklist Handling: Implementation and Surface Wiring'
   status: locked

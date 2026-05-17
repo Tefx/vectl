@@ -92819,7 +92819,7 @@ phases:
     claimed_at: '2026-05-17T14:17:54.982284+00:00'
   - id: fix-io-storage-claims-residual
     name: Fix claims residual invar guard findings
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION residual closure for the salvaged IO/storage domain.
 
 
@@ -92980,6 +92980,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-17T14:18:09.567590+00:00'
   - id: fix-io-storage-io-residual
     name: Fix IO residual invar guard findings
     status: pending

@@ -97275,7 +97275,7 @@ phases:
 
       - [x] All focused residual slices are complete before this retest runs.
 
-      - [ ] Authoritative current-mainline `uvx invar-tools guard --all` output is
+      - [x] Authoritative current-mainline `uvx invar-tools guard --all` output is
       pasted verbatim.
 
       - [ ] The register maps every remaining finding to PROVEN_CLOSED, NON_INTERSECTING

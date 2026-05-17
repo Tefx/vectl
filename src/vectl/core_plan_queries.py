@@ -1,3 +1,4 @@
+# @invar:allow file_size: Plan query compatibility module keeps validation, review, render, DAG, and diff APIs co-located for existing CLI/MCP imports.
 """Plan query, review, render, diff, and DAG helpers."""
 
 from __future__ import annotations
@@ -6,7 +7,6 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from pathlib import Path
 from typing import NamedTuple
 
 from vectl import claims as _claims
@@ -27,6 +27,8 @@ from vectl.semantics import is_step_locked as _is_step_locked_shared
 
 from vectl.core_duplicate_step_id import analyze_duplicate_step_ids
 
+# @invar:allow function_size: Validation keeps phase DAG, step DAG, duplicate IDs, refs, and evidence guards in one ordered audit report.
+# @shell_complexity: Branches preserve ordered validation diagnostics for phase IDs, DAGs, statuses, duplicate IDs, refs, and evidence guard.
 def validate_plan(
     plan: Plan,
     *,
@@ -184,6 +186,7 @@ _EVIDENCE_CLOSURE_PATTERNS = (
 )
 
 
+# @shell_complexity: Branches preserve candidate filtering, failure detection, expected-red disposition, later closure, and issue construction.
 def _completed_evidence_guard_issues(plan: Plan) -> list[PlanValidationIssue]:
     """Flag completed verification-like steps with unclosed failure evidence."""
 
@@ -286,6 +289,7 @@ def _has_intentional_red_or_nonblocking_disposition(step: Step) -> bool:
     return is_nonblocking and has_owner and has_lifecycle and has_gate_proof
 
 
+# @shell_complexity: DFS branches preserve neighbor filtering, back-edge reconstruction, recursive traversal, and no-cycle sentinel semantics.
 def _detect_cycle(graph: dict[str, list[str]]) -> list[str] | None:
     """Detect a cycle in a directed graph. Returns cycle path or None."""
     WHITE, GRAY, BLACK = 0, 1, 2
@@ -324,6 +328,7 @@ def _detect_cycle(graph: dict[str, list[str]]) -> list[str] | None:
     return None
 
 
+# @shell_complexity: Branches preserve active-phase filtering, status eligibility, dependency satisfaction, and agent/rejected ordering.
 def get_next_steps(plan: Plan, agent: str | None = None) -> list[Step]:
     """Get all claimable steps across active phases.
 
@@ -374,6 +379,7 @@ def get_next_steps(plan: Plan, agent: str | None = None) -> list[Step]:
     return result
 
 
+# @shell_complexity: Branches preserve locked-but-eligible inclusion without mutating phase status.
 def _get_active_phase_ids(plan: Plan) -> set[str]:
     """Get IDs of phases that are active or eligible (deps satisfied).
 
@@ -416,6 +422,7 @@ def auto_unlock_phases(plan: Plan) -> list[str]:
     return unlocked
 
 
+# @shell_complexity: Branches encode documented non-regression and locked/pending recalculation rules in one ordered pass.
 def recalc_lock_status(plan: Plan) -> list[str]:
     """Recalculate LOCKED/PENDING status for all phases based on dependency state.
 
@@ -490,6 +497,7 @@ def format_lock_changes(changed: list[str], plan: Plan) -> str:
     return f"[vectl] Lock status updated: {parts}"
 
 
+# @shell_complexity: Branches preserve regex/substr matching, phase/status filtering, phase-field matches, step-field matches, and snippets.
 def search_plan(
     plan: Plan,
     pattern: str,
@@ -572,6 +580,7 @@ def search_plan(
     return results
 
 
+# @shell_complexity: Branches preserve regex and substring match-line extraction, truncation, and first-line fallback.
 def _extract_snippet(text: str, pattern: str, use_regex: bool, max_len: int = 80) -> str:
     """Extract the line containing the match, truncated to max_len."""
     if use_regex:
@@ -606,6 +615,7 @@ def _extract_snippet(text: str, pattern: str, use_regex: bool, max_len: int = 80
     return first_line
 
 
+# @shell_complexity: Branches preserve validation invocation, progress totals, active phase filtering, and ref reverse-index construction.
 def review_plan(
     plan: Plan,
     *,
@@ -724,6 +734,7 @@ _STEP_ICON = {
 }
 
 
+# @shell_complexity: Branches preserve selected-phase rendering, summary table construction, per-phase detail, and progress math.
 def render_plan(plan: Plan, phase_id: str | None = None, full: bool = False) -> str:
     """Render plan as Markdown stakeholder report.
 
@@ -770,6 +781,7 @@ def render_plan(plan: Plan, phase_id: str | None = None, full: bool = False) -> 
     return "\n".join(lines)
 
 
+# @shell_complexity: Branches preserve phase context/gate display, lock icon selection, full descriptions, summaries, and progress math.
 def _render_phase(plan: Plan, ph: Phase, full: bool = False) -> str:
     """Render a single phase as Markdown section.
 
@@ -884,6 +896,7 @@ def _mermaid_phase_dag(plan: Plan) -> str:
     return "\n".join(lines)
 
 
+# @shell_complexity: Branches preserve missing-phase validation, lock icon selection, node emission, and dependency edge emission.
 def _mermaid_step_dag(plan: Plan, phase_id: str) -> str:
     """Generate step-level Mermaid DAG for a single phase."""
     ph = plan.find_phase(phase_id)
@@ -918,6 +931,7 @@ def _mermaid_node_id(step_id: str) -> str:
     return step_id.replace(".", "_").replace("-", "_")
 
 
+# @shell_complexity: Branches preserve added/removed/status/modified phase and step diff classifications in one deterministic pass.
 def diff_plans(old: Plan, new: Plan) -> DiffResult:
     """Compare two plan states and produce a structured diff.
 
@@ -936,28 +950,7 @@ def diff_plans(old: Plan, new: Plan) -> DiffResult:
     old_phases = {p.id: p for p in old.phases}
     new_phases = {p.id: p for p in new.phases}
 
-    # Phase-level changes
-    for pid in new_phases:
-        if pid not in old_phases:
-            np = new_phases[pid]
-            phase_changes.append(PhaseChange(phase_id=pid, phase_name=np.name, kind="added"))
-        else:
-            op, np = old_phases[pid], new_phases[pid]
-            if op.status != np.status:
-                phase_changes.append(
-                    PhaseChange(
-                        phase_id=pid,
-                        phase_name=np.name,
-                        kind="status_changed",
-                        old_status=op.status,
-                        new_status=np.status,
-                    )
-                )
-
-    for pid in old_phases:
-        if pid not in new_phases:
-            op = old_phases[pid]
-            phase_changes.append(PhaseChange(phase_id=pid, phase_name=op.name, kind="removed"))
+    phase_changes.extend(_diff_phase_changes(old_phases, new_phases))
 
     # Step-level changes
     old_steps: dict[str, tuple[str, Step]] = {}
@@ -970,51 +963,61 @@ def diff_plans(old: Plan, new: Plan) -> DiffResult:
         for s in p.steps:
             new_steps[s.id] = (p.id, s)
 
+    step_changes.extend(_diff_step_changes(old_steps, new_steps))
+
+    return DiffResult(phase_changes=phase_changes, step_changes=step_changes)
+
+
+def _diff_phase_changes(
+    old_phases: dict[str, Phase], new_phases: dict[str, Phase]
+) -> list[PhaseChange]:
+    """Return added, removed, and status-changed phase records."""
+    changes: list[PhaseChange] = []
+    for pid in new_phases:
+        if pid not in old_phases:
+            np = new_phases[pid]
+            changes.append(PhaseChange(phase_id=pid, phase_name=np.name, kind="added"))
+            continue
+        op, np = old_phases[pid], new_phases[pid]
+        if op.status != np.status:
+            changes.append(
+                PhaseChange(
+                    phase_id=pid,
+                    phase_name=np.name,
+                    kind="status_changed",
+                    old_status=op.status,
+                    new_status=np.status,
+                )
+            )
+
+    for pid in old_phases:
+        if pid not in new_phases:
+            op = old_phases[pid]
+            changes.append(PhaseChange(phase_id=pid, phase_name=op.name, kind="removed"))
+    return changes
+
+
+def _diff_step_changes(
+    old_steps: dict[str, tuple[str, Step]], new_steps: dict[str, tuple[str, Step]]
+) -> list[StepChange]:
+    """Return added, removed, status-changed, and modified step records."""
+    changes: list[StepChange] = []
     for sid in new_steps:
         npid, ns = new_steps[sid]
         if sid not in old_steps:
-            step_changes.append(
-                StepChange(
-                    step_id=sid,
-                    step_name=ns.name,
-                    phase_id=npid,
-                    kind="added",
-                    new_status=ns.status,
-                )
-            )
-        else:
-            opid, os_ = old_steps[sid]
-            if os_.status != ns.status:
-                step_changes.append(
-                    StepChange(
-                        step_id=sid,
-                        step_name=ns.name,
-                        phase_id=npid,
-                        kind="status_changed",
-                        old_status=os_.status,
-                        new_status=ns.status,
-                    )
-                )
-            elif os_.name != ns.name or os_.description != ns.description:
-                detail_parts: list[str] = []
-                if os_.name != ns.name:
-                    detail_parts.append(f"name: {os_.name!r} → {ns.name!r}")
-                if os_.description != ns.description:
-                    detail_parts.append("description changed")
-                step_changes.append(
-                    StepChange(
-                        step_id=sid,
-                        step_name=ns.name,
-                        phase_id=npid,
-                        kind="modified",
-                        detail="; ".join(detail_parts),
-                    )
-                )
+            changes.append(_added_step_change(sid, npid, ns))
+            continue
+
+        _, os_ = old_steps[sid]
+        if os_.status != ns.status:
+            changes.append(_status_step_change(sid, npid, os_, ns))
+        elif os_.name != ns.name or os_.description != ns.description:
+            changes.append(_modified_step_change(sid, npid, os_, ns))
 
     for sid in old_steps:
         if sid not in new_steps:
             opid, os_ = old_steps[sid]
-            step_changes.append(
+            changes.append(
                 StepChange(
                     step_id=sid,
                     step_name=os_.name,
@@ -1023,5 +1026,43 @@ def diff_plans(old: Plan, new: Plan) -> DiffResult:
                     old_status=os_.status,
                 )
             )
+    return changes
 
-    return DiffResult(phase_changes=phase_changes, step_changes=step_changes)
+
+def _added_step_change(step_id: str, phase_id: str, step: Step) -> StepChange:
+    """Build a StepChange for an added step."""
+    return StepChange(
+        step_id=step_id,
+        step_name=step.name,
+        phase_id=phase_id,
+        kind="added",
+        new_status=step.status,
+    )
+
+
+def _status_step_change(step_id: str, phase_id: str, old: Step, new: Step) -> StepChange:
+    """Build a StepChange for a step status transition."""
+    return StepChange(
+        step_id=step_id,
+        step_name=new.name,
+        phase_id=phase_id,
+        kind="status_changed",
+        old_status=old.status,
+        new_status=new.status,
+    )
+
+
+def _modified_step_change(step_id: str, phase_id: str, old: Step, new: Step) -> StepChange:
+    """Build a StepChange for name/description edits."""
+    detail_parts: list[str] = []
+    if old.name != new.name:
+        detail_parts.append(f"name: {old.name!r} → {new.name!r}")
+    if old.description != new.description:
+        detail_parts.append("description changed")
+    return StepChange(
+        step_id=step_id,
+        step_name=new.name,
+        phase_id=phase_id,
+        kind="modified",
+        detail="; ".join(detail_parts),
+    )

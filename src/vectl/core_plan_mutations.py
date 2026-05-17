@@ -1,3 +1,4 @@
+# @invar:allow file_size: Plan mutation compatibility module keeps lifecycle, add/edit/remove, clipboard, agents-md, and recovery APIs co-located for existing CLI/MCP imports.
 """Plan mutation, lifecycle, clipboard, agents-md, and recovery behavior."""
 
 from __future__ import annotations
@@ -6,7 +7,6 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from pathlib import Path
 from typing import NamedTuple
 
 from vectl import claims as _claims
@@ -120,6 +120,7 @@ def _slugify(name: str) -> str:
     return re.sub(r"-+", "-", slug)
 
 
+# @shell_complexity: Branches preserve collision probing semantics for globally unique phase-prefixed step ids.
 def _unique_step_id(plan: Plan, phase: Phase, base_slug: str) -> str:
     """Generate a unique step ID across the full plan.
 
@@ -152,6 +153,7 @@ def _unique_phase_id(plan: Plan, base_slug: str) -> str:
 _IMPORTABLE_STATUSES = frozenset({StepStatus.PENDING, StepStatus.DONE, StepStatus.SKIPPED})
 
 
+# @shell_complexity: Branches preserve add-step validation for phase lookup, import statuses, dependency refs, duplicate IDs, and DONE-phase reopen semantics.
 def add_step(
     plan: Plan,
     phase_id: str,
@@ -260,6 +262,7 @@ def add_step(
     return plan, step_id
 
 
+# @shell_complexity: Branches preserve phase-id generation, dependency validation, duplicate rejection, and initial lock-state semantics.
 def add_phase(
     plan: Plan,
     name: str,
@@ -324,6 +327,8 @@ def add_phase(
     return plan, phase_id
 
 
+# @invar:allow function_size: Bulk add remains one two-pass atomic mutation so generated IDs, intra-batch dependency resolution, and rollback stay auditable together.
+# @shell_complexity: Branches preserve typed import parsing, status/evidence guards, duplicate protection, intra-batch refs, and cycle rollback semantics.
 def add_steps_bulk(
     plan: Plan,
     phase_id: str,
@@ -605,6 +610,7 @@ class _Unset(Enum):
 _SENTINEL = _Unset.TOKEN
 
 
+# @shell_complexity: Branches preserve sentinel-based partial updates, ID rewrite, dependency mutation, cycle rollback, refs, and agent clearing semantics.
 def edit_step(
     plan: Plan,
     step_id: str,
@@ -654,15 +660,7 @@ def edit_step(
     phase, step = found
 
     if new_step_id is not _SENTINEL:
-        target_id = str(new_step_id)
-        if target_id != step.id:
-            require_no_global_duplicate_step_id(plan, target_id, operation="edit-step")
-            old_id = step.id
-            step.id = target_id
-            for dep_step in phase.steps:
-                dep_step.depends_on = [
-                    target_id if dep == old_id else dep for dep in dep_step.depends_on
-                ]
+        _apply_step_id_change(plan, phase, step, str(new_step_id))
 
     if name is not _SENTINEL:
         step.name = str(name)
@@ -675,22 +673,52 @@ def edit_step(
     if agent is not _SENTINEL:
         step.agent = agent if agent is None else str(agent)  # type: ignore[assignment]
 
-    original_depends_on: list[str] | None = None
-    if depends_on is not _SENTINEL or add_deps or remove_deps:
-        original_depends_on = list(step.depends_on)
+    _apply_step_dependency_changes(
+        phase,
+        step,
+        depends_on=depends_on,
+        add_deps=add_deps,
+        remove_deps=remove_deps,
+    )
+    _apply_step_ref_changes(step, refs=refs, add_refs=add_refs, remove_refs=remove_refs)
+
+    return plan
+
+
+def _apply_step_id_change(plan: Plan, phase: Phase, step: Step, target_id: str) -> None:
+    """Rename a step and rewrite same-phase dependency references."""
+    if target_id == step.id:
+        return
+    require_no_global_duplicate_step_id(plan, target_id, operation="edit-step")
+    old_id = step.id
+    step.id = target_id
+    for dep_step in phase.steps:
+        dep_step.depends_on = [target_id if dep == old_id else dep for dep in dep_step.depends_on]
+
+
+def _apply_step_dependency_changes(
+    phase: Phase,
+    step: Step,
+    *,
+    depends_on: list[str] | _Unset,
+    add_deps: list[str] | None,
+    remove_deps: list[str] | None,
+) -> None:
+    """Apply dependency edits with same-phase validation and cycle rollback."""
+    if depends_on is _SENTINEL and not add_deps and not remove_deps:
+        return
+
+    original_depends_on = list(step.depends_on)
+    existing_step_ids = {s.id for s in phase.steps}
 
     if depends_on is not _SENTINEL:
-        # Validate dependencies
-        existing_step_ids = {s.id for s in phase.steps}
-        # Note: depends_on is typed as list[str] | _Unset, cast needed for mypy/runtime check
-        new_deps = list(depends_on)  # type: ignore
+        new_deps = list(depends_on)  # type: ignore[arg-type]
         for dep in new_deps:
             if dep not in existing_step_ids:
                 raise PlanError(f"Step depends_on '{dep}' not found in phase '{phase.id}'")
         step.depends_on = new_deps
 
     if add_deps:
-        existing_step_ids = {s.id for s in phase.steps}
         for dep in add_deps:
             if dep not in existing_step_ids:
                 raise PlanError(f"Step depends_on '{dep}' not found in phase '{phase.id}'")
@@ -702,32 +730,36 @@ def edit_step(
             if dep in step.depends_on:
                 step.depends_on.remove(dep)
 
-    # Cycle detection: check when depends_on/add_deps/remove_deps mutations occurred
-    if depends_on is not _SENTINEL or add_deps or remove_deps:
-        step_graph = {s.id: s.depends_on for s in phase.steps}
-        cycle = _detect_cycle(step_graph)
-        if cycle:
-            if original_depends_on is not None:
-                step.depends_on = original_depends_on
-            cycle_str = " → ".join(f"{phase.id}.{s}" for s in cycle)
-            raise PlanError(f"Step dependency cycle: {cycle_str}")
+    cycle = _detect_cycle({s.id: s.depends_on for s in phase.steps})
+    if cycle:
+        step.depends_on = original_depends_on
+        cycle_str = " → ".join(f"{phase.id}.{s}" for s in cycle)
+        raise PlanError(f"Step dependency cycle: {cycle_str}")
 
+
+def _apply_step_ref_changes(
+    step: Step,
+    *,
+    refs: list[str] | _Unset,
+    add_refs: list[str] | None,
+    remove_refs: list[str] | None,
+) -> None:
+    """Apply direct/add/remove ref edits in CLI argument precedence order."""
     if refs is not _SENTINEL:
-        step.refs = list(refs)  # type: ignore
+        step.refs = list(refs)  # type: ignore[arg-type]
 
     if add_refs:
-        for r in add_refs:
-            if r not in step.refs:
-                step.refs.append(r)
+        for ref in add_refs:
+            if ref not in step.refs:
+                step.refs.append(ref)
 
     if remove_refs:
-        for r in remove_refs:
-            if r in step.refs:
-                step.refs.remove(r)
-
-    return plan
+        for ref in remove_refs:
+            if ref in step.refs:
+                step.refs.remove(ref)
 
 
+# @shell_complexity: Branches preserve sentinel-based phase updates, dependency replacement/add/remove, and self-dependency validation.
 def edit_phase(
     plan: Plan,
     phase_id: str,
@@ -831,6 +863,7 @@ def edit_plan(
     return plan
 
 
+# @shell_complexity: Branches preserve pending-only removal, dependent detection, force cleanup, and qualified diagnostics.
 def remove_step(plan: Plan, step_id: str, *, force: bool = False) -> Plan:
     """Remove a step from its phase.
 
@@ -909,6 +942,7 @@ def unlock_phase(plan: Plan, phase_id: str) -> Plan:
     return plan
 
 
+# @shell_complexity: Branches preserve pending-only moves, target validation, same-phase rejection, dependent guard, and phase-scoped dependency clearing.
 def move_step(plan: Plan, step_id: str, to_phase_id: str) -> Plan:
     """Move a step from one phase to another.
 
@@ -960,6 +994,7 @@ def move_step(plan: Plan, step_id: str, to_phase_id: str) -> Plan:
 _CHECKLIST_RE = re.compile(r"^(\s*-\s*\[)([ xX])(\]\s*.+)$", re.MULTILINE)
 
 
+# @shell_complexity: Branches preserve mutually optional check/append operations and existing fuzzy checklist toggling behavior.
 def update_checklist(
     plan: Plan, step_id: str, *, check: str | None = None, append: str | None = None
 ) -> Plan:
@@ -978,7 +1013,7 @@ def update_checklist(
     found = plan.find_step(step_id)
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
-    phase, step = found
+    _, step = found
 
     if check is not None:
         step.description = _toggle_checklist_item(step.description, check)
@@ -990,6 +1025,7 @@ def update_checklist(
     return plan
 
 
+# @shell_complexity: Branches preserve zero/ambiguous/single match diagnostics and toggle semantics.
 def _toggle_checklist_item(description: str, keyword: str) -> str:
     """Toggle a checklist item matching keyword (case-insensitive substring)."""
     matches: list[tuple[int, re.Match[str]]] = []
@@ -1032,6 +1068,7 @@ def _clipboard_expired(cb: Clipboard) -> bool:
         return True
 
 
+# @shell_complexity: Branches preserve author/content/size validation, soft summary truncation, and TTL timestamp assignment.
 def clipboard_write(
     plan: Plan,
     author: str,
@@ -1191,6 +1228,7 @@ class AgentsTarget(str, Enum):
     claude = "claude"
 
 
+# @shell_complexity: Branches preserve explicit target overrides and documented auto-detection priority without changing file selection.
 def detect_agents_target(directory: Path, target: AgentsTarget = AgentsTarget.auto) -> Path:
     """Detect the best target file for the vectl agents-md section.
 
@@ -1292,6 +1330,7 @@ class RecoverResult:
     error: str | None = None
 
 
+# @shell_complexity: Branches preserve backup validation, exception compatibility, and human diff summary construction.
 def preview_recovery(plan_path: Path, backup_path: Path) -> RecoverResult:
     """Preview recovery diff without writing to disk.
 

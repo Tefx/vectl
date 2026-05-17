@@ -94025,6 +94025,148 @@ phases:
     depends_on:
     - invar_guard_remediation.escape-budget-core-contracts
     agent: python-senior
+  - id: invar_guard_remediation.fix-events-control-app-driver-budget-residuals
+    name: Fix event/control/app/driver escape-budget residuals
+    status: pending
+    description: 'IMPLEMENTATION. Complete the structural escape-budget remediation
+      slice for event/control surfaces, `orch_app.py`, and the driver loop according
+      to the authority decision and Core contracts.
+
+
+      Target inventory:
+
+      - `src/vectl/orchestration/events.py` — shell_result escape budget residuals.
+
+      - `src/vectl/orchestration/control_channel.py` — shell_result escape budget
+      residuals.
+
+      - `src/vectl/orch_app.py` — function_size/shell_result escape budget residuals.
+
+      - `src/vectl/orchestration/driver.py` — function_size escape budget residuals.
+
+      - Contract artifacts from `invar_guard_remediation.escape-budget-core-contracts`
+      that the authority decision assigns to this slice.
+
+
+      YOUR SCOPE:
+
+      - Fill in stub bodies created by the contract step, or move pure decision/presenter
+      logic behind those contracts, only where assigned by the authority decision.
+
+      - Preserve event schema, control request semantics, pause/resume/stop behavior,
+      receive timeout contract, public CLI/app routing, active-drive behavior, planner/resolver/driver
+      recovery flow, and control request semantics.
+
+      - Keep runtime/Shell I/O in Shell modules and Core decisions in contracted Core
+      functions.
+
+      - Use narrow adapter allows only for rows explicitly classified as `narrow_adapter_allow`
+      by the authority decision.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs.
+
+
+      ## Failure-Mode Checklist
+
+      - [ ] Event/control public schemas and timeout behavior are preserved.
+
+      - [ ] Pause/resume/stop and active-control semantics remain compatible.
+
+      - [ ] Driver loop and orch app routing still reach real runtime paths rather
+      than private `_Runtime*`/`_Stub*`/`_Placeholder*` substitutes.
+
+      - [ ] Dead/compatibility parameters in public callback/CLI surfaces are renamed
+      or narrowly allowed rather than silently removed.
+
+      - [ ] Remaining residual debt, if any, is mapped to policy disposition with
+      gate non-intersection proof rather than being hidden.
+
+
+      ## Required Regression Evidence
+
+      - [ ] Targeted event/control/app/driver tests pass on mainline paths.
+
+      - [ ] At least one failure-path/control timeout regression is covered if control
+      behavior is touched.
+
+      - [ ] At least one routing/driver recovery regression is covered if app/driver
+      flow is touched.
+
+      - [ ] Scoped guard evidence for the owned files improves or closes the listed
+      residuals.'
+    verification: '- [ ] Main path: targeted event/control/app/driver tests pass with
+      actual command output pasted.
+
+      - [ ] Failure path: control timeout/active-control or driver recovery regression
+      covers the highest-risk changed behavior.
+
+      - [ ] Invar scoped evidence shows the target residual budget findings are closed
+      or dispositioned exactly as the authority decision allowed.
+
+      - [ ] No new uncontracted Core code, private runtime stub substitution, or broad
+      Shell allow masking is introduced.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Slice Evidence
+
+
+      **Authority decision rows implemented**:
+
+      - <row ids / file residuals>
+
+
+      **Core contracts filled**:
+
+      | Contract path | Function | Stub replaced with substantive logic? | @pre/@post
+      retained? | Doctest retained? |
+
+      |---|---|---|---|---|
+
+      | <path> | <function> | YES/NO | YES/NO | YES/NO |
+
+
+      **Commands and outputs**:
+
+      ```
+
+      <paste targeted tests and scoped guard outputs>
+
+      ```
+
+
+      **Behavioral proof register**:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | event/control/app/driver | <claim> | <test/property/doctest> | <output> |
+      PROVEN/NEEDS_TEST/UNPROVEN | <owner> | <OPEN/BLOCK basis> |
+
+
+      **Residuals after this slice**:
+
+      - <none or exact residual with owner/disposition>
+
+      '
+    depends_on:
+    - invar_guard_remediation.escape-budget-core-contracts
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

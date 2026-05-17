@@ -96808,7 +96808,7 @@ phases:
       - [x] Stale-definition vs new-state precedence is preserved for config/projection
       consumers.
 
-      - [ ] Partial-write or recovery-conflict behavior remains covered where touched.
+      - [x] Partial-write or recovery-conflict behavior remains covered where touched.
 
 
       ## Completion Criteria

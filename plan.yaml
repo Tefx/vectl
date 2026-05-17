@@ -96394,7 +96394,7 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] BEFORE `uvx invar-tools guard --all` excerpt for inspection/drive query
+      - [x] BEFORE `uvx invar-tools guard --all` excerpt for inspection/drive query
       residuals is pasted from current mainline.
 
       - [ ] AFTER `uvx invar-tools guard --all` excerpt shows no inspection/drive

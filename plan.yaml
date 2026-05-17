@@ -94216,3 +94216,89 @@ phases:
     depends_on:
     - det_check_docs_update
     agent: integration-verifier
+  - id: det_check_arch_review
+    name: Review checklist architecture and authority
+    status: pending
+    description: 'As an INDEPENDENT ARCHITECT (software-architect), review deterministic
+      checklist architecture after implementation and full-plan verification.
+
+
+      Review checklist:
+
+      - [ ] Canonical core checklist service/parser owns inventory, revision, selector
+      resolution, and marker mutation for CLI and MCP.
+
+      - [ ] CLI/MCP/orchestration surfaces delegate to core service and do not re-derive
+      source-of-truth facts.
+
+      - [ ] Orchestrator-owned mutation boundary is respected; workers only provide
+      item_id/revision receipts.
+
+      - [ ] `description` and `verification` are first-version fields; `evidence_template`
+      remains explicitly deferred.
+
+      - [ ] Revision scope excludes unrelated metadata and includes canonicalized
+      raw Markdown of both supported fields.
+
+      - [ ] Batch atomicity and stale-revision semantics are architecture-safe under
+      concurrent worker/orchestrator scenarios.
+
+      - [ ] No module-level mutable state, registry corruption path, or unbounded
+      cache was introduced.'
+    verification: '- [ ] phase-check protecting final gate: architecture review confirms
+      source-of-truth ownership and consumer-boundary conformance.
+
+      - [ ] Review includes concurrency/stale revision analysis for worker receipts.
+
+      - [ ] Any blocker-class architecture concern receives remediation ownership
+      before final gate.
+
+      - [ ] Review is independent of implementation agents.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_plan_mutations.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/dispatch_policy.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/prompt_materialization.py — key passage or "NOT READ:
+      <reason>"
+
+
+      ## Architecture Review
+
+      - Source of truth verdict: PASS/PASS_WITH_DEBT/FAIL
+
+      - Consumer-boundary conformance verdict: PASS/PASS_WITH_DEBT/FAIL
+
+      - Concurrent/stale revision safety verdict: PASS/PASS_WITH_DEBT/FAIL
+
+      - Orchestrator mutation authority verdict: PASS/PASS_WITH_DEBT/FAIL
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Checklist
+
+      - [ ] PASS: No blocker-class architecture gaps remain.
+
+      - [ ] FAIL: Architecture gaps block final gate.'
+    depends_on:
+    - det_check_full_plan_check
+    agent: software-architect

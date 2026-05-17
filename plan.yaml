@@ -91773,7 +91773,7 @@ phases:
     claimed_at: '2026-05-17T13:37:22.331437+00:00'
   - id: fix-cli-plan-domain
     name: Fix CLI plan invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to the plan-management
       CLI surface.
 
@@ -91839,6 +91839,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-17T13:37:28.338069+00:00'
   - id: fix-cli-render-agent-domain
     name: Fix CLI render/agents invar domain
     status: pending

@@ -90630,7 +90630,7 @@ phases:
   steps:
   - id: invar_guard_remediation.collect-failure-inventory
     name: Collect invar guard failure inventory
-    status: claimed
+    status: done
     description: 'Run the authoritative guard command and reduce the broad failure
       face into a stable, actionable remediation map. Do not modify product code.
 
@@ -90750,6 +90750,52 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-05-17T13:23:41.477307+00:00'
+    done_at: '2026-05-17T13:33:16.210717+00:00'
+    evidence: "## refs Read Confirmation\n- INVAR.md — Core requires @pre + @post\
+      \ + doctest; Shell handles I/O and should return Result[T, E].\n- AGENTS.md\
+      \ — plan.yaml is managed by vectl and must not be edited directly; evidence\
+      \ is mandatory.\n- tools/vectl/README.md — NOT READ: file path does not exist\
+      \ in isolated worktree; tools/ directory absent.\n\n## Worktree Evidence\n-\
+      \ Worker status: SUCCESS.\n- Worker commit: 0d18d6c8 inventory invar guard failures.\n\
+      - Squash merge commit on main: e731e22 ([vectl] step-invar_guard_remediation.collect-failure-inventory\
+      \ completed).\n- Product code changes: none; artifacts only under docs/invar_guard_remediation/.\n\
+      \n## Guard Command\nCommand executed in isolated worktree:\n```text\nuvx invar-tools\
+      \ guard --all\n```\n- Exit code: 1 (expected for inventory step).\n- Raw output:\
+      \ docs/invar_guard_remediation/guard_all_raw.txt\n- Exit-code artifact: docs/invar_guard_remediation/guard_all_exit_code.txt\n\
+      - Inventory report: docs/invar_guard_remediation/failure_inventory.md\n- Observed\
+      \ summary: status=failed; errors=444; warnings=105; infos=194; total_findings=743.\n\
+      \n## Finding Counts\n| Rule | Severity | Count |\n| --- | --- | ---: |\n| shell_result\
+      \ | error | 421 |\n| file_size | error | 22 |\n| shell_complexity_debt | error\
+      \ | 1 |\n| function_size | warning | 40 |\n| dead_param | warning | 27 |\n|\
+      \ shell_pure_logic | warning | 19 |\n| dead_assign | warning | 9 |\n| file_size_warning\
+      \ | warning | 9 |\n| dead_export | warning | 1 |\n| shell_too_complex | info\
+      \ | 194 |\n\n## Domain Slice Map\nFull domain map committed at docs/invar_guard_remediation/failure_inventory.md.\
+      \ Buckets:\n- invar_guard_remediation.cli_surfaces — 166 findings\n- invar_guard_remediation.core_plan_domains\
+      \ — 148 findings\n- invar_guard_remediation.mcp_surfaces — 73 findings\n- invar_guard_remediation.orch_app_split\
+      \ — 37 findings\n- invar_guard_remediation.run_store_split — 45 findings\n-\
+      \ invar_guard_remediation.orchestration_runtime_driver_config — 222 findings\n\
+      - invar_guard_remediation.support_shell_io_and_migration — 50 findings\n- invar_guard_remediation.residual_unknown\
+      \ — 2 findings\n\n## Core Contract Scan\n- **/core/** contract/doctest gaps:\
+      \ none found.\n- Guard emitted no missing_contract, missing_pre, missing_post,\
+      \ missing_doctest, or param_mismatch rules.\n\n## Residual/Unknown Bucket\n\
+      - <project> — shell_complexity_debt/error:1\n- docs/archive/consumer_boundary_conformance_verify.py:230\
+      \ — shell_too_complex/info\n\n## Mainline Final-State Verification\nCommand\
+      \ executed after squash merge on main:\n```text\npython3 - <<'PY'\nfrom pathlib\
+      \ import Path\nbase = Path('docs/invar_guard_remediation')\nrequired = ['failure_inventory.md','guard_all_raw.txt','guard_all_exit_code.txt']\n\
+      missing = [name for name in required if not (base/name).exists()]\nif missing:\n\
+      \    raise SystemExit(f'missing artifacts: {missing}')\nreport = (base/'failure_inventory.md').read_text(encoding='utf-8')\n\
+      for needle in ['Domain Slice Map', 'Residual/Unknown', 'Core Contract', 'shell_result']:\n\
+      \    if needle not in report:\n        raise SystemExit(f'missing report section/content:\
+      \ {needle}')\nexit_code = (base/'guard_all_exit_code.txt').read_text(encoding='utf-8').strip()\n\
+      if exit_code != '1':\n    raise SystemExit(f'unexpected guard exit code artifact:\
+      \ {exit_code!r}')\nprint('mainline inventory artifact verification passed')\n\
+      PY\n```\nOutput: mainline inventory artifact verification passed.\n\n## Semantic\
+      \ Reporting\n- step_intent: collect authoritative guard failure inventory.\n\
+      - expected_result: red guard output captured and mapped.\n- observed_result:\
+      \ guard failed with 743 findings and artifacts were committed/merged.\n- failure_alignment:\
+      \ aligned with inventory-only step; count drift from seed probe documented.\n\
+      - verdict: SUCCESS for inventory collection.\n- blockers: none for this step.\n\
+      - product implementation files modified: false."
   - id: invar_guard_remediation.verify-full-guard
     name: Verify full invar guard green
     status: pending

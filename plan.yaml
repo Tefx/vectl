@@ -91716,7 +91716,7 @@ phases:
     agent: python-senior-tacit
   - id: fix-orch-app-driver-domain
     name: Fix orch app and driver invar domain
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to the high-level
       orchestration app and drive loop driver.
 
@@ -91789,6 +91789,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior
+    claimed_at: '2026-05-17T14:56:07.439234+00:00'
   - id: fix-cli-orchestration-domain
     name: Fix CLI orchestration invar domain
     status: done

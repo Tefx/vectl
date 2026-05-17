@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+import math
 from datetime import datetime, timedelta, timezone
 
+from hypothesis import HealthCheck, given, settings, strategies as st
 import pytest
 
 from vectl.orchestration.run_store import (
@@ -14,6 +17,15 @@ from vectl.orchestration.run_store import (
     generate_run_id,
     latest_run,
 )
+
+
+def _is_malformed_float_text(value: str) -> bool:
+    if value.strip() == "":
+        return False
+    try:
+        return not math.isfinite(float(value))
+    except ValueError:
+        return True
 
 
 def test_run_id_is_sortable_ulid_like() -> None:
@@ -343,3 +355,20 @@ def test_admit_for_start_persists_pending_and_rejects_conflict(tmp_path) -> None
             artifact_root=str(tmp_path / "runs" / "01NEW"),
             output_summary="pending admission",
         )
+
+
+@given(
+    malformed_number=st.text(min_size=1).filter(_is_malformed_float_text)
+)
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+def test_malformed_numeric_run_payload_surfaces_corruption(tmp_path, malformed_number: str) -> None:
+    index = tmp_path / "index.jsonl"
+    index.write_text(
+        '{"run_id":"01BAD","step_id":"s","status":"running",'
+        f'"updated_at":{json.dumps(malformed_number)}}}\n',
+        encoding="utf-8",
+    )
+    registry = RunRegistry(store_root=tmp_path)
+
+    with pytest.raises(CorruptJSONLError):
+        registry.latest_for_step("s")

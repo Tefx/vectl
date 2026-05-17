@@ -95010,7 +95010,7 @@ phases:
 
       - [x] Targeted event/control/app/driver tests pass on mainline paths.
 
-      - [ ] At least one failure-path/control timeout regression is covered if control
+      - [x] At least one failure-path/control timeout regression is covered if control
       behavior is touched.
 
       - [ ] At least one routing/driver recovery regression is covered if app/driver

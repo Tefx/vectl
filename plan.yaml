@@ -92655,7 +92655,10 @@ phases:
 
 
       This step closes the UI/UX implementation audit gap for CLI output changes and
-      enforces the CLI Surface Preservation Protocol.
+      enforces the CLI Surface Preservation Protocol. It intentionally avoids Markdown
+      task-list checkboxes because current `vectl_check` can only toggle checklist
+      items in descriptions, and this audit must not create precheck livelock before
+      deterministic checklist support lands.
 
 
       Required evidence:
@@ -92677,20 +92680,20 @@ phases:
       error readability, and confusing regressions.
 
 
-      ## Completion Criteria
+      ## Acceptance Criteria
 
-      - [ ] Terminal/help captures are provided for the touched CLI command groups.
+      1. Terminal/help captures are provided for the touched CLI command groups.
 
-      - [ ] Command executability matrix covers orchestration, plan-management, render/agents,
+      2. Command executability matrix covers orchestration, plan-management, render/agents,
       and top-level registration surfaces touched by the remediation steps.
 
-      - [ ] JSON/machine-readable outputs touched by the remediation are parseable
-      and ANSI-free, or the evidence states no JSON path was touched.
+      3. JSON/machine-readable outputs touched by the remediation are parseable and
+      ANSI-free, or the evidence states no JSON path was touched.
 
-      - [ ] Regression/dangling detection reports no missing command handlers or stale
+      4. Regression/dangling detection reports no missing command handlers or stale
       help/registration entries.
 
-      - [ ] UI/UX audit decision is a parseable PASS / PASS_WITH_DEBT / FAIL handoff
+      5. UI/UX audit decision is a parseable PASS / PASS_WITH_DEBT / FAIL handoff
       with blockers clearly identified.
 
 
@@ -92701,20 +92704,27 @@ phases:
       - Behavioral proof register required for CLI surface obligations: requirement_ref,
       behavior_claim, runtime_proof_expected, evidence_ref, status, closure_path,
       gate_decision_basis.'
-    verification: '- [ ] Help/surface snapshots exist for all touched CLI command
-      groups.
+    verification: 'Plain acceptance requirements; do not convert these lines to Markdown
+      task-list checkboxes until deterministic checklist handling exists.
 
-      - [ ] Command executability matrix includes representative real CLI invocations
+
+      1. Help/surface snapshots exist for all touched CLI command groups.
+
+      2. Command executability matrix includes representative real CLI invocations
       and actual exit statuses.
 
-      - [ ] JSON output safety is proven for touched machine-readable paths, including
+      3. JSON output safety is proven for touched machine-readable paths, including
       parseability and no ANSI escape leakage.
 
-      - [ ] Regression/dangling detection covers removed/renamed commands, registrations,
+      4. Regression/dangling detection covers removed/renamed commands, registrations,
       and help entries.
 
-      - [ ] Final UI/UX audit handoff is PASS or PASS_WITH_DEBT with no blocker-class
-      finding; any debt has explicit non-intersection or remediation path.'
+      5. Final UI/UX audit handoff is PASS or PASS_WITH_DEBT with no blocker-class
+      finding; any debt has explicit non-intersection or remediation path.
+
+      6. Behavioral proof register is present for CLI surface obligations and includes
+      requirement_ref, behavior_claim, runtime_proof_expected, evidence_ref, status,
+      closure_path, and gate_decision_basis.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

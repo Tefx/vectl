@@ -96619,6 +96619,174 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-residual-budget-blockers
     agent: python-senior
+  - id: invar_guard_remediation.fix-config-projections-recovery-budget-closure
+    name: Fix config, projections, and recovery fallback budget closure
+    status: pending
+    description: 'IMPLEMENTATION / Focused residual slice for config/projections/recovery_fallback
+      budget closure.
+
+
+      work_type: technical_debt_remediation
+
+      step_type: implementation
+
+      symbolic_testing: true
+
+      agent_source: default
+
+
+      Owned blocker families:
+
+      - `src/vectl/orchestration/config.py` escape-hatch budget residuals (`function_size`,
+      `shell_result`).
+
+      - `src/vectl/orchestration/projections.py` escape-hatch budget residuals (`shell_result`).
+
+      - `src/vectl/orchestration/recovery_fallback.py` escape-hatch budget residuals
+      (`function_size`, `shell_result`).
+
+
+      Scope boundaries:
+
+      - Preserve config precedence, projection output semantics, recovery fallback
+      behavior, and operator-visible messages.
+
+      - Do not lower budgets, add broad suppressions, or move shell behavior into
+      Core.
+
+      - Any pure extraction under `**/core/**` requires non-vacuous contracts and
+      doctests before implementation logic.
+
+      - Runtime/session/transport semantics must remain compatible for CLI and orchestration
+      consumers.
+
+
+      Required implementation approach:
+
+      - Use the slice boundary register from `invar_guard_remediation.fix-full-guard-residual-budget-blockers`.
+
+      - Prefer small pure helpers for parsing/formatting/projection transformations
+      and narrow Shell wrappers returning `Result[T, E]` only at true I/O boundaries.
+
+      - Add/update focused tests for config precedence/defaults, projection formatting,
+      and recovery fallback outcomes touched by the slice.
+
+
+      ## Failure-Mode Checklist
+
+      - [ ] Relative vs absolute config/recovery paths retain documented behavior.
+
+      - [ ] Missing-file fallback behavior is preserved or intentionally dispositioned
+      with proof.
+
+      - [ ] Explicit clear/null overwrite semantics are not changed without targeted
+      tests.
+
+      - [ ] Stale-definition vs new-state precedence is preserved for config/projection
+      consumers.
+
+      - [ ] Partial-write or recovery-conflict behavior remains covered where touched.
+
+
+      ## Completion Criteria
+
+      - [ ] BEFORE `uvx invar-tools guard --all` excerpt for config/projections/recovery_fallback
+      residuals is pasted from current mainline.
+
+      - [ ] AFTER `uvx invar-tools guard --all` excerpt shows closure or explicit
+      residual ownership for these files without project-level budget regression.
+
+      - [ ] Targeted config/projection/recovery tests pass and command output is pasted.
+
+      - [ ] Failure-mode checklist evidence covers main path and highest-risk failure
+      path.
+
+      - [ ] No broad suppression, budget lowering, or shell/Core boundary drift is
+      used.
+
+      - [ ] Residual disposition register is updated for each owned file.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
+    verification: '- [ ] Config/projections/recovery_fallback residuals are closed
+      or dispositioned with pasted BEFORE/AFTER `uvx invar-tools guard --all` excerpts.
+
+      - [ ] Targeted tests cover the main path and highest-risk failure path for touched
+      config/projection/recovery behavior.
+
+      - [ ] Evidence proves no project-level budget regression and no broad suppression/budget
+      lowering.
+
+      - [ ] Residual disposition register includes requirement_ref, behavior_claim,
+      runtime_proof_expected, evidence_ref, status, closure_path, and gate_decision_basis.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Slice Evidence
+
+
+      **BEFORE full-guard excerpt**:
+
+      ```text
+
+      <paste uvx invar-tools guard --all excerpt for config/projections/recovery_fallback
+      residuals>
+
+      ```
+
+
+      **Targeted tests**:
+
+      ```text
+
+      <paste exact commands and output>
+
+      ```
+
+
+      **Failure-path proof**:
+
+      <path/fallback/precedence/partial-write or recovery conflict evidence>
+
+
+      **AFTER full-guard excerpt**:
+
+      ```text
+
+      <paste uvx invar-tools guard --all excerpt for the same families>
+
+      ```
+
+
+      **Residual disposition register**:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      **Suppression/budget-change statement**:
+
+      <confirm none, or justify narrow authority-backed exception>'
+    depends_on:
+    - invar_guard_remediation.fix-full-guard-residual-budget-blockers
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

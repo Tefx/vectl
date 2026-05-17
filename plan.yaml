@@ -98189,6 +98189,150 @@ phases:
     depends_on:
     - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
     agent: python-senior
+  - id: split-orchestration-driver-state-machine-surface
+    name: Split orchestration driver state-machine surface
+    status: pending
+    description: "Focused residual implementation slice for current post-salvage orchestration\
+      \ driver state-machine and barrier/resume/recovery budget blockers.\n\nstep_type:\
+      \ implementation\nsymbolic_testing: true\nreduction_step: true\nagent_source:\
+      \ default\npost_salvage_context:\n  main_salvage_commit: 1618486\n  guard_baseline:\
+      \ file_size 9/5; weighted 40/15\n\n## Owned Residuals\n- `src/vectl/orchestration/driver.py`\
+      \ — active-drive state machine/barriers/resume/recovery surface.\n- Any current\
+      \ `dead_param`, `entry_point_too_thick`, or `shell_complexity` contributors\
+      \ directly attributable to the driver state machine, barriers, resume, recovery,\
+      \ or active-drive lifecycle.\n\n## Scope\nExtract cohesive driver internals\
+      \ while preserving active-drive state-machine semantics, barrier ordering, resume/recovery\
+      \ behavior, runner dispatch contracts, operator-visible events, and public imports.\
+      \ This is a reduction step: verified net-positive non-regressive reduction is\
+      \ acceptable even if final guard closure requires aggregate retest.\n\n## Runtime/Lifecycle\
+      \ Preservation\n- Preserve startup/drive loop behavior and active-control semantics.\n\
+      - Preserve barrier ordering for review/resolver/planner waits.\n- Preserve resume/recovery\
+      \ semantics and idempotency where present.\n- Preserve event/artifact emission\
+      \ and operator-visible status outputs.\n- Do not silently narrow the driver\
+      \ into handler-only helpers.\n\n## Compatibility Smoke Requirements\n- Import\
+      \ compatibility through original `vectl.orchestration.driver` public path.\n\
+      - Runtime smoke for a representative drive loop/barrier/resume path using existing\
+      \ tests or a focused harness.\n- Recovery/resume smoke for persisted drive state\
+      \ if touched.\n- Event/status output smoke if extraction touches observability\
+      \ paths.\n\n## Gate Preview (what downstream gates WILL reject)\n1. Driver split\
+      \ that compiles but changes barrier/resume/recovery semantics.\n2. Entry-point-thickness\
+      \ reduction by deleting runtime behavior.\n3. Stub-only driver wrappers or placeholder\
+      \ state-machine pieces.\n4. Budget movement via suppression, threshold lowering,\
+      \ ignored files, or deleted findings.\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each\
+      \ deliverable MUST contain substantive logic that processes its inputs and produces\
+      \ outputs that vary based on those inputs. Private stub classes (`_Runtime*`,\
+      \ `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\n## Checklist\n\
+      - [ ] Capture BEFORE guard excerpts for driver residual rows and weighted contributors.\n\
+      - [ ] Decompose driver internals without changing active-drive, barrier, resume,\
+      \ recovery, dispatch, or event semantics.\n- [ ] Run targeted driver loop, runtime\
+      \ lifecycle, recovery/resume, and orchestration unit tests with pasted exact\
+      \ results.\n- [ ] Run import smoke through the original `vectl.orchestration.driver`\
+      \ path.\n- [ ] Run representative runtime/barrier/resume smoke proof and paste\
+      \ actual output.\n- [ ] Capture AFTER guard excerpts for driver residual rows\
+      \ and weighted contributors.\n- [ ] Confirm no budget lowering, suppression,\
+      \ ignored files, deleted findings, stub-only wrapper, runtime narrowing, or\
+      \ operator-visible behavior deletion."
+    verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
+      driver residual rows, `file_size`, weighted budget, and relevant `dead_param`/`entry_point_too_thick`/`shell_complexity`
+      contributors.
+
+      - [ ] Original `vectl.orchestration.driver` import path and public symbols are
+      smoke-proven.
+
+      - [ ] Driver loop/barrier/resume/recovery behavior is proven with targeted tests
+      or focused runtime smoke output.
+
+      - [ ] Targeted orchestration unit/runtime tests pass with exact command output
+      pasted.
+
+      - [ ] Evidence confirms active-drive state-machine, barrier ordering, resume/recovery,
+      dispatch contracts, events, and operator-visible status were preserved.
+
+      - [ ] No invar budget lowering, suppression, ignored files, deleted findings,
+      stub-only wrapper, runtime narrowing, or operator-visible behavior deletion
+      occurred.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      ## Driver State-Machine Residual Evidence
+
+
+      ### BEFORE Guard Excerpts
+
+      ```text
+
+      <paste driver rows plus summary/file_size/weighted/dead_param/entry_point_too_thick/shell_complexity
+      excerpts>
+
+      ```
+
+
+      ### Import Compatibility Smoke Proof
+
+      ```text
+
+      <commands/output for original vectl.orchestration.driver path>
+
+      ```
+
+
+      ### Runtime/State-Machine Smoke Proofs
+
+      **Drive loop/barrier/resume/recovery path**:
+
+      ```text
+
+      <commands and output>
+
+      ```
+
+      **Event/status output if touched**:
+
+      ```text
+
+      <commands and output or non-applicability rationale>
+
+      ```
+
+
+      ### Targeted Tests
+
+      ```text
+
+      <exact commands and output>
+
+      ```
+
+
+      ### AFTER Guard Excerpts
+
+      ```text
+
+      <paste driver rows plus summary/file_size/weighted/dead_param/entry_point_too_thick/shell_complexity
+      excerpts>
+
+      ```
+
+
+      ### Suppression Check
+
+      - [ ] no budget lowering
+
+      - [ ] no widened escape hatches
+
+      - [ ] no ignored files/deleted findings
+
+      - [ ] no driver runtime/state-machine behavior narrowing'
+    depends_on:
+    - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

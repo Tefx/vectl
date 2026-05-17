@@ -96170,7 +96170,7 @@ phases:
       - [x] Evidence explains why the prior broad fix failed and why another all-in-one
       implementation loop is forbidden.
 
-      - [ ] Slice boundary register assigns inspection/drive queries, `contracts.py`,
+      - [x] Slice boundary register assigns inspection/drive queries, `contracts.py`,
       config/projections/recovery_fallback, and orch_app/driver/project-level residuals
       to downstream owner steps.
 

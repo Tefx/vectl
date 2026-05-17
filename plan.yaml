@@ -95743,6 +95743,7 @@ phases:
     - invar_guard_remediation.fix-events-control-app-driver-budget-residuals
     - invar_guard_remediation.fix-inspection-prompt-budget-residuals
     - invar_guard_remediation.full-guard-residual-disposition-retest
+    - invar_guard_remediation.full-guard-escape-budget-batched-retest
     agent: integration-verifier
   - id: invar_guard_remediation.investigate-prompt-materialization-shell-result-root-cause
     name: Investigate prompt_materialization shell_result root cause

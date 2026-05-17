@@ -98847,6 +98847,400 @@ phases:
 
       - No invar budget lowering, suppression, ignored files, deleted findings, stub-only
       wrapper, runtime narrowing, or operator-visible behavior deletion occurred.'
+  - id: invar_guard_remediation.fix-full-guard-weighted-budget-residuals
+    name: Fix full-guard weighted budget residuals
+    status: pending
+    description: 'Batched remediation owner for the failed cold full-guard retest
+      `invar_guard_remediation.full-guard-escape-budget-batched-retest`.
+
+
+      work_type: technical_debt_remediation
+
+      step_type: implementation
+
+      agent_source: project
+
+      risk: semantic/refactor; preserve public import, CLI, MCP, and runtime compatibility
+
+      command_lock: `uvx invar-tools guard --all`
+
+
+      ## Objective
+
+      Reduce the invar escape-hatch weighted budget from `17/15` to `<=15/15` by removing
+      or refactoring at least two weighted points from the current residual set, without
+      lowering budgets, adding suppressions, ignoring files, deleting findings without
+      code-quality closure, or bypassing policy.
+
+
+      Prefer the smallest safe removals/extractions needed to close the weighted-budget
+      blocker. This is a salvage-first reduction/closure step: it must own every residual
+      listed below and may land with only some residuals still structurally justified,
+      but completion requires the project weighted budget to be `<=15/15` or every
+      unclosed residual to have a structured non-blocking disposition with downstream
+      gate non-intersection proof.
+
+
+      ## Residuals Owned (ALL, not just the first)
+
+      1. `docs/archive/consumer_boundary_conformance_verify.py:231` — `shell_complexity`
+
+      2. `src/vectl/plan_path.py:182` — `entry_point_too_thick`
+
+      3. `src/vectl/cli_orchestration_inspect_commands.py:277` — `dead_param`
+
+      4. `src/vectl/orch_app.py:1` — `file_size`
+
+      5. `src/vectl/core_plan_mutations.py:1` — `file_size`
+
+      6. `src/vectl/migration.py:64` — `entry_point_too_thick`
+
+      7. `src/vectl/orchestration/control.py:190` — `dead_param`
+
+      8. `src/vectl/orchestration/continuity_protocols.py:176` — `dead_param`
+
+      9. `src/vectl/orchestration/continuity_protocols.py:199` — `dead_param`
+
+
+      ## Required Strategy
+
+      - Start from the failed retest baseline: `summary.errors: 1`, `warnings: 55`,
+      `escape_hatches.count: 9`, weighted budget `17/15`, `file_size 2/5`, and remaining
+      error `Escape hatch weighted budget: 17/15`.
+
+      - Identify the smallest safe combination of residual removals/extractions that
+      closes at least two weighted points and brings weighted budget to `<=15/15`.
+
+      - Do not reduce file-size quality by moving code into poorly named dump modules;
+      preserve behavior and source-of-truth ownership.
+
+      - Do not remove `@invar:allow` comments unless the underlying rule violation
+      is actually resolved by code structure or signature cleanup.
+
+      - Do not change guard policy, budgets, ignored paths, or invar configuration.
+
+      - Do not delete archived tooling solely to hide findings; if an archived script
+      is changed, preserve any documented archive purpose or record why the surface
+      is not runtime-critical.
+
+
+      ## Compatibility Preservation Required
+
+      Public compatibility must be preserved for all touched surfaces:
+
+      - `plan_path`: public imports and path resolution behavior remain compatible.
+
+      - `migration`: migration entry points and CLI-visible behavior remain compatible.
+
+      - `cli_orchestration_inspect_commands`: CLI command registration, output mode
+      semantics, and call signatures remain compatible.
+
+      - `orch_app`: runtime/orchestrator app public imports and startup/control surface
+      remain compatible.
+
+      - `core_plan_mutations`: public mutation helpers, contracts, and import paths
+      remain compatible.
+
+      - `orchestration.control`: control-plane public functions/classes and CLI/MCP
+      consumers remain compatible.
+
+      - `orchestration.continuity_protocols`: continuity protocol public types/functions
+      and runtime callers remain compatible.
+
+
+      ## Required Proof Artifacts
+
+      The worker evidence must include exact BEFORE and AFTER guard excerpts, not
+      summaries:
+
+      - BEFORE excerpt: failed cold retest command, exit code, summary, residual detail
+      rows, `escape_hatches.by_rule`, `escape_hatches.count`, `file_size`, weighted
+      budget, and skip status for CrossHair/property tests.
+
+      - AFTER excerpt: same fields after remediation using exact command `uvx invar-tools
+      guard --all`.
+
+      - Residual closure table mapping every residual row above to one of: `CLOSED`,
+      `STILL_OPEN_NON_BLOCKING`, or `STILL_OPEN_BLOCKING`.
+
+      - For every `STILL_OPEN_NON_BLOCKING` residual, include why the current step
+      is not authorized to close it, why it does not intersect remaining gates, and
+      which future step owns it if that changes.
+
+      - For every touched public surface, include targeted tests and compatibility
+      smoke proof with exact commands and output snippets.
+
+
+      ## Targeted Test and Smoke Proof Requirements
+
+      For each touched module, provide the smallest relevant targeted checks plus
+      compatibility smokes:
+
+      - `plan_path`: targeted tests for path resolution/import compatibility and a
+      public import smoke.
+
+      - `migration`: targeted tests or CLI smoke for migration behavior and a public
+      import smoke.
+
+      - `cli_orchestration_inspect_commands`: CLI inspection command smoke covering
+      the touched path and output compatibility.
+
+      - `orch_app`: import/runtime smoke proving public orchestrator app entry points
+      still import and initialize as before.
+
+      - `core_plan_mutations`: targeted mutation contract/unit tests or import compatibility
+      smoke for moved helpers.
+
+      - `orchestration.control`: targeted tests/smoke for control-plane consumer behavior.
+
+      - `orchestration.continuity_protocols`: targeted tests/smoke for continuity
+      protocol call sites and public imports.
+
+
+      If a module is not touched, state `NOT TOUCHED` and cite why no targeted smoke
+      was required for that surface.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      ## Checklist
+
+      - [ ] Capture exact BEFORE `uvx invar-tools guard --all` excerpt showing weighted
+      budget `17/15`, residual rows, and file-size budget green (`file_size 2/5`).
+
+      - [ ] Map all nine residual rows to a concrete remediation decision before editing.
+
+      - [ ] Remove/refactor enough residual weight to reach weighted budget `<=15/15`
+      without budget lowering, suppression, ignored files, deleted findings, or policy
+      bypass.
+
+      - [ ] Preserve public import compatibility for every touched module listed in
+      Compatibility Preservation Required.
+
+      - [ ] Preserve CLI/MCP/runtime behavior for touched public surfaces, especially
+      `plan_path`, `migration`, `cli_orchestration_inspect_commands`, `orch_app`,
+      `core_plan_mutations`, `control`, and `continuity_protocols`.
+
+      - [ ] Provide exact targeted test commands and outputs for every touched public
+      surface.
+
+      - [ ] Provide compatibility smoke commands and outputs for every touched public
+      import/CLI/MCP/runtime surface.
+
+      - [ ] Capture exact AFTER `uvx invar-tools guard --all` excerpt showing weighted
+      budget `<=15/15` or structured residual disposition with non-intersection proof.
+
+      - [ ] Confirm CrossHair/property skips caused by prior failures are no longer
+      blocking, or record the closure path if guard still skips them.
+
+      - [ ] Report any unclosed residual with structured disposition: provenance,
+      disposition, non-intersection proof, downstream gate impact, and future owner
+      if applicable.
+
+      - [ ] State explicitly that no guard policy, budget, ignored-path, suppression,
+      or bypass changes were made.'
+    verification: '- [ ] Exact BEFORE guard excerpt includes command `uvx invar-tools
+      guard --all`, exit code 1, weighted budget `17/15`, `file_size 2/5`, and all
+      nine residual detail rows.
+
+      - [ ] Exact AFTER guard excerpt from `uvx invar-tools guard --all` shows weighted
+      budget `<=15/15`, or every remaining residual has structured non-blocking non-intersection
+      proof under invar policy.
+
+      - [ ] Evidence confirms no budget lowering, suppression, ignored files, deleted
+      findings, or policy bypass occurred.
+
+      - [ ] Residual closure table accounts for all nine listed findings with `CLOSED`,
+      `STILL_OPEN_NON_BLOCKING`, or `STILL_OPEN_BLOCKING` status.
+
+      - [ ] At least two weighted points are closed by structural code/signature/extraction
+      remediation, not by hiding findings.
+
+      - [ ] Targeted tests and compatibility smokes are present with exact commands
+      and output for every touched public surface.
+
+      - [ ] Public imports, CLI/MCP surfaces, and runtime entry points remain compatible
+      for touched `plan_path`, `migration`, `cli_orchestration_inspect_commands`,
+      `orch_app`, `core_plan_mutations`, `control`, and `continuity_protocols` surfaces.
+
+      - [ ] Any unclosed residual includes provenance, disposition, downstream gate
+      intersection analysis, and future owner if applicable.
+
+      - [ ] No stub-only or no-op extraction is used as completion evidence.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - docs/archive/consumer_boundary_conformance_verify.py — key passage or "NOT
+      READ: <reason>"
+
+      - src/vectl/plan_path.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_orchestration_inspect_commands.py — key passage or "NOT READ:
+      <reason>"
+
+      - src/vectl/orch_app.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_plan_mutations.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/migration.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/control.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/continuity_protocols.py — key passage or "NOT READ:
+      <reason>"
+
+
+      ## Full-Guard Budget Remediation Evidence
+
+
+      **Command lock**: `uvx invar-tools guard --all`
+
+
+      ### BEFORE Guard Excerpt
+
+      ```text
+
+      <exact command, exit code, summary, residual detail rows, escape_hatches.by_rule,
+      escape_hatches.count, file_size, weighted budget, CrossHair/property skip status>
+
+      ```
+
+
+      ### Residual Closure Table
+
+      | # | Residual | Rule | Decision | Change made | Weight delta | Test/smoke evidence
+      | Disposition if open |
+
+      |---|---|---|---|---|---|---|---|
+
+      | 1 | docs/archive/consumer_boundary_conformance_verify.py:231 | shell_complexity
+      | CLOSED/STILL_OPEN_NON_BLOCKING/STILL_OPEN_BLOCKING | | | | |
+
+      | 2 | src/vectl/plan_path.py:182 | entry_point_too_thick | CLOSED/STILL_OPEN_NON_BLOCKING/STILL_OPEN_BLOCKING
+      | | | | |
+
+      | 3 | src/vectl/cli_orchestration_inspect_commands.py:277 | dead_param | CLOSED/STILL_OPEN_NON_BLOCKING/STILL_OPEN_BLOCKING
+      | | | | |
+
+      | 4 | src/vectl/orch_app.py:1 | file_size | CLOSED/STILL_OPEN_NON_BLOCKING/STILL_OPEN_BLOCKING
+      | | | | |
+
+      | 5 | src/vectl/core_plan_mutations.py:1 | file_size | CLOSED/STILL_OPEN_NON_BLOCKING/STILL_OPEN_BLOCKING
+      | | | | |
+
+      | 6 | src/vectl/migration.py:64 | entry_point_too_thick | CLOSED/STILL_OPEN_NON_BLOCKING/STILL_OPEN_BLOCKING
+      | | | | |
+
+      | 7 | src/vectl/orchestration/control.py:190 | dead_param | CLOSED/STILL_OPEN_NON_BLOCKING/STILL_OPEN_BLOCKING
+      | | | | |
+
+      | 8 | src/vectl/orchestration/continuity_protocols.py:176 | dead_param | CLOSED/STILL_OPEN_NON_BLOCKING/STILL_OPEN_BLOCKING
+      | | | | |
+
+      | 9 | src/vectl/orchestration/continuity_protocols.py:199 | dead_param | CLOSED/STILL_OPEN_NON_BLOCKING/STILL_OPEN_BLOCKING
+      | | | | |
+
+
+      ### Public Surface Compatibility Smokes
+
+      For every touched surface, paste exact commands and output snippets. If not
+      touched, state `NOT TOUCHED` with reason.
+
+      - `plan_path`:
+
+      - `migration`:
+
+      - `cli_orchestration_inspect_commands`:
+
+      - `orch_app`:
+
+      - `core_plan_mutations`:
+
+      - `orchestration.control`:
+
+      - `orchestration.continuity_protocols`:
+
+
+      ### Targeted Tests
+
+      ```text
+
+      <exact targeted test commands and output for every touched public surface>
+
+      ```
+
+
+      ### AFTER Guard Excerpt
+
+      ```text
+
+      <exact command, exit code, summary, residual detail rows, escape_hatches.by_rule,
+      escape_hatches.count, file_size, weighted budget, CrossHair/property status>
+
+      ```
+
+
+      ### Policy Non-Bypass Statement
+
+      - Budget lowered: YES/NO
+
+      - Suppressions added: YES/NO
+
+      - Ignored files changed: YES/NO
+
+      - Findings deleted without structural closure: YES/NO
+
+      - Policy bypass used: YES/NO
+
+
+      ### Unclosed Residual Disposition Register
+
+      For each unclosed residual, include:
+
+      - `residual_ref`:
+
+      - `provenance`:
+
+      - `disposition`: blocking-now | blocking-later | non-blocking
+
+      - `why_current_step_cannot_close`:
+
+      - `downstream_gate_intersection`:
+
+      - `non_intersection_proof`:
+
+      - `future_owner`:
+
+      - `closure_path`:
+
+
+      ### Headline
+
+      - [ ] PASS: weighted budget is `<=15/15` with no policy bypass and compatibility
+      preserved.
+
+      - [ ] BLOCKED: weighted budget remains `>15/15` or any unclosed residual lacks
+      structured non-blocking non-intersection proof.'
+    depends_on:
+    - invar_guard_remediation.full-guard-residual-disposition-retest
+    - invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
+    - split-mcp-and-cli-public-surfaces
+    - split-orch-app-and-core-plan-compat-surfaces
+    - split-orchestration-config-runtime-persistence-surfaces
+    - split-orchestration-driver-state-machine-surface
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

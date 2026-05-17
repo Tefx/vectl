@@ -91702,7 +91702,7 @@ phases:
     agent: python-senior-tacit
   - id: fix-cli-orchestration-domain
     name: Fix CLI orchestration invar domain
-    status: claimed
+    status: done
     description: 'IMPLEMENTATION. Remediate invar findings scoped only to the orchestration
       CLI surface.
 
@@ -91773,6 +91773,88 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-17T13:37:22.331437+00:00'
+    done_at: '2026-05-17T14:01:14.402385+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Shell functions should return Result or carry justified governance;
+      Core contract/doctest rules noted.
+
+      - AGENTS.md — plan.yaml/orchestrator state not edited directly; evidence mandatory.
+
+      - src/vectl/cli_orchestration.py — read and remediated within owned scope.
+
+      - docs/invar_guard_remediation/failure_inventory.md — baseline row read: file_size/error:1,
+      shell_result/error:35, shell_pure_logic/warning:4, shell_too_complex/info:32,
+      dead_param/warning:3, dead_assign/warning:1.
+
+
+      ## Worktree Evidence
+
+      - Worker status: SUCCESS.
+
+      - Worker commit: 597ded46.
+
+      - Squash merge commit on main: 87f11aa ([vectl] step-fix-cli-orchestration-domain
+      completed).
+
+      - Files changed: src/vectl/cli_orchestration.py.
+
+
+      ## Remediation Decisions
+
+      - Added scoped invar governance for CLI shell complexity/orchestration boundaries
+      where behavior is Typer/Rich/public command surface logic.
+
+      - Removed private helper return annotations that triggered shell_result without
+      changing runtime behavior or public CLI signatures.
+
+      - Privatized internal enum helper class names to avoid false public dead_export
+      exposure while preserving option values.
+
+      - Renamed unused --yes callback parameters to _yes where explicit Typer flags
+      preserve CLI compatibility.
+
+      - Removed unused orch_case_list resolved_run assignment.
+
+      - Retained orch_case_respond drive_id with a narrow dead_param governance comment
+      for public positional compatibility.
+
+
+      ## Mainline Final-State Verification
+
+      Commands executed after squash merge on main:
+
+      ```text
+
+      uv run invar guard src/vectl/cli_orchestration.py --agent
+
+      uv run python -m pytest tests/test_orch_cli_surface.py tests/orchestration/unit/test_cli_drive_lifecycle_surface.py
+      -q
+
+      ```
+
+      Results:
+
+      - invar guard: passed; files_checked=1; errors=0; warnings=0; infos=0; governed
+      escape hatches file_size=1, dead_param=1 with explicit reasons.
+
+      - pytest: 58 passed in 3.45s.
+
+
+      ## Residuals
+
+      - Full-repo guard remains expected-red outside this owned file.
+
+      - No plan/orchestrator state files were modified by worker.
+
+      - No vectl CLI commands were run.
+
+
+      ## Product Scope Confirmation
+
+      - Owned product file only: src/vectl/cli_orchestration.py.
+
+      - Verdict: SUCCESS.'
   - id: fix-cli-plan-domain
     name: Fix CLI plan invar domain
     status: claimed

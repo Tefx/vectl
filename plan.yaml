@@ -98523,7 +98523,7 @@ phases:
       \ `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\n## Checklist\n\
       - [x] Capture BEFORE guard excerpts for driver residual rows and weighted contributors.\n\
       - [x] Decompose driver internals without changing active-drive, barrier, resume,\
-      \ recovery, dispatch, or event semantics.\n- [ ] Run targeted driver loop, runtime\
+      \ recovery, dispatch, or event semantics.\n- [x] Run targeted driver loop, runtime\
       \ lifecycle, recovery/resume, and orchestration unit tests with pasted exact\
       \ results.\n- [ ] Run import smoke through the original `vectl.orchestration.driver`\
       \ path.\n- [ ] Run representative runtime/barrier/resume smoke proof and paste\

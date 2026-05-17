@@ -97278,7 +97278,7 @@ phases:
       - [x] Authoritative current-mainline `uvx invar-tools guard --all` output is
       pasted verbatim.
 
-      - [ ] The register maps every remaining finding to PROVEN_CLOSED, NON_INTERSECTING
+      - [x] The register maps every remaining finding to PROVEN_CLOSED, NON_INTERSECTING
       with proof, or BLOCKING_OWNER_NEEDED with owner.
 
       - [ ] Budget counters are compared against the reported failed attempt and show

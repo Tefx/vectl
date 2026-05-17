@@ -94347,7 +94347,7 @@ phases:
 
       - [x] Current mainline residual inventory is mapped for every listed file.
 
-      - [ ] Each residual has exactly one disposition and an explicit downstream owner.
+      - [x] Each residual has exactly one disposition and an explicit downstream owner.
 
       - [ ] No residual is dismissed as pre-existing or out-of-scope without non-intersection
       proof.

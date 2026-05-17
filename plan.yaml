@@ -94489,7 +94489,7 @@ phases:
       - docs/invar_guard_remediation/escape_budget_authority_decision.md'
   - id: invar_guard_remediation.escape-budget-core-contracts
     name: Define core extraction contracts for escape-budget closure
-    status: claimed
+    status: done
     description: 'CONTRACT step. Define acceptance-only Core extraction contracts
       required by `invar_guard_remediation.escape-budget-authority-decision` before
       any implementation fills logic.
@@ -94583,6 +94583,123 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T16:32:30.904664+00:00'
+    done_at: '2026-05-17T16:53:20.683543+00:00'
+    evidence: '## refs Read Confirmation
+
+      - tools/vectl/README.md — NOT READ: file absent.
+
+      - INVAR.md — read Core @pre/@post/doctest before implementation and Shell I/O
+      boundaries.
+
+      - docs/invar_guard_remediation/escape_budget_authority_decision.md — read contract
+      obligations lines/rows for routing, config, projection, event, control, prompt,
+      planner mutation, and recovery fallback.
+
+      - CONSTITUTION.md — NOT READ: file absent.
+
+
+      ## Contract Artifact Register
+
+      Added contract-first Core extraction stubs under `src/vectl/core/orchestration/**`
+      mapped to authority rows 38, 42, 45, 48, 51, 56, 59, 62, and 74. Each function
+      includes signature/type annotations, docstring/doctest, @pre/@post contract,
+      and `NotImplementedError` stub.
+
+
+      ## Contract Purity Confirmation
+
+      - Product implementation logic added: NO.
+
+      - Shell I/O added to Core: NO.
+
+      - Public/model-visible output changed: NO.
+
+
+      ## Expected-Red / Gap Proof
+
+      - step_intent: contract_define_red
+
+      - expected_result: red
+
+      - observed_result: red
+
+      - failure_alignment: normal-path smoke raised `NotImplementedError: contract
+      stub: build_resolution_case_data`, matching downstream implementation gap.
+
+      - implementation files modified to force green: NO.
+
+
+      ## Verification
+
+      Worker evidence:
+
+      - `.venv/bin/python -m compileall -q src/vectl/core` — passed.
+
+      - `.venv/bin/python -m doctest -v src/vectl/core/orchestration/*.py` — passed;
+      doctests document stub gaps and precondition edge failures.
+
+      - `.venv/bin/invar guard --changed` — passed with 0 errors and 2 warnings for
+      authority-required no-arg functions.
+
+
+      Mainline verification after squash merge:
+
+      - `.venv/bin/python -m compileall -q src/vectl/core` — passed.
+
+      - `.venv/bin/python -m doctest -v src/vectl/core/orchestration/*.py` — passed.
+
+      - Per-file `.venv/bin/invar guard <core contract file> --agent` over `src/vectl/core/orchestration/*.py`
+      — passed with 0 errors; `config_defaults.py` retained 2 semantic_tautology warnings
+      for authority-required no-arg functions whose non-vacuous constraints are in
+      @post.
+
+
+      ## Checklist Receipt
+
+      All description and verification checklist items were marked done based on the
+      returned receipt and artifact evidence.
+
+
+      ## Commit hash(es)
+
+      - Worker branch: 81fc6ee9f4bd8764afac7355b62449882bd8ed1c
+
+      - Mainline squash: 21fd89c
+
+
+      ## Files changed
+
+      - src/vectl/core/__init__.py
+
+      - src/vectl/core/orchestration/__init__.py
+
+      - src/vectl/core/orchestration/config_defaults.py
+
+      - src/vectl/core/orchestration/config_serialization.py
+
+      - src/vectl/core/orchestration/config_validation.py
+
+      - src/vectl/core/orchestration/control_channel_schema.py
+
+      - src/vectl/core/orchestration/event_schema.py
+
+      - src/vectl/core/orchestration/planner_mutation_mapping.py
+
+      - src/vectl/core/orchestration/projection_payloads.py
+
+      - src/vectl/core/orchestration/projection_reducer.py
+
+      - src/vectl/core/orchestration/prompt_contracts.py
+
+      - src/vectl/core/orchestration/recovery_fallback_decision.py
+
+      - src/vectl/core/orchestration/routing_presenters.py
+
+
+      ## Residuals
+
+      No implementation logic added by design. Downstream implementation steps own
+      the expected-red stubs.'
   - id: invar_guard_remediation.fix-config-projection-recovery-budget-residuals
     name: Fix config/projection/recovery escape-budget residuals
     status: pending

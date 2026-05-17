@@ -95716,6 +95716,189 @@ phases:
     - invar_guard_remediation.fix-events-control-app-driver-budget-residuals
     - invar_guard_remediation.fix-inspection-prompt-budget-residuals
     agent: integration-verifier
+  - id: invar_guard_remediation.investigate-prompt-materialization-shell-result-root-cause
+    name: Investigate prompt_materialization shell_result root cause
+    status: pending
+    description: 'INVESTIGATION / Loop 3+ root-cause analysis before any additional
+      prompt_materialization implementation retry.
+
+
+      work_type: technical_debt_remediation
+
+      step_type: investigation
+
+      symbolic_testing: true
+
+      agent_source: default
+
+
+      Context:
+
+      - Latest worker commit `612d2390f68c11dec86f3892b2ec952f335d06a8` was salvaged
+      to main as `2ecf45c`.
+
+      - That salvage removed seven `shell_result` escape hatch comments in `src/vectl/orchestration/prompt_materialization.py`.
+
+      - Targeted prompt/inspection tests passed, but authoritative `uvx invar-tools
+      guard --all` remains red.
+
+      - Full guard no longer reports aggregate `prompt_materialization shell_result
+      9/2`; instead it reports individual `shell_result` errors for pure compatibility
+      adapters and file budget `shell_result: 2/2` for the two remaining true Shell
+      boundaries.
+
+      - Treat this as reversal-risk: comment deletion reduced counters but likely
+      converted justified/pending findings into raw guard errors.
+
+
+      Required investigation outputs:
+
+      - blocker_fingerprint: exact before/current prompt_materialization guard excerpt,
+      including individual shell_result errors for `resolve_prompt_artifact_paths`,
+      `build_runner_handoff_env`, `compute_prompt_bundle_sha256`, `_render_runner_prompt_md`,
+      `_output_contract_lines`, `build_opencode_launch_argv`, `_build_default_opencode_launch_argv`,
+      plus file budget `shell_result: 2/2` for true shell boundaries.
+
+      - root_cause_hypothesis: classify each listed function as pure compatibility
+      adapter, true Shell boundary, or wrongly-mixed boundary.
+
+      - why_previous_fix_failed: explain why deleting `@invar:allow shell_result`
+      comments reduced counters but did not close the rule.
+
+      - why_comment_deletion_is_not_closure: show how raw individual errors differ
+      from budget closure and why suppressing/removing comments alone cannot satisfy
+      invar semantics.
+
+      - reversal_risk: identify any removed escape-hatch justification that represented
+      pending/justified guard debt and must be restored or replaced with code-level
+      closure evidence.
+
+      - environment_consistency_check: confirm the evidence is current mainline after
+      salvage `2ecf45c`, not stale branch/worktree output.
+
+      - next_fix_constraint: choose the exact closure strategy for the implementation
+      step: (A) convert pure compatibility adapters to Core-owned contracted functions
+      with narrow Shell wrappers, or (B) intentionally migrate public adapters to
+      Result-returning APIs only if compatibility tests/docs prove this migration
+      is intended.
+
+
+      Do not modify product code in this investigation step. This step produces an
+      executable diagnosis and constraints for the implementation step.
+
+
+      ## Completion Criteria
+
+      - [ ] Full guard prompt_materialization excerpt is captured from current mainline
+      before the next implementation retry.
+
+      - [ ] Each listed function is classified as pure adapter, true Shell boundary,
+      or mixed boundary with rationale.
+
+      - [ ] Evidence includes `why_previous_fix_failed`, `why_comment_deletion_is_not_closure`,
+      and `reversal_risk` fields.
+
+      - [ ] Removed escape-hatch justifications are inventoried as restore/repair
+      candidates, not broadly reintroduced.
+
+      - [ ] Next implementation strategy is constrained to code-level closure, not
+      comment churn or broad suppression.'
+    verification: '- [ ] Investigation evidence includes blocker_fingerprint, root_cause_hypothesis,
+      why_previous_fix_failed, why_comment_deletion_is_not_closure, reversal_risk,
+      environment_consistency_check, and next_fix_constraint.
+
+      - [ ] Exact `uvx invar-tools guard --all` prompt_materialization excerpt is
+      pasted from current mainline before implementation.
+
+      - [ ] No product code or docs are changed by this investigation step.
+
+      - [ ] The implementation step has a precise closure strategy and cannot repeat
+      budget-comment deletion as completion.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Root-Cause Investigation Report
+
+
+      **Current mainline commit/evidence base**: <commit or working tree note>
+
+
+      ### blocker_fingerprint
+
+      ```text
+
+      <paste exact prompt_materialization excerpt from uvx invar-tools guard --all>
+
+      ```
+
+
+      ### Function Classification
+
+      | Function | Classification | Rationale | Closure Strategy |
+
+      | --- | --- | --- | --- |
+
+      | resolve_prompt_artifact_paths | pure_adapter / true_shell / mixed | <why>
+      | <core extraction / shell wrapper / intentional API migration> |
+
+      | build_runner_handoff_env | pure_adapter / true_shell / mixed | <why> | <strategy>
+      |
+
+      | compute_prompt_bundle_sha256 | pure_adapter / true_shell / mixed | <why> |
+      <strategy> |
+
+      | _render_runner_prompt_md | pure_adapter / true_shell / mixed | <why> | <strategy>
+      |
+
+      | _output_contract_lines | pure_adapter / true_shell / mixed | <why> | <strategy>
+      |
+
+      | build_opencode_launch_argv | pure_adapter / true_shell / mixed | <why> | <strategy>
+      |
+
+      | _build_default_opencode_launch_argv | pure_adapter / true_shell / mixed |
+      <why> | <strategy> |
+
+
+      ### Required Fields
+
+      - why_previous_fix_failed: <required>
+
+      - why_comment_deletion_is_not_closure: <required>
+
+      - reversal_risk: <required>
+
+      - environment_consistency_check: <required>
+
+      - next_fix_constraint: <required>
+
+
+      ### Escape-Hatch Justification Inventory
+
+      | Removed/changed allow | Original purpose if known | Restore/repair needed?
+      | Why this is not broad suppression |
+
+      | --- | --- | --- | --- |
+
+
+      ### Headline
+
+      - [ ] READY_FOR_IMPLEMENTATION: the next fix has a precise root-cause closure
+      strategy
+
+      - [ ] BLOCKED: investigation found an authority conflict requiring planner replan'
+    depends_on:
+    - invar_guard_remediation.escape-budget-core-contracts
+    - invar_guard_remediation.fix-events-control-app-driver-budget-residuals
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

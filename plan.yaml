@@ -94769,7 +94769,7 @@ phases:
       - [x] At least one recovery fallback failure-path regression covers missing/legacy
       path behavior if fallback logic is touched.
 
-      - [ ] Scoped guard evidence for the owned files improves or closes the listed
+      - [x] Scoped guard evidence for the owned files improves or closes the listed
       residuals.'
     verification: '- [ ] Main path: targeted config/projection/recovery tests pass
       with actual command output pasted.

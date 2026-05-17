@@ -96167,7 +96167,7 @@ phases:
       - [x] Current-mainline `uvx invar-tools guard --all` BEFORE excerpt is pasted
       and includes the residual budget families being sliced.
 
-      - [ ] Evidence explains why the prior broad fix failed and why another all-in-one
+      - [x] Evidence explains why the prior broad fix failed and why another all-in-one
       implementation loop is forbidden.
 
       - [ ] Slice boundary register assigns inspection/drive queries, `contracts.py`,

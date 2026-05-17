@@ -17,6 +17,10 @@ Public surfaces:
     - ReviewResultParseError       (error for unparseable review results)
 """
 
+# @invar:allow file_size: dispatch policy intentionally co-locates public dispatch-policy surfaces
+# that share the authority documents listed above; splitting would widen this scoped archive/policy
+# remediation beyond owned files and risk import/API churn.
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

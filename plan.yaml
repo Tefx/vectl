@@ -94528,7 +94528,7 @@ phases:
 
       - [x] No implementation logic is introduced beyond stubs.
 
-      - [ ] Each Core contract references real parameters and includes non-vacuous
+      - [x] Each Core contract references real parameters and includes non-vacuous
       comparisons.
 
       - [ ] Doctests are present before implementation and document expected behavior.

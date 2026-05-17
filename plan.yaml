@@ -96182,16 +96182,16 @@ phases:
 
       - [x] No product-code remediation is claimed by this planning/investigation
       step.'
-    verification: '- [ ] The step produces a current-mainline residual inventory and
+    verification: '- [x] The step produces a current-mainline residual inventory and
       does not claim implementation closure.
 
-      - [ ] The prior failed loop is explicitly analyzed via `why_previous_fix_failed`
+      - [x] The prior failed loop is explicitly analyzed via `why_previous_fix_failed`
       and budget-regression evidence.
 
-      - [ ] Every blocker family is assigned to one downstream implementation owner
+      - [x] Every blocker family is assigned to one downstream implementation owner
       or explicit final disposition owner.
 
-      - [ ] Evidence includes the mandatory refs read confirmation and `uvx invar-tools
+      - [x] Evidence includes the mandatory refs read confirmation and `uvx invar-tools
       guard --all` BEFORE excerpt.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

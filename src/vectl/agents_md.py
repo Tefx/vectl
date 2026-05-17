@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Generic, TypeAlias, TypeVar
 
 
 AGENTS_MD_LEGACY_HEADER = "## Plan Tracking (vectl)"
@@ -76,40 +78,66 @@ class AgentsTarget(str, Enum):
     claude = "claude"
 
 
-def detect_agents_target(directory: Path, target: AgentsTarget = AgentsTarget.auto) -> Path:
+_T = TypeVar("_T")
+_E = TypeVar("_E", bound=BaseException)
+
+
+@dataclass(frozen=True)
+class Success(Generic[_T]):
+    value: _T
+
+
+@dataclass(frozen=True)
+class Failure(Generic[_E]):
+    error: _E
+
+
+Result: TypeAlias = Success[_T] | Failure[_E]
+
+
+# @shell_complexity: Ordered AGENTS.md/CLAUDE.md precedence preserves documented target selection semantics.
+def detect_agents_target(directory: Path, target: AgentsTarget = AgentsTarget.auto) -> Result[Path, OSError]:
     """Detect the best target file for the vectl agents-md section."""
 
     agents_md = directory / "AGENTS.md"
     claude_md = directory / "CLAUDE.md"
 
     if target is AgentsTarget.agents:
-        return agents_md
+        return Success(agents_md)
     if target is AgentsTarget.claude:
-        return claude_md
+        return Success(claude_md)
 
-    for candidate in (agents_md, claude_md):
-        if candidate.exists():
-            content = candidate.read_text(encoding="utf-8")
-            if AGENTS_MD_BEGIN in content:
-                return candidate
+    try:
+        for candidate in (agents_md, claude_md):
+            if candidate.exists():
+                content = candidate.read_text(encoding="utf-8")
+                if AGENTS_MD_BEGIN in content:
+                    return Success(candidate)
+    except OSError as exc:
+        return Failure(exc)
 
     if agents_md.exists():
-        return agents_md
+        return Success(agents_md)
     if claude_md.exists():
-        return claude_md
+        return Success(claude_md)
 
     if (directory / ".claude").is_dir():
-        return claude_md
+        return Success(claude_md)
 
-    return agents_md
+    return Success(agents_md)
 
 
+# @invar:allow shell_result: Public upsert API returns status text and target filename for CLI/MCP compatibility.
+# @shell_complexity: Branches preserve create, replace, legacy-append, and fresh-append user messages.
 def upsert_agents_md(
     directory: Path, target: AgentsTarget = AgentsTarget.auto
 ) -> tuple[str, str]:
     """Create or upsert vectl section in AGENTS.md or CLAUDE.md."""
 
-    target_path = detect_agents_target(directory, target)
+    target_result = detect_agents_target(directory, target)
+    if isinstance(target_result, Failure):
+        raise target_result.error
+    target_path = target_result.value
 
     if not target_path.exists():
         target_path.write_text(AGENTS_MD_SNIPPET, encoding="utf-8")

@@ -36,6 +36,7 @@ class GuidancePayload(BaseModel):
     truncated: bool
 
 
+# @invar:allow function_size: Guidance assembly keeps ordered bounded markdown sections together for claim output compatibility.
 def build_claim_guidance(plan: Plan, phase: Phase, step: Step) -> GuidancePayload:
     """Build bounded guidance payload for a claimed step.
 

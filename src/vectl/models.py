@@ -1,3 +1,4 @@
+# @invar:allow file_size: Model compatibility module co-locates public Pydantic/dataclass DTOs and exceptions for stable imports.
 """Data models and exceptions."""
 
 from __future__ import annotations
@@ -237,6 +238,8 @@ class Plan(BaseModel):
         return None
 
 
+# @invar:allow shell_result: Formatting helper intentionally returns diagnostic text for existing error/report call sites.
+# @shell_orchestration: Selector formatting remains beside Plan/Phase/Step models for diagnostic import compatibility.
 def format_step_selector(phase_id: str, step_id: str) -> str:
     """Return canonical selector text for step-oriented diagnostics.
 

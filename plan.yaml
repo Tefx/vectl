@@ -93162,7 +93162,7 @@ phases:
     claimed_at: '2026-05-17T14:18:24.355029+00:00'
   - id: fix-io-storage-merge-driver-residual
     name: Fix merge driver residual invar guard findings
-    status: pending
+    status: claimed
     description: 'IMPLEMENTATION residual closure for the salvaged IO/storage domain.
 
 
@@ -93345,6 +93345,8 @@ phases:
     depends_on:
     - invar_guard_remediation.collect-failure-inventory
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-17T14:18:56.498503+00:00'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

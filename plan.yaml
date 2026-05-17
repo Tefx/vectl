@@ -93887,6 +93887,144 @@ phases:
     depends_on:
     - invar_guard_remediation.escape-budget-authority-decision
     agent: python-senior
+  - id: invar_guard_remediation.fix-config-projection-recovery-budget-residuals
+    name: Fix config/projection/recovery escape-budget residuals
+    status: pending
+    description: 'IMPLEMENTATION. Complete the structural escape-budget remediation
+      slice for config, projections, and recovery fallback according to the authority
+      decision and Core contracts.
+
+
+      Target inventory:
+
+      - `src/vectl/orchestration/config.py` — function_size/shell_result escape budget
+      residuals.
+
+      - `src/vectl/orchestration/projections.py` — shell_result escape budget residuals.
+
+      - `src/vectl/orchestration/recovery_fallback.py` — function_size/shell_result/project
+      weighted budget residuals.
+
+      - Contract artifacts from `invar_guard_remediation.escape-budget-core-contracts`
+      that the authority decision assigns to this slice.
+
+
+      YOUR SCOPE:
+
+      - Fill in stub bodies created by the contract step, or move pure logic behind
+      those contracts, only where the authority decision assigns structural extraction.
+
+      - Preserve config precedence/defaulting/frozen config semantics, projection
+      replay outputs, recovery fallback path behavior, and compatibility parameter
+      semantics.
+
+      - Use narrow adapter allows only for rows explicitly classified as `narrow_adapter_allow`
+      by the authority decision.
+
+      - Do NOT broaden allow markers to hide real defects.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs.
+
+
+      ## Failure-Mode Checklist
+
+      - [ ] Config precedence/defaulting and explicit-clear/null semantics are preserved.
+
+      - [ ] Projection replay ordering and event-derived output formats remain compatible.
+
+      - [ ] Recovery fallback missing-file/path behavior and compatibility parameters
+      are preserved.
+
+      - [ ] Any partial structural extraction keeps Shell I/O outside `src/vectl/core/**`.
+
+      - [ ] Remaining residual debt, if any, is mapped to policy disposition with
+      gate non-intersection proof rather than being hidden.
+
+
+      ## Required Regression Evidence
+
+      - [ ] Targeted config/projection/recovery tests pass on mainline paths.
+
+      - [ ] At least one spec-exact/minimal config fixture is used if config parsing/loading
+      is touched.
+
+      - [ ] At least one recovery fallback failure-path regression covers missing/legacy
+      path behavior if fallback logic is touched.
+
+      - [ ] Scoped guard evidence for the owned files improves or closes the listed
+      residuals.'
+    verification: '- [ ] Main path: targeted config/projection/recovery tests pass
+      with actual command output pasted.
+
+      - [ ] Failure path: config fixture, projection replay, and recovery fallback
+      regressions cover the highest-risk changed behavior.
+
+      - [ ] Invar scoped evidence shows the target residual budget findings are closed
+      or dispositioned exactly as the authority decision allowed.
+
+      - [ ] No new uncontracted Core code or broad Shell allow masking is introduced.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Slice Evidence
+
+
+      **Authority decision rows implemented**:
+
+      - <row ids / file residuals>
+
+
+      **Core contracts filled**:
+
+      | Contract path | Function | Stub replaced with substantive logic? | @pre/@post
+      retained? | Doctest retained? |
+
+      |---|---|---|---|---|
+
+      | <path> | <function> | YES/NO | YES/NO | YES/NO |
+
+
+      **Commands and outputs**:
+
+      ```
+
+      <paste targeted tests and scoped guard outputs>
+
+      ```
+
+
+      **Behavioral proof register**:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | config/projection/recovery | <claim> | <test/property/doctest> | <output>
+      | PROVEN/NEEDS_TEST/UNPROVEN | <owner> | <OPEN/BLOCK basis> |
+
+
+      **Residuals after this slice**:
+
+      - <none or exact residual with owner/disposition>
+
+      '
+    depends_on:
+    - invar_guard_remediation.escape-budget-core-contracts
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

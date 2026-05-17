@@ -94763,7 +94763,7 @@ phases:
 
       - [x] Targeted config/projection/recovery tests pass on mainline paths.
 
-      - [ ] At least one spec-exact/minimal config fixture is used if config parsing/loading
+      - [x] At least one spec-exact/minimal config fixture is used if config parsing/loading
       is touched.
 
       - [ ] At least one recovery fallback failure-path regression covers missing/legacy

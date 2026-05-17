@@ -90944,6 +90944,7 @@ phases:
     - invar_guard_remediation.fix-config-projections-recovery-budget-closure
     - invar_guard_remediation.fix-orch-app-driver-budget-closure
     - invar_guard_remediation.full-guard-residual-disposition-retest
+    - invar_guard_remediation.full-guard-escape-budget-batched-retest
     - cli-surface-preservation-uiux-audit
     - invar_guard_remediation.escape-budget-full-guard-retest
     agent: integration-verifier

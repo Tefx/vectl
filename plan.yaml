@@ -98531,23 +98531,23 @@ phases:
       \ and weighted contributors.\n- [x] Confirm no budget lowering, suppression,\
       \ ignored files, deleted findings, stub-only wrapper, runtime narrowing, or\
       \ operator-visible behavior deletion."
-    verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
+    verification: '- [x] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
       driver residual rows, `file_size`, weighted budget, and relevant `dead_param`/`entry_point_too_thick`/`shell_complexity`
       contributors.
 
-      - [ ] Original `vectl.orchestration.driver` import path and public symbols are
+      - [x] Original `vectl.orchestration.driver` import path and public symbols are
       smoke-proven.
 
-      - [ ] Driver loop/barrier/resume/recovery behavior is proven with targeted tests
+      - [x] Driver loop/barrier/resume/recovery behavior is proven with targeted tests
       or focused runtime smoke output.
 
-      - [ ] Targeted orchestration unit/runtime tests pass with exact command output
+      - [x] Targeted orchestration unit/runtime tests pass with exact command output
       pasted.
 
-      - [ ] Evidence confirms active-drive state-machine, barrier ordering, resume/recovery,
+      - [x] Evidence confirms active-drive state-machine, barrier ordering, resume/recovery,
       dispatch contracts, events, and operator-visible status were preserved.
 
-      - [ ] No invar budget lowering, suppression, ignored files, deleted findings,
+      - [x] No invar budget lowering, suppression, ignored files, deleted findings,
       stub-only wrapper, runtime narrowing, or operator-visible behavior deletion
       occurred.'
     evidence_template: '## refs Read Confirmation (MANDATORY)

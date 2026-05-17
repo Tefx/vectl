@@ -98272,7 +98272,7 @@ phases:
       \ classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\
       \n## Checklist\n- [x] Capture BEFORE guard excerpts for owned residual rows\
       \ and weighted contributors.\n- [x] Decompose config/runtime/run_store surfaces\
-      \ behind stable public modules.\n- [ ] Preserve config precedence/defaults,\
+      \ behind stable public modules.\n- [x] Preserve config precedence/defaults,\
       \ runtime lifecycle, reconcile behavior, and JSONL persistence formats.\n- [\
       \ ] Run targeted tests for config projection/recovery, runtime lifecycle, run\
       \ store, and touched persistence paths.\n- [ ] Run import smoke checks for original\

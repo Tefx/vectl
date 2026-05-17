@@ -94748,7 +94748,7 @@ phases:
 
       - [x] Config precedence/defaulting and explicit-clear/null semantics are preserved.
 
-      - [ ] Projection replay ordering and event-derived output formats remain compatible.
+      - [x] Projection replay ordering and event-derived output formats remain compatible.
 
       - [ ] Recovery fallback missing-file/path behavior and compatibility parameters
       are preserved.

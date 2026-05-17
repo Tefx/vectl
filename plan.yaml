@@ -97467,263 +97467,252 @@ phases:
       step after remediation ownership was created; downstream OPEN remains blocked
       until the batched fix/retest path closes.'
   - id: invar_guard_remediation.fix-full-guard-escape-budget-blockers-batched
-    name: Fix residual full-guard escape-budget project blockers after salvage
+    name: Fix residual file-size escape-budget root cause after two salvages
     status: pending
-    description: "Batched implementation remediation retry after salvaged partial\
-      \ progress from commit `3a155e9`.\n\nstep_type: implementation\nsymbolic_testing:\
-      \ true\nprior_loop: invar_guard_remediation.full-guard-residual-disposition-retest\n\
-      salvaged_progress_commit: 3a155e9\nremaining_blocker: current mainline `uvx\
-      \ invar-tools guard --all` still fails only on residual project-level escape-budget\
-      \ families: `escape_hatch_project_limit` file_size `17/5`, function_size `7/5`,\
-      \ shell_result `8/5`, and `escape_hatch_budget` weighted `109/15`.\n\n## Salvaged\
-      \ Progress to Preserve\n- First execution was squash-salvaged into main as commit\
-      \ `3a155e9` after verified net-positive partial progress.\n- Targeted tests\
-      \ in main after salvage: `139 passed`.\n- Listed file-level blockers for `orch_app`,\
-      \ `config`, `driver`, `projections`, and `recovery_fallback` are closed and\
-      \ MUST NOT be redone as primary work.\n- Current executor scope is the residual\
-      \ project-level budget tail only.\n\n## why_previous_fix_failed\nThe first attempt\
-      \ reduced blocker pressure materially but stopped before proving downstream-safe\
-      \ closure. Residual project-level budget findings still intersect the downstream\
-      \ escape-budget retest, full-guard retest, UI/UX audit, and phase gate. The\
-      \ attempt explicitly provided no non-intersection proof for remaining residuals,\
-      \ so the step could not complete even though its partial code/test progress\
-      \ was salvageable.\n\n## residual_strategy\nTreat this retry as a closure-focused\
-      \ residual pass, not a broad redo.\n1. Start from current mainline, including\
-      \ salvage commit `3a155e9`.\n2. Capture exact BEFORE `uvx invar-tools guard\
-      \ --all` excerpts from current mainline before editing.\n3. Inventory ONLY the\
-      \ current residual project-level counters:\n   - `escape_hatch_project_limit`:\
-      \ file_size `17/5`\n   - `escape_hatch_project_limit`: function_size `7/5`\n\
-      \   - `escape_hatch_project_limit`: shell_result `8/5`\n   - `escape_hatch_budget`:\
-      \ weighted `109/15`\n4. Reduce remaining counters through real behavior-preserving\
-      \ decomposition, contract strengthening, or targeted remediation.\n5. If any\
-      \ residual remains, provide strict non-intersection proof against downstream\
-      \ UI/UX audit, escape-budget retest, full-guard retest, and gate; otherwise\
-      \ the verdict is FAIL.\n\n## Do NOT Reopen Closed File-Level Blockers\n- Do\
-      \ NOT redo the already-closed file-level blockers for `src/vectl/orch_app.py`,\
-      \ `src/vectl/orchestration/config.py`, `src/vectl/orchestration/driver.py`,\
-      \ `src/vectl/orchestration/projections.py`, or `src/vectl/orchestration/recovery_fallback.py`\
-      \ unless a current BEFORE guard excerpt proves a new residual in that file.\n\
-      - If touching any of those surfaces for residual project-level closure, keep\
-      \ the edit narrowly tied to the current residual counter and preserve the salvaged\
-      \ behavior.\n\n## Required Current Residual Blockers\n### R1: escape_hatch_project_limit\
-      \ / file_size\nCurrent salvaged baseline: `17/5`.\nRequired outcome: close the\
-      \ residual or prove why remaining file-size escape pressure does not intersect\
-      \ downstream gates.\n\n### R2: escape_hatch_project_limit / function_size\n\
-      Current salvaged baseline: `7/5`.\nRequired outcome: close the residual or prove\
-      \ why remaining function-size escape pressure does not intersect downstream\
-      \ gates.\n\n### R3: escape_hatch_project_limit / shell_result\nCurrent salvaged\
-      \ baseline: `8/5`.\nRequired outcome: close the residual or prove why remaining\
-      \ shell-result escape pressure does not intersect downstream gates.\n\n### R4:\
-      \ escape_hatch_budget / weighted\nCurrent salvaged baseline: `109/15`.\nRequired\
-      \ outcome: close the residual or prove why remaining weighted budget pressure\
-      \ does not intersect downstream gates.\n\n## Required Baseline Comparison Table\n\
-      Final evidence MUST include one table with these columns:\n- family\n- failed\
-      \ broad baseline\n- pre-salvage prior baseline\n- salvaged baseline `3a155e9`\n\
-      - BEFORE current mainline\n- AFTER current mainline\n- delta from salvaged baseline\n\
-      - gate disposition\n\nUse these known baseline values:\n- shell_result failed\
-      \ broad baseline `80/5`; pre-salvage prior `66/5`; salvaged baseline `8/5`\n\
-      - weighted failed broad baseline `400/15`; pre-salvage prior `355/15`; salvaged\
-      \ baseline `109/15`\n- function_size pre-salvage prior `30/5`; salvaged baseline\
-      \ `7/5`\n- file_size pre-salvage prior `18/5`; salvaged baseline `17/5`\n\n\
-      ## Residual Disposition Register Required\nFor every remaining finding after\
-      \ the retry, evidence MUST include a structured register with:\n- `requirement_ref`\n\
-      - `behavior_claim`\n- `runtime_proof_expected`\n- `evidence_ref`\n- `status`\n\
-      - `closure_path`\n- `gate_decision_basis`\n\nAllowed statuses: `PROVEN`, `FIXED`,\
-      \ or `NON_INTERSECTING_WITH_PROOF`. Any `NEEDS_TEST`, `UNPROVEN`, `UNCERTAIN_BLOCKING`,\
-      \ or unexplained residual means FAIL for this step.\n\n## Gate-Intersection\
-      \ Rule\nResiduals are blocker-class unless proven otherwise. If any residual\
-      \ remains, evidence MUST prove non-intersection against ALL of:\n- downstream\
-      \ UI/UX audit (`cli-surface-preservation-uiux-audit` or equivalent remaining\
-      \ audit)\n- `invar_guard_remediation.escape-budget-full-guard-retest`\n- `invar_guard_remediation.verify-full-guard`\n\
-      - `invar_guard_remediation.gate`\n\nIf this proof is absent or partial, verdict\
-      \ MUST be FAIL.\n\n## Required Tests and Commands\n- Run `uvx invar-tools guard\
-      \ --all` BEFORE edits and preserve exact excerpts showing summary and current\
-      \ residual counters.\n- Run targeted tests for every touched surface and report\
-      \ exact test names/results.\n- Run `uvx invar-tools guard --all` AFTER edits\
-      \ and preserve exact excerpts showing summary and residual counters.\n\n## Prohibited\
-      \ Remediation Patterns\n- No broad suppressions, widened escape hatches, budget\
-      \ lowering, guard disabling, ignored files, or deleted findings.\n- No stub-only\
-      \ implementation; substantive logic must process inputs and produce outputs\
-      \ that vary by input.\n- No handler-only narrowing of app/driver lifecycle or\
-      \ CLI/operator-visible behavior.\n- No public-interface redesign unless required\
-      \ to preserve invar policy and backed by targeted tests.\n- No removal of operator-visible\
-      \ behavior to reduce counters.\n\n## Invariants and Surface Preservation\n-\
-      \ Preserve public orchestration inspection semantics.\n- Preserve CLI/operator-visible\
-      \ behavior.\n- Preserve config precedence.\n- Preserve projection output semantics.\n\
-      - Preserve recovery fallback behavior.\n- Preserve app/driver lifecycle behavior.\n\
-      - Preserve runtime/entrypoint behavior; do NOT narrow server/app/driver lifecycle\
-      \ work into handler-only internals.\n\n## Completion Criteria (stub exclusion)\n\
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each\
-      \ deliverable MUST contain substantive logic that processes its inputs and produces\
-      \ outputs that vary based on those inputs. Private stub classes (`_Runtime*`,\
-      \ `_Stub*`, `_Placeholder*`) do not satisfy this requirement.\n\n## Checklist\n\
-      - [ ] Confirm current mainline includes salvage commit `3a155e9` context and\
-      \ do not redo already-closed file-level blockers as primary work.\n- [ ] Capture\
-      \ exact BEFORE `uvx invar-tools guard --all` excerpt from current mainline including\
-      \ summary, residual project-level blocker families, and budget counters.\n-\
-      \ [ ] Inventory residuals limited to file_size `17/5`, function_size `7/5`,\
-      \ shell_result `8/5`, and weighted `109/15`, unless BEFORE guard proves a different\
-      \ current mainline residual.\n- [ ] Remediate residual project-level pressure\
-      \ through behavior-preserving code/contract/test changes, not threshold changes\
-      \ or suppressions.\n- [ ] Run targeted tests for every touched surface and include\
-      \ exact test names/results.\n- [ ] Preserve orchestration inspection, CLI/operator-visible\
-      \ behavior, config precedence, projection outputs, recovery fallback, and app/driver\
-      \ lifecycle behavior.\n- [ ] Capture exact AFTER `uvx invar-tools guard --all`\
-      \ excerpt from current mainline including summary and residual counters.\n-\
-      \ [ ] Provide final comparison table with failed broad baseline, pre-salvage\
-      \ prior baseline, salvaged baseline `3a155e9`, BEFORE, and AFTER.\n- [ ] Provide\
-      \ residual disposition register with `requirement_ref`, `behavior_claim`, `runtime_proof_expected`,\
-      \ `evidence_ref`, `status`, `closure_path`, and `gate_decision_basis` for every\
-      \ remaining finding.\n- [ ] If any residual remains, prove non-intersection\
-      \ against downstream UI/UX audit, escape-budget retest, full-guard retest, and\
-      \ gate; otherwise mark verdict FAIL.\n- [ ] Confirm no broad suppression, budget\
-      \ lowering, deleted findings, stub-only implementation, or handler-only narrowing\
-      \ was used."
-    verification: '- [ ] Exact BEFORE `uvx invar-tools guard --all` excerpt from current
-      mainline is present and includes summary plus residual counters.
+    description: "Root-cause-oriented third remediation attempt for the remaining\
+      \ full-guard escape-hatch budget blockers after two salvageable partial-progress\
+      \ attempts.\n\nstep_type: implementation\nsymbolic_testing: true\nloop_count:\
+      \ 3\nroot_cause_analysis: true\nprior_loop: invar_guard_remediation.full-guard-residual-disposition-retest\n\
+      salvaged_progress_commits:\n  - 3a155e9\n  - 57d44cf\nremaining_blocker: current\
+      \ post-57d44cf `uvx invar-tools guard --all` fails only on `escape_hatch_project_limit`\
+      \ file_size `17/5` and `escape_hatch_budget` weighted `64/15`.\n\n## Scope Boundary\n\
+      This retry focuses EXCLUSIVELY on root-cause closure of residual file-size escape-hatch\
+      \ pressure and the weighted budget that file-size residuals drive. Do not chase\
+      \ old broad counters, old function_size findings, old shell_result findings,\
+      \ or already-closed file-level blockers unless the current guard detail list\
+      \ proves they reappeared.\n\n## Salvaged Progress to Preserve\n- Salvage commit\
+      \ `3a155e9` closed listed file-level blockers and reduced file_size `18/5 ->\
+      \ 17/5`, function_size `30/5 -> 7/5`, shell_result `66/5 -> 8/5`, and weighted\
+      \ `355/15 -> 109/15`.\n- Salvage commit `57d44cf` closed project function_size\
+      \ and shell_result limits, with targeted tests `538 passed`.\n- Current guard\
+      \ after `57d44cf`: errors=2, warnings=45, infos=8.\n- Current residual guard\
+      \ blockers are only file_size `17/5` and weighted `64/15`.\n- Preserve all behavior\
+      \ and test coverage from both salvage commits.\n\n## why_previous_fix_failed\n\
+      Previous attempts removed many narrow annotations and materially reduced project\
+      \ escape-hatch pressure, but they did not reduce the root cause of file-size\
+      \ escape pressure. The remaining 17 file-size hatches still exceed the project\
+      \ limit and drive weighted budget failure. Because the exact downstream full-guard\
+      \ command still exits failed, non-intersection with downstream full-guard/gate\
+      \ checks cannot be assumed.\n\n## root_cause_strategy\n1. Capture the exact\
+      \ current BEFORE `uvx invar-tools guard --all` detail list before editing; use\
+      \ this current detail list as the source of truth, not old broad counters.\n\
+      2. Inventory every current `file_size` escape hatch from guard details and map\
+      \ each to one of:\n   - feasible behavior-preserving decomposition of a public\
+      \ compatibility module,\n   - intentionally preserved compatibility facade with\
+      \ strict non-intersection proof,\n   - obsolete/accidental escape hatch removable\
+      \ without behavior loss.\n3. Prefer real decomposition of oversized public compatibility\
+      \ modules where feasible. Extract cohesive internals behind stable public imports\
+      \ rather than deleting behavior, narrowing handlers, or breaking compatibility.\n\
+      4. For public compatibility surfaces, preserve import paths, CLI/operator-visible\
+      \ behavior, runtime/entrypoint semantics, config precedence, projection output\
+      \ semantics, recovery behavior, orchestration lifecycle behavior, and MCP/core\
+      \ tool compatibility.\n5. If any file-size residual remains after edits, produce\
+      \ a complete structured policy disposition with non-intersection proof against\
+      \ every downstream gate listed below. If this proof is incomplete, the step\
+      \ verdict MUST be FAIL.\n6. The final acceptable outcome is either `file_size\
+      \ <= 5` and weighted `<= 15`, or a complete structured policy disposition proving\
+      \ all remaining residuals are non-intersecting with downstream required gates.\n\
+      \n## Current Residual File-Size Hatch List to Verify From Guard Details\nUse\
+      \ the current guard detail list and especially verify these residual file-size\
+      \ hatches are still current before editing:\n- `src/vectl/mcp_core_tools.py`\n\
+      - `src/vectl/orch_app.py`\n- `src/vectl/models.py`\n- `src/vectl/lifecycle.py`\n\
+      - `src/vectl/core_plan_mutations.py`\n- `src/vectl/cli_orchestration.py`\n-\
+      \ `src/vectl/core_plan_queries.py`\n- `src/vectl/cli_plan.py`\n- `src/vectl/orchestration/continuity_artifacts.py`\n\
+      - `src/vectl/orchestration/dispatch_policy.py`\n- `src/vectl/orchestration/config.py`\n\
+      - `src/vectl/orchestration/recovery.py`\n- `src/vectl/orchestration/runtime.py`\n\
+      - `src/vectl/orchestration/runners.py`\n- `src/vectl/orchestration/projections.py`\n\
+      - `src/vectl/orchestration/driver.py`\n- `src/vectl/orchestration/run_store.py`\n\
+      \n## Required Guard Evidence\n- Capture exact BEFORE `uvx invar-tools guard\
+      \ --all` excerpts showing summary, detail rows for current file_size hatches,\
+      \ file_size count, and weighted budget.\n- Capture exact AFTER `uvx invar-tools\
+      \ guard --all` excerpts showing summary, any remaining detail rows, file_size\
+      \ count, and weighted budget.\n- Use exact excerpts, not paraphrases.\n\n##\
+      \ Required Tests and Compatibility Proof\n- Run targeted tests for every module\
+      \ split or touched public compatibility surface.\n- If a public module is decomposed,\
+      \ prove existing imports/callers still work through the compatibility surface.\n\
+      - If CLI/MCP/runtime/orchestration entrypoint-adjacent modules are touched,\
+      \ include a targeted seam or smoke proof that exercises the public path, not\
+      \ only internal helpers.\n\n## Prohibited Remediation Patterns\n- No broad suppression,\
+      \ widened escape hatches, budget lowering, guard disabling, ignored files, deleted\
+      \ findings, or policy bypass.\n- No stub-only modules or placeholder facades.\n\
+      - No import-breaking public surface changes.\n- No handler-only narrowing of\
+      \ runtime, server/app/driver lifecycle, CLI, MCP, or orchestration behavior.\n\
+      - No deletion of operator-visible behavior to reduce counters.\n- No reliance\
+      \ on old counters if the current guard detail list differs.\n\n## Residual Disposition\
+      \ Register Required\nFor every file_size residual after the retry, evidence\
+      \ MUST include a structured register with:\n- `requirement_ref`\n- `file_path`\n\
+      - `behavior_claim`\n- `why_decomposition_was_not_feasible_or_not_authorized`\n\
+      - `runtime_proof_expected`\n- `evidence_ref`\n- `status`\n- `closure_path`\n\
+      - `gate_decision_basis`\nAllowed statuses: `FIXED`, `PROVEN_NON_INTERSECTING`,\
+      \ or `POLICY_EXCEPTION_WITH_COMPLETE_PROOF`. Any `NEEDS_TEST`, `UNPROVEN`, `UNCERTAIN_BLOCKING`,\
+      \ partial proof, or unexplained residual means FAIL.\n\n## Gate-Intersection\
+      \ Rule\nResiduals are blocker-class unless proven otherwise. If any file_size\
+      \ residual remains, evidence MUST prove non-intersection against ALL of:\n-\
+      \ downstream UI/UX audit (`cli-surface-preservation-uiux-audit` or equivalent\
+      \ remaining audit)\n- `invar_guard_remediation.escape-budget-full-guard-retest`\n\
+      - `invar_guard_remediation.verify-full-guard`\n- `invar_guard_remediation.gate`\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable. Each deliverable MUST contain substantive logic\
+      \ that processes its inputs and produces outputs that vary based on those inputs.\
+      \ Private stub classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy\
+      \ this requirement.\n\n## Checklist\n- [ ] Confirm current mainline includes\
+      \ salvage commits `3a155e9` and `57d44cf` context.\n- [ ] Capture exact BEFORE\
+      \ `uvx invar-tools guard --all` excerpts with summary, residual file_size detail\
+      \ list, file_size `17/5`, and weighted `64/15` or the current equivalent if\
+      \ guard details changed.\n- [ ] Inventory all current file_size hatches from\
+      \ the current guard detail list, including the listed residual files when still\
+      \ present.\n- [ ] For each current file_size hatch, classify root cause and\
+      \ choose real behavior-preserving decomposition where feasible.\n- [ ] Preserve\
+      \ public compatibility surfaces, imports, CLI/operator-visible behavior, runtime/entrypoint\
+      \ behavior, config precedence, projection semantics, recovery behavior, orchestration\
+      \ lifecycle behavior, and MCP/core tool compatibility.\n- [ ] Run targeted tests\
+      \ for every module split or touched public compatibility surface and include\
+      \ exact test names/results.\n- [ ] Capture exact AFTER `uvx invar-tools guard\
+      \ --all` excerpts with summary, remaining detail rows, file_size count, and\
+      \ weighted budget.\n- [ ] Prove final state is either file_size `<= 5` and weighted\
+      \ `<= 15`, or provide complete structured policy disposition with non-intersection\
+      \ proof against all downstream gates.\n- [ ] Confirm no broad suppression, budget\
+      \ lowering, deleted findings, ignored files, stub-only modules, import-breaking\
+      \ public surface changes, or handler-only narrowing was used.\n- [ ] Return\
+      \ FAIL if file_size remains `> 5` or weighted remains `> 15` without complete\
+      \ structured non-intersection proof."
+    verification: '- [ ] Exact BEFORE `uvx invar-tools guard --all` excerpt is present
+      and includes summary, current file_size detail rows, file_size count, and weighted
+      budget.
 
-      - [ ] Exact AFTER `uvx invar-tools guard --all` excerpt from current mainline
-      is present and includes summary plus residual counters.
+      - [ ] Exact AFTER `uvx invar-tools guard --all` excerpt is present and includes
+      summary, any remaining detail rows, file_size count, and weighted budget.
 
-      - [ ] Evidence shows the retry did not redo already-closed file-level blockers
-      for `orch_app`, `config`, `driver`, `projections`, or `recovery_fallback` except
-      where current BEFORE guard proved a residual.
+      - [ ] Evidence uses the current guard detail list as source of truth, not old
+      broad counters.
 
-      - [ ] Remaining work focuses on current residual project-level blockers: file_size
-      `17/5`, function_size `7/5`, shell_result `8/5`, and weighted `109/15`.
+      - [ ] Evidence focuses exclusively on residual file_size escape hatches and
+      weighted budget driven by those residuals.
 
-      - [ ] Targeted tests for every touched surface are named and reported with exact
-      results.
+      - [ ] Current residual files are inventoried from guard details, especially
+      `src/vectl/mcp_core_tools.py`, `src/vectl/orch_app.py`, `src/vectl/models.py`,
+      `src/vectl/lifecycle.py`, `src/vectl/core_plan_mutations.py`, `src/vectl/cli_orchestration.py`,
+      `src/vectl/core_plan_queries.py`, `src/vectl/cli_plan.py`, `src/vectl/orchestration/continuity_artifacts.py`,
+      `src/vectl/orchestration/dispatch_policy.py`, `src/vectl/orchestration/config.py`,
+      `src/vectl/orchestration/recovery.py`, `src/vectl/orchestration/runtime.py`,
+      `src/vectl/orchestration/runners.py`, `src/vectl/orchestration/projections.py`,
+      `src/vectl/orchestration/driver.py`, and `src/vectl/orchestration/run_store.py`
+      when still present.
 
-      - [ ] Final comparison table includes failed broad baseline, pre-salvage prior
-      baseline, salvaged baseline `3a155e9`, BEFORE current mainline, AFTER current
-      mainline, delta, and gate disposition.
+      - [ ] Targeted tests for every module split or touched public compatibility
+      surface are named and reported with exact results.
 
-      - [ ] Residual disposition register contains `requirement_ref`, `behavior_claim`,
-      `runtime_proof_expected`, `evidence_ref`, `status`, `closure_path`, and `gate_decision_basis`
-      for every remaining finding.
+      - [ ] Public compatibility surfaces, imports, CLI/operator-visible behavior,
+      runtime/entrypoint behavior, config precedence, projection semantics, recovery
+      behavior, orchestration lifecycle behavior, and MCP/core tool compatibility
+      are preserved.
 
-      - [ ] If any residual remains, non-intersection proof covers downstream UI/UX
-      audit, escape-budget retest, full-guard retest, and gate; absent or partial
-      proof is a FAIL verdict.
+      - [ ] No broad suppression, budget lowering, deleted findings, ignored files,
+      stub-only modules, import-breaking public surface changes, or handler-only narrowing
+      is used.
 
-      - [ ] No broad suppressions, budget lowering, deleted findings, guard disabling,
-      ignored files, stub-only implementation, or handler-only narrowing are used.
+      - [ ] Final evidence proves either file_size `<= 5` and weighted `<= 15`, or
+      includes complete structured policy disposition with non-intersection proof
+      against downstream UI/UX audit, escape-budget retest, full-guard retest, and
+      gate.
 
-      - [ ] Main path evidence covers preserved orchestration behavior; failure path
-      evidence covers remaining guard blockers or proves non-intersection.'
+      - [ ] If file_size remains `> 5` or weighted remains `> 15` without complete
+      structured non-intersection proof, the final verdict is FAIL.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
+
 
       For each ref in this step:
 
-      - No refs were provided for this step.
+      - <filename> — key passage or "NOT READ: <reason>"
 
 
-      ## Current Mainline Guard BEFORE
+      If no refs were provided, state: "No refs for this step."
 
-      Paste exact `uvx invar-tools guard --all` excerpt from current mainline before
-      edits:
+
+      ## Root-Cause Remediation Evidence
+
+
+      **loop_count**: 3
+
+      **root_cause_analysis**: true
+
+
+      ### why_previous_fix_failed
+
+      <Explain why prior salvage attempts removed narrow annotations but did not reduce
+      residual file-size escape pressure.>
+
+
+      ### BEFORE guard excerpt
 
       ```text
 
-      <summary, residual blocker families, and budget counters>
+      <paste exact BEFORE uvx invar-tools guard --all summary and residual file_size/weighted
+      details>
 
       ```
 
 
-      ## Closed File-Level Blocker Preservation
+      ### File-size inventory from current guard details
 
-      - [ ] Already-closed file-level blockers from salvage commit `3a155e9` were
-      not redone as primary work.
+      | file | current finding present? | root cause | chosen disposition | proof/test
+      |
 
-      - [ ] Any touch to `orch_app`, `config`, `driver`, `projections`, or `recovery_fallback`
-      is justified by a current BEFORE residual.
+      | --- | --- | --- | --- | --- |
 
 
-      ## Targeted Tests
+      ### Changes made
 
-      | Touched surface | Test command/name | Result | Evidence excerpt |
+      | file | change | compatibility surface preserved | targeted tests |
 
       | --- | --- | --- | --- |
 
-      | <surface> | <test> | PASS/FAIL | <excerpt> |
 
-
-      ## Current Mainline Guard AFTER
-
-      Paste exact `uvx invar-tools guard --all` excerpt from current mainline after
-      edits:
+      ### Targeted tests
 
       ```text
 
-      <summary, residual blocker families, and budget counters>
+      <paste exact targeted test commands and results for every touched public compatibility
+      surface>
 
       ```
 
 
-      ## Budget Comparison Table
+      ### AFTER guard excerpt
 
-      | Family | Failed broad baseline | Pre-salvage prior baseline | Salvaged baseline
-      `3a155e9` | BEFORE current mainline | AFTER current mainline | Delta from salvaged
-      | Gate disposition |
+      ```text
 
-      | --- | --- | --- | --- | --- | --- | --- | --- |
+      <paste exact AFTER uvx invar-tools guard --all summary and residual file_size/weighted
+      details>
 
-      | shell_result | 80/5 | 66/5 | 8/5 | <value> | <value> | <delta> | <FIXED/NON_INTERSECTING_WITH_PROOF/FAIL>
+      ```
+
+
+      ### Residual disposition register
+
+      | requirement_ref | file_path | behavior_claim | why_decomposition_was_not_feasible_or_not_authorized
+      | runtime_proof_expected | evidence_ref | status | closure_path | gate_decision_basis
       |
 
-      | weighted | 400/15 | 355/15 | 109/15 | <value> | <value> | <delta> | <FIXED/NON_INTERSECTING_WITH_PROOF/FAIL>
-      |
-
-      | function_size | <not provided> | 30/5 | 7/5 | <value> | <value> | <delta>
-      | <FIXED/NON_INTERSECTING_WITH_PROOF/FAIL> |
-
-      | file_size | <not provided> | 18/5 | 17/5 | <value> | <value> | <delta> | <FIXED/NON_INTERSECTING_WITH_PROOF/FAIL>
-      |
+      | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
 
-      ## Residual Disposition Register
+      ### Prohibited-pattern confirmation
 
-      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
-      status | closure_path | gate_decision_basis |
-
-      | --- | --- | --- | --- | --- | --- | --- |
-
-      | <ref> | <claim> | <proof> | <evidence> | PROVEN/FIXED/NON_INTERSECTING_WITH_PROOF
-      | <path> | <basis> |
+      - [ ] No broad suppression, budget lowering, deleted findings, ignored files,
+      stub-only modules, import-breaking public surface changes, or handler-only narrowing
+      was used.
 
 
-      If any residual remains, include proof that it does not intersect ALL downstream
-      checks:
+      ### Final verdict
 
-      - UI/UX audit
+      - [ ] PASS: file_size <= 5 and weighted <= 15.
 
-      - escape-budget retest
+      - [ ] PASS_WITH_COMPLETE_POLICY_DISPOSITION: residuals remain but complete non-intersection
+      proof covers all downstream gates.
 
-      - full-guard retest
-
-      - phase gate
-
-
-      ## Prohibited Pattern Confirmation
-
-      - [ ] No broad suppression, widened escape hatch, budget lowering, guard disabling,
-      ignored files, or deleted findings.
-
-      - [ ] No stub-only implementation.
-
-      - [ ] No handler-only narrowing of lifecycle/runtime behavior.
-
-      - [ ] No operator-visible behavior removed to reduce counters.
-
-
-      ## Headline
-
-      - [ ] PASS: residuals fixed or every remaining residual has complete non-intersection
-      proof.
-
-      - [ ] FAIL: any residual remains without complete non-intersection proof against
-      downstream UI/UX audit, escape-budget retest, full-guard retest, and gate.'
+      - [ ] FAIL: file_size > 5 or weighted > 15 without complete structured non-intersection
+      proof.'
     depends_on:
     - invar_guard_remediation.full-guard-residual-disposition-retest
     agent: python-senior

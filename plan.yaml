@@ -97886,7 +97886,7 @@ phases:
       \ smoke checks for original public module paths and paste exact commands/results.\n\
       - [x] Run real CLI help/registration smoke checks for touched command groups\
       \ and paste actual output excerpts.\n- [x] Capture AFTER guard excerpts for\
-      \ owned residual rows and weighted contributors.\n- [ ] Confirm no budget lowering,\
+      \ owned residual rows and weighted contributors.\n- [x] Confirm no budget lowering,\
       \ broad suppression, ignored files, deleted findings, or policy bypass was used."
     verification: '- [ ] BEFORE and AFTER `uvx invar-tools guard --all` excerpts include
       owned residual rows, `file_size`, weighted budget, and relevant `dead_param`/`entry_point_too_thick`

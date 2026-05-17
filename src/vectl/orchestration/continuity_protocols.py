@@ -173,7 +173,6 @@ class QuarantineManager:
         5. Ambiguous identity remains blocking
     """
 
-    # @invar:allow dead_param: Quarantine contract preserves public parameter names for external implementations.
     def classify_artifact(
         self,
         artifact_path: str,
@@ -192,11 +191,12 @@ class QuarantineManager:
         Raises:
             NotImplementedError: Until hygiene classification is specified.
         """
+        step_ref = "<unspecified>" if step_id is None else step_id
         raise NotImplementedError(
-            "QuarantineManager.classify_artifact: hygiene semantics not yet specified"
+            "QuarantineManager.classify_artifact: hygiene semantics not yet specified "
+            f"for artifact_path={artifact_path!r} step_id={step_ref!r}"
         )
 
-    # @invar:allow dead_param: Quarantine contract preserves public parameter names for external implementations.
     def quarantine(
         self,
         artifact_path: str,
@@ -218,7 +218,9 @@ class QuarantineManager:
             NotImplementedError: Until quarantine semantics are specified.
         """
         raise NotImplementedError(
-            "QuarantineManager.quarantine: quarantine semantics not yet specified"
+            "QuarantineManager.quarantine: quarantine semantics not yet specified "
+            f"for artifact_path={artifact_path!r} classification={classification!r} "
+            f"reason={reason!r}"
         )
 
     def list_quarantined(self) -> tuple[QuarantineManifestEntry, ...]:

@@ -93339,6 +93339,136 @@ phases:
     depends_on:
     - det_check_impl_cli_mcp
     agent: python-senior
+  - id: det_check_impl_integration_proof
+    name: Verify checklist seam integration
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), validate deterministic
+      checklist handling through real core, CLI, MCP, and orchestration seams from
+      a fresh perspective.
+
+
+      Scope: phase-check protecting `det_check_impl_gate` and downstream finalization.
+
+
+      Test for:
+
+      - [ ] Happy path: inventory from `description` and `verification`, deterministic
+      single set-state, deterministic batch, legacy keyword toggle.
+
+      - [ ] Edge cases: empty fields, stale revision, invalid selector-mode combinations,
+      unsupported `evidence_template`.
+
+      - [ ] Error scenarios: stale revision retry guidance, batch diagnostics, ambiguous/no
+      legacy keyword match.
+
+      - [ ] Integration path: CLI/MCP/orchestration surfaces delegate to canonical
+      core service.
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS. A test that
+      finds nothing must justify coverage achieved.
+
+
+      Independence Level: L2 (cross-module CLI/MCP/orchestration seams).'
+    verification: '- [ ] phase-check protecting `det_check_impl_gate`: run `pytest
+      tests/test_checklist.py tests/test_cli.py tests/test_mcp.py -k ''checklist or
+      deterministic or batch or revision'' -q` and report output.
+
+      - [ ] Run focused orchestration receipt tests if present and report output.
+
+      - [ ] Provide one real CLI invocation and one MCP-wrapper/tool-call proof exercising
+      source → sink path.
+
+      - [ ] Structured behavioral proof register covers PROVEN/NEEDS_TEST/UNPROVEN
+      status for each contract requirement.'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier (independent of implementation)
+
+      **Scope**: deterministic checklist core/CLI/MCP/orchestration seams
+
+      **Independence Level**: L2
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/cli_plan.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_tools.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/orchestration/dispatch_policy.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_checklist.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_cli.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_mcp.py — key passage or "NOT READ: <reason>"
+
+
+      ### Test Execution
+
+      Commands executed:
+
+      ```bash
+
+      pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py -k ''checklist
+      or deterministic or batch or revision'' -q
+
+      pytest tests/orchestration tests/repro -k ''checklist or receipt or prompt''
+      -q
+
+      ```
+
+      Actual output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | description+verification inventory | <claim> | focused tests | <evidence>
+      | PROVEN/NEEDS_TEST/UNPROVEN | <path> | <basis> |
+
+      | stale revision rejection | <claim> | focused tests | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN
+      | <path> | <basis> |
+
+      | atomic batch | <claim> | focused tests | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN
+      | <path> | <basis> |
+
+      | CLI/MCP surfaces | <claim> | real invocation | <evidence> | PROVEN/NEEDS_TEST/UNPROVEN
+      | <path> | <basis> |
+
+
+      ### Headline
+
+      - [ ] PASS: No blocking issues found.
+
+      - [ ] PASS_WITH_DEBT: Only explicit non-blocking debt remains.
+
+      - [ ] FAIL: Blocking issues or proof gaps remain.'
+    depends_on:
+    - det_check_impl_core_inventory
+    - det_check_impl_single_mutation
+    - det_check_impl_batch_mutation
+    - det_check_impl_cli_mcp
+    - det_check_impl_orch_receipts
+    agent: integration-verifier
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

@@ -104511,7 +104511,7 @@ phases:
       - [x] Contract consumption: core `@pre`/`@post` contracts reference real parameters
       and contain non-vacuous comparisons.
 
-      - [ ] Orchestration prompt/receipt wiring reaches actual prompt materialization
+      - [x] Orchestration prompt/receipt wiring reaches actual prompt materialization
       or receipt validation, not dead helper code.
 
 

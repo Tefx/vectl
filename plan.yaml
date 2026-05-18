@@ -103641,7 +103641,7 @@ phases:
       \ not blocker-class errors."
   - id: det_check_impl_cli_mcp
     name: Wire checklist CLI and MCP surfaces
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       tags: ["integration"]
@@ -103790,6 +103790,8 @@ phases:
     depends_on:
     - det_check_impl_batch_mutation
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T16:14:12.128766+00:00'
   - id: det_check_impl_orch_receipts
     name: Wire orchestrator checklist receipts
     status: pending

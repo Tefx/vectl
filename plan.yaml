@@ -104508,7 +104508,7 @@ phases:
       - [x] CLI entry point accepts at least one deterministic checklist operation
       or inventory command if exposed.
 
-      - [ ] MCP checklist tool wrapper can be invoked through the registered tool
+      - [x] MCP checklist tool wrapper can be invoked through the registered tool
       function and returns expected structured output.
 
       - [ ] At least one documented request/command reaches the real entrypoint path

@@ -108658,7 +108658,7 @@ phases:
       - [x] Full-plan verification evidence is green or every residual failure has
       explicit non-intersection evidence and owner.
 
-      - [ ] Architecture review confirms canonical service ownership and orchestrator
+      - [x] Architecture review confirms canonical service ownership and orchestrator
       mutation authority.
 
       - [ ] CLI/MCP liveness and UI/output audit evidence are present.

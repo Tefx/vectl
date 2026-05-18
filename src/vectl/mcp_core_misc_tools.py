@@ -9,6 +9,13 @@ def vectl_check(
     step_id: str,
     keyword: str | None = None,
     add: str | None = None,
+    revision: str | None = None,
+    requests: list[dict[str, Any]] | None = None,
+    item_id: str | None = None,
+    field: str | None = None,
+    index: int | None = None,
+    checked: bool | None = None,
+    inventory: bool = False,
 ) -> Result[str, str]:
     """Toggle or add a checklist item in a step's description.
 
@@ -17,10 +24,36 @@ def vectl_check(
         keyword: Keyword to toggle a checklist item. Finds the checklist item
             containing this keyword (case-insensitive) and toggles its checked state.
         add: Text for a new unchecked checklist item to append.
+        revision: Checklist inventory revision for deterministic mutations.
+        requests: Batch deterministic mutation requests. Each request contains
+            selector.item_id or selector.field+selector.index and checked.
+        item_id: Single deterministic item-id selector.
+        field: Single deterministic field selector.
+        index: Single deterministic index selector.
+        checked: Desired deterministic target state for a single selector.
+        inventory: When true, return deterministic inventory without mutation.
 
     Returns:
-        Markdown-formatted result showing the updated checklist.
+        Legacy calls return Markdown text. Deterministic calls return a
+        structured JSON-serializable payload with markdown, revision, items,
+        diagnostics, and structured retry errors.
     """
+    deterministic_supplied = any(
+        value is not None for value in (revision, requests, item_id, field, index, checked)
+    ) or inventory
+    if deterministic_supplied:
+        return _vectl_check_deterministic(
+            step_id=step_id,
+            keyword=keyword,
+            revision=revision,
+            requests=requests,
+            item_id=item_id,
+            field=field,
+            index=index,
+            checked=checked,
+            inventory=inventory,
+        )
+
     if keyword is None and add is None:
         return "**Error:** Must provide either 'keyword' or 'add'."
 
@@ -60,6 +93,94 @@ def vectl_check(
     if lock_notice:
         return f"**Updated checklist:** {step_id}\n\n{lock_notice}"
     return f"**Updated checklist:** {step_id}"
+
+
+# @invar:allow shell_result: MCP tool adapter returns JSON-serializable payloads for FastMCP compatibility.
+# @shell_complexity: Deterministic checklist surface must preserve inventory, mutation, and structured error branches.
+def _vectl_check_deterministic(
+    *,
+    step_id: str,
+    keyword: str | None,
+    revision: str | None,
+    requests: list[dict[str, Any]] | None,
+    item_id: str | None,
+    field: str | None,
+    index: int | None,
+    checked: bool | None,
+    inventory: bool,
+) -> dict[str, Any]:
+    from vectl.cli_plan_checklist_commands import (
+        _batch_diagnostics_payload,
+        _checklist_exception_payload,
+        _checklist_item_payload,
+        _parse_checklist_requests,
+        _run_deterministic_check_mutation,
+    )
+    from vectl.core_checklist import get_inventory
+
+    plan, expected_def_hash = _load()
+    found = plan.find_step(step_id)
+    if found is None:
+        return {
+            "ok": False,
+            "markdown": f"**Error:** Step not found: {step_id}",
+            "error": {"type": "PlanError", "code": "not_found", "message": f"Step not found: {step_id}"},
+        }
+    if inventory:
+        _phase, step = found
+        revision_value, items = get_inventory.__wrapped__(step)
+        return {
+            "ok": True,
+            "markdown": f"**Checklist inventory:** {step_id}",
+            "step_id": step_id,
+            "checklist_inventory_revision": revision_value,
+            "items": [_checklist_item_payload(item) for item in items],
+        }
+    try:
+        batch_text = None
+        if requests is not None:
+            import json
+
+            batch_text = json.dumps(requests)
+        plan, payload = _run_deterministic_check_mutation(
+            plan,
+            step_id=step_id,
+            keyword=keyword,
+            revision=revision,
+            item_id=item_id,
+            field=field,
+            index=index,
+            checked=None if checked is None else str(checked).lower(),
+            batch=batch_text,
+        )
+        lock_notice = _save_plan(plan, expected_def_hash, f"mcp: deterministic checklist {step_id}")
+        payload["markdown"] = f"**Updated checklist:** {step_id}"
+        payload["Updated checklist"] = True
+        if lock_notice:
+            payload["lock_notice"] = lock_notice
+        return payload
+    except Exception as exc:
+        payload = _checklist_exception_payload(exc)
+        error_type = payload.get("error", {}).get("type", exc.__class__.__name__)
+        payload["markdown"] = f"**Error:** {error_type}: {exc}"
+        payload["Updated checklist"] = False
+        payload[error_type] = True
+        if requests is not None:
+            try:
+                request_objects = _parse_checklist_requests(
+                    batch=__import__("json").dumps(requests),
+                    item_id=None,
+                    field=None,
+                    index=None,
+                    checked=None,
+                )
+                payload.setdefault(
+                    "diagnostics",
+                    _batch_diagnostics_payload(type("D", (), {"total_requested": len(request_objects), "matched_items": 0, "changed_items": 0, "selector_diagnostics": ()})()),
+                )
+            except Exception:
+                pass
+        return payload
 
 
 # ---------------------------------------------------------------------------
@@ -113,4 +234,3 @@ def vectl_decide(
     # Return as dict for MCP JSON serialization
     # Use exclude_none=False to ensure all expected fields are present even when None
     return result.model_dump(mode="json", exclude_none=False)
-

@@ -48,6 +48,7 @@ from vectl.cli_plan import (
     add_step_cmd,
     add_steps_cmd,
     cancel,
+    check_inventory_cmd,
     check_cmd,
     checkpoint,
     claim,
@@ -223,6 +224,7 @@ app.command()(skip)
 app.command()(cancel)
 app.command("skip-phase")(skip_phase_cmd)
 app.command("check")(check_cmd)
+app.command("check-inventory")(check_inventory_cmd)
 app.command()(validate)
 app.command("migrate")(migrate_cmd)
 app.command("migrate-step-id")(migrate_step_id_cmd)

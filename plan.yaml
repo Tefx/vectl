@@ -102596,7 +102596,7 @@ phases:
       - [x] Missing and empty `description`/`verification` fields produce valid empty
       inventories without errors.
 
-      - [ ] `item_id` values are snapshot-scoped and change only when the canonicalized
+      - [x] `item_id` values are snapshot-scoped and change only when the canonicalized
       inventory snapshot changes.
 
       - [ ] `checklist_inventory_revision` stale values reject deterministic mutation

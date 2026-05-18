@@ -105463,6 +105463,143 @@ phases:
     depends_on:
     - det_check_impl_blocker_remediation
     agent: spec-verifier
+  - id: det_check_impl_blocker_wiring_retest
+    name: Retest deterministic checklist wiring and contract blockers
+    status: pending
+    description: 'Independent wiring/contract retest for the batched deterministic
+      checklist blocker remediation.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check protecting `det_check_impl_gate` and `det_check_finalization`.
+
+      agent_source: default
+
+      Independence Level: L1; this retest is independent of `python-senior` remediation.
+
+
+      Retest the wiring/contract failure family originally reported by `det_check_impl_wiring_audit`,
+      including receipt validation reachability, non-vacuous Core contracts, public
+      symbol disposition, and unsupported-field path reachability/disposition.
+
+
+      ## Required wiring audit focus
+
+      - [ ] `parse_checklist_receipt` / `ChecklistReceiptValidationError` have a real
+      runtime caller outside the defining module, or a deliberately private tested
+      reachable entry point with documented disposition.
+
+      - [ ] `ChecklistErrorCode` and `ChecklistSelector` are not orphan public surfaces
+      without classification or runtime/public use.
+
+      - [ ] Core `@post` contracts in `src/vectl/core/checklist_batch.py` are non-vacuous
+      and structurally meaningful.
+
+      - [ ] Unsupported-field deterministic inventory behavior is reachable or explicitly
+      deferred by RFC-backed disposition.
+
+
+      Evidence must use import traces, reference traces, contract inspection, and
+      focused commands; assertions without traces are insufficient.'
+    verification: '- [ ] phase-check: wiring retest reruns the failed `det_check_impl_wiring_audit`
+      blocker family after remediation.
+
+      - [ ] Receipt validation helper has a demonstrated runtime caller or intentional
+      private reachable entry point with tests.
+
+      - [ ] Public symbol/type alias dispositions are supported by references or documented
+      private/type-only status.
+
+      - [ ] Core checklist batch contracts are non-vacuous and satisfy Invar Core
+      expectations.
+
+      - [ ] Unsupported-field path is reachable or explicitly governed by RFC-backed
+      deferred disposition.
+
+      - [ ] Evidence includes concrete trace output, not only claims.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - `src/vectl/orchestration/evidence.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/orchestration/prompt_materialization.py` — key passage or "NOT
+      READ: <reason>"
+
+      - `src/vectl/core/checklist_batch.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/core_checklist.py` — key passage or "NOT READ: <reason>"
+
+      - `docs/RFC-deterministic-checklists.md` — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Wiring Retest Report
+
+
+      **Tester**: wiring-auditor (independent of remediation)
+
+      **Scope**: deterministic checklist wiring and contract blockers
+
+
+      ### Trace Evidence
+
+      **Receipt validation callers**:
+
+      ```text
+
+      <paste trace/search output>
+
+      ```
+
+      **Public symbol reachability/disposition**:
+
+      ```text
+
+      <paste trace/search output>
+
+      ```
+
+      **Core contract inspection**:
+
+      ```text
+
+      <paste invar sig/contract inspection or equivalent output>
+
+      ```
+
+      **Unsupported-field path/disposition evidence**:
+
+      ```text
+
+      <paste trace/RFC/test evidence>
+
+      ```
+
+
+      ### Wiring Findings
+
+      | Severity | Description | Location | Blocking? | Closure path |
+
+      | --- | --- | --- | --- | --- |
+
+
+      ### Headline
+
+      - [ ] PASS: wiring/contract blocker family closed.
+
+      - [ ] FAIL: blocking wiring/contract issue remains.'
+    depends_on:
+    - det_check_impl_blocker_remediation
+    agent: wiring-auditor
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

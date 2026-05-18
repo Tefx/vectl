@@ -106768,7 +106768,7 @@ phases:
       - [x] Focused tests cover the stale receipt path using a literal stale `revision:
       rev1` fixture and a current inventory/revision fixture.
 
-      - [ ] No broad refactor, new public receipt schema, or unrelated deterministic
+      - [x] No broad refactor, new public receipt schema, or unrelated deterministic
       checklist behavior changes are introduced.'
     verification: '- [ ] Focused stale receipt remediation is limited to orchestration-owned
       receipt/evidence/completion handling and tests.

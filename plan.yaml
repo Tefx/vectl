@@ -95854,7 +95854,7 @@ phases:
       event/control, prompt/materialization, inspection/drive queries, orch_app/driver,
       and recovery fallback are represented in the proof register.
 
-      - [ ] The step reports PASS only for full guard green or complete structured
+      - [x] The step reports PASS only for full guard green or complete structured
       non-blocking residual disposition.'
     verification: '- [ ] `uvx invar-tools guard --all` output is pasted and current-mainline,
       not branch-local.

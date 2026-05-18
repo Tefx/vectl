@@ -104490,7 +104490,7 @@ phases:
       - none"
   - id: det_check_impl_wiring_audit
     name: Audit checklist wiring completeness
-    status: claimed
+    status: done
     description: 'Wiring completeness audit: verify every new deterministic checklist
       public symbol and surface is reachable at runtime.
 
@@ -104612,6 +104612,127 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-05-18T16:42:22.386179+00:00'
+    done_at: '2026-05-18T17:04:24.003826+00:00'
+    evidence: 'status: FAIL_REPORT_ACCEPTED
+
+      verdict: FAIL
+
+      blockers:
+
+      - Receipt validation helper is not runtime-reachable: `parse_checklist_receipt`
+      and `ChecklistReceiptValidationError` only appear in `src/vectl/orchestration/evidence.py`
+      in fallback grep.
+
+      - Vacuous core contracts exist in deterministic checklist batch core: `@post(lambda
+      result: result is not None)` at `src/vectl/core/checklist_batch.py` lines 38,
+      63, 151, 178, 207.
+
+      - Public type aliases `ChecklistErrorCode` and `ChecklistSelector` have no refs
+      outside `src/vectl/core_checklist.py` unless intentionally private/type-only.
+
+      orchestrator_action_hint: DO_NOT_COMPLETE
+
+      gate_open_allowed: false
+
+
+      ## Report disposition
+
+      This wiring audit is complete as a failure-finding artifact. Blockers were aggregated
+      into `det_check_impl_blocker_remediation` plus wiring/spec/integration retests.
+      Gate remains closed until remediation and retests pass.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - `src/vectl/core_checklist.py` — read; defines deterministic selectors, receipt
+      DTOs, `get_inventory`, and `mutate_checklist`.
+
+      - `src/vectl/cli_plan.py` — read; imports `check_cmd` and `check_inventory_cmd`
+      from checklist command module.
+
+      - `src/vectl/mcp_core_tools.py` — read; exports `vectl_check` through facade
+      import.
+
+      - `src/vectl/mcp_server.py` — read; registers `vectl_check = mcp.tool()(vectl_check)`.
+
+      - `src/vectl/orchestration/dispatch_policy.py` — read; renders deterministic
+      checklist inventory into prompt template.
+
+      - `src/vectl/orchestration/prompt_materialization.py` — read; writes `checklist_receipt_contract`
+      into prompt bundle artifact.
+
+      - `tools/vectl/README.md` — NOT READ: absent.
+
+
+      ## W13 Entry-to-Effect Trace Summary
+
+      - CLI deterministic checklist: WIRED (`cli.py` registers `check`/`check-inventory`
+      → `cli_plan_checklist_commands.py` → core `mutate_checklist`/`get_inventory`).
+
+      - MCP deterministic checklist: WIRED (`mcp_server.py` registers `vectl_check`
+      → `mcp_core_misc_tools.py` → inventory/mutation helpers).
+
+      - Orchestration prompt checklist inventory: WIRED (`core_adapter` loads inventory
+      → `dispatch_coordinator` builds `DispatchSpec` → `dispatch_policy` renders instructions
+      → `orch_app` materializes artifacts).
+
+      - Orchestration receipt validation: DEAD/BLOCKING; parser exists but no caller
+      outside `evidence.py` found.
+
+
+      ## Audit Findings
+
+      - Orphan exports: `ChecklistErrorCode`, `ChecklistSelector` no external runtime
+      refs found; receipt validation parser surface not reached outside definition
+      module.
+
+      - CLI/MCP registrations: no unregistered surfaces found.
+
+      - Config consumption: no unconsumed deterministic checklist config fields found;
+      runtime DTO fields are consumed.
+
+      - Vacuous contracts: multiple `@post(lambda result: result is not None)` in
+      `src/vectl/core/checklist_batch.py`.
+
+
+      ## Protocol Checklist
+
+      - W13 Entry-to-Effect Trace: FAIL for receipt validation, PASS for CLI/MCP mutation.
+
+      - W1 Dead Export Scan: FAIL for public type aliases and receipt parser surface.
+
+      - W3/W4 CLI registration: PASS.
+
+      - W5 Contract Strength Scan: FAIL.
+
+      - W9 Transitive Entry-Point Reachability: FAIL for receipt validation, PASS
+      for CLI/MCP mutation.
+
+
+      ## Checklist Receipt
+
+      - [x] Export reachability: any new public checklist symbol has a real import/caller
+      outside its own module or is intentionally private.
+
+      - [x] CLI registration: deterministic checklist options/subcommands are registered
+      in the CLI entrypoint path.
+
+      - [x] MCP registration: additive deterministic checklist fields/operations are
+      reachable through the MCP tool wrapper.
+
+      - [x] Config consumption: no new config field is parsed without a non-test consumer.
+
+      - [x] Contract consumption: core `@pre`/`@post` contracts reference real parameters
+      and contain non-vacuous comparisons.
+
+      - [x] Orchestration prompt/receipt wiring reaches actual prompt materialization
+      or receipt validation, not dead helper code.
+
+
+      ## Remediation ownership
+
+      All blockers are owned by `det_check_impl_blocker_remediation` and retests.
+      No blocker is waived.'
   - id: det_check_impl_liveness_probe
     name: Probe runnable checklist surfaces
     status: done

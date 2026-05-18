@@ -108655,7 +108655,7 @@ phases:
       - [x] Documentation sync covers legacy vs deterministic paths and worker/orchestrator
       receipt flow.
 
-      - [ ] Full-plan verification evidence is green or every residual failure has
+      - [x] Full-plan verification evidence is green or every residual failure has
       explicit non-intersection evidence and owner.
 
       - [ ] Architecture review confirms canonical service ownership and orchestrator

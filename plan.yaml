@@ -100767,7 +100767,7 @@ phases:
       were satisfied and toggled/updated before completion.'
   - id: invar_guard_remediation.persist-standalone-uiux-proof-artifact
     name: Persist standalone UI/UX proof artifact
-    status: claimed
+    status: done
     description: "step_type: implementation\nstep_intent: blocker_fix\nexpected_result:\
       \ durable_artifact_created\nagent_source: project\nprovenance: regate finding\
       \ from `invar_guard_remediation.post-blocker-closure-regate`\ndisposition: blocking-now\n\
@@ -100901,6 +100901,113 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-18T13:58:24.148477+00:00'
+    done_at: '2026-05-18T14:08:17.817689+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — read; artifact quotes: “Run `invar guard` after changes. Fix errors
+      before committing.”
+
+      - tools/vectl/README.md — NOT READ: `tools/` directory absent in current worktree.
+
+      - docs/invar_guard_remediation/uiux-proof-artifact.md — read back after creation;
+      key passage: “Managed-plan-summary reliance: none. This artifact is a repository
+      documentation file outside `plan.yaml`, `.git/vectl/`, and managed plan summaries.”
+
+
+      ## Durable UI/UX Proof Artifact Evidence
+
+      **Artifact path**: `docs/invar_guard_remediation/uiux-proof-artifact.md`
+
+      **Created/updated**: yes
+
+      **Managed-plan-summary reliance**: none
+
+
+      ### Required Sections Present
+
+      - Pasted help/surface snapshots: present for represented `vectl --help`, `vectl
+      recover --help`, `vectl orch --help`, `vectl orch recover --help`, `vectl orch
+      drive-recover --help`.
+
+      - Command executability matrix: present with actual command, represented user-facing
+      command, expected result class, exit status, PASS/FAIL, and evidence references.
+
+      - JSON ANSI proof: present with exact command and pasted parse/check output.
+
+      - Facade import proof: present for `from vectl.core import RecoverResult`.
+
+      - Behavioral proof register: present with requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis.
+
+      - uiux-auditor-compatible validation note: present with PASS/PASS_WITH_DEBT/FAIL
+      decision criteria.
+
+      - Current guard context: present.
+
+
+      ### Command Evidence
+
+      - `.venv/bin/python` Typer `CliRunner` help probes: all required represented
+      help commands exited 0.
+
+      - JSON proof represented command `vectl orch config validate --json`: exit 0;
+      `json_parse_success: True`; `contains_ansi_escape_sequences: False`.
+
+      - Facade import proof: exit 0; `import_success=True`; `imported_name=RecoverResult`;
+      `imported_module=vectl.core_plan_mutations`.
+
+      - Guard: `uvx invar-tools guard --all`; exit 0; `status=passed`; `summary.errors=0`;
+      warnings=54; infos=4; escape budget 14/15.
+
+
+      ### Verification
+
+      Subagent verification:
+
+      - Artifact read-back succeeded.
+
+      - Artifact marker validation: `artifact_exists=True`, `missing_required_markers=[]`,
+      `line_count=392`.
+
+      - No product code modified; only docs artifact added.
+
+      - Branch worktree clean after commit.
+
+
+      Mainline final-state verification after squash merge:
+
+      - `uvx invar-tools guard --all` — PASS; `status: passed`, `errors: 0`, `warnings:
+      54`, `infos: 6`.
+
+      - Artifact marker validation via Python — PASS; `artifact_exists=True`, `missing_required_markers=[]`,
+      `line_count=392`.
+
+
+      ### Files changed
+
+      - Added `docs/invar_guard_remediation/uiux-proof-artifact.md`.
+
+
+      ### Commit hash(es)
+
+      - Subagent branch commit: `849dbeed` — `docs: persist uiux proof artifact`.
+
+      - Mainline squash commit: `187b20f` — `[vectl] step-invar_guard_remediation.persist-standalone-uiux-proof-artifact
+      completed`.
+
+
+      ### Gaps/Notes
+
+      - Guard passed with warning-level debt; artifact records PASS_WITH_WARNINGS/PASS_WITH_DEBT
+      basis for guard warnings and escape budget.
+
+      - No remaining blocker hidden in placeholders.
+
+
+      ### checklist_receipt
+
+      All description acceptance checklist items and verification checklist items
+      were satisfied and toggled/updated before completion.'
   - id: invar_guard_remediation.uiux-audit-durable-artifact
     name: Audit durable UI/UX proof artifact
     status: pending

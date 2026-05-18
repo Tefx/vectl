@@ -102625,16 +102625,16 @@ phases:
 
       - [x] Existing legacy tests must remain present so compatibility regressions
       are visible.'
-    verification: '- [ ] Run `pytest tests/test_checklist.py -k ''checklist or deterministic
+    verification: '- [x] Run `pytest tests/test_checklist.py -k ''checklist or deterministic
       or batch or inventory'' -q` and record that new deterministic tests fail red
       for the declared missing implementation.
 
-      - [ ] Confirm no product implementation files outside tests/fixtures/helpers
+      - [x] Confirm no product implementation files outside tests/fixtures/helpers
       were modified.
 
-      - [ ] Confirm every red failure maps to one of the checklist gaps in this step.
+      - [x] Confirm every red failure maps to one of the checklist gaps in this step.
 
-      - [ ] Confirm legacy keyword-toggle tests remain included and not weakened.'
+      - [x] Confirm legacy keyword-toggle tests remain included and not weakened.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
       \ step:\n- docs/RFC-deterministic-checklists.md — key passage or \"NOT READ:\
       \ <reason>\"\n- src/vectl/core_checklist.py — key passage or \"NOT READ: <reason>\"\

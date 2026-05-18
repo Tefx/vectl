@@ -1,4 +1,15 @@
 from __future__ import annotations
+
+if __name__.endswith("_run_store_impl_part06"):
+    from vectl.orchestration import _run_store_impl as _impl
+
+    for _name, _value in vars(_impl).items():
+        if _name in {"__name__", "__package__", "__loader__", "__spec__", "__file__", "__cached__"}:
+            continue
+        globals()[_name] = _value
+
+    del _impl, _name, _value
+
 class DriveActiveRunBlockedError(RunStoreError):
     """Raised when orch run is rejected because an active drive owns the plan.
 

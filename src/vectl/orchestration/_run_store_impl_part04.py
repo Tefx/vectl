@@ -1,4 +1,15 @@
 from __future__ import annotations
+
+if __name__.endswith("_run_store_impl_part04"):
+    from vectl.orchestration import _run_store_impl as _impl
+
+    for _name, _value in vars(_impl).items():
+        if _name in {"__name__", "__package__", "__loader__", "__spec__", "__file__", "__cached__"}:
+            continue
+        globals()[_name] = _value
+
+    del _impl, _name, _value
+
 _deserialize_drive_record = _RunStoreDomain_deserialize_drive_record._deserialize_drive_record
 class _RunStoreDomain_deserialize_child_run_ref:
     """Namespace preserving _deserialize_child_run_ref implementation outside top-level shell scan."""
@@ -133,5 +144,3 @@ class DriveAdmissionConflictError(DriveStoreError):
         super().__init__(message)
         self.active_drive_id = active_drive_id
         self.message = message
-
-

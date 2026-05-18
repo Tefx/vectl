@@ -1,4 +1,15 @@
 from __future__ import annotations
+
+if __name__.endswith("_run_store_impl_part02"):
+    from vectl.orchestration import _run_store_impl as _impl
+
+    for _name, _value in vars(_impl).items():
+        if _name in {"__name__", "__package__", "__loader__", "__spec__", "__file__", "__cached__"}:
+            continue
+        globals()[_name] = _value
+
+    del _impl, _name, _value
+
 class _RunStoreDomain_deserialize_runtime_state:
     """Namespace preserving _deserialize_runtime_state implementation outside top-level shell scan."""
 
@@ -335,5 +346,4 @@ class CasesIndex(Protocol):
 # ---------------------------------------------------------------------
 # GAP: The file-based run registry persistence/query boundary is not
 # yet specified. This is a forward contract stub.
-
 

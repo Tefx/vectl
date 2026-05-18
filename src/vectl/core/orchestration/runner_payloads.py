@@ -67,7 +67,7 @@ def iter_json_values_from_text(text: str) -> tuple[object, ...]:
 def strip_runner_markdown_fence(raw_output: str) -> str:
     """Strip a complete Markdown code fence while preserving non-fenced text.
 
-    >>> strip_runner_markdown_fence('```json\n{"a": 1}\n```')
+    >>> strip_runner_markdown_fence('```json\\n{"a": 1}\\n```')
     '{"a": 1}'
     >>> strip_runner_markdown_fence('plain')
     'plain'
@@ -137,7 +137,7 @@ def find_structured_review_payload(
 def extract_structured_review_payload(raw_output: str) -> dict[str, object] | None:
     """Extract a structured-review payload from JSON/YAML or runner envelopes.
 
-    >>> extract_structured_review_payload('review_outcome: pass\nsummary: ok')
+    >>> extract_structured_review_payload('review_outcome: pass\\nsummary: ok')
     {'review_outcome': 'pass', 'summary': 'ok'}
     """
 

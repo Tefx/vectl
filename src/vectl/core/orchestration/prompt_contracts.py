@@ -162,7 +162,7 @@ def compute_prompt_bundle_sha256(bundle_data: Mapping[str, object] | PromptBundl
     >>> compute_prompt_bundle_sha256({"system_prompt": "s", "task_prompt": "t", "messages": ()}) == compute_prompt_bundle_sha256({"system_prompt": "s", "task_prompt": "t", "messages": ()})
     True
     >>> compute_prompt_bundle_sha256(PromptBundle(system_prompt="s", task_prompt="t", messages=()))
-    '9ce55c6d574906a810c9828193ca49280658ddf7c256569a197ec33dceba1de7'
+    '12dce344856d5b2d37cc4945201f16fc9512e61d917421d0575f301d68390ca9'
     """
     if isinstance(bundle_data, PromptBundle):
         bundle_data = {

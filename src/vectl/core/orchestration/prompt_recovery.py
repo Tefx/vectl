@@ -47,7 +47,7 @@ def validate_prompt_bundle_fields(bundle_data: Mapping[str, object]) -> str:
 def validate_prompt_content(prompt_content: str, prompt_path: str) -> str:
     """Return an empty string when runner prompt content is usable.
 
-    >>> validate_prompt_content("# Task\nDo it.", "/tmp/runner_prompt.md")
+    >>> validate_prompt_content("# Task\\nDo it.", "/tmp/runner_prompt.md")
     ''
     """
     if not prompt_content.strip():

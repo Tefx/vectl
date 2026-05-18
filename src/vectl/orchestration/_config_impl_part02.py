@@ -1,4 +1,15 @@
 from __future__ import annotations
+
+if __name__.endswith("_config_impl_part02"):
+    from vectl.orchestration import _config_impl as _impl
+
+    for _name, _value in vars(_impl).items():
+        if _name in {"__name__", "__package__", "__loader__", "__spec__", "__file__", "__cached__"}:
+            continue
+        globals()[_name] = _value
+
+    del _impl, _name, _value
+
 def _apply_role_profile_override(
     base_profile: RoleProfile,
     overrides: dict[str, str],

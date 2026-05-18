@@ -101981,7 +101981,7 @@ phases:
       - [x] Run the targeted checklist, MCP checklist, and CLI check pytest commands
       and record actual outputs.
 
-      - [ ] Run `git diff --check` against the remediation diff and record actual
+      - [x] Run `git diff --check` against the remediation diff and record actual
       output.
 
       - [ ] Confirm no evidence path requires nonexistent `tools/vectl/README.md`.'

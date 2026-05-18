@@ -103504,7 +103504,7 @@ phases:
 
       - [x] Successful batch changes only requested checkbox markers.
 
-      - [ ] Empty batch behavior follows the contract exactly.
+      - [x] Empty batch behavior follows the contract exactly.
 
       - [ ] Batch result exposes enough data for CLI/MCP machine-readable responses.
 

@@ -105341,7 +105341,7 @@ phases:
       None)` in `src/vectl/core/checklist_batch.py` helpers with meaningful result-structure
       properties or refactor helpers out of Core if they are not Core logic.
 
-      - [ ] B7 orphan public symbols/type aliases: classify `ChecklistErrorCode` and
+      - [x] B7 orphan public symbols/type aliases: classify `ChecklistErrorCode` and
       `ChecklistSelector` as intentionally type-only/private or add real runtime/public
       usage; avoid dead public API surface.
 

@@ -101822,7 +101822,7 @@ phases:
     skipped_reason: superseded
   - id: det_check_contract_fix_gate_blockers
     name: Fix contract gate blockers for deterministic checklist contract
-    status: pending
+    status: claimed
     description: 'Batched remediation for deterministic checklist contract gate failure.
 
 
@@ -102082,6 +102082,8 @@ phases:
     depends_on:
     - det_check_contract_gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T14:42:20.225123+00:00'
   - id: det_check_contract_retest_gate
     name: Retest and gate deterministic checklist contract remediation
     status: pending

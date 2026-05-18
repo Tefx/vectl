@@ -102787,7 +102787,7 @@ phases:
       - [x] Invalid selector-mode combinations fail with structured errors on both
       CLI and MCP surfaces.
 
-      - [ ] Batch mutation returns atomic all-or-nothing results with per-selector
+      - [x] Batch mutation returns atomic all-or-nothing results with per-selector
       diagnostics on machine-readable surfaces.
 
       - [ ] Orchestrator prompt/receipt tests prove receipts use item_id/revision

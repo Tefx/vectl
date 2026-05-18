@@ -103952,17 +103952,17 @@ phases:
 
       If a contract artifact is wrong or incomplete, document a deviation record (type,
       what, why, impact) — do NOT silently rewrite.'
-    verification: '- [ ] Run `pytest tests/orchestration tests/repro -k ''checklist
+    verification: '- [x] Run `pytest tests/orchestration tests/repro -k ''checklist
       or receipt or prompt'' -q` or the focused orchestration receipt tests added
       in `det_check_tests_surfaces_red` and show they pass green.
 
-      - [ ] Evidence includes a sample injected checklist inventory and a worker receipt
+      - [x] Evidence includes a sample injected checklist inventory and a worker receipt
       keyed by item_id/revision.
 
-      - [ ] Evidence confirms workers are not asked to do natural-language fuzzy mapping
+      - [x] Evidence confirms workers are not asked to do natural-language fuzzy mapping
       for deterministic checklist receipts.
 
-      - [ ] Evidence confirms mutation authority remains orchestrator-owned.'
+      - [x] Evidence confirms mutation authority remains orchestrator-owned.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

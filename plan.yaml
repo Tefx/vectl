@@ -99040,7 +99040,7 @@ phases:
       - [x] Confirm CrossHair/property skips caused by prior failures are no longer
       blocking, or record the closure path if guard still skips them.
 
-      - [ ] Report any unclosed residual with structured disposition: provenance,
+      - [x] Report any unclosed residual with structured disposition: provenance,
       disposition, non-intersection proof, downstream gate impact, and future owner
       if applicable.
 

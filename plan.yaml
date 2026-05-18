@@ -100142,7 +100142,7 @@ phases:
       \ proof artifact is pasted in evidence and does not rely on plan summaries alone.\n\
       - [x] UI/UX artifact includes help/surface snapshots, command executability\
       \ matrix, JSON ANSI check, facade import check, and behavioral proof register.\n\
-      - [ ] Each cited Core warning is either fixed with non-vacuous semantic contract/doctest\
+      - [x] Each cited Core warning is either fixed with non-vacuous semantic contract/doctest\
       \ evidence or dispositioned narrowly with downstream non-intersection proof.\n\
       - [ ] Evidence states why any remaining warning is non-blocking under INVAR\
       \ policy and names a future owner if that status changes.\n- [ ] Evidence is\

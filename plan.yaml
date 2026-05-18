@@ -102784,7 +102784,7 @@ phases:
       - [x] CLI/MCP deterministic calls require `checklist_inventory_revision` and
       return structured stale-revision retry guidance.
 
-      - [ ] Invalid selector-mode combinations fail with structured errors on both
+      - [x] Invalid selector-mode combinations fail with structured errors on both
       CLI and MCP surfaces.
 
       - [ ] Batch mutation returns atomic all-or-nothing results with per-selector

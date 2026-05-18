@@ -106770,18 +106770,18 @@ phases:
 
       - [x] No broad refactor, new public receipt schema, or unrelated deterministic
       checklist behavior changes are introduced.'
-    verification: '- [ ] Focused stale receipt remediation is limited to orchestration-owned
+    verification: '- [x] Focused stale receipt remediation is limited to orchestration-owned
       receipt/evidence/completion handling and tests.
 
-      - [ ] Runtime path evidence proves refresh-before-retry/application or tested
+      - [x] Runtime path evidence proves refresh-before-retry/application or tested
       rejected-with-refresh instruction, not parser-only acceptance.
 
-      - [ ] `assess_freeform_evidence` or completion/evidence pipeline no longer treats
+      - [x] `assess_freeform_evidence` or completion/evidence pipeline no longer treats
       stale receipt proof as satisfied without runtime refresh evidence.
 
-      - [ ] Tests include stale `revision: rev1` and current inventory/revision fixtures.
+      - [x] Tests include stale `revision: rev1` and current inventory/revision fixtures.
 
-      - [ ] Evidence records `why_previous_fix_failed` and chosen closure path.'
+      - [x] Evidence records `why_previous_fix_failed` and chosen closure path.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

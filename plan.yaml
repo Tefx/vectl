@@ -105136,7 +105136,7 @@ phases:
       - [x] Core checklist service is canonical; CLI/MCP/orchestration do not re-derive
       inventory/revision facts.
 
-      - [ ] Marker-only mutation invariant holds for single and batch paths.
+      - [x] Marker-only mutation invariant holds for single and batch paths.
 
       - [ ] Batch mutation is all-or-nothing with per-selector diagnostics.
 

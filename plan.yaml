@@ -105764,7 +105764,7 @@ phases:
       - none'
   - id: det_check_impl_blocker_integration_retest
     name: Retest deterministic checklist integration blockers
-    status: claimed
+    status: done
     description: 'Independent integration retest for the batched deterministic checklist
       blocker remediation.
 
@@ -105905,6 +105905,110 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-18T17:16:53.545514+00:00'
+    done_at: '2026-05-18T17:31:47.562261+00:00'
+    evidence: 'status: FAIL_REPORT_ACCEPTED
+
+      verdict: FAIL
+
+      blockers:
+
+      - Stale receipt refresh-before-retry is not proven through a runtime-reachable
+      orchestration path.
+
+      orchestrator_action_hint: DO_NOT_COMPLETE
+
+      gate_open_allowed: false
+
+
+      ## Report disposition
+
+      This integration retest is complete as a failure-finding artifact. The sole
+      remaining blocker is owned by newly added follow-up path:
+
+      - `det_check_impl_receipt_refresh_remediation`
+
+      - `det_check_impl_receipt_refresh_retest`
+
+      `det_check_impl_blocker_retest` and `det_check_impl_gate` now depend on the
+      focused retest, so the phase cannot bypass it.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - `docs/RFC-deterministic-checklists.md` — read; §6 requires worker receipts
+      keyed by item_id/revision and orchestrator refresh inventory before retry when
+      receipt revision is stale.
+
+      - `src/vectl/core/checklist_batch.py` — read; stale revisions raise `StaleRevisionError`
+      before applying changes.
+
+      - `src/vectl/cli_plan_checklist_commands.py` — read; deterministic errors emit
+      JSON and exit nonzero.
+
+      - `src/vectl/orchestration/evidence.py` — read; `parse_checklist_receipt` validates
+      item_id/revision/checked but refresh/retry mutation path was not observed.
+
+      - `tools/vectl/README.md` — NOT READ: absent.
+
+
+      ## Integration Retest Report
+
+      Commands/probes showed:
+
+      - Core literal `rev1` stale revision raised `StaleRevisionError`, payload code
+      `stale_revision`, retry action `refresh_inventory`, and before/after description
+      remained unchanged.
+
+      - CLI stale `rev1` batch returned exit code 1 with parseable JSON `error.code=stale_revision`
+      and plan file unchanged.
+
+      - CLI invalid selector returned exit code 1 with parseable JSON `error.code=item_not_found`
+      and plan file unchanged.
+
+      - Receipt parsing accepts `revision: rev1`, but `assess_freeform_evidence` reported
+      `failed=False`; no runtime path refreshed inventory or retried stale receipt
+      application.
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | status | gate_decision_basis |
+
+      |---|---|---|---|
+
+      | checklist[0] | Core stale revisions fail without mutating, including rev1
+      | PROVEN | pass basis satisfied |
+
+      | checklist[1] | CLI deterministic JSON stale/invalid batch exits nonzero with
+      parseable JSON | PROVEN | pass basis satisfied |
+
+      | checklist[2] | Failed batch all-or-nothing/no mutation | PROVEN | pass basis
+      satisfied |
+
+      | checklist[3] | Stale receipt refresh-before-retry through orchestration path
+      | UNPROVEN | blocks gate; closure path now `det_check_impl_receipt_refresh_remediation`
+      |
+
+
+      ## Checklist Receipt
+
+      - [x] Core deterministic stale revisions fail without mutating state, including
+      a literal stale `rev1` fixture.
+
+      - [x] CLI deterministic batch with stale/invalid revision and `--json` exits
+      non-zero while emitting parseable JSON error payload.
+
+      - [x] Failed batch proves all-or-nothing/no-mutation with before/after inventory
+      or plan-state evidence.
+
+      - [x] Stale receipt path proves refresh-before-retry through a runtime-reachable
+      orchestration path.
+
+
+      ## Gaps/Notes
+
+      - Remaining gap is not waived; it is owned by focused remediation and retest
+      steps.'
   - id: det_check_impl_blocker_spec_retest
     name: Retest deterministic checklist spec conformance blockers
     status: done

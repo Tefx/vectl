@@ -101300,7 +101300,7 @@ phases:
       \ downstream non-intersection proof.\n- [x] Gate decision basis includes structured\
       \ behavioral proof register fields for each blocker family.\n- [x] OPEN decision\
       \ is denied if evidence relies on stale partial success, discarded branch state,\
-      \ or managed plan summaries alone.\n- [ ] Downstream deterministic-checklist\
+      \ or managed plan summaries alone.\n- [x] Downstream deterministic-checklist\
       \ phases remain blocked unless this final regate opens."
     verification: '- [ ] Fresh/cold `uvx invar-tools guard --all` was run or independently
       verified on current mainline and output includes exit status, status/errors/warnings/infos,

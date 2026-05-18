@@ -102960,12 +102960,12 @@ phases:
       - [x] Legacy human keyword compatibility tests remain present.
 
       - [x] Downstream implementation steps have clear test anchors.'
-    verification: '- [ ] phase-check protecting `det_check_impl`: verify expected-red
+    verification: '- [x] phase-check protecting `det_check_impl`: verify expected-red
       evidence is specific, mapped to declared gaps, and test-only.
 
-      - [ ] Confirm no expected-red failure is unrelated infrastructure noise.
+      - [x] Confirm no expected-red failure is unrelated infrastructure noise.
 
-      - [ ] Confirm implementation can proceed with explicit contract/test anchors.'
+      - [x] Confirm implementation can proceed with explicit contract/test anchors.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

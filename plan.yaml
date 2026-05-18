@@ -105140,7 +105140,7 @@ phases:
 
       - [x] Batch mutation is all-or-nothing with per-selector diagnostics.
 
-      - [ ] CLI/MCP surfaces are runnable and legacy compatible.
+      - [x] CLI/MCP surfaces are runnable and legacy compatible.
 
       - [ ] Orchestrator receipts use item_id/revision and avoid natural-language
       fuzzy mapping.

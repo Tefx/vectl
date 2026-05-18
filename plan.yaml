@@ -105133,7 +105133,7 @@ phases:
 
       Cross-cutting focus:
 
-      - [ ] Core checklist service is canonical; CLI/MCP/orchestration do not re-derive
+      - [x] Core checklist service is canonical; CLI/MCP/orchestration do not re-derive
       inventory/revision facts.
 
       - [ ] Marker-only mutation invariant holds for single and batch paths.

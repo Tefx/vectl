@@ -104372,7 +104372,7 @@ phases:
       - none"
   - id: det_check_impl_wiring_audit
     name: Audit checklist wiring completeness
-    status: pending
+    status: claimed
     description: 'Wiring completeness audit: verify every new deterministic checklist
       public symbol and surface is reachable at runtime.
 
@@ -104492,6 +104492,8 @@ phases:
     - det_check_impl_cli_mcp
     - det_check_impl_orch_receipts
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-05-18T16:42:22.386179+00:00'
   - id: det_check_impl_liveness_probe
     name: Probe runnable checklist surfaces
     status: claimed

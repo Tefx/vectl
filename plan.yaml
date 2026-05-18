@@ -99034,7 +99034,7 @@ phases:
       - [x] Provide compatibility smoke commands and outputs for every touched public
       import/CLI/MCP/runtime surface.
 
-      - [ ] Capture exact AFTER `uvx invar-tools guard --all` excerpt showing weighted
+      - [x] Capture exact AFTER `uvx invar-tools guard --all` excerpt showing weighted
       budget `<=15/15` or structured residual disposition with non-intersection proof.
 
       - [ ] Confirm CrossHair/property skips caused by prior failures are no longer

@@ -104596,7 +104596,7 @@ phases:
     claimed_at: '2026-05-18T16:42:04.399807+00:00'
   - id: det_check_impl_spec_conformance
     name: Verify checklist spec conformance
-    status: pending
+    status: claimed
     description: 'Spec conformance verification via adversarial divergence hunting.
 
 
@@ -104706,6 +104706,8 @@ phases:
     - det_check_impl_cli_mcp
     - det_check_impl_orch_receipts
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-05-18T16:42:13.460110+00:00'
   - id: det_check_impl_gate
     name: Gate deterministic checklist implementation
     status: pending

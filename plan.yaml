@@ -106534,7 +106534,7 @@ phases:
 
       - [x] `det_check_impl_blocker_spec_retest` — spec conformance blocker family.
 
-      - [ ] `det_check_impl_blocker_wiring_retest` — wiring/contract blocker family.
+      - [x] `det_check_impl_blocker_wiring_retest` — wiring/contract blocker family.
 
 
       ## Required closure checks

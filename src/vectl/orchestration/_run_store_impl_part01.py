@@ -370,14 +370,21 @@ def _append_jsonl_with_retry(
     retry_delay_seconds: float,
     retry_observer: RetryObserver | None,
 ) -> None:
+    import sys
+
     if max_retries < 0:
         raise ValueError("max_retries must be >= 0")
 
+    append_once = getattr(
+        sys.modules.get("vectl.orchestration.run_store"),
+        "_append_jsonl_once",
+        _append_jsonl_once,
+    )
     attempts = max_retries + 1
     last_error: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
-            _append_jsonl_once(path, payload)
+            append_once(path, payload)
             return
         except (BlockingIOError, PermissionError, OSError) as exc:
             last_error = exc

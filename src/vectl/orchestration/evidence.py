@@ -9,6 +9,12 @@ from typing import Any
 
 import yaml
 
+from vectl.core_checklist import (
+    ChecklistReceiptItem,
+    OrchestratorChecklistReceipt,
+    SupportedChecklistField,
+)
+
 _MAX_PLAN_EVIDENCE_CHARS = 1200
 _FAILURE_STATUSES = {"fail", "failed", "failure", "error", "blocked", "red"}
 _SUCCESS_STATUSES = {"pass", "passed", "success", "ok", "done"}
@@ -24,7 +30,15 @@ class EvidenceAssessment:
     summary: str
 
 
-def assess_freeform_evidence(output_summary: str) -> EvidenceAssessment:
+class ChecklistReceiptValidationError(ValueError):
+    """Raised when a worker checklist receipt violates deterministic schema."""
+
+
+def assess_freeform_evidence(
+    output_summary: str,
+    *,
+    current_checklist_inventory_revision: str | None = None,
+) -> EvidenceAssessment:
     """Detect explicit failure reports inside freeform runner evidence.
 
     Freeform coder roles may still emit structured YAML/JSON snippets such as
@@ -34,7 +48,14 @@ def assess_freeform_evidence(output_summary: str) -> EvidenceAssessment:
 
     payload = extract_runner_payload(output_summary)
     summary = summarize_plan_evidence(output_summary)
-    reason = _structured_failure_reason(payload) or _text_failure_reason(payload)
+    reason = (
+        _checklist_receipt_failure_reason(
+            output_summary,
+            current_checklist_inventory_revision=current_checklist_inventory_revision,
+        )
+        or _structured_failure_reason(payload)
+        or _text_failure_reason(payload)
+    )
     return EvidenceAssessment(failed=reason is not None, reason=reason, summary=summary)
 
 
@@ -65,6 +86,71 @@ def extract_runner_payload(output_summary: str) -> str:
     return payload.strip()
 
 
+def parse_checklist_receipt(output_summary: str) -> OrchestratorChecklistReceipt | None:
+    """Parse and validate an orchestrator-owned deterministic checklist receipt.
+
+    Authority: docs/RFC-deterministic-checklists.md §6.
+
+    Deterministic receipt entries must include the RFC-required ``item_id``,
+    ``revision`` (``checklist_inventory_revision`` is accepted as a legacy
+    alias), and desired final ``checked`` state. Legacy ``step_id`` and
+    ``field`` metadata are optional additive aliases. The parser only creates a
+    typed receipt for the orchestrator to apply later; it does not mutate plan
+    state and does not do natural-language fuzzy mapping.
+    """
+
+    parsed = _parse_payload(extract_runner_payload(output_summary))
+    if parsed is None:
+        return None
+    if not isinstance(parsed, dict):
+        return None
+
+    if "checklist_receipt" in parsed:
+        raw_receipt = parsed.get("checklist_receipt")
+    elif "items" in parsed or "item_id" in parsed:
+        raw_receipt = parsed
+    else:
+        return None
+    if raw_receipt in (None, ""):
+        return None
+
+    if isinstance(raw_receipt, dict) and "items" in raw_receipt:
+        step_id = _optional_non_empty_string(raw_receipt, "step_id")
+        raw_items = raw_receipt.get("items")
+    else:
+        step_id = _optional_non_empty_string(parsed, "step_id")
+        raw_items = raw_receipt
+
+    if not isinstance(raw_items, list):
+        raise ChecklistReceiptValidationError("checklist_receipt must be a list of entries.")
+
+    items: list[ChecklistReceiptItem] = []
+    for index, raw_item in enumerate(raw_items):
+        if not isinstance(raw_item, dict):
+            raise ChecklistReceiptValidationError(
+                f"checklist_receipt[{index}] must be a mapping."
+            )
+        item_step_id = raw_item.get("step_id")
+        if item_step_id is not None and item_step_id != step_id:
+            raise ChecklistReceiptValidationError(
+                f"checklist_receipt[{index}] step_id does not match receipt step_id."
+            )
+        field = _optional_supported_field(raw_item, "field", index=index)
+        item_id = _require_non_empty_string(raw_item, "item_id", index=index)
+        revision = _receipt_revision(raw_item, index=index)
+        checked = _require_bool(raw_item, "checked", index=index)
+        items.append(
+            ChecklistReceiptItem(
+                item_id=item_id,
+                revision=revision,
+                checked=checked,
+                field=field,
+            )
+        )
+
+    return OrchestratorChecklistReceipt(step_id=step_id, items=items)
+
+
 def _split_runner_stdout(output_summary: str) -> tuple[str, str]:
     marker = "stdout="
     if marker not in output_summary:
@@ -74,6 +160,91 @@ def _split_runner_stdout(output_summary: str) -> tuple[str, str]:
     if prefix:
         prefix = f"{prefix}; "
     return prefix, after
+
+
+def _require_non_empty_string(
+    mapping: dict[str, Any], key: str, *, index: int | None = None
+) -> str:
+    value = mapping.get(key)
+    if not isinstance(value, str) or not value.strip():
+        location = f"checklist_receipt[{index}]." if index is not None else ""
+        raise ChecklistReceiptValidationError(f"Missing required {location}{key}.")
+    return value.strip()
+
+
+def _optional_non_empty_string(mapping: dict[str, Any], key: str) -> str:
+    value = mapping.get(key)
+    if value is None:
+        return ""
+    if not isinstance(value, str) or not value.strip():
+        raise ChecklistReceiptValidationError(f"Invalid optional {key}.")
+    return value.strip()
+
+
+def _require_bool(mapping: dict[str, Any], key: str, *, index: int) -> bool:
+    value = mapping.get(key)
+    if not isinstance(value, bool):
+        raise ChecklistReceiptValidationError(
+            f"Missing required checklist_receipt[{index}].{key} boolean."
+        )
+    return value
+
+
+def _require_supported_field(
+    mapping: dict[str, Any], key: str, *, index: int
+) -> SupportedChecklistField:
+    value = _require_non_empty_string(mapping, key, index=index)
+    if value not in ("description", "verification"):
+        raise ChecklistReceiptValidationError(
+            f"Unsupported checklist_receipt[{index}].field: {value!r}."
+        )
+    return value
+
+
+def _optional_supported_field(
+    mapping: dict[str, Any], key: str, *, index: int
+) -> SupportedChecklistField | None:
+    value = mapping.get(key)
+    if value is None:
+        return None
+    return _require_supported_field(mapping, key, index=index)
+
+
+def _receipt_revision(mapping: dict[str, Any], *, index: int) -> str:
+    value = mapping.get("checklist_inventory_revision", mapping.get("revision"))
+    if not isinstance(value, str) or not value.strip():
+        raise ChecklistReceiptValidationError(
+            "Missing required checklist_receipt"
+            f"[{index}].checklist_inventory_revision."
+        )
+    return value.strip()
+
+
+def _checklist_receipt_failure_reason(
+    output_summary: str,
+    *,
+    current_checklist_inventory_revision: str | None = None,
+) -> str | None:
+    try:
+        receipt = parse_checklist_receipt(output_summary)
+    except ChecklistReceiptValidationError as exc:
+        return f"invalid checklist_receipt: {exc}"
+    if receipt is None or current_checklist_inventory_revision is None:
+        return None
+    stale_revisions = tuple(
+        item.revision
+        for item in receipt.items
+        if item.revision != current_checklist_inventory_revision
+    )
+    if not stale_revisions:
+        return None
+    stale_preview = ", ".join(repr(revision) for revision in sorted(set(stale_revisions)))
+    return (
+        "stale checklist_receipt revision: "
+        f"received {stale_preview}; current checklist_inventory_revision "
+        f"is {current_checklist_inventory_revision!r}; retry action=refresh_inventory; "
+        "refresh the step checklist inventory and re-evaluate the target state"
+    )
 
 
 def _structured_failure_reason(payload: str) -> str | None:

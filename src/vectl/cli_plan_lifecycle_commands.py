@@ -305,30 +305,6 @@ def skip_phase_cmd(
 
 
 # ---------------------------------------------------------------------------
-# cli.7: update-checklist
-# ---------------------------------------------------------------------------
-
-
-def check_cmd(
-    step_id: str = typer.Argument(help="Step ID containing the checklist."),
-    keyword: str | None = typer.Argument(None, help="Keyword to toggle a checklist item."),
-    add: str | None = typer.Option(None, "--add", help="Text for a new checklist item."),
-    plan: Path | None = PlanOption,
-) -> None:
-    """Toggle or add a checklist item in a step's description."""
-    _check_not_linked_worktree(plan)
-    p, def_h, plan_path = _load(plan)
-    try:
-        p = update_checklist(p, step_id, check=keyword, append=add)
-    except PlanError as e:
-        _die(str(e))
-    _save_plan(p, plan_path, def_h, f"vectl: update checklist {step_id}")
-    out.print(f"[green]Updated checklist:[/] {step_id}")
-    out.print()
-    out.print(f"[dim]→ vectl show {step_id}[/]")
-
-
-# ---------------------------------------------------------------------------
 # cli.8: validate
 # ---------------------------------------------------------------------------
 

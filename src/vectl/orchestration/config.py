@@ -14,4 +14,9 @@ for _name, _value in vars(_impl).items():
         continue
     globals()[_name] = _value
 
-del _impl, _name, _value
+def load_orchestration_config(plan_path=None):
+    """Load config while preserving facade-level monkeypatch compatibility."""
+    _impl.USER_CONFIG_DIR = globals().get("USER_CONFIG_DIR", _impl.USER_CONFIG_DIR)
+    return _impl.load_orchestration_config(plan_path=plan_path)
+
+del _name, _value

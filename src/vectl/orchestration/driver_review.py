@@ -8,7 +8,7 @@ from __future__ import annotations
 import time
 from dataclasses import replace
 
-from vectl.orchestration.contracts import BarrierReason, ChildRunRef, DriveBarrier, DriveRecord, DriveStatus, ExecutionResult
+from vectl.orchestration.contracts import BarrierReason, ChildRunRef, ControlDecision, DriveBarrier, DriveRecord, DriveStatus, ExecutionResult
 from vectl.orchestration.driver_types import DriveLoopResult
 from vectl.orchestration.review_gate import ReviewGateResult
 from vectl.orchestration.driver_resolution_helpers import (
@@ -231,4 +231,3 @@ class DriverReviewMixin:
                 f"step={child_run.step_id}: {review_result.summary}"
             ),
         )
-

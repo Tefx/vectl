@@ -394,7 +394,7 @@ def replay_events_to_artifacts(
 # @shell_complexity: Branches preserve full replay, numeric cursor, and event-id cursor selection semantics.
 # @shell_orchestration: Event selection is coupled to projection replay cursor compatibility.
 from vectl.orchestration.projection_helpers import _artifact_from_event, _as_float, _as_int, _as_scope, _as_status, _coerce_scalar, _derive_state, _latest_payload, _metrics_payload, _normalize_events, _optional_str, _parse_payload, _persist_projection, _select_events, _summary_payload, _write_json
-from vectl.orchestration.drive_projections import DriveProjection, rebuild_drive_projection, replay_drive_events
+from vectl.orchestration.drive_projections import DriveProjection, rebuild_drive_projection, replay_drive_events, _rebuild_drive_projection_from_records
 
 __all__ = [
     "PROJECTION_STALE",
@@ -408,5 +408,6 @@ __all__ = [
     "replay_events_to_artifacts",
     "DriveProjection",
     "rebuild_drive_projection",
+    "_rebuild_drive_projection_from_records",
     "replay_drive_events",
 ]

@@ -522,7 +522,14 @@ class Runtime:
 
         self._active_reconciles.add(workspace_id)
         try:
-            raw_result = _perform_reconcile(
+            import sys
+
+            perform_reconcile = getattr(
+                sys.modules.get("vectl.orchestration.runtime"),
+                "_perform_reconcile",
+                _perform_reconcile,
+            )
+            raw_result = perform_reconcile(
                 execution_id=execution_id,
                 workspace_id=workspace_id,
                 binding=state.binding,
@@ -821,7 +828,14 @@ class Runtime:
                 runner = self._runner_registry.get(state.execution_state.runner)
                 runner.cancel(handle)
 
-        cleanup_result = _run_cleanup(
+        import sys
+
+        run_cleanup = getattr(
+            sys.modules.get("vectl.orchestration.runtime"),
+            "_run_cleanup",
+            _run_cleanup,
+        )
+        cleanup_result = run_cleanup(
             step_id=state.binding.step_id,
             worktree_path=state.binding.worktree_path,
             force=True,

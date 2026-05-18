@@ -7,6 +7,28 @@ from dataclasses import dataclass
 from enum import Enum
 
 from vectl.core_plan_clipboard import *  # noqa: F403
+from vectl.core_checklist import (  # noqa: F401
+    AmbiguousLegacyMatch,
+    BatchDiagnostics,
+    ChecklistContractError,
+    ChecklistErrorPayload,
+    ChecklistInventoryRevision,
+    ChecklistItem,
+    FieldIndexSelector,
+    InvalidSelectorError,
+    ItemIdSelector,
+    ItemNotFoundError,
+    LegacyKeywordSelector,
+    MutationBatchResult,
+    MutationRequest,
+    NoLegacyMatch,
+    OrchestratorChecklistReceipt,
+    RetryGuidance,
+    StaleRevisionError,
+    UnsupportedFieldError,
+    get_inventory,
+    mutate_checklist,
+)
 from vectl.core_plan_step_add import *  # noqa: F403
 from vectl.core_plan_step_edit import *  # noqa: F403
 from vectl.core_duplicate_step_id import require_unambiguous_target_step_id
@@ -18,7 +40,13 @@ from vectl.models import (
 )
 from vectl.core_plan_clipboard import _clipboard_expired
 from vectl.core_plan_step_add import _slugify, _unique_phase_id, _unique_step_id
-from vectl.core_plan_step_edit import _CHECKLIST_RE, _SENTINEL, _Unset, _toggle_checklist_item
+from vectl.core_plan_step_edit import (
+    _CHECKLIST_RE,
+    _SENTINEL,
+    _Unset,
+    _toggle_checklist_item,
+    update_checklist as _legacy_update_checklist,
+)
 
 
 def claim_step(
@@ -39,6 +67,30 @@ def claim_step(
         force=force,
         claims_path=claims_path,
     )
+
+
+def update_checklist(
+    plan: Plan,
+    step_id: str,
+    *,
+    check: str | None = None,
+    append: str | None = None,
+) -> Plan:
+    """Update a checklist in a step's description using the legacy surface.
+
+    This compatibility facade intentionally preserves the historical public
+    runtime API used by CLI, MCP, and tests:
+    ``update_checklist(plan, step_id, *, check=None, append=None) -> Plan``.
+
+    Deterministic item-id/revision checklist handling lives in
+    :mod:`vectl.core_checklist` and is re-exported from this facade for callers
+    that import through ``vectl.core``.  This legacy adapter keeps keyword
+    toggle/append semantics unchanged and does not accept deterministic selector
+    arguments on the historical ``update_checklist`` signature.
+
+    Authority: docs/RFC-deterministic-checklists.md and tests/test_checklist.py.
+    """
+    return _legacy_update_checklist(plan, step_id, check=check, append=append)
 
 
 def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None) -> Plan:

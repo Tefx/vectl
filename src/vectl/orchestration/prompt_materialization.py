@@ -60,6 +60,18 @@ def materialize_prompt_artifacts(
         "system_prompt": bundle.system_prompt,
         "task_prompt": bundle.task_prompt,
         "messages": [dict(m) for m in bundle.messages],
+        "checklist_receipt_contract": {
+            "authority": "orchestrator_owned",
+            "mutation_boundary": "worker_receipts_do_not_mutate_plan_state",
+            "required_entry_fields": [
+                "item_id",
+                "revision",
+                "checked",
+            ],
+            "accepted_legacy_aliases": ["step_id", "field", "checklist_inventory_revision"],
+            "deterministic_selector": "item_id+checklist_inventory_revision",
+            "legacy_keyword_mapping": "human_compatibility_only",
+        },
         "prompt_bundle_sha256": sha256,
     }
     bundle_path.write_text(json.dumps(bundle_payload, indent=2, ensure_ascii=False) + "\n")

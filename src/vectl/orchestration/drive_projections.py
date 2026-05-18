@@ -11,6 +11,7 @@ from collections.abc import Iterable, Mapping, Sequence
 
 from vectl.orchestration.events import OrchestrationEventEnvelope
 from vectl.orchestration.projections import FileProjectionReplay, ProjectionReplayDiagnostics, ProjectionStaleError, ReplayResult, Result, _as_int, _as_scope, _as_status
+from vectl.orchestration.projection_helpers import _write_json
 
 @dataclass(frozen=True)
 class DriveProjection:

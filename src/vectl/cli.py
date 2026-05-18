@@ -48,6 +48,7 @@ from vectl.cli_plan import (
     add_step_cmd,
     add_steps_cmd,
     cancel,
+    check_inventory_cmd,
     check_cmd,
     checkpoint,
     claim,
@@ -83,10 +84,13 @@ from vectl.cli_plan import (
     unlock,
     validate,
 )
+from vectl.cli_plan_common import _get_next_steps_with_phase
 from vectl.cli_render import _load, _save_plan, diff_cmd, log_cmd, render
 from vectl.io import _resolve_git_dir
 from vectl.merge_driver import merge_plans
 from vectl.plan_path import is_linked_worktree, resolve_plan_path
+from vectl.semantics import is_step_locked
+from vectl.cli_orchestration_runtime_helpers import _enrich_drive_scope_result
 
 console = Console(stderr=True)
 out = Console()
@@ -223,6 +227,7 @@ app.command()(skip)
 app.command()(cancel)
 app.command("skip-phase")(skip_phase_cmd)
 app.command("check")(check_cmd)
+app.command("check-inventory")(check_inventory_cmd)
 app.command()(validate)
 app.command("migrate")(migrate_cmd)
 app.command("migrate-step-id")(migrate_step_id_cmd)

@@ -6,10 +6,10 @@ Preserves the original import path while keeping cohesive implementation slices 
 from __future__ import annotations
 
 from vectl.cli_plan_common import app, console, out
+from vectl.cli_plan_checklist_commands import check_cmd, check_inventory_cmd
 from vectl.cli_plan_lock_commands import unlock, recalc_lock, repair_claims_cmd, add_steps_cmd
 from vectl.cli_plan_lifecycle_commands import (
     cancel,
-    check_cmd,
     claim,
     complete,
     complete_phase_cmd,

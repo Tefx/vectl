@@ -221,6 +221,78 @@ No database. No SaaS. `git blame` it. Review it in PRs. `git diff` it.
 
 Full schema, ID rules, and ordering semantics: [docs/DESIGN.md](docs/DESIGN.md).
 
+## Checklist Updates: Human Toggle vs Deterministic Receipts
+
+vectl supports two separate checklist update paths:
+
+1. **Legacy human keyword toggle** — for interactive use:
+   ```bash
+   uvx vectl check STEP_ID KEYWORD
+   ```
+   The keyword path does a case-insensitive human match, toggles the matched
+   item, prints `Updated checklist: <step>`, and points follow-up review at
+   `vectl show <step>`. It does not use item IDs, revisions, or a target
+   `checked` value.
+
+2. **Deterministic inventory/mutation** — for orchestrators and automation:
+   ```bash
+   uvx vectl check-inventory STEP_ID --json
+   uvx vectl check STEP_ID \
+     --revision <checklist_inventory_revision> \
+     --item-id <item_id> \
+     --checked true \
+     --json
+   ```
+   `check-inventory --json` returns parseable JSON with
+   `checklist_inventory_revision`, `items`, and each item's `item_id`, `field`,
+   `index`, `text`, and `checked` values. Deterministic mutation changes only the
+   `- [ ]` / `- [x]` marker for the exact item; surrounding text and ordering are
+   preserved.
+
+First-version deterministic checklist support is intentionally limited to the
+`description` and `verification` step fields. `evidence_template` checklists are
+deferred/unsupported for deterministic inventory and mutation.
+
+The revision is scoped to the current checklist inventory for the supported
+fields. If the revision is stale, deterministic mutation fails without changing
+state and returns a structured `stale_revision` error with retry action
+`refresh_inventory`.
+
+Batch deterministic mutation is also supported and is all-or-nothing:
+
+```bash
+uvx vectl check STEP_ID \
+  --revision <checklist_inventory_revision> \
+  --batch '[{"item_id":"description:0:<hash>","checked":true}]' \
+  --json
+```
+
+Any stale, invalid, unsupported, or ambiguous selector prevents partial mutation
+and returns structured diagnostics. Machine-readable CLI JSON is emitted without
+Rich/ANSI styling.
+
+MCP exposes the same deterministic fields through `vectl_check`: use
+`inventory=true` to read inventory, or pass `revision` plus either `item_id` or
+`field`/`index` with boolean `checked` to mutate. Batch MCP calls use `requests`.
+
+### Worker/orchestrator receipt flow
+
+In orchestrated work, the orchestrator owns actual checklist mutation. Workers
+must not call vectl checklist tools or perform natural-language fuzzy mapping.
+Instead, workers return exact receipts using item IDs and the inventory revision
+they were given:
+
+```yaml
+checklist_receipt:
+  - item_id: "description:0:<hash>"
+    revision: "<checklist_inventory_revision>"
+    checked: true
+```
+
+The orchestrator validates the receipt schema, refreshes current inventory when
+needed, rejects stale receipt revisions, and applies only valid item-id/revision
+requests.
+
 ## Lock Consistency
 
 Lock status is automatically maintained — agents do not need to manage it. After any write operation (`claim`, `complete`, `mutate`, etc.), vectl recalculates lock status automatically. When a recalculation changes a phase's lock state, vectl emits an informational message:

@@ -102943,7 +102943,7 @@ phases:
       own green closure.'
   - id: det_check_tests_gate
     name: Gate expected-red checklist tests
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether expected-red
       checklist tests expose the declared contract gaps without product implementation
       leakage.
@@ -103018,6 +103018,8 @@ phases:
     - det_check_tests_core_red
     - det_check_tests_surfaces_red
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-18T15:25:48.012745+00:00'
 - id: det_check_impl
   name: 'Deterministic Checklist Handling: Implementation and Surface Wiring'
   status: locked

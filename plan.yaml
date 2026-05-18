@@ -106554,7 +106554,7 @@ phases:
       - [x] B5 receipt validation has a runtime-reachable path or explicit private
       tested disposition.
 
-      - [ ] B6 Core checklist batch contracts are non-vacuous.
+      - [x] B6 Core checklist batch contracts are non-vacuous.
 
       - [ ] B7 public aliases are used or explicitly governed as type-only/private.
 

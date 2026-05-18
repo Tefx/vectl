@@ -106551,7 +106551,7 @@ phases:
       - [x] B4 failed batch all-or-nothing and stale receipt refresh-before-retry
       have runtime proof or blocking closure ownership.
 
-      - [ ] B5 receipt validation has a runtime-reachable path or explicit private
+      - [x] B5 receipt validation has a runtime-reachable path or explicit private
       tested disposition.
 
       - [ ] B6 Core checklist batch contracts are non-vacuous.

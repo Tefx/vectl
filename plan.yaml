@@ -103347,7 +103347,7 @@ phases:
 
       Failure-mode checklist:
 
-      - [ ] Stale `checklist_inventory_revision` rejects mutation before any marker
+      - [x] Stale `checklist_inventory_revision` rejects mutation before any marker
       is changed.
 
       - [ ] `item_id` selector resolves only within the submitted inventory snapshot.

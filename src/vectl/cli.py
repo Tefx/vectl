@@ -89,6 +89,8 @@ from vectl.cli_render import _load, _save_plan, diff_cmd, log_cmd, render
 from vectl.io import _resolve_git_dir
 from vectl.merge_driver import merge_plans
 from vectl.plan_path import is_linked_worktree, resolve_plan_path
+from vectl.semantics import is_step_locked
+from vectl.cli_orchestration_runtime_helpers import _enrich_drive_scope_result
 
 console = Console(stderr=True)
 out = Console()

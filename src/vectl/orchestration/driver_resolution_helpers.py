@@ -6,6 +6,7 @@ Authority: docs/RFC-orch-drive.md sections 8.4.1, 12.3, 15.3, 17.1.
 from __future__ import annotations
 
 import time
+import uuid
 from dataclasses import replace
 from typing import TYPE_CHECKING, Literal
 

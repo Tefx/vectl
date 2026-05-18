@@ -103,7 +103,7 @@ def parse_checklist_receipt(output_summary: str) -> OrchestratorChecklistReceipt
     if parsed is None:
         return None
     if not isinstance(parsed, dict):
-        raise ChecklistReceiptValidationError("Checklist receipt payload must be a mapping.")
+        return None
 
     if "checklist_receipt" in parsed:
         raw_receipt = parsed.get("checklist_receipt")

@@ -665,3 +665,6 @@ class PlanPlannerMutationApplier:
         if "context" in changes:
             phase_kwargs["context"] = str(changes["context"])
         return phase_kwargs
+
+
+_as_str_list = PlanPlannerMutationApplier._as_str_list

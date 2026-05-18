@@ -102593,7 +102593,7 @@ phases:
 
       - [x] Inventory discovers checklist items from both `description` and `verification`.
 
-      - [ ] Missing and empty `description`/`verification` fields produce valid empty
+      - [x] Missing and empty `description`/`verification` fields produce valid empty
       inventories without errors.
 
       - [ ] `item_id` values are snapshot-scoped and change only when the canonicalized

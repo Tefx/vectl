@@ -106185,7 +106185,7 @@ phases:
 
       ## Required wiring audit focus
 
-      - [ ] `parse_checklist_receipt` / `ChecklistReceiptValidationError` have a real
+      - [x] `parse_checklist_receipt` / `ChecklistReceiptValidationError` have a real
       runtime caller outside the defining module, or a deliberately private tested
       reachable entry point with documented disposition.
 

@@ -103187,16 +103187,16 @@ phases:
 
       If a contract artifact is wrong or incomplete, document a deviation record (type,
       what, why, impact) — do NOT silently rewrite.'
-    verification: '- [ ] Run `pytest tests/test_checklist.py -k ''inventory or revision
+    verification: '- [x] Run `pytest tests/test_checklist.py -k ''inventory or revision
       or snapshot or field'' -q` and show the inventory/revision tests now pass green.
 
-      - [ ] Run `invar guard --changed` or repo-equivalent focused invar guard for
+      - [x] Run `invar guard --changed` or repo-equivalent focused invar guard for
       changed core files and report output.
 
-      - [ ] Evidence proves missing/empty field behavior and `evidence_template` deferred
+      - [x] Evidence proves missing/empty field behavior and `evidence_template` deferred
       behavior.
 
-      - [ ] Evidence proves no product mutation logic outside the core checklist inventory
+      - [x] Evidence proves no product mutation logic outside the core checklist inventory
       service was completed in this step.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

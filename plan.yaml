@@ -102781,7 +102781,7 @@ phases:
       - [x] CLI covers legacy human keyword toggle output and deterministic machine-readable
       inventory/mutation output where applicable.
 
-      - [ ] CLI/MCP deterministic calls require `checklist_inventory_revision` and
+      - [x] CLI/MCP deterministic calls require `checklist_inventory_revision` and
       return structured stale-revision retry guidance.
 
       - [ ] Invalid selector-mode combinations fail with structured errors on both

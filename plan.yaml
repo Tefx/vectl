@@ -107898,7 +107898,7 @@ phases:
       - [x] Document supported first-version fields: `description` and `verification`
       only.
 
-      - [ ] Document `evidence_template` as deferred/unsupported for first version.
+      - [x] Document `evidence_template` as deferred/unsupported for first version.
 
       - [ ] Document `checklist_inventory_revision` scope and stale-retry behavior.
 

@@ -99031,7 +99031,7 @@ phases:
       - [x] Provide exact targeted test commands and outputs for every touched public
       surface.
 
-      - [ ] Provide compatibility smoke commands and outputs for every touched public
+      - [x] Provide compatibility smoke commands and outputs for every touched public
       import/CLI/MCP/runtime surface.
 
       - [ ] Capture exact AFTER `uvx invar-tools guard --all` excerpt showing weighted

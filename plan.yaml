@@ -102793,7 +102793,7 @@ phases:
       - [x] Orchestrator prompt/receipt tests prove receipts use item_id/revision
       and no natural-language fuzzy mapping when orchestration surfaces are touched.
 
-      - [ ] Legacy human keyword toggle compatibility remains covered for CLI and
+      - [x] Legacy human keyword toggle compatibility remains covered for CLI and
       MCP.
 
 

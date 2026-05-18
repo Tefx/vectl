@@ -44,7 +44,7 @@ def assess_freeform_evidence(output_summary: str) -> EvidenceAssessment:
 
     payload = extract_runner_payload(output_summary)
     summary = summarize_plan_evidence(output_summary)
-    reason = _structured_failure_reason(payload) or _text_failure_reason(payload)
+    reason = _checklist_receipt_failure_reason(output_summary) or _structured_failure_reason(payload) or _text_failure_reason(payload)
     return EvidenceAssessment(failed=reason is not None, reason=reason, summary=summary)
 
 
@@ -80,11 +80,12 @@ def parse_checklist_receipt(output_summary: str) -> OrchestratorChecklistReceipt
 
     Authority: docs/RFC-deterministic-checklists.md §6.
 
-    Deterministic receipt entries must include ``step_id``, ``field``,
-    ``item_id``, ``checklist_inventory_revision`` (or RFC-compatible alias
-    ``revision``), and the desired final ``checked`` state. The parser only
-    creates a typed receipt for the orchestrator to apply later; it does not
-    mutate plan state and does not do natural-language fuzzy mapping.
+    Deterministic receipt entries must include the RFC-required ``item_id``,
+    ``revision`` (``checklist_inventory_revision`` is accepted as a legacy
+    alias), and desired final ``checked`` state. Legacy ``step_id`` and
+    ``field`` metadata are optional additive aliases. The parser only creates a
+    typed receipt for the orchestrator to apply later; it does not mutate plan
+    state and does not do natural-language fuzzy mapping.
     """
 
     parsed = _parse_payload(extract_runner_payload(output_summary))
@@ -93,15 +94,20 @@ def parse_checklist_receipt(output_summary: str) -> OrchestratorChecklistReceipt
     if not isinstance(parsed, dict):
         raise ChecklistReceiptValidationError("Checklist receipt payload must be a mapping.")
 
-    raw_receipt = parsed.get("checklist_receipt", parsed)
+    if "checklist_receipt" in parsed:
+        raw_receipt = parsed.get("checklist_receipt")
+    elif "items" in parsed or "item_id" in parsed:
+        raw_receipt = parsed
+    else:
+        return None
     if raw_receipt in (None, ""):
         return None
 
     if isinstance(raw_receipt, dict) and "items" in raw_receipt:
-        step_id = _require_non_empty_string(raw_receipt, "step_id")
+        step_id = _optional_non_empty_string(raw_receipt, "step_id")
         raw_items = raw_receipt.get("items")
     else:
-        step_id = _require_non_empty_string(parsed, "step_id")
+        step_id = _optional_non_empty_string(parsed, "step_id")
         raw_items = raw_receipt
 
     if not isinstance(raw_items, list):
@@ -118,7 +124,7 @@ def parse_checklist_receipt(output_summary: str) -> OrchestratorChecklistReceipt
             raise ChecklistReceiptValidationError(
                 f"checklist_receipt[{index}] step_id does not match receipt step_id."
             )
-        field = _require_supported_field(raw_item, "field", index=index)
+        field = _optional_supported_field(raw_item, "field", index=index)
         item_id = _require_non_empty_string(raw_item, "item_id", index=index)
         revision = _receipt_revision(raw_item, index=index)
         checked = _require_bool(raw_item, "checked", index=index)
@@ -155,6 +161,15 @@ def _require_non_empty_string(
     return value.strip()
 
 
+def _optional_non_empty_string(mapping: dict[str, Any], key: str) -> str:
+    value = mapping.get(key)
+    if value is None:
+        return ""
+    if not isinstance(value, str) or not value.strip():
+        raise ChecklistReceiptValidationError(f"Invalid optional {key}.")
+    return value.strip()
+
+
 def _require_bool(mapping: dict[str, Any], key: str, *, index: int) -> bool:
     value = mapping.get(key)
     if not isinstance(value, bool):
@@ -175,6 +190,15 @@ def _require_supported_field(
     return value
 
 
+def _optional_supported_field(
+    mapping: dict[str, Any], key: str, *, index: int
+) -> SupportedChecklistField | None:
+    value = mapping.get(key)
+    if value is None:
+        return None
+    return _require_supported_field(mapping, key, index=index)
+
+
 def _receipt_revision(mapping: dict[str, Any], *, index: int) -> str:
     value = mapping.get("checklist_inventory_revision", mapping.get("revision"))
     if not isinstance(value, str) or not value.strip():
@@ -183,6 +207,14 @@ def _receipt_revision(mapping: dict[str, Any], *, index: int) -> str:
             f"[{index}].checklist_inventory_revision."
         )
     return value.strip()
+
+
+def _checklist_receipt_failure_reason(output_summary: str) -> str | None:
+    try:
+        parse_checklist_receipt(output_summary)
+    except ChecklistReceiptValidationError as exc:
+        return f"invalid checklist_receipt: {exc}"
+    return None
 
 
 def _structured_failure_reason(payload: str) -> str | None:

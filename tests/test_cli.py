@@ -4021,8 +4021,81 @@ class TestDeterministicCheckCLI:
     def test_batch_mutation_atomic(self, plan_file):
         from tests.test_cli import runner, app
         result = runner.invoke(app, ["check", "s3", "--batch", '[{"selector": {"item_id": "a"}, "checked": true}]', "--revision", "hash", "--json", "--plan", str(plan_file)])
-        assert result.exit_code == 0
+        assert result.exit_code != 0
+        payload = json.loads(result.output)
+        assert payload["ok"] is False
         assert '"diagnostics":' in result.output
+
+    def test_json_stale_revision_exits_nonzero_with_parseable_error(self, plan_file):
+        result = runner.invoke(
+            app,
+            [
+                "check",
+                "s3",
+                "--batch",
+                '[{"selector": {"field": "description", "index": 0}, "checked": true}]',
+                "--revision",
+                "rev1",
+                "--json",
+                "--plan",
+                str(plan_file),
+            ],
+        )
+
+        assert result.exit_code != 0
+        payload = json.loads(result.output)
+        assert payload["ok"] is False
+        assert payload["error"]["code"] == "stale_revision"
+        plan_after, _ = load_plan_definition(plan_file)
+        assert "- [ ] Item A" in _must_find_step(plan_after, "s3").description
+
+    def test_valid_json_batch_uses_current_revision_and_top_level_selector_alias(self, plan_file):
+        inventory = runner.invoke(app, ["check-inventory", "s3", "--json", "--plan", str(plan_file)])
+        assert inventory.exit_code == 0
+        inventory_payload = json.loads(inventory.output)
+        revision = inventory_payload["checklist_inventory_revision"]
+
+        result = runner.invoke(
+            app,
+            [
+                "check",
+                "s3",
+                "--batch",
+                '[{"field": "description", "index": 0, "checked": true}]',
+                "--revision",
+                revision,
+                "--json",
+                "--plan",
+                str(plan_file),
+            ],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["ok"] is True
+        assert payload["diagnostics"]["changed_items"] == 1
+
+    def test_json_batch_unsupported_field_exits_nonzero(self, plan_file):
+        inventory = runner.invoke(app, ["check-inventory", "s3", "--json", "--plan", str(plan_file)])
+        revision = json.loads(inventory.output)["checklist_inventory_revision"]
+        result = runner.invoke(
+            app,
+            [
+                "check",
+                "s3",
+                "--batch",
+                '[{"field": "evidence_template", "index": 0, "checked": true}]',
+                "--revision",
+                revision,
+                "--json",
+                "--plan",
+                str(plan_file),
+            ],
+        )
+
+        assert result.exit_code != 0
+        payload = json.loads(result.output)
+        assert payload["error"]["code"] == "unsupported_field"
 
     def test_inventory_machine_readable(self, plan_file):
         from tests.test_cli import runner, app

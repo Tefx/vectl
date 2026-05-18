@@ -120,6 +120,7 @@ from vectl.core_checklist import (
     StaleRevisionError,
     ItemNotFoundError,
     InvalidSelectorError,
+    UnsupportedFieldError,
 )
 
 # Unwrap to bypass contract stub errors in expected-red state
@@ -183,7 +184,7 @@ class TestDeterministicMutation:
 
     def test_deterministic_single_mutation_is_idempotent(self):
         step = Step(id="s1", name="S1", description="- [x] Item A\n")
-        rev = "rev1"
+        rev, _items = get_inventory(step)
         req = MutationRequest(selector=FieldIndexSelector("description", 0), checked=True)
         res = mutate_checklist(step, rev, [req])
         assert res.step == step
@@ -192,14 +193,14 @@ class TestDeterministicMutation:
 
     def test_legacy_keyword_toggle_compatibility(self):
         step = Step(id="s1", name="S1", description="- [ ] mY iTeM\n")
-        rev = "rev1"
+        rev, _items = get_inventory(step)
         req = MutationRequest(selector=LegacyKeywordSelector("my item"), checked=None)
         res = mutate_checklist(step, rev, [req])
         assert "- [x] mY iTeM" in res.step.description
 
     def test_invalid_selector_mode_combinations(self):
         step = Step(id="s1", name="S1", description="- [ ] Item\n")
-        rev = "rev1"
+        rev, _items = get_inventory(step)
 
         req1 = MutationRequest(selector=LegacyKeywordSelector("Item"), checked=True)
         with pytest.raises(InvalidSelectorError):
@@ -212,7 +213,7 @@ class TestDeterministicMutation:
     def test_marker_only_preservation(self):
         desc = "Intro\n\n  - [ ]  Item A  \n\nOutro"
         step = Step(id="s1", name="S1", description=desc)
-        rev = "rev1"
+        rev, _items = get_inventory(step)
         req = MutationRequest(selector=FieldIndexSelector("description", 0), checked=True)
 
         res = mutate_checklist(step, rev, [req])
@@ -222,7 +223,7 @@ class TestDeterministicMutation:
 
     def test_atomic_batch_mutation_diagnostics(self):
         step = Step(id="s1", name="S1", description="- [ ] Item A\n- [ ] Item B\n")
-        rev = "rev1"
+        rev, _items = get_inventory(step)
         req1 = MutationRequest(selector=FieldIndexSelector("description", 0), checked=True)
         req2 = MutationRequest(selector=FieldIndexSelector("description", 1), checked=True)
 
@@ -232,3 +233,41 @@ class TestDeterministicMutation:
         assert res.diagnostics.changed_items == 2
         assert "- [x] Item A" in res.step.description
         assert "- [x] Item B" in res.step.description
+
+    def test_literal_rev1_is_rejected_without_mutation(self):
+        step = Step(id="s1", name="S1", description="- [ ] Item A\n")
+        current_rev, _items = get_inventory(step)
+        assert current_rev != "rev1"
+        req = MutationRequest(selector=FieldIndexSelector("description", 0), checked=True)
+
+        with pytest.raises(StaleRevisionError) as exc_info:
+            mutate_checklist(step, "rev1", [req])
+
+        assert step.description == "- [ ] Item A\n"
+        assert exc_info.value.payload.code == "stale_revision"
+
+    def test_failed_mixed_batch_is_all_or_nothing(self):
+        step = Step(id="s1", name="S1", description="- [ ] Item A\n- [ ] Item B\n")
+        rev, _items = get_inventory(step)
+        requests = [
+            MutationRequest(selector=FieldIndexSelector("description", 0), checked=True),
+            MutationRequest(selector=FieldIndexSelector("description", 99), checked=True),
+        ]
+
+        with pytest.raises(ItemNotFoundError) as exc_info:
+            mutate_checklist(step, rev, requests)
+
+        assert step.description == "- [ ] Item A\n- [ ] Item B\n"
+        assert exc_info.value.payload.code == "item_not_found"
+        assert len(exc_info.value.diagnostics) == 1
+
+    def test_unsupported_field_selector_reports_structured_error(self):
+        step = Step(id="s1", name="S1", description="- [ ] Item A\n")
+        rev, _items = get_inventory(step)
+        req = MutationRequest(selector=FieldIndexSelector("evidence_template", 0), checked=True)  # type: ignore[arg-type]
+
+        with pytest.raises(UnsupportedFieldError) as exc_info:
+            mutate_checklist(step, rev, [req])
+
+        assert exc_info.value.payload.code == "unsupported_field"
+        assert exc_info.value.payload.retry.retryable is False

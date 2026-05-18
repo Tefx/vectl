@@ -48,8 +48,6 @@ def check_cmd(
         payload = _checklist_exception_payload(exc)
         if json_output:
             print(json.dumps(payload, indent=2, sort_keys=True))
-            if batch is not None:
-                return
         else:
             _print_checklist_error(payload)
         raise typer.Exit(1) from None
@@ -171,7 +169,13 @@ def _request_from_mapping(entry: Any) -> Any:
 
     if not isinstance(entry, dict):
         raise ValueError("Each batch request must be an object")
-    selector_obj = entry.get("selector", {})
+    selector_obj = entry.get("selector")
+    if selector_obj is None:
+        selector_obj = {
+            key: entry[key]
+            for key in ("item_id", "field", "index", "keyword")
+            if key in entry
+        }
     if not isinstance(selector_obj, dict):
         raise ValueError("Each batch request selector must be an object")
     checked_obj = entry.get("checked")

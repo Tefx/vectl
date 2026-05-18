@@ -11,6 +11,7 @@ from vectl.core_checklist import ChecklistItem, OrchestratorChecklistReceipt, Ch
 from vectl.orchestration.contracts import DispatchSpec
 from vectl.orchestration.dispatch_policy import ConfigPromptRegistry
 from vectl.orchestration.evidence import (
+    assess_freeform_evidence,
     ChecklistReceiptValidationError,
     parse_checklist_receipt,
 )
@@ -40,9 +41,10 @@ def test_orchestrator_receipt_uses_item_id_and_revision() -> None:
     # If the orchestrator parser was implemented, we would test that here.
     # We simulate the missing surface by asserting a function exists, which fails:
 
-    parsed = parse_checklist_receipt('{"step_id": "step-1", "items": [{"field": "description", "item_id": "det-123", "revision": "rev-abc", "checked": true}]}')
+    parsed = parse_checklist_receipt('{"checklist_receipt": [{"item_id": "det-123", "revision": "rev-abc", "checked": true}]}')
     assert parsed is not None
     assert parsed.items[0].item_id == "det-123"
+    assert parsed.step_id == ""
 
 
 def test_prompt_injects_deterministic_checklist_inventory() -> None:
@@ -79,6 +81,7 @@ def test_prompt_injects_deterministic_checklist_inventory() -> None:
     assert "field: description" in bundle.task_prompt
     assert "index: 0" in bundle.task_prompt
     assert "state: unchecked" in bundle.task_prompt
+    assert "revision: <revision shown above>" in bundle.task_prompt
     assert "Do not perform natural-language fuzzy matching" in bundle.task_prompt
 
 
@@ -86,9 +89,7 @@ def test_parse_checklist_receipt_requires_item_id_and_revision() -> None:
     missing_revision = """
 step_id: step-1
 checklist_receipt:
-  - step_id: step-1
-    field: description
-    item_id: description:0:abc123
+  - item_id: description:0:abc123
     checked: true
 """
     with pytest.raises(ChecklistReceiptValidationError, match="checklist_inventory_revision"):
@@ -97,9 +98,7 @@ checklist_receipt:
     missing_item_id = """
 step_id: step-1
 checklist_receipt:
-  - step_id: step-1
-    field: description
-    checklist_inventory_revision: rev-abc
+  - revision: rev-abc
     checked: true
 """
     with pytest.raises(ChecklistReceiptValidationError, match="item_id"):
@@ -125,3 +124,37 @@ checklist_receipt:
     assert parsed.items[0].item_id == "verification:0:def456"
     assert parsed.items[0].revision == "rev-def"
     assert parsed.items[0].checked is False
+
+
+def test_parse_checklist_receipt_accepts_rfc_minimal_entries_exactly() -> None:
+    parsed = parse_checklist_receipt(
+        """
+checklist_receipt:
+  - item_id: description:0:abc123
+    revision: sha256:abc
+    checked: true
+"""
+    )
+
+    assert parsed is not None
+    assert parsed.step_id == ""
+    assert parsed.items == [
+        ChecklistReceiptItem(
+            item_id="description:0:abc123",
+            revision="sha256:abc",
+            checked=True,
+            field=None,
+        )
+    ]
+
+
+def test_receipt_validation_is_reachable_from_freeform_evidence_assessment() -> None:
+    assessment = assess_freeform_evidence(
+        "OpenCode completed successfully (exit 0); stdout=checklist_receipt:\n"
+        "  - item_id: description:0:abc123\n"
+        "    checked: true\n"
+    )
+
+    assert assessment.failed is True
+    assert assessment.reason is not None
+    assert "invalid checklist_receipt" in assessment.reason

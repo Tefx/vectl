@@ -3311,12 +3311,39 @@ class TestDeterministicCheckMCP:
         old_plan = os.environ.get("VECTL_PLAN_PATH")
         try:
             os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+            inventory = vectl_check(step_id="p1.s1", inventory=True)
             result = vectl_check(
                 step_id="p1.s1",
-                revision="rev-hash",
-                requests=[{"selector": {"item_id": "det-1"}, "checked": True}]
+                revision=inventory["checklist_inventory_revision"],
+                requests=[{"selector": {"item_id": inventory["items"][0]["item_id"]}, "checked": True}]
             )
             assert "Updated checklist" in result
+            assert result["ok"] is True
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_mcp_stale_revision_rejected_without_mutation(self, tmp_path):
+        import os
+        import yaml
+        from tests.test_mcp import vectl_check
+
+        plan_file = self._make_plan_with_checklist(tmp_path, "- [ ] Det item\n")
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+            inventory = vectl_check(step_id="p1.s1", inventory=True)
+            result = vectl_check(
+                step_id="p1.s1",
+                revision="rev1",
+                requests=[{"selector": {"item_id": inventory["items"][0]["item_id"]}, "checked": True}],
+            )
+            assert result["ok"] is False
+            assert result["error"]["code"] == "stale_revision"
+            plan_data = yaml.safe_load(plan_file.read_text())
+            assert "- [ ] Det item" in plan_data["phases"][0]["steps"][0]["description"]
         finally:
             if old_plan is None:
                 os.environ.pop("VECTL_PLAN_PATH", None)

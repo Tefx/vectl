@@ -468,11 +468,10 @@ def _render_checklist_inventory(spec: DispatchSpec) -> str:
         [
             "Return checklist receipt entries only when you intentionally request a final state change:",
             "checklist_receipt:",
-            "  - step_id: <step_id>",
-            "    field: <description|verification>",
-            "    item_id: <exact item_id from inventory>",
-            "    checklist_inventory_revision: <revision shown above>",
+            "  - item_id: <exact item_id from inventory>",
+            "    revision: <revision shown above>",
             "    checked: <true|false>",
+            "Optional backward-compatible metadata aliases are accepted: step_id, field, checklist_inventory_revision.",
         ]
     )
     return "\n".join(lines)

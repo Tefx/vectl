@@ -35,7 +35,7 @@ _raise_batch_error_impl = _raise_batch_error.__wrapped__
 
 
 @pre(lambda requests, current_revision: requests is not None and current_revision != "")
-@post(lambda result: result is not None)
+@post(lambda result: isinstance(result, tuple) and all(getattr(d, "code", None) == "stale_revision" and getattr(d, "revision", "") != "" for d in result))
 def _stale_diagnostics(requests: list[object], current_revision: str) -> tuple[object, ...]:
     """Build one stale diagnostic per request.
 
@@ -60,7 +60,7 @@ _stale_diagnostics_impl = _stale_diagnostics.__wrapped__
 
 
 @pre(lambda requests: requests is not None)
-@post(lambda result: result is not None)
+@post(lambda result: isinstance(result, tuple) and all(getattr(d, "status", None) == "error" and getattr(d, "code", None) == "invalid_selector" for d in result))
 def _mode_diagnostics(requests: list[object]) -> tuple[object, ...]:
     """Return invalid-mode diagnostics without mutating Markdown.
 
@@ -148,7 +148,7 @@ _raise_resolution_error_impl = _raise_resolution_error.__wrapped__
 
 
 @pre(lambda resolved: resolved is not None)
-@post(lambda result: result is not None)
+@post(lambda result: isinstance(result, tuple) and all(getattr(d, "status", None) == "error" and getattr(d, "code", None) == "invalid_selector" for d in result))
 def _duplicate_diagnostics(resolved: list[tuple[int, object, bool]]) -> tuple[object, ...]:
     """Reject duplicate or conflicting selectors deterministically.
 
@@ -175,7 +175,7 @@ _duplicate_diagnostics_impl = _duplicate_diagnostics.__wrapped__
 
 
 @pre(lambda step, resolved: step is not None and resolved is not None)
-@post(lambda result: result is not None)
+@post(lambda result: isinstance(result, tuple) and len(result) == 3 and result[0] is not None and isinstance(result[1], int) and result[1] >= 0 and isinstance(result[2], tuple))
 def _apply_resolved(step: Step, resolved: list[tuple[int, object, bool]]) -> tuple[Step, int, tuple[object, ...]]:
     """Apply marker-only changes after validation succeeds.
 
@@ -204,7 +204,7 @@ _apply_resolved_impl = _apply_resolved.__wrapped__
 
 
 @pre(lambda step, revision, requests: step is not None and revision != "" and requests is not None)
-@post(lambda result: result is not None)
+@post(lambda result: getattr(result, "step", None) is not None and getattr(result, "revision", "") != "" and getattr(result, "diagnostics", None) is not None)
 def mutate_checklist_batch(step: Step, revision: str, requests: list[object]) -> object:
     """Validate a checklist batch before any marker-only mutation.
 
@@ -217,7 +217,7 @@ def mutate_checklist_batch(step: Step, revision: str, requests: list[object]) ->
     from vectl import core_checklist as c
 
     current_revision, items = c._inventory_snapshot_impl(step)
-    if revision != current_revision and revision != "rev1":
+    if revision != current_revision:
         diagnostics = _stale_diagnostics_impl(requests, current_revision)
         _raise_batch_error_impl(c.StaleRevisionError, c._error_payload_impl("stale_revision", "Checklist inventory revision is stale.", revision=current_revision), diagnostics)
     diagnostics = _mode_diagnostics_impl(requests)

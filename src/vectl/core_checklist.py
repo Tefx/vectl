@@ -6,7 +6,7 @@ Authority: docs/RFC-deterministic-checklists.md
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Optional, Union
+from typing import Literal, Optional, TypeAlias, Union
 
 from vectl.core_checklist_inventory import (
     canonicalize_markdown_impl,
@@ -19,9 +19,12 @@ from invar_runtime import pre, post
 
 # -- Types and Dataclasses --
 
-ChecklistInventoryRevision = str
-SupportedChecklistField = Literal["description", "verification"]
-ChecklistErrorCode = Literal[
+ChecklistInventoryRevision: TypeAlias = str
+SupportedChecklistField: TypeAlias = Literal["description", "verification"]
+# Public type-only alias: exported for static API consumers and intentionally
+# erased at runtime by ``typing.Literal``. Runtime validation is performed by
+# structured error payload construction and retry-guidance tests below.
+ChecklistErrorCode: TypeAlias = Literal[
     "stale_revision",
     "item_not_found",
     "unsupported_field",
@@ -48,7 +51,9 @@ class LegacyKeywordSelector:
     keyword: str
 
 
-ChecklistSelector = Union[ItemIdSelector, FieldIndexSelector, LegacyKeywordSelector]
+# Public type-only alias: MutationRequest.selector is the runtime public use;
+# callers should instantiate one of the concrete selector dataclasses.
+ChecklistSelector: TypeAlias = Union[ItemIdSelector, FieldIndexSelector, LegacyKeywordSelector]
 
 
 @dataclass(frozen=True)

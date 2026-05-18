@@ -170,6 +170,8 @@ class DispatchCoordinator:
             prompt_family=profile.prompt_family,
             output_contract=profile.output_contract,
             mutation_policy=profile.mutation_policy,
+            checklist_inventory_revision=step_data.checklist_inventory_revision,
+            checklist_inventory=step_data.checklist_inventory,
         )
 
     def build_resolution_subtask_spec(

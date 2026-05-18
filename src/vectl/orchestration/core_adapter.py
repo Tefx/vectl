@@ -29,6 +29,7 @@ from vectl.core_plan_mutations import (
     remove_step,
     skip_step,
 )
+from vectl.core_checklist import get_inventory
 from vectl.core_plan_queries import get_next_steps, validate_plan
 from vectl.io import load_plan_definition, save_plan
 from vectl.models import IsolationMode, Plan, PlanError, StepStatus
@@ -289,6 +290,11 @@ class PlanCoreAdapter:
         if found is None:
             return None
         _, step = found
+        # ``get_inventory`` is the authoritative core checklist surface.  The
+        # wrapped callable is used here to avoid shell/orchestration dispatch
+        # depending on runtime contract instrumentation while preserving the
+        # same implementation boundary used by core doctests.
+        checklist_revision, checklist_items = get_inventory.__wrapped__(step)
         return StepData(
             step_id=step.id,
             description=step.description,
@@ -297,6 +303,8 @@ class PlanCoreAdapter:
             evidence_template=step.evidence_template,
             verify=step.verify,
             agent=step.agent,
+            checklist_inventory_revision=checklist_revision,
+            checklist_inventory=tuple(checklist_items),
         )
 
 # ---------------------------------------------------------------------

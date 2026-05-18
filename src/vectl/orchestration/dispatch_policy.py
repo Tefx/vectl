@@ -242,6 +242,7 @@ _CODER_TASK_TEMPLATE = (
     "## Step: {step_id}\n"
     "### Description\n{description}\n\n"
     "### Verification\n{verification}\n\n"
+    "### Deterministic Checklist Inventory\n{checklist_inventory}\n\n"
     "### References\n{refs}\n\n"
     "### Evidence Template\n{evidence_template}\n\n"
     "### Verify Mode\n{verify_mode}\n\n"
@@ -429,7 +430,52 @@ def _build_template_data(spec: DispatchSpec) -> dict[str, str]:
         "output_contract": spec.output_contract or "freeform_evidence",
         "mutation_policy": spec.mutation_policy,
         "execution_context": spec.execution_context,
+        "checklist_inventory": _render_checklist_inventory(spec),
     }
+
+
+def _render_checklist_inventory(spec: DispatchSpec) -> str:
+    """Render worker-visible deterministic checklist receipt context.
+
+    Authority: docs/RFC-deterministic-checklists.md §6.
+
+    The orchestrator injects exact item IDs and the snapshot revision. Workers
+    report desired final state by item_id/revision; they are not asked to do
+    natural-language fuzzy mapping or mutate plan state directly.
+    """
+    if not spec.checklist_inventory:
+        return "(no checklist inventory for this step)"
+
+    revision = spec.checklist_inventory_revision or ""
+    lines = [
+        "The orchestrator owns checklist mutation. Do not call checklist mutation tools.",
+        "Do not perform natural-language fuzzy matching for these receipts; use item_id exactly.",
+        f"checklist_inventory_revision: {revision}",
+        "items:",
+    ]
+    for item in spec.checklist_inventory:
+        state = "checked" if item.checked else "unchecked"
+        lines.extend(
+            [
+                f"  - field: {item.field}",
+                f"    index: {item.index}",
+                f"    item_id: {item.item_id}",
+                f"    state: {state}",
+                f"    text: {item.text}",
+            ]
+        )
+    lines.extend(
+        [
+            "Return checklist receipt entries only when you intentionally request a final state change:",
+            "checklist_receipt:",
+            "  - step_id: <step_id>",
+            "    field: <description|verification>",
+            "    item_id: <exact item_id from inventory>",
+            "    checklist_inventory_revision: <revision shown above>",
+            "    checked: <true|false>",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def _select_prompt_content(

@@ -145,6 +145,7 @@ class ChecklistReceiptItem:
     item_id: str
     revision: ChecklistInventoryRevision
     checked: bool
+    field: SupportedChecklistField | None = None
 
 
 @dataclass(frozen=True)

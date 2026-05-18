@@ -8,6 +8,8 @@ Authority: docs/ADR-worktree-support.md section "Core Design"
 from dataclasses import dataclass
 from typing import Literal
 
+from vectl.core_checklist import ChecklistInventoryRevision, ChecklistItem
+
 from vectl.orchestration.contract_literals import (
     DispatchRoleSource,
     DispatchSourceKind,
@@ -66,6 +68,8 @@ class DispatchSpec:
     prompt_family: str = ""
     output_contract: str = ""
     mutation_policy: MutationPolicy = "read_only"
+    checklist_inventory_revision: ChecklistInventoryRevision | None = None
+    checklist_inventory: tuple[ChecklistItem, ...] = ()
 
 
 @dataclass(frozen=True)

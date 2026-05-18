@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from vectl.core_checklist import ChecklistInventoryRevision, ChecklistItem
+
 
 @dataclass(frozen=True)
 class StepData:
@@ -17,6 +19,10 @@ class StepData:
         evidence_template: Step evidence template.
         verify: Step verification mode (expected_red/must_green/None).
         agent: Step agent assignment (may be None).
+        checklist_inventory_revision: Snapshot-scoped revision for deterministic
+            checklist receipts, when the step has dispatchable checklist items.
+        checklist_inventory: Deterministic checklist item inventory for worker
+            prompt injection. Empty means no checklist receipt context is needed.
     """
 
     step_id: str
@@ -26,3 +32,5 @@ class StepData:
     evidence_template: str
     verify: str | None
     agent: str | None
+    checklist_inventory_revision: ChecklistInventoryRevision | None = None
+    checklist_inventory: tuple[ChecklistItem, ...] = ()

@@ -103924,7 +103924,7 @@ phases:
       - [x] Orchestrator-owned mutation boundary is explicit; worker receipts do not
       mutate plan state directly.
 
-      - [ ] Receipt validation rejects missing revision/item_id for deterministic
+      - [x] Receipt validation rejects missing revision/item_id for deterministic
       paths.
 
       - [ ] Natural-language fuzzy mapping is reserved only for legacy human keyword

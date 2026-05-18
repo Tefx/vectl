@@ -105792,7 +105792,7 @@ phases:
       - [x] Core deterministic stale revisions fail without mutating state, including
       a literal stale `rev1` fixture.
 
-      - [ ] CLI deterministic batch with stale/invalid revision and `--json` exits
+      - [x] CLI deterministic batch with stale/invalid revision and `--json` exits
       non-zero while emitting parseable JSON error payload.
 
       - [ ] Failed batch proves all-or-nothing/no-mutation with before/after inventory

@@ -102605,7 +102605,7 @@ phases:
       - [x] Deterministic single set-state mutation is idempotent when target state
       already matches.
 
-      - [ ] Legacy keyword toggle remains case-insensitive and fuzzy-compatible for
+      - [x] Legacy keyword toggle remains case-insensitive and fuzzy-compatible for
       human usage.
 
       - [ ] Invalid selector-mode combinations are rejected deterministically.

@@ -106988,7 +106988,7 @@ phases:
       - [x] Submit or simulate a worker checklist receipt with literal stale `revision:
       rev1` while current checklist inventory has a different revision.
 
-      - [ ] Prove current checklist inventory/revision is refreshed before retry/application,
+      - [x] Prove current checklist inventory/revision is refreshed before retry/application,
       OR prove the runtime path emits/records a rejected-with-refresh instruction
       with spec-backed gate disposition.
 

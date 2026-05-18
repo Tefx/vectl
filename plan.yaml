@@ -106961,7 +106961,7 @@ phases:
       these were not part of the step branch or merge.'
   - id: det_check_impl_receipt_refresh_retest
     name: Retest stale receipt runtime refresh path
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -107123,6 +107123,88 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-18T17:46:25.620969+00:00'
+    done_at: '2026-05-18T17:52:41.623152+00:00'
+    evidence: "## refs Read Confirmation\n- `docs/RFC-deterministic-checklists.md`\
+      \ — RFC §6 requires orchestrator-owned checklist mutation, keyed item-id/revision\
+      \ receipts, and stale receipt revisions to trigger inventory refresh before\
+      \ retry.\n- `src/vectl/orchestration/evidence.py` — `assess_freeform_evidence(...\
+      \ current_checklist_inventory_revision=...)` validates checklist receipt and\
+      \ returns stale failure reason with `retry action=refresh_inventory` when receipt\
+      \ revision differs from current inventory revision.\n- `src/vectl/orchestration/dispatch_coordinator.py`\
+      \ — dispatch construction propagates authoritative `StepData`, checklist inventory,\
+      \ and checklist inventory revision into prompt/runtime dispatch context.\n-\
+      \ `src/vectl/orchestration/core_adapter.py` — `PlanCoreAdapter.load_step_data_for_dispatch()`\
+      \ obtains current inventory from core checklist inventory for the authoritative\
+      \ step.\n- `src/vectl/orch_app.py` — `route_terminal_execution()` reaches freeform\
+      \ evidence normalization before completion, refreshes step data with `load_step_data_for_dispatch()`,\
+      \ passes current revision into assessment, and records stale receipt retry/refresh\
+      \ artifact refs.\n- `tests/orchestration/unit/test_checklist_receipt_contract.py`\
+      \ — includes stale `revision: rev1` assessment rejection against `rev-current`\
+      \ and acceptance when receipt revision matches refreshed inventory.\n- `tests/orchestration/unit/test_orch_app.py`\
+      \ — `test_route_terminal_execution_refreshes_inventory_before_rejecting_stale_receipt`\
+      \ exercises `OrchestrationApp.route_terminal_execution`, literal stale `revision:\
+      \ rev1`, current `rev-current` inventory, refresh call assertion, review_failed\
+      \ case, artifact refs, and no completion mutation.\n- `tools/vectl/README.md`\
+      \ — NOT READ: missing from isolated worktree.\n\n## Focused Integration Retest\
+      \ Report\nstep_intent: retest_green\nexpected_result: green\nobserved_result:\
+      \ green\nfailure_alignment: none\nverdict: PASS\nblockers: []\nproduct_implementation_files_modified:\
+      \ false\nCommit hash(es): none — verify-only step made no changes\n\n### Runtime\
+      \ Path Exercised\n`ExecutionResult(status=\"success\", output_contract=\"freeform_evidence\"\
+      )` with stale worker `checklist_receipt` was submitted to `OrchestrationApp.route_terminal_execution()`\
+      \ → reconcile returned `noop` → `_normalize_freeform_evidence_case()` called\
+      \ `core_adapter.load_step_data_for_dispatch(\"core.ready\")` to refresh current\
+      \ checklist inventory/revision → `assess_freeform_evidence(..., current_checklist_inventory_revision=\"\
+      rev-current\")` rejected stale `revision: rev1` → route returned `ResolutionCase(case_source=\"\
+      review_failed\")` with `checklist_receipt_retry_action=refresh_inventory` and\
+      \ did not call `complete_step`.\n\n### Fixtures\nStale receipt fixture:\n```yaml\n\
+      checklist_receipt:\n  - item_id: description:0:abc123\n    revision: rev1\n\
+      \    checked: true\n```\nCurrent inventory/revision fixture:\n```python\nStepData(...\
+      \ checklist_inventory_revision=\"rev-current\", checklist_inventory=(ChecklistItem(item_id=\"\
+      description:0:abc123\", ...),))\n```\n\n### Verification commands\nWorker isolated\
+      \ worktree:\n- `uv run pytest tests/orchestration/unit/test_checklist_receipt_contract.py\
+      \ -q` → 8 passed in 2.75s.\n- `uv run pytest tests/orchestration/unit/test_orch_app.py\
+      \ -k stale_receipt -q` → 1 passed, 76 deselected in 2.75s.\n- Worktree `git\
+      \ status --short` / `git diff --stat` → clean; no product implementation files\
+      \ modified.\n\nMainline final-state verification:\n- `uv run pytest tests/orchestration/unit/test_checklist_receipt_contract.py\
+      \ -q` → 8 passed.\n- `uv run pytest tests/orchestration/unit/test_orch_app.py\
+      \ -k stale_receipt -q` → 1 passed, 76 deselected.\n\n### behavioral_proof_register\n\
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |\
+      \ status | closure_path | gate_decision_basis |\n| --- | --- | --- | --- | ---\
+      \ | --- | --- |\n| description:0:runtime_path | Runtime-reachable orchestration\
+      \ path, not parser-only, handles stale receipt. | `OrchestrationApp.route_terminal_execution()`\
+      \ invoked with terminal `ExecutionResult`. | `test_route_terminal_execution_refreshes_inventory_before_rejecting_stale_receipt`;\
+      \ pytest stale_receipt command passed. | PROVEN | rejected-with-refresh | Route-level\
+      \ test exercises completion decision seam before mutation. |\n| description:1:stale_rev_fixture\
+      \ | Worker receipt has literal stale `revision: rev1` while current inventory\
+      \ differs. | Fixture contains `revision: rev1`; refreshed inventory fixture\
+      \ returns `rev-current`. | Fixture excerpts and route test assertions. | PROVEN\
+      \ | rejected-with-refresh | Assertions check both `rev1` and `rev-current` in\
+      \ rejection reason. |\n| description:2:refresh_or_reject | Runtime path refreshes\
+      \ inventory and emits rejected-with-refresh instruction. | `load_step_data_for_dispatch()`\
+      \ called; returned case records retry action. | Assertions include `refreshed_steps\
+      \ == [\"core.ready\"]` and artifact refs include `checklist_receipt_retry_action=refresh_inventory`.\
+      \ | PROVEN | rejected-with-refresh | Spec-backed retry action for stale revision\
+      \ is `refresh_inventory`. |\n| description:3:false_pass | Stale receipt proof\
+      \ does not false-pass based only on parse success. | Assessment marks stale\
+      \ receipt failed; route returns review_failed instead of completion. | Contract\
+      \ and route tests passed. | PROVEN | rejected-with-refresh | Parser-valid receipt\
+      \ is rejected by evidence assessment against current inventory. |\n| description:4:non_regression\
+      \ | Stale revision does not mutate state; deterministic mutation remains orchestrator-owned.\
+      \ | Completion mutation hook is not called for stale receipt. | Route test asserts\
+      \ `completed == []`. | PROVEN | rejected-with-refresh | Returned resolution\
+      \ case blocks `complete_step`; no product state mutation observed. |\n| verification:4:proof_register\
+      \ | Behavioral proof register has no unresolved blocker-class statuses. | All\
+      \ blocker-class requirements are mapped to `PROVEN`. | This table. | PROVEN\
+      \ | rejected-with-refresh | No `NEEDS_TEST`, `UNPROVEN`, or `UNCERTAIN_BLOCKING`\
+      \ remains. |\n\ngate_open_allowed: true\norchestrator_action_hint: COMPLETE\n\
+      uncertainty_sources: []\n\nchecklist_receipt:\n- item_id: description:0:runtime_path;\
+      \ checked: true\n- item_id: description:1:stale_rev_fixture; checked: true\n\
+      - item_id: description:2:refresh_or_reject; checked: true\n- item_id: description:3:false_pass;\
+      \ checked: true\n- item_id: description:4:non_regression; checked: true\n- item_id:\
+      \ verification:0:phase_check; checked: true\n- item_id: verification:1:runtime_path;\
+      \ checked: true\n- item_id: verification:2:fixtures; checked: true\n- item_id:\
+      \ verification:3:false_pass; checked: true\n- item_id: verification:4:proof_register;\
+      \ checked: true\n\nGaps/Notes: None."
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

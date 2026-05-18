@@ -104500,7 +104500,7 @@ phases:
       - [x] Export reachability: any new public checklist symbol has a real import/caller
       outside its own module or is intentionally private.
 
-      - [ ] CLI registration: deterministic checklist options/subcommands are registered
+      - [x] CLI registration: deterministic checklist options/subcommands are registered
       in the CLI entrypoint path.
 
       - [ ] MCP registration: additive deterministic checklist fields/operations are

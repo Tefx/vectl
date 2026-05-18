@@ -105114,7 +105114,7 @@ phases:
       No blocker is waived.'
   - id: det_check_impl_gate
     name: Gate deterministic checklist implementation
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the deterministic
       checklist implementation phase meets the quality bar for finalization.
 
@@ -105246,6 +105246,8 @@ phases:
     - det_check_impl_receipt_refresh_retest
     - det_check_impl_blocker_retest
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-18T18:05:43.963065+00:00'
   - id: det_check_impl_blocker_remediation
     name: Batch remediate deterministic checklist blocker family
     status: done

@@ -101041,7 +101041,7 @@ phases:
       - [x] Pasted help/surface snapshots are reviewed from the artifact file, not\
       \ from plan summaries.\n- [x] Command executability matrix is reviewed from\
       \ the artifact file for actual commands, expected result classes, exit statuses,\
-      \ and PASS/FAIL values.\n- [ ] JSON ANSI proof is reviewed from the artifact\
+      \ and PASS/FAIL values.\n- [x] JSON ANSI proof is reviewed from the artifact\
       \ file and proves parseable JSON with no ANSI escapes where applicable.\n- [\
       \ ] Facade import proof is reviewed from the artifact file and proves `from\
       \ vectl.core import RecoverResult` succeeds.\n- [ ] Behavioral proof register\

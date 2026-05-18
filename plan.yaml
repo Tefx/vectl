@@ -108982,7 +108982,7 @@ phases:
 
       ## Broad failure disposition if anything remains
 
-      - [ ] Evidence includes a disposition table for every remaining failure/warning
+      - [x] Evidence includes a disposition table for every remaining failure/warning
       that could intersect final review.
 
       - [ ] Table columns are `command`, `finding`, `classification`, `provenance`,

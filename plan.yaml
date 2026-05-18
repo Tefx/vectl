@@ -104088,7 +104088,7 @@ phases:
       \ files `test_mod.py` and `test_mod_2.py`, not blocker-class errors."
   - id: det_check_impl_integration_proof
     name: Verify checklist seam integration
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier), validate deterministic
       checklist handling through real core, CLI, MCP, and orchestration seams from
       a fresh perspective.
@@ -104218,6 +104218,124 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-18T16:41:53.396176+00:00'
+    done_at: '2026-05-18T17:01:26.808753+00:00'
+    evidence: 'status: FAIL_REPORT_ACCEPTED
+
+      verdict: FAIL
+
+      blockers:
+
+      - B1: Core deterministic mutation accepts literal stale revision `rev1` and
+      mutates state, violating RFC stale-revision invariant.
+
+      - B2: CLI deterministic batch with stale revision and `--json` exits 0 while
+      returning ok:false error payload, creating a false-green integration seam.
+
+      orchestrator_action_hint: DO_NOT_COMPLETE
+
+      gate_open_allowed: false
+
+
+      ## Report disposition
+
+      This independent integration report is complete as a failure-finding artifact.
+      Blockers were aggregated with concurrent spec/wiring failures into remediation
+      path:
+
+      - `det_check_impl_blocker_remediation`
+
+      - `det_check_impl_blocker_integration_retest`
+
+      - `det_check_impl_blocker_spec_retest`
+
+      - `det_check_impl_blocker_wiring_retest`
+
+      - `det_check_impl_blocker_retest`
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - `docs/RFC-deterministic-checklists.md` — read; core owner/delegation, snapshot-scoped
+      revision, marker-only mutation, structured retry errors.
+
+      - `src/vectl/core_checklist.py` — read; exposes `get_inventory`, `mutate_checklist`,
+      selectors/errors; deterministic selectors require checked bool and legacy keyword
+      requires checked=None.
+
+      - `src/vectl/cli_plan.py` — read; compatibility facade imports checklist commands.
+
+      - `src/vectl/mcp_core_tools.py` — read; compatibility facade imports `vectl_check`.
+
+      - `src/vectl/orchestration/dispatch_policy.py` — read; prompt injects deterministic
+      checklist inventory and receipt contract.
+
+      - `tests/test_checklist.py`, `tests/test_cli.py`, `tests/test_mcp.py` — read;
+      cover inventory, stale revision, deterministic/legacy CLI/MCP cases.
+
+      - `tools/vectl/README.md` — NOT READ: absent.
+
+
+      ## Test Execution
+
+      - `.venv/bin/python -m pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
+      -k ''checklist or deterministic or batch or revision'' -q` passed: 33 passed,
+      411 deselected.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_checklist_receipt_contract.py
+      -q` passed: 4 passed.
+
+
+      ## Adversarial findings
+
+      - Core probe showed `STALE_REV1_MUTATED` and plan changed, proving literal `rev1`
+      bypass.
+
+      - CLI negative probe showed `CLI_BATCH_STALE_EXIT=0` with `{ "ok": false, "error":
+      { "code": "stale_revision", "retry": { "action": "refresh_inventory" }}}`.
+
+
+      ## Behavioral Proof Register
+
+      - inventory_description_verification: PROVEN
+
+      - deterministic_single: UNPROVEN due `rev1` stale bypass
+
+      - deterministic_batch: NEEDS_TEST due CLI stale JSON false-green
+
+      - legacy_keyword: PROVEN
+
+      - empty_fields: PROVEN
+
+      - stale_revision_retry: UNPROVEN due bypass
+
+      - invalid_selector_modes: PROVEN
+
+      - unsupported_evidence_template: PROVEN
+
+      - batch_diagnostics: PROVEN_WITH_DEBT
+
+      - orchestration_receipts: PROVEN
+
+
+      ## Checklist Receipt
+
+      - [x] Happy path: inventory from `description` and `verification`, deterministic
+      single set-state, deterministic batch, legacy keyword toggle.
+
+      - [x] Edge cases: empty fields, stale revision, invalid selector-mode combinations,
+      unsupported `evidence_template`.
+
+      - [x] Error scenarios: stale revision retry guidance, batch diagnostics, ambiguous/no
+      legacy keyword match.
+
+      - [x] Integration path: CLI/MCP/orchestration surfaces delegate to canonical
+      core service.
+
+
+      ## Gaps/Notes
+
+      - Blocking issues are not waived; they are owned by `det_check_impl_blocker_remediation`
+      and retests.'
   - id: det_check_impl_uiux_audit
     name: Audit checklist CLI output surfaces
     status: done

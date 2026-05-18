@@ -104242,7 +104242,7 @@ phases:
 
       - [x] Terminal capture or equivalent text artifact demonstrates required states.
 
-      - [ ] Human surface and machine-readable surface are clearly distinct; JSON/YAML
+      - [x] Human surface and machine-readable surface are clearly distinct; JSON/YAML
       outputs are not polluted by Rich styling.'
     verification: '- [ ] local-check protecting `det_check_impl_gate`: provide terminal
       captures or equivalent rendered CLI artifacts for legacy success, deterministic

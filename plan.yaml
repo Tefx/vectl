@@ -106049,7 +106049,7 @@ phases:
     claimed_at: '2026-05-18T17:17:00.521293+00:00'
   - id: det_check_impl_blocker_wiring_retest
     name: Retest deterministic checklist wiring and contract blockers
-    status: pending
+    status: claimed
     description: 'Independent wiring/contract retest for the batched deterministic
       checklist blocker remediation.
 
@@ -106184,6 +106184,8 @@ phases:
     depends_on:
     - det_check_impl_blocker_remediation
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-05-18T17:17:09.222557+00:00'
   - id: det_check_impl_blocker_retest
     name: Aggregate deterministic checklist blocker retest closure
     status: pending

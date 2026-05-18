@@ -102591,7 +102591,7 @@ phases:
 
       Expected-red coverage checklist:
 
-      - [ ] Inventory discovers checklist items from both `description` and `verification`.
+      - [x] Inventory discovers checklist items from both `description` and `verification`.
 
       - [ ] Missing and empty `description`/`verification` fields produce valid empty
       inventories without errors.

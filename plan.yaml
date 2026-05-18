@@ -104237,7 +104237,7 @@ phases:
       - [x] Deterministic machine-readable output is parseable and free of ANSI escape
       contamination.
 
-      - [ ] Error output for stale revision, invalid selector, and ambiguous legacy
+      - [x] Error output for stale revision, invalid selector, and ambiguous legacy
       keyword includes actionable retry guidance.
 
       - [ ] Terminal capture or equivalent text artifact demonstrates required states.

@@ -101044,7 +101044,7 @@ phases:
       \ and PASS/FAIL values.\n- [x] JSON ANSI proof is reviewed from the artifact\
       \ file and proves parseable JSON with no ANSI escapes where applicable.\n- [x]\
       \ Facade import proof is reviewed from the artifact file and proves `from vectl.core\
-      \ import RecoverResult` succeeds.\n- [ ] Behavioral proof register is reviewed\
+      \ import RecoverResult` succeeds.\n- [x] Behavioral proof register is reviewed\
       \ from the artifact file and contains all required control-plane closure fields.\n\
       - [ ] Audit evidence emits PASS, PASS_WITH_DEBT, or FAIL plus `blockers` array\
       \ and `gate_open_allowed` boolean.\n- [ ] `gate_open_allowed` is false when\

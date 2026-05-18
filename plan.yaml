@@ -103350,7 +103350,7 @@ phases:
       - [x] Stale `checklist_inventory_revision` rejects mutation before any marker
       is changed.
 
-      - [ ] `item_id` selector resolves only within the submitted inventory snapshot.
+      - [x] `item_id` selector resolves only within the submitted inventory snapshot.
 
       - [ ] `field+index` selector rejects unsupported fields and out-of-range indexes.
 

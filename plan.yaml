@@ -105943,7 +105943,7 @@ phases:
       - [x] Unsupported-field inventory path is implemented/verified or the RFC records
       explicit deferred disposition with non-intersection proof.
 
-      - [ ] Retry guidance for stale revisions maps to refresh inventory / refresh-before-retry
+      - [x] Retry guidance for stale revisions maps to refresh inventory / refresh-before-retry
       behavior.
 
 

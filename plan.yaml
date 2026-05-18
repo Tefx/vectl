@@ -102655,7 +102655,7 @@ phases:
     claimed_at: '2026-05-18T14:56:43.173461+00:00'
   - id: det_check_tests_surfaces_red
     name: Define CLI MCP and orchestration expected-red tests
-    status: pending
+    status: claimed
     description: 'step_type: test_define_red
 
       step_intent: test_define_red
@@ -102744,6 +102744,8 @@ phases:
       \ item_id/revision receipt flow where touched\n- Downstream implementation owner:\
       \ det_check_impl_cli_mcp / det_check_impl_orch_receipts"
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-18T14:56:51.506931+00:00'
   - id: det_check_tests_gate
     name: Gate expected-red checklist tests
     status: pending

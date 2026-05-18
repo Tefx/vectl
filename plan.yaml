@@ -101578,7 +101578,7 @@ phases:
   steps:
   - id: det_check_contract_lock
     name: Lock deterministic checklist contract
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n  - behavioral contract\
       \ doc\n\nCreate the acceptance-only contract for deterministic checklist handling.\
@@ -101683,6 +101683,53 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-05-18T14:22:25.949453+00:00'
+    done_at: '2026-05-18T14:32:57.431333+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## Verification
+
+      - `python3 -m py_compile src/vectl/core_checklist.py src/vectl/core_plan_mutations.py`
+      — PASS (exit 0, no output).
+
+      - `uvx invar-tools guard --all` — PASS (`status: passed`, 0 errors; warnings
+      only / pre-existing budget warnings).
+
+
+      ## Files changed
+
+      - `docs/RFC-deterministic-checklists.md` — added contract artifact covering
+      ownership, supported fields, revision semantics, selector modes, structured
+      errors/retry guidance, batch semantics, and orchestrator receipt contract.
+
+      - `src/vectl/core_checklist.py` — added dataclass/type/signature stubs, structured
+      errors, `@pre`/`@post` contracts, and doctest placeholders only.
+
+      - `src/vectl/core_plan_mutations.py` — added `update_checklist` compatibility
+      adapter stub/contract notes only.
+
+
+      ## Commit hash(es)
+
+      - `55a750dd` — `[vectl] step-det_check_contract_lock completed`
+
+
+      ## Spec link
+
+      - `docs/RFC-deterministic-checklists.md`
+
+
+      ## Checklist receipt
+
+      - Acceptance checklist and verification checklist were toggled complete after
+      confirming the contract artifacts satisfy each required selector/revision/error/orchestrator
+      rule.
+
+
+      ## Gaps/Notes
+
+      - No runnable deterministic checklist mutation logic was implemented; stubs
+      raise `NotImplementedError` as required for contract purity.'
   - id: det_check_contract_gate
     name: Gate deterministic checklist contract
     status: pending

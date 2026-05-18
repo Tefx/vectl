@@ -104518,16 +104518,16 @@ phases:
 
 
       Independence Level: L2 for runnable CLI/MCP seams.'
-    verification: '- [ ] phase-check protecting `det_check_impl_gate`: run exact CLI
+    verification: '- [x] phase-check protecting `det_check_impl_gate`: run exact CLI
       invocation(s) and paste stdout/stderr.
 
-      - [ ] Invoke the MCP checklist tool wrapper or registered tool path and paste
+      - [x] Invoke the MCP checklist tool wrapper or registered tool path and paste
       request/response.
 
-      - [ ] Confirm the declared entrypoint path actually starts and reaches core
+      - [x] Confirm the declared entrypoint path actually starts and reaches core
       checklist service.
 
-      - [ ] Confirm at least one operation produces expected output.'
+      - [x] Confirm at least one operation produces expected output.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

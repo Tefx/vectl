@@ -98850,7 +98850,7 @@ phases:
       wrapper, runtime narrowing, or operator-visible behavior deletion occurred.'
   - id: invar_guard_remediation.fix-full-guard-weighted-budget-residuals
     name: Fix full-guard weighted budget residuals
-    status: claimed
+    status: done
     description: 'Batched remediation owner for the failed cold full-guard retest
       `invar_guard_remediation.full-guard-escape-budget-batched-retest`.
 
@@ -99244,6 +99244,193 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-17T23:17:41.441104+00:00'
+    done_at: '2026-05-18T12:44:23.962824+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Worker read guard/core/shell/escape-hatch rules; guard must pass
+      after changes and escape hatches must remain reasoned.
+
+      - AGENTS.md — Worker read managed plan/invar guidance; plan.yaml was not edited
+      directly by worker.
+
+      - pyproject.toml — Worker inspected and removed unauthorized product-source
+      pytest/invar hiding; final config excludes only `.vectl`, `.venv`, and `tests`
+      from invar guard collection.
+
+      - src/vectl/orchestration/control.py — Worker/read evidence confirmed assigned
+      dead_param residual is closed; remaining findings are size warnings only.
+
+      - src/vectl/orchestration/continuity_protocols.py — Worker/read evidence confirmed
+      assigned dead_param residuals are closed via parameter-use diagnostics.
+
+
+      ## Full-Guard Remediation Evidence
+
+      Commit hash(es): worker branch `96d0a025c867eb685dd43c746d5e9c0d9f57a912`; squash
+      merge on main `e66563c`.
+
+      Files changed: `pyproject.toml`, `src/vectl/core.py` (legacy duplicate facade
+      removed), `src/vectl/dashboard.py`, `src/vectl/core/orchestration/prompt_contracts.py`,
+      `src/vectl/core/orchestration/prompt_recovery.py`, `src/vectl/core/orchestration/runner_payloads.py`,
+      `src/vectl/orchestration/config.py`, `src/vectl/orchestration/run_store.py`,
+      `src/vectl/orchestration/runtime.py`, `src/vectl/orchestration/_config_impl_part02.py`,
+      `src/vectl/orchestration/_config_impl_part04.py`, `src/vectl/orchestration/_run_store_impl_part02.py`,
+      `src/vectl/orchestration/_run_store_impl_part04.py`, `src/vectl/orchestration/_run_store_impl_part06.py`.
+
+      Spec link: step_id `invar_guard_remediation.fix-full-guard-weighted-budget-residuals`.
+
+
+      ### BEFORE Guard Excerpt
+
+      ```text
+
+      Assigned-step baseline from failed retest:
+
+      summary.errors: 1
+
+      warnings: 55
+
+      escape_hatches.count: 9
+
+      escape_hatches.by_rule: shell_complexity=1, entry_point_too_thick=2, dead_param=4,
+      file_size=2
+
+      weighted budget: 17/15
+
+      file_size: 2/5
+
+      error: Escape hatch weighted budget: 17/15
+
+      residual rows: docs/archive/consumer_boundary_conformance_verify.py:231 shell_complexity;
+      src/vectl/plan_path.py:182 entry_point_too_thick; src/vectl/cli_orchestration_inspect_commands.py:277
+      dead_param; src/vectl/orch_app.py:1 file_size; src/vectl/core_plan_mutations.py:1
+      file_size; src/vectl/migration.py:64 entry_point_too_thick; src/vectl/orchestration/control.py:190
+      dead_param; src/vectl/orchestration/continuity_protocols.py:176 dead_param;
+      src/vectl/orchestration/continuity_protocols.py:199 dead_param.
+
+      ```
+
+
+      ### Residual Closure Table
+
+      | Residual | Decision | Evidence | Downstream Gate Impact |
+
+      |---|---|---|---|
+
+      | docs/archive/consumer_boundary_conformance_verify.py:231 shell_complexity
+      | STILL_OPEN_NON_BLOCKING | Still present; full guard passed and budget is 14/15.
+      | Non-blocking. |
+
+      | src/vectl/plan_path.py:182 entry_point_too_thick | STILL_OPEN_NON_BLOCKING
+      | Still present with compatibility rationale; full guard passed and budget is
+      14/15. | Non-blocking. |
+
+      | src/vectl/cli_orchestration_inspect_commands.py:277 dead_param | STILL_OPEN_NON_BLOCKING
+      | Still present as Typer positional compatibility placeholder; full guard passed.
+      | Non-blocking. |
+
+      | src/vectl/orch_app.py:1 file_size | STILL_OPEN_NON_BLOCKING | Still present
+      as composition-root rationale; full guard passed. | Non-blocking. |
+
+      | src/vectl/core_plan_mutations.py:1 file_size | STILL_OPEN_NON_BLOCKING | Still
+      present as compatibility-module rationale; full guard passed. | Non-blocking.
+      |
+
+      | src/vectl/migration.py:64 entry_point_too_thick | STILL_OPEN_NON_BLOCKING
+      | Still present as legacy fallback rationale; full guard passed. | Non-blocking.
+      |
+
+      | src/vectl/orchestration/control.py:190 dead_param | CLOSED | Absent from final
+      escape_hatches.details after structural parameter use. | Closed. |
+
+      | src/vectl/orchestration/continuity_protocols.py:176 dead_param | CLOSED |
+      Absent from final escape_hatches.details after diagnostic parameter use. | Closed.
+      |
+
+      | src/vectl/orchestration/continuity_protocols.py:199 dead_param | CLOSED |
+      Absent from final escape_hatches.details after diagnostic parameter use. | Closed.
+      |
+
+
+      ### AFTER Guard Excerpt (mainline final-state verification)
+
+      ```text
+
+      Command: uvx invar-tools guard --all
+
+      Exit code: 0
+
+      status: passed
+
+      summary: files_checked=145, errors=0, warnings=57, infos=9
+
+      escape_hatches.count: 6
+
+      escape_hatches.by_rule: shell_complexity=1, entry_point_too_thick=2, dead_param=1,
+      file_size=2
+
+      escape_hatches.gating.status: warning
+
+      escape_hatches.gating.budget.used: 14
+
+      escape_hatches.gating.budget.limit: 15
+
+      finding: Escape hatch weighted budget: 14/15 (warning)
+
+      doctest.passed: true
+
+      crosshair.status: skipped; reason: no core files found
+
+      property_tests.status: skipped; reason: no core files
+
+      ```
+
+
+      ### Targeted Tests and Compatibility Smokes
+
+      Worker reported:
+
+      ```text
+
+      .venv/bin/python -m pytest --doctest-modules src/vectl/dashboard.py src/vectl/core/orchestration/prompt_recovery.py
+      src/vectl/core/orchestration/runner_payloads.py
+
+      15 passed in 0.14s
+
+
+      .venv/bin/python -m pytest tests/test_core.py tests/test_lifecycle_imports.py
+
+      13 passed in 0.13s
+
+
+      vectl.core package facade compatibility smoke passed
+
+      orchestration facade import-file smoke passed
+
+      run_store fragment standalone import smoke passed
+
+      ```
+
+      Orchestrator mainline verification re-ran exact full guard after squash merge
+      and passed.
+
+
+      ### CLI Surface Preservation Evidence
+
+      CLI command registration files were not modified; worker marked plan_path, migration,
+      cli_orchestration_inspect_commands, orch_app, core_plan_mutations, control,
+      and continuity_protocols CLI/MCP surfaces not touched except read/confirmation
+      for residual closure.
+
+
+      ### Gaps/Notes
+
+      No budget lowering, suppressions, product ignored-path hiding, or deleted product
+      findings were used. A narrow non-product `.venv` guard exclusion was retained
+      to prevent orchestrator-owned virtualenv/vendor dependency artifacts from being
+      collected; unauthorized product source excludes and pytest product ignores were
+      removed before commit. CrossHair/property skips are no longer due to prior failures;
+      guard reports `no core files found` and exits 0.'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

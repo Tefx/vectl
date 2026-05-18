@@ -102286,7 +102286,7 @@ phases:
 
       - [x] `git diff --check` for remediation diff passes.
 
-      - [ ] No public-surface authority conflict remains for `update_checklist` legacy
+      - [x] No public-surface authority conflict remains for `update_checklist` legacy
       signature/behavior.
 
       - [ ] Contract details are sufficient for expected-red test authors.

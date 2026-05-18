@@ -106985,7 +106985,7 @@ phases:
       - [x] Use a runtime-reachable orchestration path, not only `parse_checklist_receipt`
       unit/parser calls.
 
-      - [ ] Submit or simulate a worker checklist receipt with literal stale `revision:
+      - [x] Submit or simulate a worker checklist receipt with literal stale `revision:
       rev1` while current checklist inventory has a different revision.
 
       - [ ] Prove current checklist inventory/revision is refreshed before retry/application,

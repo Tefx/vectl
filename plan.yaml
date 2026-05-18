@@ -103121,7 +103121,7 @@ phases:
       anchors.'
 - id: det_check_impl
   name: 'Deterministic Checklist Handling: Implementation and Surface Wiring'
-  status: pending
+  status: in_progress
   gate: Implementation phase gates canonical core service, deterministic single/batch
     mutations, CLI/MCP surfaces, orchestrator receipts, wiring, liveness, UI/output
     audit, and spec conformance.
@@ -103130,7 +103130,7 @@ phases:
   steps:
   - id: det_check_impl_core_inventory
     name: Complete core checklist inventory service
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -103252,6 +103252,8 @@ phases:
 
       - [ ] No unsupported `evidence_template` parsing shipped.'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T15:30:45.752097+00:00'
   - id: det_check_impl_single_mutation
     name: Complete deterministic single checklist mutation
     status: pending

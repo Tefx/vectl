@@ -103166,7 +103166,7 @@ phases:
 
       - [x] `evidence_template` is explicitly unsupported/deferred for first version.
 
-      - [ ] No module-level mutable registry/cache is introduced for inventory state.
+      - [x] No module-level mutable registry/cache is introduced for inventory state.
 
       - [ ] Concurrent callers cannot share or corrupt inventory snapshots.
 

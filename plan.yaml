@@ -105940,7 +105940,7 @@ phases:
       - [x] `checklist_inventory_revision` naming is not required where RFC says `revision`,
       unless RFC is explicitly updated with alias/disposition and compatibility tests.
 
-      - [ ] Unsupported-field inventory path is implemented/verified or the RFC records
+      - [x] Unsupported-field inventory path is implemented/verified or the RFC records
       explicit deferred disposition with non-intersection proof.
 
       - [ ] Retry guidance for stale revisions maps to refresh inventory / refresh-before-retry

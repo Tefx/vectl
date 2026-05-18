@@ -99017,7 +99017,7 @@ phases:
 
       - [x] Map all nine residual rows to a concrete remediation decision before editing.
 
-      - [ ] Remove/refactor enough residual weight to reach weighted budget `<=15/15`
+      - [x] Remove/refactor enough residual weight to reach weighted budget `<=15/15`
       without budget lowering, suppression, ignored files, deleted findings, or policy
       bypass.
 

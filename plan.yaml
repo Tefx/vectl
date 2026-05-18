@@ -108738,7 +108738,8 @@ phases:
     name: Retest full-plan verification boundary
     status: pending
     description: 'As an INDEPENDENT TESTER (integration-verifier), rerun the failed
-      full-plan verification boundary after `det_check_full_plan_remediation`.
+      full-plan verification boundary after `det_check_full_plan_remediation` and
+      the batched residual failure owner `det_check_full_plan_residual_remediation`.
 
 
       step_type: test
@@ -108794,7 +108795,8 @@ phases:
       receipt/prompt command is green and output is pasted.
 
       - [ ] full-plan-check protecting architecture review and final gate: `uv run
-      pytest -q` is green with no collection error.
+      pytest -q` is green with no collection error and no unresolved residual failure
+      group.
 
       - [ ] full-plan-check protecting architecture review and final gate: `uv run
       invar guard --all` is green, including escape-hatch budget within policy.
@@ -108809,54 +108811,37 @@ phases:
 
       For each ref in this step:
 
-      - tests/test_arch_demolition_wave0_characterization.py — key passage or "NOT
-      READ: <reason>"
-
-      - src/vectl/cli.py — key passage or "NOT READ: <reason>"
-
-      - INVAR.md — key passage or "NOT READ: <reason>"
-
-      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
-
-      - src/vectl/core/checklist_batch.py — key passage or "NOT READ: <reason>"
-
-      - src/vectl/mcp_core_misc_tools.py — key passage or "NOT READ: <reason>"
+      - <filename> — key passage or "NOT READ: <reason>"
 
 
-      ## Full-Plan Retest Report
+      If no refs were provided, state: "No refs for this step."
 
 
-      **Tester**: integration-verifier (independent of remediation)
-
-      **Scope**: full-plan-check after det_check_full_plan_remediation
-
-      **Expected result**: green
+      ## Retest Evidence
 
 
-      ### Commands and actual outputs
+      **Boundary commands executed**:
 
-      ```text
+      ```bash
 
       uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py -k
       ''checklist or deterministic or batch or revision'' -q
 
-      <paste output>
-
-
       uv run pytest tests/orchestration tests/repro -k ''checklist or receipt or prompt''
       -q
 
-      <paste output>
-
-
       uv run pytest -q
-
-      <paste output>
-
 
       uv run invar guard --all
 
-      <paste output>
+      ```
+
+
+      **Actual outputs**:
+
+      ```text
+
+      <paste command outputs here>
 
       ```
 
@@ -108869,16 +108854,14 @@ phases:
       | --- | --- | --- | --- | --- | --- | --- | --- |
 
 
-      ### Headline
+      ## Headline
 
-      - [ ] PASS: all required boundary commands are green.
+      - [ ] PASS: all boundary commands are green.
 
-      - [ ] BLOCKED: residual blocker-class failure remains and has remediation ownership.
-
-      - [ ] PASS_WITH_DEBT: only explicit non-intersecting debt remains with owner
-      and proof.'
+      - [ ] BLOCKED: residual blocker-class failures remain and have explicit closure
+      ownership.'
     depends_on:
-    - det_check_full_plan_remediation
+    - det_check_full_plan_residual_remediation
     agent: integration-verifier
   - id: det_check_full_plan_residual_remediation
     name: Remediate residual full-suite failures

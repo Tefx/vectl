@@ -102190,7 +102190,7 @@ phases:
       behavior and sharpened the contract.'
   - id: det_check_contract_retest_gate
     name: Retest and gate deterministic checklist contract remediation
-    status: pending
+    status: claimed
     description: 'Fresh adversarial retest/gate for deterministic checklist contract
       remediation.
 
@@ -102436,6 +102436,8 @@ phases:
     depends_on:
     - det_check_contract_fix_gate_blockers
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-18T14:49:25.388042+00:00'
 - id: det_check_tests
   name: 'Deterministic Checklist Handling: Expected-Red Test Definitions'
   status: locked

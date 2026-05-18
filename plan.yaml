@@ -99012,7 +99012,7 @@ phases:
 
       ## Checklist
 
-      - [ ] Capture exact BEFORE `uvx invar-tools guard --all` excerpt showing weighted
+      - [x] Capture exact BEFORE `uvx invar-tools guard --all` excerpt showing weighted
       budget `17/15`, residual rows, and file-size budget green (`file_size 2/5`).
 
       - [ ] Map all nine residual rows to a concrete remediation decision before editing.

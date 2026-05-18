@@ -101042,14 +101042,14 @@ phases:
       \ from plan summaries.\n- [x] Command executability matrix is reviewed from\
       \ the artifact file for actual commands, expected result classes, exit statuses,\
       \ and PASS/FAIL values.\n- [x] JSON ANSI proof is reviewed from the artifact\
-      \ file and proves parseable JSON with no ANSI escapes where applicable.\n- [\
-      \ ] Facade import proof is reviewed from the artifact file and proves `from\
-      \ vectl.core import RecoverResult` succeeds.\n- [ ] Behavioral proof register\
-      \ is reviewed from the artifact file and contains all required control-plane\
-      \ closure fields.\n- [ ] Audit evidence emits PASS, PASS_WITH_DEBT, or FAIL\
-      \ plus `blockers` array and `gate_open_allowed` boolean.\n- [ ] `gate_open_allowed`\
-      \ is false when the durable artifact is missing, incomplete, or relies on managed\
-      \ plan summaries alone."
+      \ file and proves parseable JSON with no ANSI escapes where applicable.\n- [x]\
+      \ Facade import proof is reviewed from the artifact file and proves `from vectl.core\
+      \ import RecoverResult` succeeds.\n- [ ] Behavioral proof register is reviewed\
+      \ from the artifact file and contains all required control-plane closure fields.\n\
+      - [ ] Audit evidence emits PASS, PASS_WITH_DEBT, or FAIL plus `blockers` array\
+      \ and `gate_open_allowed` boolean.\n- [ ] `gate_open_allowed` is false when\
+      \ the durable artifact is missing, incomplete, or relies on managed plan summaries\
+      \ alone."
     verification: '- [ ] Verify-only audit made no product-code, test, documentation,
       or plan-state changes.
 

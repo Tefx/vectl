@@ -104784,7 +104784,7 @@ phases:
       - [x] Naming and format semantics for item IDs, revisions, selector fields,
       and structured error codes are exact.
 
-      - [ ] Boundary values for empty fields, unsupported fields, stale revision,
+      - [x] Boundary values for empty fields, unsupported fields, stale revision,
       and invalid selectors match contract.
 
       - [ ] Omission drift: every MUST in `docs/RFC-deterministic-checklists.md` has

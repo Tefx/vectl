@@ -105937,7 +105937,7 @@ phases:
       exactly; additive fields are optional and backward-compatible, not required
       replacements.
 
-      - [ ] `checklist_inventory_revision` naming is not required where RFC says `revision`,
+      - [x] `checklist_inventory_revision` naming is not required where RFC says `revision`,
       unless RFC is explicitly updated with alias/disposition and compatibility tests.
 
       - [ ] Unsupported-field inventory path is implemented/verified or the RFC records

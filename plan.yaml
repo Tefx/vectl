@@ -104516,14 +104516,14 @@ phases:
 
 
       Use grep/import-trace output as evidence, not assertions.'
-    verification: '- [ ] phase-check protecting `det_check_impl_gate`: produce wiring
+    verification: '- [x] phase-check protecting `det_check_impl_gate`: produce wiring
       audit evidence for exports, CLI registration, MCP registration, config consumption,
       contracts, and orchestration receipt reachability.
 
-      - [ ] Block if any new public checklist symbol or surface is unreachable at
+      - [x] Block if any new public checklist symbol or surface is unreachable at
       runtime.
 
-      - [ ] Block if any identity-lambda or vacuous core contract is introduced.'
+      - [x] Block if any identity-lambda or vacuous core contract is introduced.'
     evidence_template: '## Wiring Audit Report
 
 

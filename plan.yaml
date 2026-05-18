@@ -90798,7 +90798,7 @@ phases:
       - product implementation files modified: false."
   - id: invar_guard_remediation.verify-full-guard
     name: Verify full invar guard closure
-    status: pending
+    status: claimed
     description: 'As an independent verifier, run the authoritative full invar guard
       from a fresh perspective after every domain remediation step, the focused residual
       remediation DAG, the UI/UX rerun, and the escape-budget residual retest complete.
@@ -90948,6 +90948,8 @@ phases:
     - cli-surface-preservation-uiux-audit
     - invar_guard_remediation.escape-budget-full-guard-retest
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-18T13:01:29.330301+00:00'
   - id: invar_guard_remediation.gate
     name: Gate invar guard remediation closure
     status: pending

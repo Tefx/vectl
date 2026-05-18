@@ -108096,7 +108096,7 @@ phases:
       - [x] Full relevant Python test suite or documented repo-appropriate subset
       passes.
 
-      - [ ] Invar guard is run with the authoritative project command if relevant
+      - [x] Invar guard is run with the authoritative project command if relevant
       after core/shell changes.
 
       - [ ] Any broad verifier failure receives explicit remediation ownership or

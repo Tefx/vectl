@@ -91141,7 +91141,7 @@ phases:
       ```'
   - id: invar_guard_remediation.gate
     name: Gate invar guard remediation closure
-    status: pending
+    status: claimed
     description: 'As an independent gate reviewer, decide whether the invar guard
       remediation phase can close.
 
@@ -91294,6 +91294,8 @@ phases:
     - invar_guard_remediation.escape-budget-full-guard-retest
     - invar_guard_remediation.verify-full-guard
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-18T13:07:56.482665+00:00'
   - id: fix-plan-mutation-query-domain
     name: Fix plan mutation/query invar domain
     status: done

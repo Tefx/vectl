@@ -105951,19 +105951,19 @@ phases:
 
       Evidence MUST include a spec requirements register and a 7-verdict table: CONFORMS,
       DIVERGES, PARTIAL, NEEDS_TEST, NOT_FOUND, AMBIGUOUS_SPEC, SPEC_POSSIBLY_STALE.'
-    verification: '- [ ] phase-check: spec retest reruns the failed `det_check_impl_spec_conformance`
+    verification: '- [x] phase-check: spec retest reruns the failed `det_check_impl_spec_conformance`
       blocker family after remediation.
 
-      - [ ] Requirements register covers stale revision, receipt schema/naming, unsupported-field
+      - [x] Requirements register covers stale revision, receipt schema/naming, unsupported-field
       behavior, and retry guidance.
 
-      - [ ] Every blocker-class DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND item has remediation
+      - [x] Every blocker-class DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND item has remediation
       ownership or explicit non-intersection evidence.
 
-      - [ ] RFC-minimal receipt fixture `{item_id, revision, checked}` is covered
+      - [x] RFC-minimal receipt fixture `{item_id, revision, checked}` is covered
       without convenience fields.
 
-      - [ ] Spec-code table cites spec sections and implementation file locations
+      - [x] Spec-code table cites spec sections and implementation file locations
       for each relevant requirement.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

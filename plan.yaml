@@ -103173,7 +103173,7 @@ phases:
       - [x] Cleanup/reset semantics are unnecessary because inventory objects are
       pure values; evidence states this explicitly.
 
-      - [ ] Snapshot-scoped item IDs are deterministic for the same snapshot and not
+      - [x] Snapshot-scoped item IDs are deterministic for the same snapshot and not
       persisted as stable cross-snapshot IDs.
 
 

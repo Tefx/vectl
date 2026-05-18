@@ -106961,7 +106961,7 @@ phases:
       these were not part of the step branch or merge.'
   - id: det_check_impl_receipt_refresh_retest
     name: Retest stale receipt runtime refresh path
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -107121,6 +107121,8 @@ phases:
     depends_on:
     - det_check_impl_receipt_refresh_remediation
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-18T17:46:25.620969+00:00'
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

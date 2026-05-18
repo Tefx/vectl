@@ -105149,21 +105149,21 @@ phases:
 
 
       YOU ARE THE QUALITY GATE. Block progress if behavioral runtime evidence is missing.'
-    verification: '- [ ] phase-check protecting `det_check_finalization`: all implementation,
+    verification: '- [x] phase-check protecting `det_check_finalization`: all implementation,
       failed-report, remediation, and verification steps completed with adequate evidence.
 
-      - [ ] Runnable CLI/MCP evidence identifies entrypoint/invocation, command/tool
+      - [x] Runnable CLI/MCP evidence identifies entrypoint/invocation, command/tool
       call, and real path output.
 
-      - [ ] Gate decision basis covers unresolved NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
+      - [x] Gate decision basis covers unresolved NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
       items and blocks unless they are PROVEN or have explicit non-intersection evidence.
 
-      - [ ] No implementation agent in this phase performed this gate review.
+      - [x] No implementation agent in this phase performed this gate review.
 
-      - [ ] Legacy keyword toggle compatibility and deterministic item_id/revision
+      - [x] Legacy keyword toggle compatibility and deterministic item_id/revision
       paths are both green.
 
-      - [ ] Batched blocker remediation path (`det_check_impl_blocker_remediation`
+      - [x] Batched blocker remediation path (`det_check_impl_blocker_remediation`
       -> family retests -> `det_check_impl_blocker_retest`) is complete and closes
       B1-B8 without unresolved blocker-class debt.'
     evidence_template: '## Gate Review Report

@@ -103884,7 +103884,7 @@ phases:
       \ files `test_mod.py` and `test_mod_2.py`, not blocker-class errors."
   - id: det_check_impl_orch_receipts
     name: Wire orchestrator checklist receipts
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       tags: ["integration"]
@@ -104033,6 +104033,59 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-18T16:27:44.175875+00:00'
+    done_at: '2026-05-18T16:39:34.622423+00:00'
+    evidence: "status: SUCCESS\n\n## refs Read Confirmation (MANDATORY)\n- `docs/RFC-deterministic-checklists.md`\
+      \ — read; RFC §6 requires orchestrator-owned checklist mutation, worker receipts\
+      \ keyed by item_id/revision, and rejection of missing item_id/revision/checked.\n\
+      - `src/vectl/orchestration/dispatch_policy.py` — read; `PromptRegistry` renders\
+      \ coder task templates from `DispatchSpec`; checklist inventory injection belongs\
+      \ in this centralized prompt authority.\n- `src/vectl/orchestration/prompt_materialization.py`\
+      \ — read; materializes prompt bundle JSON and runner prompt Markdown; receipt\
+      \ contract metadata hook added to bundle JSON.\n- `src/vectl/orchestration/evidence.py`\
+      \ — read; evidence parsing/normalization surface existed; deterministic checklist\
+      \ receipt parsing/validation added here.\n- `src/vectl/orchestration/step_data.py`\
+      \ — read; `StepData` is dispatch coordinator authoritative step-data DTO; extended\
+      \ with checklist inventory revision/items.\n- `tests/orchestration/unit/test_review_gate_integration.py`\
+      \ — read; reviewed existing integration style for orchestration boundary tests\
+      \ and protected review behavior.\n- `tests/orchestration/unit/test_checklist_receipt_contract.py`\
+      \ — read/used as expected-red receipt surface.\n- `tools/vectl/README.md` —\
+      \ NOT READ: file not found at required path in isolated worktree.\n\n## Implementation\
+      \ Evidence\n- Commit hash(es):\n  - worker branch commit: `7f7141a0`\n  - mainline\
+      \ squash merge commit: `c25de13`\n- Files changed:\n  - `src/vectl/core_checklist.py`\n\
+      \  - `src/vectl/orchestration/contract_dispatch.py`\n  - `src/vectl/orchestration/core_adapter.py`\n\
+      \  - `src/vectl/orchestration/dispatch_coordinator.py`\n  - `src/vectl/orchestration/dispatch_policy.py`\n\
+      \  - `src/vectl/orchestration/evidence.py`\n  - `src/vectl/orchestration/prompt_materialization.py`\n\
+      \  - `src/vectl/orchestration/step_data.py`\n  - `tests/orchestration/unit/test_checklist_receipt_contract.py`\n\
+      - Spec link: `docs/RFC-deterministic-checklists.md` §6\n\n## Verification\n\
+      Worker-local verification:\n```bash\n./.venv/bin/python -m pytest tests/orchestration\
+      \ tests/repro -k 'checklist or receipt or prompt' -q\ninvar guard --changed\n\
+      ```\nOutput:\n```text\npytest: 97 passed, 1625 deselected in 1.54s\ninvar_guard:\
+      \ status=passed; files_checked=8; errors=0; warnings=4; doctest=passed\n```\n\
+      \nMainline final-state verification after squash merge:\n```bash\nuv run pytest\
+      \ tests/orchestration tests/repro -k \"checklist or receipt or prompt\" -q\n\
+      uv run invar guard --changed\n```\nOutput:\n```text\n97 passed, 1625 deselected\
+      \ in 2.34s\ninvar guard --changed: status passed; files_checked: 2; errors:\
+      \ 0; warnings: 0; infos: 2 (pre-existing test_only_export infos in untracked\
+      \ test_mod.py/test_mod_2.py); doctest passed\n```\n\n## Sample prompt inventory\
+      \ injection\n```text\nchecklist_inventory_revision: rev-abc\nitems:\n  - field:\
+      \ description\n    index: 0\n    item_id: description:0:abc123\n    state: unchecked\n\
+      \    text: Prompt materialization can include checklist inventory\n```\n\n##\
+      \ Sample worker receipt\n```text\nstep_id: step-1\nchecklist_receipt:\n  - step_id:\
+      \ step-1\n    field: verification\n    item_id: verification:0:def456\n    checklist_inventory_revision:\
+      \ rev-def\n    checked: false\n```\n\n## Mutation authority statement\nPrompt\
+      \ and artifact metadata state that the orchestrator owns checklist mutation;\
+      \ worker receipts only request final state by exact item_id/checklist_inventory_revision\
+      \ and do not mutate plan state directly.\n\n## Checklist Receipt\n- [x] Prompt\
+      \ materialization can include checklist inventory item IDs, fields, indexes,\
+      \ states, and revision.\n- [x] Worker receipt format records `step_id`, `field`,\
+      \ `item_id`, `checklist_inventory_revision`, and desired final state.\n- [x]\
+      \ Orchestrator-owned mutation boundary is explicit; worker receipts do not mutate\
+      \ plan state directly.\n- [x] Receipt validation rejects missing revision/item_id\
+      \ for deterministic paths.\n- [x] Natural-language fuzzy mapping is reserved\
+      \ only for legacy human keyword compatibility, not orchestrator receipts.\n\n\
+      ## Deviation Records\n- none\n\n## Gaps/Notes\n- Mainline `uv run invar guard\
+      \ --changed` passed with two informational findings in pre-existing untracked\
+      \ files `test_mod.py` and `test_mod_2.py`, not blocker-class errors."
   - id: det_check_impl_integration_proof
     name: Verify checklist seam integration
     status: pending

@@ -104105,7 +104105,7 @@ phases:
       - [x] Edge cases: empty fields, stale revision, invalid selector-mode combinations,
       unsupported `evidence_template`.
 
-      - [ ] Error scenarios: stale revision retry guidance, batch diagnostics, ambiguous/no
+      - [x] Error scenarios: stale revision retry guidance, batch diagnostics, ambiguous/no
       legacy keyword match.
 
       - [ ] Integration path: CLI/MCP/orchestration surfaces delegate to canonical

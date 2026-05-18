@@ -101570,7 +101570,7 @@ phases:
       were satisfied and toggled/updated before completion.'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
-  status: pending
+  status: in_progress
   gate: Contract phase gates deterministic checklist ownership, selectors, revision
     semantics, and structured error contract before tests or implementation.
   depends_on:
@@ -101578,7 +101578,7 @@ phases:
   steps:
   - id: det_check_contract_lock
     name: Lock deterministic checklist contract
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n  - behavioral contract\
       \ doc\n\nCreate the acceptance-only contract for deterministic checklist handling.\
@@ -101681,6 +101681,8 @@ phases:
 
       - [ ] Downstream implementation artifacts listed for `upstream_artifacts`.'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-18T14:22:25.949453+00:00'
   - id: det_check_contract_gate
     name: Gate deterministic checklist contract
     status: pending

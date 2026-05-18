@@ -103506,7 +103506,7 @@ phases:
 
       - [x] Empty batch behavior follows the contract exactly.
 
-      - [ ] Batch result exposes enough data for CLI/MCP machine-readable responses.
+      - [x] Batch result exposes enough data for CLI/MCP machine-readable responses.
 
 
       ## Completion Criteria (stub exclusion)

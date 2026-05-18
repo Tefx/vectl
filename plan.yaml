@@ -103466,7 +103466,7 @@ phases:
       \ and `test_mod_2.py`, not blocker-class errors."
   - id: det_check_impl_batch_mutation
     name: Complete atomic checklist batch mutation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -103578,6 +103578,8 @@ phases:
     depends_on:
     - det_check_impl_single_mutation
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T16:03:06.666324+00:00'
   - id: det_check_impl_cli_mcp
     name: Wire checklist CLI and MCP surfaces
     status: pending

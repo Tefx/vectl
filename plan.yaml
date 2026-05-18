@@ -90623,7 +90623,7 @@ phases:
       invar/static debt remains explicitly outside this non-invar gate lane.'
 - id: invar_guard_remediation
   name: Invar Guard Remediation
-  status: in_progress
+  status: done
   gate: Final gate requires authoritative `uvx invar-tools guard --all` green, or
     a structured residual disposition proving any remaining finding is non-blocking
     under invar policy.
@@ -101255,7 +101255,7 @@ phases:
       were satisfied and toggled/updated before completion.'
   - id: invar_guard_remediation.final-regate-durable-uiux-artifact
     name: Final regate after durable UI/UX artifact
-    status: claimed
+    status: done
     description: "step_type: gate\nstep_intent: retest_green\nexpected_result: green\n\
       verification_scope: full-plan-check\nagent_source: default\nindependence_level:\
       \ L1\nsupersedes_failed_step: invar_guard_remediation.post-blocker-closure-regate\n\
@@ -101403,9 +101403,174 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-18T14:14:59.784186+00:00'
+    done_at: '2026-05-18T14:21:08.151430+00:00'
+    evidence: '## refs Read Confirmation
+
+      - CONSTITUTION.md — NOT READ: searched workspace; not found.
+
+      - docs/invar_guard_remediation/uiux-proof-artifact.md — READ directly; key passages:
+      provenance states artifact is under repository docs with “Managed-plan-summary
+      reliance: none”; evidence index lists E1-E8; validation note defines PASS/PASS_WITH_DEBT/FAIL
+      criteria.
+
+      - INVAR.md — READ; key passages: Core requires @pre/@post/doctest; shell owns
+      I/O; run `invar guard` after changes; escape hatches must be rare and reasoned.
+
+      - tools/vectl/README.md — NOT READ: file absent in worktree.
+
+
+      ## Final Durable-Artifact Regate Report
+
+      **Reviewer**: gate-reviewer
+
+      **Phase**: invar_guard_remediation
+
+      **Supersedes failed step**: invar_guard_remediation.post-blocker-closure-regate
+
+
+      ### Fresh/Cold Guard Evidence
+
+      - Command: `uvx invar-tools guard --all`
+
+      - Exit code: 0
+
+      - Output: `status: passed`, `summary.errors: 0`, `summary.warnings: 54`, `summary.infos:
+      4`, `escape_hatches.count: 6`, weighted budget `14/15`, gating `warning`, doctest
+      `passed: true`.
+
+      - No blocker-class guard errors remain; remaining findings are warnings/infos,
+      chiefly size/complexity and escape-budget warning.
+
+
+      ### Durable Artifact Review
+
+      - Artifact: `docs/invar_guard_remediation/uiux-proof-artifact.md`
+
+      - Inspected directly: YES
+
+      - Marker validation: `artifact_exists=True`, `line_count=392`, `missing_required_markers=[]`
+
+      - Required subproofs present: help/surface snapshots E1-E5, command executability
+      matrix, JSON parseability/zero ANSI proof, facade import proof, behavioral proof
+      register, uiux-auditor-compatible validation note.
+
+      - Managed plan summary reliance: NONE.
+
+
+      ### UI/UX Auditor Evidence Reviewed
+
+      - Durable artifact audit verdict: PASS
+
+      - proof_gap_status: NON_BLOCKING
+
+      - blocking_status: CLOSED
+
+      - blockers: []
+
+      - gate_open_allowed: true
+
+
+      ### Core Contract Warning Register Review
+
+      Six cited Core contract warning sites remain fixed; current guard has zero errors
+      and no missing-contract blockers. Remaining residual warnings are non-blocking
+      structural debt and do not intersect downstream deterministic-checklist gate
+      readiness.
+
+
+      ### Gate Decision Basis
+
+      All blocker-class obligations are PROVEN or NON_BLOCKING with explicit non-intersection
+      proof. No required proof relies only on managed plan summaries.
+
+
+      ### Gate Decision
+
+      PASS / OPEN. `invar_guard_remediation` may close. `det_check_contracts` and
+      later deterministic-checklist phases may proceed.
+
+
+      ### Behavioral Proof Register
+
+      - fresh_guard: PROVEN — fresh guard exit 0, zero errors, explicit warnings/infos/escape
+      budget.
+
+      - durable_artifact: PROVEN — repository docs artifact exists and required markers
+      present.
+
+      - uiux_subproofs: PROVEN — E1-E8 subproofs present in artifact.
+
+      - uiux_auditor: PROVEN — durable artifact audit PASS, blockers empty, gate_open_allowed
+      true.
+
+      - core_contracts: PROVEN — cited Core warning family fixed; guard has no blocker-class
+      contract findings.
+
+      - residual_warnings: NON_BLOCKING — warning-level size/complexity/escape budget
+      debt with zero errors and no downstream gate intersection.
+
+      - downstream_protection: PROVEN — gate explicitly opens downstream phases only
+      after durable artifact and guard proof.
+
+
+      ### Closure Signals
+
+      - step_intent: retest_green
+
+      - expected_result: green
+
+      - observed_result: OPEN
+
+      - verdict: PASS
+
+      - proof_gap_status: NONE
+
+      - blocking_status: CLOSED
+
+      - blockers: []
+
+      - gate_open_allowed: true
+
+      - orchestrator_action_hint: COMPLETE
+
+      - product_implementation_files_modified: none
+
+
+      ### Verification
+
+      - `pwd && git branch --show-current && git status --short && git log --oneline
+      -5` — branch confirmed `vectl/step-invar_guard_remediation.final-regate-durable-uiux-artifact`.
+
+      - `uvx invar-tools guard --all` — exit 0.
+
+      - Artifact marker validation — exit 0; all required markers present.
+
+      - Final `git status --short` — clean.
+
+
+      ### Files changed
+
+      None.
+
+
+      ### Commit hash(es)
+
+      none — verify-only gate; no changes required.
+
+
+      ### Gaps/Notes
+
+      Guard remains warning-bearing (54 warnings, 4 infos, escape budget 14/15) and
+      accepted as governed non-blocking debt.
+
+
+      ### checklist_receipt
+
+      All description acceptance checklist items and verification checklist items
+      were satisfied and toggled/updated before completion.'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
-  status: locked
+  status: pending
   gate: Contract phase gates deterministic checklist ownership, selectors, revision
     semantics, and structured error contract before tests or implementation.
   depends_on:

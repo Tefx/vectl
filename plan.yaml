@@ -104503,7 +104503,7 @@ phases:
       - [x] CLI registration: deterministic checklist options/subcommands are registered
       in the CLI entrypoint path.
 
-      - [ ] MCP registration: additive deterministic checklist fields/operations are
+      - [x] MCP registration: additive deterministic checklist fields/operations are
       reachable through the MCP tool wrapper.
 
       - [ ] Config consumption: no new config field is parsed without a non-test consumer.

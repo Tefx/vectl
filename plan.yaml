@@ -106751,7 +106751,7 @@ phases:
 
       ## Acceptance checklist
 
-      - [ ] Runtime-reachable orchestration path handles a parsed stale checklist
+      - [x] Runtime-reachable orchestration path handles a parsed stale checklist
       receipt, not only parser-level validation.
 
       - [ ] Stale `revision` causes current checklist inventory/revision refresh before

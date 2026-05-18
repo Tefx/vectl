@@ -107902,7 +107902,7 @@ phases:
 
       - [x] Document `checklist_inventory_revision` scope and stale-retry behavior.
 
-      - [ ] Document single and batch selector modes, marker-only invariants, and
+      - [x] Document single and batch selector modes, marker-only invariants, and
       structured errors.
 
       - [ ] Document worker/orchestrator checklist receipt flow: orchestrator owns

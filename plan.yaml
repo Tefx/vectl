@@ -102284,7 +102284,7 @@ phases:
       - [x] Targeted checklist, MCP checklist, and CLI check commands pass or non-pass
       is proven unrelated/non-intersecting.
 
-      - [ ] `git diff --check` for remediation diff passes.
+      - [x] `git diff --check` for remediation diff passes.
 
       - [ ] No public-surface authority conflict remains for `update_checklist` legacy
       signature/behavior.

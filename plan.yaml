@@ -100816,7 +100816,7 @@ phases:
       \ values, and evidence references.\n- [x] Artifact includes JSON parseability\
       \ and zero-ANSI proof with exact command and pasted output.\n- [x] Artifact\
       \ includes facade import proof for `from vectl.core import RecoverResult` with\
-      \ exact command and pasted output.\n- [ ] Artifact includes behavioral proof\
+      \ exact command and pasted output.\n- [x] Artifact includes behavioral proof\
       \ register with all required control-plane closure fields.\n- [ ] Artifact includes\
       \ uiux-auditor-compatible validation note and does not rely on plan summaries\
       \ alone.\n- [ ] Evidence records the exact artifact path and confirms current-mainline\

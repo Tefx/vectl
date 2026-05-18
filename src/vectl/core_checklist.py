@@ -80,11 +80,32 @@ class MutationRequest:
 
 
 @dataclass(frozen=True)
+class SelectorDiagnostic:
+    """Per-request structured diagnostic for batch checklist mutation.
+
+    ``status`` is ``"error"`` when ``code`` is set.  Successful requests use
+    ``matched`` before marker application and then ``changed``/``unchanged`` in
+    the final batch result.
+    """
+
+    request_index: int
+    status: Literal["matched", "changed", "unchanged", "error"]
+    message: str
+    code: ChecklistErrorCode | None = None
+    item_id: str | None = None
+    field: SupportedChecklistField | str | None = None
+    index: int | None = None
+    revision: ChecklistInventoryRevision | None = None
+    target_checked: bool | None = None
+
+
+@dataclass(frozen=True)
 class BatchDiagnostics:
     """Diagnostics for a batch mutation execution."""
     total_requested: int
     matched_items: int
     changed_items: int
+    selector_diagnostics: tuple[SelectorDiagnostic, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -451,49 +472,6 @@ def mutate_checklist(
     >>> mutate_checklist.__wrapped__(step, current_revision, [request]).step.description
     '- [x] A'
     """
-    current_revision, items = _inventory_snapshot_impl(step)
-    # Protected expected-red core tests predate the hash-backed inventory helper
-    # and use ``rev1`` as their non-stale fixture revision.  Real deterministic
-    # callers still get strict snapshot matching via the current hash revision.
-    if revision != current_revision and revision != "rev1":
-        _raise_impl(
-            StaleRevisionError,
-            _error_payload_impl(
-                "stale_revision",
-                "Checklist inventory revision is stale.",
-                revision=current_revision,
-            ),
-        )
+    from vectl.core.checklist_batch import mutate_checklist_batch_impl
 
-    _validate_request_modes_impl(requests)
-    resolved: list[tuple[ChecklistItem, bool]] = []
-    for request in requests:
-        item = _resolve_request_impl(request, items)
-        if isinstance(request.selector, LegacyKeywordSelector):
-            target_checked = not item.checked
-        else:
-            target_checked = bool(request.checked)
-        resolved.append((item, target_checked))
-
-    description = canonicalize_markdown_impl(step.description)
-    verification = canonicalize_markdown_impl(step.verification)
-    changed_items = 0
-    for item, target_checked in resolved:
-        if item.field == "description":
-            description, changed = set_item_marker_impl(description, item.index, target_checked)
-        else:
-            verification, changed = set_item_marker_impl(verification, item.index, target_checked)
-        if changed:
-            changed_items += 1
-
-    updated_step = step.model_copy(update={"description": description, "verification": verification})
-    updated_revision, _updated_items = _inventory_snapshot_impl(updated_step)
-    return MutationBatchResult(
-        step=updated_step,
-        revision=updated_revision,
-        diagnostics=BatchDiagnostics(
-            total_requested=len(requests),
-            matched_items=len(resolved),
-            changed_items=changed_items,
-        ),
-    )
+    return mutate_checklist_batch_impl(step, revision, requests)

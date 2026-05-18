@@ -109077,7 +109077,7 @@ phases:
     agent: integration-verifier
   - id: det_check_full_plan_residual_remediation
     name: Remediate residual full-suite failures
-    status: claimed
+    status: done
     description: 'Batched residual remediation for the remaining `uv run pytest -q`
       failures discovered during `det_check_full_plan_remediation`.
 
@@ -109317,3 +109317,206 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-18T19:53:43.562231+00:00'
+    done_at: '2026-05-18T20:01:12.826378+00:00'
+    evidence: '## refs Read Confirmation
+
+
+      - `tools/vectl/README.md` — NOT READ: worker attempted to read `/Users/tefx/Projects/vectl/.vectl/worktrees/det_check_full_plan_residual_remediation/tools/vectl/README.md`;
+      the file does not exist in this isolated worktree. Repository inspection found
+      only top-level `README.md`. Step description remained authoritative.
+
+      - `CONSTITUTION.md` — NOT READ: no `CONSTITUTION.md` exists in the isolated
+      worktree.
+
+
+      ## Residual Full-Suite Remediation Evidence
+
+
+      Spec link: det_check_full_plan_residual_remediation; ref `tools/vectl/README.md`.
+
+
+      Commit hash(es): none — no changes required in this verification pass. Prior
+      squash-merged remediation state was already present, and all required commands
+      passed with no worktree diff.
+
+
+      Files changed:
+
+      - none — verification exposed no remaining failures.
+
+
+      Verification:
+
+      ```text
+
+      uv run pytest -q
+
+      ================= 3030 passed, 43 skipped in 145.71s (0:02:25) =================
+
+
+      uv run invar guard --all
+
+      status: passed
+
+      files_checked: 147
+
+      errors: 0
+
+      warnings: 60
+
+      infos: 4
+
+      escape_hatches: used 14 / limit 15 (warning, within policy)
+
+      doсtest: passed
+
+      crosshair: skipped (no core files found)
+
+      property_tests: skipped (no core files)
+
+
+      uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py -k
+      ''checklist or deterministic or batch or revision'' -q
+
+      ====================== 40 passed, 411 deselected in 1.05s ======================
+
+
+      uv run pytest tests/orchestration tests/repro -k ''checklist or receipt or prompt''
+      -q
+
+      ===================== 102 passed, 1625 deselected in 2.10s =====================
+
+
+      git status --short --branch
+
+      ## vectl/step-det_check_full_plan_residual_remediation
+
+
+      git diff --stat
+
+      <empty>
+
+      ```
+
+
+      ## Group Closure Table
+
+      | Group | Files/tests fixed | Root cause | Change made | Main-path proof | Failure-path
+      proof | Status |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | 1 checklist receipt parsing | lifecycle/liveness receipt tests | prior invalid
+      freeform checklist receipt payload parsing | no new change required | full suite
+      and focused checklist suite passed | focused orchestration/repro receipt suite
+      passed | PASS |
+
+      | 2 drive projection/export | drive events/config observability tests | prior
+      `_write_json` NameError and missing projection rebuild export | no new change
+      required | full suite passed | drive projection/export tests included in full
+      run | PASS |
+
+      | 3 config discovery isolation | config roundtrip/isolation and config state
+      tests | prior home config bleed into isolated contexts | no new change required
+      | full suite passed | config isolation tests included in full run | PASS |
+
+      | 4 agent recovery UUID import | drive auto-resolution tests | prior missing
+      `uuid` import | no new change required | full suite passed | recovery auto-resolution
+      tests included in full run | PASS |
+
+      | 5 legacy CLI exports | CLI compatibility tests | prior missing `_enrich_drive_scope_result`
+      / `is_step_locked` exports | no new change required | full suite and focused
+      CLI/MCP suite passed | legacy export paths covered by CLI tests | PASS |
+
+      | 6 core adapter helper export | planner loop integration tests | prior missing
+      `_as_str_list` helper export | no new change required | full suite passed |
+      planner integration tests included in full run | PASS |
+
+      | 7 review gate ControlDecision | review gate integration tests | prior missing
+      `ControlDecision` symbol | no new change required | full suite passed | review
+      gate integration tests included in full run | PASS |
+
+      | 8 run-store append conflicts | run-store conflict tests | prior bounded append
+      conflict retry/raise semantics | no new change required | full suite passed
+      | run-store conflict retry tests included in full run | PASS |
+
+      | 9 runtime lifecycle cleanup | runtime lifecycle/reconcile tests | prior reconcile
+      lock/result/cleanup semantics | no new change required | full suite passed |
+      runtime lifecycle and reconcile tests included in full run | PASS |
+
+
+      ## Broad failure disposition table
+
+      | group | command | finding | provenance | disposition | intersects_det_check_arch_review
+      | intersects_det_check_final_gate | owner_or_non_intersection_proof |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | 1 | pytest full + focused checklist/receipt | no failure | worker output:
+      3030 passed/43 skipped; 40 focused passed; 102 focused passed | Closed | yes
+      | yes | passing full/focused suites; no owner needed |
+
+      | 2 | pytest full | no failure | drive projection/export tests passed in full
+      run | Closed | yes | yes | passing full suite; no owner needed |
+
+      | 3 | pytest full | no failure | config isolation tests passed in full run |
+      Closed | yes | yes | passing full suite; no owner needed |
+
+      | 4 | pytest full | no failure | recovery auto-resolution tests passed in full
+      run | Closed | yes | yes | passing full suite; no owner needed |
+
+      | 5 | pytest full + focused CLI/MCP | no failure | CLI tests passed in full/focused
+      runs | Closed | yes | yes | passing full/focused suites; no owner needed |
+
+      | 6 | pytest full | no failure | planner integration tests passed in full run
+      | Closed | yes | yes | passing full suite; no owner needed |
+
+      | 7 | pytest full | no failure | review gate integration tests passed in full
+      run | Closed | yes | yes | passing full suite; no owner needed |
+
+      | 8 | pytest full | no failure | run-store suites passed in full run | Closed
+      | yes | yes | passing full suite; no owner needed |
+
+      | 9 | pytest full | no failure | runtime lifecycle/reconcile suites passed in
+      full run | Closed | yes | yes | passing full suite; no owner needed |
+
+      | all | invar guard --all | guard passed with 0 errors; 60 warnings; 4 infos;
+      escape hatch budget 14/15 within policy | invar JSON summary | Closed for this
+      step | yes | yes | guard status passed; no blocker owner needed |
+
+
+      ## Checklist receipt
+
+      Checklist items in the live step text were already marked checked. No new checklist
+      toggles requested.
+
+
+      ## Gaps/Notes
+
+      - Required ref `tools/vectl/README.md` is absent; worker attempted read and
+      documented file-not-found.
+
+      - No product implementation files were modified in this verification pass.
+
+      - No plan state, vectl CLI, or MCP vectl lifecycle tools were used by the worker.
+
+      - No evidence suggests cached/hot state was required; commands executed against
+      isolated worktree and orchestrator-provisioned `.venv`.
+
+      - step_intent: verify and, if needed, remediate all nine residual failure groups
+      protecting downstream architecture review/final gate.
+
+      - expected_result: full pytest green or every remaining failure dispositioned;
+      invar guard green; focused checklist/receipt suites green.
+
+      - observed_result: `uv run pytest -q` passed with 3030 passed and 43 skipped;
+      `uv run invar guard --all` passed; focused suites passed.
+
+      - failure_alignment: no remaining failures; prior residual fingerprints are
+      covered by passing named suites.
+
+      - verdict: SUCCESS.
+
+      - blockers: none.
+
+      - product_implementation_files_modified: no.'

@@ -101037,7 +101037,7 @@ phases:
       - Do not replace the final regate; this step supplies durable-artifact UI/UX\
       \ auditor evidence for the regate.\n\n## Acceptance Checklist\n- [x] Audit is\
       \ read-only and no product code, tests, docs, or plan state are modified.\n\
-      - [ ] Durable artifact file path is explicitly named and inspected directly.\n\
+      - [x] Durable artifact file path is explicitly named and inspected directly.\n\
       - [ ] Pasted help/surface snapshots are reviewed from the artifact file, not\
       \ from plan summaries.\n- [ ] Command executability matrix is reviewed from\
       \ the artifact file for actual commands, expected result classes, exit statuses,\

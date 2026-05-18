@@ -105180,6 +105180,147 @@ phases:
     - det_check_impl_spec_conformance
     - det_check_impl_wiring_audit
     agent: python-senior
+  - id: det_check_impl_blocker_integration_retest
+    name: Retest deterministic checklist integration blockers
+    status: pending
+    description: 'Independent integration retest for the batched deterministic checklist
+      blocker remediation.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check protecting `det_check_impl_gate` and `det_check_finalization`.
+
+      agent_source: default
+
+      Independence Level: L1; this retest is independent of `python-senior` remediation.
+
+
+      Retest the integration failure family originally reported by `det_check_impl_integration_proof`,
+      including stale revision runtime behavior, CLI JSON status semantics, batch
+      all-or-nothing behavior, and stale receipt refresh-before-retry runtime proof.
+
+
+      ## Required integration proof focus
+
+      - [ ] Core deterministic stale revisions fail without mutating state, including
+      a literal stale `rev1` fixture.
+
+      - [ ] CLI deterministic batch with stale/invalid revision and `--json` exits
+      non-zero while emitting parseable JSON error payload.
+
+      - [ ] Failed batch proves all-or-nothing/no-mutation with before/after inventory
+      or plan-state evidence.
+
+      - [ ] Stale receipt path proves refresh-before-retry through a runtime-reachable
+      orchestration path.
+
+
+      ## Behavioral proof register required
+
+      Evidence MUST include rows with: `requirement_ref`, `behavior_claim`, `runtime_proof_expected`,
+      `evidence_ref`, `status`, `closure_path`, and `gate_decision_basis`. `NEEDS_TEST`,
+      `UNPROVEN`, or `UNCERTAIN_BLOCKING` require remediation ownership or explicit
+      non-intersection evidence.'
+    verification: '- [ ] phase-check: integration retest reruns the failed `det_check_impl_integration_proof`
+      blocker family after remediation.
+
+      - [ ] Stale revision rejection and no-mutation behavior are proven with runtime/focused
+      test output.
+
+      - [ ] CLI `--json` deterministic batch contract errors produce parseable JSON
+      and non-zero exit status.
+
+      - [ ] Failed batch all-or-nothing behavior is proven with before/after state
+      evidence.
+
+      - [ ] Stale receipt refresh-before-retry is proven through an actual orchestration
+      path or recorded as blocking with closure owner.
+
+      - [ ] Behavioral proof register contains no unresolved blocker-class `NEEDS_TEST`,
+      `UNPROVEN`, or `UNCERTAIN_BLOCKING` without closure path.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - `docs/RFC-deterministic-checklists.md` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/core/checklist_batch.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/cli_plan_checklist_commands.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/orchestration/evidence.py` — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Integration Retest Report
+
+
+      **Tester**: integration-verifier (independent of remediation)
+
+      **Scope**: deterministic checklist integration blocker family
+
+      **Independence Level**: L1
+
+
+      ### Commands Executed
+
+      ```text
+
+      <paste exact commands and full relevant output>
+
+      ```
+
+
+      ### Runtime Evidence
+
+      - Core stale revision rejection/no mutation: <evidence_ref>
+
+      - CLI JSON stale/invalid batch non-zero with parseable payload: <evidence_ref>
+
+      - Failed batch all-or-nothing/no mutation: <evidence_ref>
+
+      - Stale receipt refresh-before-retry: <evidence_ref>
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | RFC stale revision | | | | PROVEN/NEEDS_TEST/UNPROVEN | | |
+
+      | CLI JSON errors | | | | PROVEN/NEEDS_TEST/UNPROVEN | | |
+
+      | Batch atomicity | | | | PROVEN/NEEDS_TEST/UNPROVEN | | |
+
+      | Receipt refresh | | | | PROVEN/NEEDS_TEST/UNPROVEN | | |
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+
+      ### Headline
+
+      - [ ] PASS: integration blocker family closed.
+
+      - [ ] FAIL: blocking runtime behavior remains.'
+    depends_on:
+    - det_check_impl_blocker_remediation
+    agent: integration-verifier
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

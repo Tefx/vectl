@@ -107877,7 +107877,7 @@ phases:
       \ checked: true\n\nGaps/Notes: None."
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
-  status: pending
+  status: in_progress
   gate: Finalization gate requires docs, repo-appropriate tests/invar guard, and independent
     architecture/gate review to close checklist handling feature.
   depends_on:
@@ -107885,7 +107885,7 @@ phases:
   steps:
   - id: det_check_docs_update
     name: Document deterministic checklist flows
-    status: pending
+    status: claimed
     description: 'Sync project documentation with deterministic checklist handling
       after implementation.
 
@@ -107958,6 +107958,8 @@ phases:
 
       - [ ] No product code changed.'
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-05-18T18:17:30.189017+00:00'
   - id: det_check_full_plan_check
     name: Run checklist full-plan verification
     status: pending

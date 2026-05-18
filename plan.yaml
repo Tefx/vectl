@@ -106189,7 +106189,7 @@ phases:
       runtime caller outside the defining module, or a deliberately private tested
       reachable entry point with documented disposition.
 
-      - [ ] `ChecklistErrorCode` and `ChecklistSelector` are not orphan public surfaces
+      - [x] `ChecklistErrorCode` and `ChecklistSelector` are not orphan public surfaces
       without classification or runtime/public use.
 
       - [ ] Core `@post` contracts in `src/vectl/core/checklist_batch.py` are non-vacuous

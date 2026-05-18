@@ -101624,17 +101624,17 @@ phases:
       \ receipts keyed by item_id/revision with no natural-language fuzzy mapping.\n\
       - [x] Contract artifacts contain no completed business logic beyond stubs, signatures,\
       \ docstrings, and type definitions."
-    verification: '- [ ] Confirm `docs/RFC-deterministic-checklists.md` or equivalent
+    verification: '- [x] Confirm `docs/RFC-deterministic-checklists.md` or equivalent
       contract artifact pins every required selector/revision/error/orchestrator rule
       from the approved architecture brief.
 
-      - [ ] Confirm only contract/stub/type/doc artifacts changed; no runnable checklist
+      - [x] Confirm only contract/stub/type/doc artifacts changed; no runnable checklist
       mutation logic is completed.
 
-      - [ ] Confirm core stubs/docstrings follow INVAR core rules where applicable,
+      - [x] Confirm core stubs/docstrings follow INVAR core rules where applicable,
       including planned `@pre`/`@post` and doctest placeholders for pure core functions.
 
-      - [ ] Confirm downstream artifact list is explicit for implementation steps.'
+      - [x] Confirm downstream artifact list is explicit for implementation steps.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

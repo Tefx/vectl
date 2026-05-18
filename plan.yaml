@@ -104496,7 +104496,7 @@ phases:
     claimed_at: '2026-05-18T16:42:22.386179+00:00'
   - id: det_check_impl_liveness_probe
     name: Probe runnable checklist surfaces
-    status: claimed
+    status: done
     description: 'As a semi-blind tester (blind-tester Mode D), actually run the checklist
       entry points after implementation wiring.
 
@@ -104596,6 +104596,57 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-05-18T16:42:04.399807+00:00'
+    done_at: '2026-05-18T16:50:07.499454+00:00'
+    evidence: "status: SUCCESS\nverdict: PASS\nblockers: []\norchestrator_action_hint:\
+      \ COMPLETE\ngate_open_allowed: true\n\n## refs Read Confirmation (MANDATORY)\n\
+      - `docs/RFC-deterministic-checklists.md` — read; core checklist inventory/mutation\
+      \ service is authoritative and CLI/MCP must delegate to it; legacy keyword toggle\
+      \ and deterministic selectors/inventory semantics are specified.\n- `src/vectl/cli_plan.py`\
+      \ — NOT READ: implementation source intentionally skipped under semi-blind tester\
+      \ constraint.\n- `src/vectl/mcp_core_tools.py` — NOT READ: implementation source\
+      \ intentionally skipped under semi-blind tester constraint.\n- `src/vectl/mcp_server.py`\
+      \ — NOT READ: implementation source intentionally skipped under semi-blind tester\
+      \ constraint; runtime imported registered wrapper only.\n- `tests/test_cli.py`\
+      \ — read; contains legacy `check` and deterministic `check`/`check-inventory`\
+      \ CLI expectations.\n- `tests/test_mcp.py` — read; shows FastMCP `_ToolWrapper`\
+      \ unwrapping pattern and deterministic checklist wrapper fields.\n- `tools/vectl/README.md`\
+      \ — NOT READ: file not found at required path.\n- `pyproject.toml` — read; confirms\
+      \ script entrypoint `vectl = \"vectl.cli:app\"`.\n\n## Runnable Surface Evidence\n\
+      **CLI launch/invocation commands**:\n```bash\n.venv/bin/vectl check s3 \"Item\
+      \ A\" --plan /tmp/.../plan.yaml\n.venv/bin/vectl check-inventory s3 --json --plan\
+      \ /tmp/.../plan.yaml\n```\n**CLI output**:\n```text\nCOMMAND 1 exit=0\nUpdated\
+      \ checklist: s3\n\n→ vectl show s3\nstderr: Git commit failed for temp external\
+      \ plan path (non-blocking; mutation succeeded)\n\nCOMMAND 2 exit=0\n{\n  \"\
+      checklist_inventory_revision\": \"sha256:0713bf041441aae1f6a153dba2a5dadbcb33bcd90387b385a69cbf98f41e961c\"\
+      ,\n  \"items\": [\n    {\"checked\": true, \"field\": \"description\", \"index\"\
+      : 0, \"item_id\": \"description:0:6f6b54c26726\", \"text\": \"Item A\"},\n \
+      \   {\"checked\": false, \"field\": \"description\", \"index\": 1, \"item_id\"\
+      : \"description:1:3cbb77e145d8\", \"text\": \"Item B\"},\n    {\"checked\":\
+      \ false, \"field\": \"verification\", \"index\": 0, \"item_id\": \"verification:0:336a6a451156\"\
+      , \"text\": \"Verify CLI\"}\n  ],\n  \"step_id\": \"s3\"\n}\n\nMUTATED PLAN\
+      \ DESCRIPTION:\nChecklist:\n- [x] Item A\n- [ ] Item B\n```\n\n**MCP tool invocation**:\n\
+      ```python\nfrom vectl.mcp_server import vectl_check as registered_tool\ncallable_path\
+      \ = getattr(registered_tool, \"fn\", registered_tool)\ncallable_path(step_id=\"\
+      p1.s1\", inventory=True)\n```\n**MCP output**:\n```text\nresponse_type=dict\n\
+      {'ok': True, 'markdown': '**Checklist inventory:** p1.s1', 'step_id': 'p1.s1',\
+      \ 'checklist_inventory_revision': 'sha256:cf17305326f2646aee79b12e6ff68feb61e67b80',\
+      \ 'items': [{'item_id': 'description:0:c6287b955ee1', 'field': 'description',\
+      \ 'index': 0, 'text': 'Inventory item', 'checked': False}, {'item_id': 'verification:0:e51a91a01f13',\
+      \ 'field': 'verification', 'index': 0, 'text': 'Verify item', 'checked': False}]}\n\
+      ```\n**Path exercised**: CLI executable declared by pyproject (`.venv/bin/vectl`\
+      \ → `vectl.cli:app`) and registered MCP `_ToolWrapper.fn` → checklist inventory/mutation\
+      \ behavior → temporary plan mutation/result.\n\n## Behavioral Proof Register\n\
+      - cli_entrypoint_start: PROVEN\n- cli_legacy_operation: PROVEN\n- cli_deterministic_operation:\
+      \ PROVEN\n- mcp_registered_tool: PROVEN\n- source_to_sink_entrypoint: PROVEN\n\
+      \n## Checklist Receipt\n- [x] CLI entry point starts and accepts at least one\
+      \ legacy checklist operation.\n- [x] CLI entry point accepts at least one deterministic\
+      \ checklist operation or inventory command if exposed.\n- [x] MCP checklist\
+      \ tool wrapper can be invoked through the registered tool function and returns\
+      \ expected structured output.\n- [x] At least one documented request/command\
+      \ reaches the real entrypoint path end-to-end.\n- [x] Handler-only proof is\
+      \ not accepted.\n\n## Gaps/Notes\n- Non-blocking debt: legacy CLI/MCP mutation\
+      \ against an external temporary plan emits git autosave stderr despite exit\
+      \ 0 and successful mutation."
   - id: det_check_impl_spec_conformance
     name: Verify checklist spec conformance
     status: claimed

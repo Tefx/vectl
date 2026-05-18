@@ -102566,7 +102566,7 @@ phases:
   steps:
   - id: det_check_tests_core_red
     name: Define core checklist expected-red tests
-    status: claimed
+    status: done
     description: 'step_type: test_define_red
 
       step_intent: test_define_red
@@ -102653,6 +102653,98 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-05-18T14:56:43.173461+00:00'
+    done_at: '2026-05-18T15:18:10.571452+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## refs Read Confirmation
+
+      - docs/RFC-deterministic-checklists.md — deterministic inventory/mutation contract
+      covers ownership, supported fields, revision, selectors, structured errors,
+      marker-only mutation, batch semantics, and receipts.
+
+      - src/vectl/core_checklist.py — deterministic `get_inventory` and `mutate_checklist`
+      remain contract stubs raising `NotImplementedError("Contract stub only")`.
+
+      - src/vectl/core_plan_mutations.py — legacy `update_checklist` compatibility
+      surface remains present.
+
+      - tests/test_checklist.py — existing legacy checklist behavior tests remain
+      present and were not weakened.
+
+
+      ## Expected-Red Test Evidence
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      observed_result: red
+
+      failure_alignment: New deterministic tests fail exactly on `NotImplementedError:
+      Contract stub only` from `src/vectl/core_checklist.py`, matching the declared
+      missing deterministic implementation gap.
+
+      verdict: PASS
+
+      blockers: []
+
+      product_implementation_files_modified: false
+
+      modified_files:
+
+      - `tests/test_checklist.py`
+
+      command: `./.venv/bin/python -m pytest tests/test_checklist.py -k ''checklist
+      or deterministic or batch or inventory'' -q`
+
+      actual_output: 9 failed / 12 passed; all failures are deterministic expected-red
+      failures from `get_inventory` or `mutate_checklist` stubs.
+
+      exposed_gaps:
+
+      - inventory from description + verification
+
+      - missing/empty fields
+
+      - snapshot item_id + stale revision
+
+      - deterministic idempotent single mutation
+
+      - legacy keyword toggle compatibility in deterministic API
+
+      - invalid selector-mode combinations
+
+      - marker-only preservation
+
+      - atomic batch diagnostics
+
+
+      ## Verification
+
+      - `./.venv/bin/python -m pytest tests/test_checklist.py -k ''checklist or deterministic
+      or batch or inventory'' -q` — EXPECTED RED, 9 failed / 12 passed; failure source
+      is `NotImplementedError("Contract stub only")`.
+
+      - `git diff --check --cached` before commit — PASS after worker whitespace repair.
+
+
+      ## Files changed
+
+      - `tests/test_checklist.py`
+
+
+      ## Commit hash(es)
+
+      - worker repaired branch: `dc0abe91ab03050bbd95d675661ff31c6ab2ab73`
+
+      - mainline squash: `79fe240`
+
+
+      ## Gaps/Notes
+
+      - Expected-red lifecycle accepted: no product code modified; downstream implementation
+      step owns making these tests green.'
   - id: det_check_tests_surfaces_red
     name: Define CLI MCP and orchestration expected-red tests
     status: claimed

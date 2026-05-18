@@ -107885,7 +107885,7 @@ phases:
   steps:
   - id: det_check_docs_update
     name: Document deterministic checklist flows
-    status: claimed
+    status: done
     description: 'Sync project documentation with deterministic checklist handling
       after implementation.
 
@@ -107960,6 +107960,120 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-05-18T18:17:30.189017+00:00'
+    done_at: '2026-05-18T18:23:44.566487+00:00'
+    evidence: '## refs Read Confirmation
+
+      - `docs/RFC-deterministic-checklists.md` — existing RFC defined core ownership,
+      supported `description`/`verification` fields, deferred `evidence_template`,
+      marker-only invariant, structured errors, and receipt schema; updated with CLI/MCP
+      examples and stale retry details.
+
+      - `README.md` — existing user docs lacked checklist-specific guidance; added
+      legacy vs deterministic checklist docs and parseable CLI/MCP examples.
+
+      - `AGENTS.md` — existing rules covered evidence and plan safety; added deterministic
+      checklist receipt discipline for workers.
+
+      - `src/vectl/cli_plan.py` — confirms public CLI facade exports `check_cmd` and
+      `check_inventory_cmd`.
+
+      - `src/vectl/cli_plan_checklist_commands.py` — confirms legacy keyword path
+      and deterministic `--revision`, `--item-id`, `--field`, `--index`, `--checked`,
+      `--batch`, `--json`, and `check-inventory --json` payload fields.
+
+      - `src/vectl/mcp_core_tools.py` / `src/vectl/mcp_core_misc_tools.py` — confirms
+      MCP facade and `vectl_check` deterministic fields (`inventory`, `revision`,
+      `requests`, `item_id`, `field`, `index`, `checked`) plus structured output.
+
+      - `src/vectl/orchestration/dispatch_policy.py` — confirms worker prompts render
+      item IDs/revision/receipt schema and forbid direct mutation/fuzzy mapping.
+
+      - `src/vectl/orchestration/evidence.py` — confirms receipt parser requires item_id,
+      revision/checklist_inventory_revision, boolean checked, rejects unsupported
+      fields, and detects stale revisions with `refresh_inventory`.
+
+      - `src/vectl/orch_app.py` — confirms orchestration refreshes current checklist
+      inventory revision and blocks stale checklist receipts with `checklist_receipt_retry_action=refresh_inventory`.
+
+      - `tools/vectl/README.md` — NOT READ: missing.
+
+
+      ## Documentation Sync Evidence
+
+      - Docs changed: `docs/RFC-deterministic-checklists.md`, `README.md`, `AGENTS.md`
+
+      - Legacy path documented: yes
+
+      - Deterministic path documented: yes
+
+      - Supported fields and deferred evidence_template documented: yes
+
+      - Revision/stale retry behavior documented: yes
+
+      - Single/batch selector modes, marker-only invariant, structured errors documented:
+      yes
+
+      - Receipt flow documented: yes
+
+      - Examples verified against implementation: yes
+
+      - Product implementation files modified: false
+
+      - Worker commit hash: c6343d10059309cef2499f69dcbb7400c3f92759
+
+      - Mainline squash commit hash: e2cdfb2
+
+
+      ## Verification commands
+
+      Worker isolated worktree:
+
+      - `git diff --stat && git diff -- README.md AGENTS.md docs/RFC-deterministic-checklists.md
+      && git status --short` → documentation-only changes before commit.
+
+      - `git add AGENTS.md README.md docs/RFC-deterministic-checklists.md && git commit
+      -m "docs: sync deterministic checklist guidance"` → committed docs update.
+
+      - `git status --short && git rev-parse HEAD` → clean; HEAD `c6343d10059309cef2499f69dcbb7400c3f92759`.
+
+
+      Mainline final-state verification:
+
+      - `git diff --name-only HEAD~1..HEAD` → `AGENTS.md`, `README.md`, `docs/RFC-deterministic-checklists.md`
+      only.
+
+      - `uv run vectl check --help` → exit 0; documented `check` options present.
+
+      - `uv run vectl check-inventory --help` → exit 0; documented inventory command
+      present.
+
+
+      checklist_receipt:
+
+      - item_id: description:0:legacy_path; checked: true
+
+      - item_id: description:1:supported_fields; checked: true
+
+      - item_id: description:2:evidence_template_deferred; checked: true
+
+      - item_id: description:3:revision_scope; checked: true
+
+      - item_id: description:4:selector_modes; checked: true
+
+      - item_id: description:5:receipt_flow; checked: true
+
+      - item_id: description:6:examples_match; checked: true
+
+      - item_id: verification:0:legacy_vs_deterministic; checked: true
+
+      - item_id: verification:1:receipt_authority; checked: true
+
+      - item_id: verification:2:examples_fields; checked: true
+
+      - item_id: verification:3:no_product_code; checked: true
+
+
+      Gaps/Notes: None.'
   - id: det_check_full_plan_check
     name: Run checklist full-plan verification
     status: pending

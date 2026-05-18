@@ -106504,7 +106504,7 @@ phases:
       - none'
   - id: det_check_impl_blocker_retest
     name: Aggregate deterministic checklist blocker retest closure
-    status: claimed
+    status: done
     description: 'Aggregate retest closure for the batched deterministic checklist
       remediation path.
 
@@ -106671,6 +106671,331 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-18T17:53:45.907765+00:00'
+    done_at: '2026-05-18T18:04:13.079663+00:00'
+    evidence: '## refs Read Confirmation
+
+      - `docs/RFC-deterministic-checklists.md` — deterministic mutations cover description/verification,
+      stale revisions require `refresh_inventory`, worker receipts require `item_id`,
+      `revision`, `checked`, and stale receipt revisions must be rejected after inventory
+      refresh.
+
+      - `src/vectl/core/checklist_batch.py` — stale revision branch compares supplied
+      revision to current snapshot and raises `StaleRevisionError`; mutation happens
+      only after validation/resolution/duplicate checks; core contracts are structural.
+
+      - `src/vectl/core_checklist.py` — retry guidance maps `stale_revision` to `refresh_inventory`;
+      unsupported fields raise structured `unsupported_field`; public aliases are
+      type-only/static API surfaces.
+
+      - `src/vectl/cli_plan_checklist_commands.py` — deterministic CLI catches exceptions,
+      emits JSON error payload with exit 1, exposes `check` and `check-inventory`
+      handlers.
+
+      - `src/vectl/orchestration/evidence.py` — minimal RFC checklist receipt parses
+      with `{item_id, revision, checked}`; stale receipt revision is rejected with
+      `retry action=refresh_inventory` when current inventory revision differs.
+
+      - `src/vectl/orchestration/prompt_materialization.py` and `src/vectl/orchestration/dispatch_policy.py`
+      — checklist receipt contract/inventory revision and item IDs are rendered into
+      dispatch artifacts/prompts.
+
+      - `src/vectl/orchestration/core_adapter.py` and `src/vectl/orch_app.py` — dispatch
+      data is refreshed from authoritative plan data; terminal freeform evidence route
+      refreshes current step data before assessment and blocks completion on stale
+      receipts.
+
+      - `tests/test_checklist.py`, `tests/test_cli.py`, `tests/test_mcp.py`, `tests/orchestration/unit/test_checklist_receipt_contract.py`,
+      `tests/orchestration/unit/test_orch_app.py` — targeted evidence covers stale
+      no-mutation, CLI JSON nonzero, MCP stale rejection, RFC receipt schema, and
+      route-level stale receipt closure.
+
+      - `tools/vectl/README.md` — NOT READ: missing.
+
+
+      ## Aggregate Blocker Retest Closure
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: none
+
+      verdict: PASS
+
+      headline: PASS
+
+      proof_gap_status: NONE
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+      product_implementation_files_modified: false
+
+      Commit hash(es): none — verify-only step made no changes; worktree status was
+      clean.
+
+
+      ### Family Retest Review
+
+      | Retest step | Agent | Headline | Evidence quality | Remaining blockers |
+
+      | --- | --- | --- | --- | --- |
+
+      | det_check_impl_blocker_integration_retest | integration-verifier | FAIL_REPORT_ACCEPTED
+      with one delegated blocker | Core/CLI/MCP stale/all-or-nothing evidence accepted;
+      stale receipt runtime gap explicitly transferred to focused owner. | None after
+      focused stale receipt retest closure. |
+
+      | det_check_impl_blocker_spec_retest | spec-verifier | PASS | RFC-required fields,
+      stale retry guidance, unsupported-field disposition; targeted 35-test family
+      green. | None. |
+
+      | det_check_impl_blocker_wiring_retest | wiring-auditor | PASS | Runtime call
+      chain verified: `orch_app.py` → `assess_freeform_evidence` → `parse_checklist_receipt`;
+      public aliases governed. | None. |
+
+      | det_check_impl_receipt_refresh_retest | integration-verifier | PASS | Route-level
+      stale receipt test rerun; pre-completion rejected-with-refresh path proven.
+      | None. |
+
+
+      ### B1-B8 Closure Matrix
+
+      | Blocker | Closure evidence ref | Status | Closure path | Gate decision basis
+      |
+
+      | --- | --- | --- | --- | --- |
+
+      | B1 stale revision bypass | `tests/test_checklist.py`, `src/vectl/core/checklist_batch.py`;
+      no production literal `rev1` bypass found by reviewer | PROVEN | current revision
+      comparison raises `StaleRevisionError`; no mutation before validation | tests/source
+      show stale rejection and no mutation |
+
+      | B2 CLI JSON false-green | `src/vectl/cli_plan_checklist_commands.py`, `tests/test_cli.py`
+      | PROVEN | CLI emits parseable JSON error and exits nonzero | stale/unsupported
+      deterministic errors covered by tests |
+
+      | B3 RFC receipt schema | `src/vectl/orchestration/evidence.py`, `tests/orchestration/unit/test_checklist_receipt_contract.py`
+      | PROVEN | minimal `{item_id, revision, checked}` accepted | parser/prompt contract
+      aligned with RFC |
+
+      | B4 all-or-nothing + stale receipt refresh | `tests/test_checklist.py`, `tests/orchestration/unit/test_orch_app.py`,
+      `src/vectl/orch_app.py` | PROVEN | batch validates before applying; stale receipt
+      route refreshes inventory and blocks completion | route-level runtime path and
+      all-or-nothing covered |
+
+      | B5 receipt validation reachability | `src/vectl/orch_app.py`, `src/vectl/orchestration/evidence.py`
+      | PROVEN | freeform evidence normalization calls receipt validation before complete_step
+      | runtime-reachable, not parser-only/private-only |
+
+      | B6 core contracts | `src/vectl/core/checklist_batch.py` | PROVEN | contracts
+      assert diagnostic/result tuple/code/revision structure | reviewer found non-vacuous
+      structural contracts |
+
+      | B7 public aliases | `src/vectl/core_checklist.py` | PROVEN | type-only aliases
+      used in dataclass fields/signatures and governed by comments | no ungoverned
+      public orphan surface remains |
+
+      | B8 unsupported-field inventory | RFC + CLI/core tests | PROVEN | unsupported
+      fields fail with `unsupported_field`; evidence_template remains RFC-deferred
+      | implemented/verified path intersects deterministic contract |
+
+      | Non-blocking liveness debt | targeted source/test scan and supplied retest
+      inputs | NON_INTERSECTING | no unresolved blocking liveness marker in relevant
+      deterministic checklist paths | does not block phase check |
+
+
+      ### behavioral_proof_register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | RFC stale revision | stale revisions reject and require `refresh_inventory`;
+      no production `rev1` bypass | core, CLI, MCP stale paths | targeted 35-test
+      family and source audit | PROVEN | core+CLI+MCP tests | green targeted output
+      and source comparison |
+
+      | RFC batch all-or-nothing | failed batch does not partially mutate | core failed
+      mixed batch | `tests/test_checklist.py`; targeted test run | PROVEN | core behavior
+      test | unchanged step description on failure |
+
+      | RFC receipt schema | minimal receipt entries use `item_id`, `revision`, `checked`
+      | parser and prompt contract | receipt contract tests and prompt sources | PROVEN
+      | parser+prompt rendering | aliases optional only |
+
+      | RFC stale receipt retry | orchestrator refreshes inventory before rejection/retry
+      and does not complete stale receipt | route-level runtime path | `src/vectl/orch_app.py`;
+      `test_route_terminal_execution_refreshes_inventory_before_rejecting_stale_receipt`
+      | PROVEN | route_terminal_execution runtime method | `complete_step` not called;
+      review_failed case returned |
+
+      | CLI structured errors | deterministic CLI errors are parseable JSON and nonzero
+      | CLI handler invocation | `tests/test_cli.py`; help/smoke checks | PROVEN |
+      Typer command tests | JSON parsed and error codes asserted |
+
+      | unsupported fields | unsupported field selectors fail deterministically |
+      core and CLI batch path | RFC + tests | PROVEN | structured unsupported_field
+      error | non-silent failure verified |
+
+
+      ### Wiring Audit Results (W1-W8)
+
+      - W1 Core ownership: PASS — core service owns parsing/mutation; batch validation
+      occurs before mutation.
+
+      - W2 CLI registration: PASS — `check` and `check-inventory` registered and imported.
+
+      - W3 CLI handler/error contract: PASS — deterministic exceptions print JSON
+      when requested and exit 1.
+
+      - W4 MCP stale behavior: PASS — MCP stale `rev1` rejection with unchanged plan
+      covered.
+
+      - W5 Prompt injection: PASS — prompt renders checklist inventory, exact IDs,
+      revision, and receipt template.
+
+      - W6 Dispatch step data: PASS — authoritative inventory/revision propagated
+      into dispatch spec.
+
+      - W7 Runtime stale receipt route: PASS — terminal freeform evidence path refreshes
+      current step data and returns review_failed with retry refs.
+
+      - W8 Completion ordering: PASS — freeform evidence failure detection occurs
+      before `complete_step`; route test asserts completion not called.
+
+
+      ### Escape Hatch Audit
+
+      Relevant `@invar:allow` scan found `src/vectl/orch_app.py:1` file_size allow
+      on orchestration app composition root; reviewer classified it as governed and
+      not a stale receipt logic escape because route-level tests cover the path and
+      invar guard passed. No `@invar:allow` found in core deterministic checklist,
+      CLI deterministic checklist, evidence parser, prompt materialization, or dispatch
+      policy files. Other repo annotations were outside this deterministic checklist
+      remediation path.
+
+
+      ### CLI Surface Snapshot / Executability Matrix
+
+      `uv run vectl check --help` and `uv run vectl check-inventory --help` passed
+      on mainline. Surface includes `check` (toggle/add/deterministic checklist mutation)
+      and `check-inventory` (show deterministic inventory).
+
+      | Command | Surface Listed? | Handler Exists? | --help Works? | Smoke Test |
+      Status |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      | `vectl check` | Yes | `src/vectl/cli.py` registers `check_cmd`; handler in
+      `cli_plan_checklist_commands.py` | Yes | deterministic stale JSON test passed
+      | PASS |
+
+      | `vectl check-inventory` | Yes | `src/vectl/cli.py` registers `check_inventory_cmd`;
+      handler in `cli_plan_checklist_commands.py` | Yes | inventory JSON test covered
+      by deterministic CLI suite/source review | PASS |
+
+      Regression/dangling check: no deterministic checklist commands implied by RFC/tests
+      were removed; both registered commands resolve to concrete handlers.
+
+
+      ### Verification commands
+
+      Worker isolated worktree:
+
+      - `.venv/bin/python -m pytest tests/test_checklist.py tests/orchestration/unit/test_checklist_receipt_contract.py
+      tests/test_cli.py::TestDeterministicCheckCLI::test_json_stale_revision_exits_nonzero_with_parseable_error
+      tests/test_cli.py::TestDeterministicCheckCLI::test_json_batch_unsupported_field_exits_nonzero
+      tests/test_mcp.py::TestDeterministicCheckMCP::test_mcp_stale_revision_rejected_without_mutation
+      -q` → 35 passed.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_orch_app.py -k stale_receipt
+      -q` → 1 passed, 76 deselected.
+
+      - CLI help checks for `check` and `check-inventory` → exit 0.
+
+      - invar changed guard → passed; no changed files.
+
+
+      Mainline final-state verification:
+
+      - `uv run pytest tests/test_checklist.py tests/orchestration/unit/test_checklist_receipt_contract.py
+      tests/test_cli.py::TestDeterministicCheckCLI::test_json_stale_revision_exits_nonzero_with_parseable_error
+      tests/test_cli.py::TestDeterministicCheckCLI::test_json_batch_unsupported_field_exits_nonzero
+      tests/test_mcp.py::TestDeterministicCheckMCP::test_mcp_stale_revision_rejected_without_mutation
+      -q` → 35 passed.
+
+      - `uv run pytest tests/orchestration/unit/test_orch_app.py -k stale_receipt
+      -q` → 1 passed, 76 deselected.
+
+      - `uv run vectl check --help` → exit 0, help surface present.
+
+      - `uv run vectl check-inventory --help` → exit 0, help surface present.
+
+      - `uv run invar guard --changed` → status passed, 0 errors, 0 warnings; informational
+      findings only on pre-existing untracked `test_mod.py` and `test_mod_2.py`.
+
+
+      ### Real integration vs fixture distinction
+
+      Stale receipt closure is not parser-only. `tests/orchestration/unit/test_orch_app.py::test_route_terminal_execution_refreshes_inventory_before_rejecting_stale_receipt`
+      invokes the real `OrchestrationApp.route_terminal_execution()` method with a
+      successful `ExecutionResult` and `output_contract="freeform_evidence"`. It uses
+      test doubles only for runtime/core-adapter boundaries, while verifying production
+      route ordering: refresh current `StepData`, pass current revision to `assess_freeform_evidence`,
+      return `ResolutionCase(case_source="review_failed")`, include `checklist_receipt_retry_action=refresh_inventory`,
+      and do not call `complete_step`.
+
+
+      Final recommendation: OPEN
+
+      uncertainty_sources: []
+
+
+      checklist_receipt:
+
+      - item_id: description:0:integration_retest; checked: true
+
+      - item_id: description:1:spec_retest; checked: true
+
+      - item_id: description:2:wiring_retest; checked: true
+
+      - item_id: description:3:B1; checked: true
+
+      - item_id: description:4:B2; checked: true
+
+      - item_id: description:5:B3; checked: true
+
+      - item_id: description:6:B4; checked: true
+
+      - item_id: description:7:B5; checked: true
+
+      - item_id: description:8:B6; checked: true
+
+      - item_id: description:9:B7; checked: true
+
+      - item_id: description:10:B8; checked: true
+
+      - item_id: description:11:liveness_debt; checked: true
+
+      - item_id: verification:0:phase_check; checked: true
+
+      - item_id: verification:1:closure_matrix; checked: true
+
+      - item_id: verification:2:proof_register; checked: true
+
+      - item_id: verification:3:no_unresolved; checked: true
+
+      - item_id: verification:4:final_recommendation; checked: true
+
+
+      Gaps/Notes: None.'
   - id: det_check_impl_receipt_refresh_remediation
     name: Repair stale receipt runtime refresh path
     status: done

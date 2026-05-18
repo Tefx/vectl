@@ -16,6 +16,7 @@ from typing import Any, Literal, cast
 
 import pytest
 
+from vectl.core_checklist import ChecklistItem
 from vectl.io import save_plan
 from vectl.models import IsolationMode, Phase, Plan, Step
 from vectl.orch_app import (
@@ -71,6 +72,7 @@ from vectl.orchestration.runners import (
     RunnerLaunchResult,
     RunnerPollResult,
 )
+from vectl.orchestration.step_data import StepData
 
 
 def _skip_collect_and_route_terminal(
@@ -1885,6 +1887,98 @@ def test_route_terminal_execution_blocks_freeform_failure_evidence(
     assert case.case_source == "review_failed"
     assert case.blocked_step_ids == ("core.ready",)
     assert "freeform evidence failure" in case.reason
+    assert completed == []
+
+
+def test_route_terminal_execution_refreshes_inventory_before_rejecting_stale_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _build_app(tmp_path)
+    orch = cast(Any, app)
+    completed: list[str] = []
+    refreshed_steps: list[str] = []
+
+    monkeypatch.setattr(
+        app._runtime,
+        "begin_reconcile",
+        lambda execution_id: ReconcileResult(
+            execution_id=execution_id,
+            workspace_id="ws-1",
+            status="noop",
+            summary="nothing to merge",
+        ),
+    )
+    monkeypatch.setattr(app._runtime, "can_complete", lambda _execution_id: (True, "ok"))
+    monkeypatch.setattr(app._runtime, "reconcile_disposition", lambda _execution_id: "noop")
+    monkeypatch.setattr(
+        app._core_adapter,
+        "complete_step",
+        lambda step_id, evidence, *, reconcile_disposition: completed.append(step_id),
+    )
+
+    def refresh_current_inventory(step_id: str) -> StepData:
+        refreshed_steps.append(step_id)
+        return StepData(
+            step_id=step_id,
+            description="- [ ] current checklist item",
+            verification="",
+            refs=(),
+            evidence_template="",
+            verify=None,
+            agent="python-executor",
+            checklist_inventory_revision="rev-current",
+            checklist_inventory=(
+                ChecklistItem(
+                    item_id="description:0:abc123",
+                    field="description",
+                    index=0,
+                    text="current checklist item",
+                    checked=False,
+                ),
+            ),
+        )
+
+    monkeypatch.setattr(
+        app._core_adapter,
+        "load_step_data_for_dispatch",
+        refresh_current_inventory,
+    )
+
+    case = orch.route_terminal_execution(
+        step_id="core.ready",
+        execution_id="exec-stale-receipt",
+        dispatch_spec=DispatchSpec(
+            source_kind="step",
+            source_id="core.ready",
+            role_id="python-executor",
+            role_source="default",
+            execution_context="linked_worktree",
+            runner="codex",
+            session_mode="fresh",
+            output_contract="freeform_evidence",
+        ),
+        execution_result=ExecutionResult(
+            step_id="core.ready",
+            status="success",
+            output_summary=(
+                "OpenCode completed successfully (exit 0); stdout=checklist_receipt:\n"
+                "  - item_id: description:0:abc123\n"
+                "    revision: rev1\n"
+                "    checked: true\n"
+            ),
+        ),
+    )
+
+    assert refreshed_steps == ["core.ready"]
+    assert case is not None
+    assert case.case_source == "review_failed"
+    assert case.blocked_step_ids == ("core.ready",)
+    assert case.reason is not None
+    assert "stale checklist_receipt revision" in case.reason
+    assert "rev1" in case.reason
+    assert "rev-current" in case.reason
+    assert "checklist_receipt_retry_action=refresh_inventory" in case.artifact_refs
+    assert "current_checklist_inventory_revision=rev-current" in case.artifact_refs
     assert completed == []
 
 

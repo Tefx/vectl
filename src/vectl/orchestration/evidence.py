@@ -34,7 +34,11 @@ class ChecklistReceiptValidationError(ValueError):
     """Raised when a worker checklist receipt violates deterministic schema."""
 
 
-def assess_freeform_evidence(output_summary: str) -> EvidenceAssessment:
+def assess_freeform_evidence(
+    output_summary: str,
+    *,
+    current_checklist_inventory_revision: str | None = None,
+) -> EvidenceAssessment:
     """Detect explicit failure reports inside freeform runner evidence.
 
     Freeform coder roles may still emit structured YAML/JSON snippets such as
@@ -44,7 +48,14 @@ def assess_freeform_evidence(output_summary: str) -> EvidenceAssessment:
 
     payload = extract_runner_payload(output_summary)
     summary = summarize_plan_evidence(output_summary)
-    reason = _checklist_receipt_failure_reason(output_summary) or _structured_failure_reason(payload) or _text_failure_reason(payload)
+    reason = (
+        _checklist_receipt_failure_reason(
+            output_summary,
+            current_checklist_inventory_revision=current_checklist_inventory_revision,
+        )
+        or _structured_failure_reason(payload)
+        or _text_failure_reason(payload)
+    )
     return EvidenceAssessment(failed=reason is not None, reason=reason, summary=summary)
 
 
@@ -209,12 +220,31 @@ def _receipt_revision(mapping: dict[str, Any], *, index: int) -> str:
     return value.strip()
 
 
-def _checklist_receipt_failure_reason(output_summary: str) -> str | None:
+def _checklist_receipt_failure_reason(
+    output_summary: str,
+    *,
+    current_checklist_inventory_revision: str | None = None,
+) -> str | None:
     try:
-        parse_checklist_receipt(output_summary)
+        receipt = parse_checklist_receipt(output_summary)
     except ChecklistReceiptValidationError as exc:
         return f"invalid checklist_receipt: {exc}"
-    return None
+    if receipt is None or current_checklist_inventory_revision is None:
+        return None
+    stale_revisions = tuple(
+        item.revision
+        for item in receipt.items
+        if item.revision != current_checklist_inventory_revision
+    )
+    if not stale_revisions:
+        return None
+    stale_preview = ", ".join(repr(revision) for revision in sorted(set(stale_revisions)))
+    return (
+        "stale checklist_receipt revision: "
+        f"received {stale_preview}; current checklist_inventory_revision "
+        f"is {current_checklist_inventory_revision!r}; retry action=refresh_inventory; "
+        "refresh the step checklist inventory and re-evaluate the target state"
+    )
 
 
 def _structured_failure_reason(payload: str) -> str | None:

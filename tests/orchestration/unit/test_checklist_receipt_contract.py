@@ -158,3 +158,33 @@ def test_receipt_validation_is_reachable_from_freeform_evidence_assessment() -> 
     assert assessment.failed is True
     assert assessment.reason is not None
     assert "invalid checklist_receipt" in assessment.reason
+
+
+def test_freeform_assessment_rejects_stale_receipt_after_inventory_refresh() -> None:
+    assessment = assess_freeform_evidence(
+        "OpenCode completed successfully (exit 0); stdout=checklist_receipt:\n"
+        "  - item_id: description:0:abc123\n"
+        "    revision: rev1\n"
+        "    checked: true\n",
+        current_checklist_inventory_revision="rev-current",
+    )
+
+    assert assessment.failed is True
+    assert assessment.reason is not None
+    assert "stale checklist_receipt revision" in assessment.reason
+    assert "rev1" in assessment.reason
+    assert "rev-current" in assessment.reason
+    assert "retry action=refresh_inventory" in assessment.reason
+
+
+def test_freeform_assessment_accepts_receipt_matching_refreshed_inventory() -> None:
+    assessment = assess_freeform_evidence(
+        "OpenCode completed successfully (exit 0); stdout=checklist_receipt:\n"
+        "  - item_id: description:0:abc123\n"
+        "    revision: rev-current\n"
+        "    checked: true\n",
+        current_checklist_inventory_revision="rev-current",
+    )
+
+    assert assessment.failed is False
+    assert assessment.reason is None

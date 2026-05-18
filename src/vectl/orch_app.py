@@ -1181,9 +1181,29 @@ class OrchestrationApp:
 
         if output_contract != "freeform_evidence":
             return None
-        assessment = assess_freeform_evidence(raw_output)
+        step_data = self._core_adapter.load_step_data_for_dispatch(step_id)
+        current_revision = (
+            step_data.checklist_inventory_revision if step_data is not None else None
+        )
+        assessment = assess_freeform_evidence(
+            raw_output,
+            current_checklist_inventory_revision=current_revision,
+        )
         if not assessment.failed:
             return None
+        artifact_refs = [
+            f"role_id={role_id}",
+            f"output_contract={output_contract}",
+            "freeform_evidence_failure",
+        ]
+        if "stale checklist_receipt revision" in (assessment.reason or ""):
+            artifact_refs.extend(
+                (
+                    "checklist_receipt_stale_revision",
+                    "checklist_receipt_retry_action=refresh_inventory",
+                    f"current_checklist_inventory_revision={current_revision}",
+                )
+            )
         return ResolutionCase(
             case_id=f"case-{generate_run_id()}",
             case_source="review_failed",
@@ -1193,11 +1213,7 @@ class OrchestrationApp:
             roster=snapshots.roster,
             runtime=snapshots.runtime,
             blocked_step_ids=(step_id,),
-            artifact_refs=(
-                f"role_id={role_id}",
-                f"output_contract={output_contract}",
-                "freeform_evidence_failure",
-            ),
+            artifact_refs=tuple(artifact_refs),
         )
 
     def _parse_structured_review_result(self, raw_output: str) -> StructuredReviewResult:

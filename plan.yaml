@@ -105370,7 +105370,7 @@ phases:
       but deterministic item_id/revision paths must not inherit fuzzy or magic-fixture
       behavior.
 
-      - [ ] Contract guardrail: Core-zone `@pre`/`@post` contracts are non-vacuous,
+      - [x] Contract guardrail: Core-zone `@pre`/`@post` contracts are non-vacuous,
       reference meaningful structures, and have doctest/test coverage where required
       by project Invar rules.
 

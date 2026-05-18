@@ -105324,7 +105324,7 @@ phases:
       errors return non-zero command status while preserving a parseable JSON error
       payload and legacy compatibility.
 
-      - [ ] B3 receipt schema/naming divergence: align implementation/prompt/parser
+      - [x] B3 receipt schema/naming divergence: align implementation/prompt/parser
       to accept RFC entries with exactly required `item_id`, `revision`, `checked`;
       allow additive aliases only with explicit backward-compatible tests.
 

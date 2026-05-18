@@ -105328,7 +105328,7 @@ phases:
       to accept RFC entries with exactly required `item_id`, `revision`, `checked`;
       allow additive aliases only with explicit backward-compatible tests.
 
-      - [ ] B4 runtime proof path: add focused proof for failed-batch all-or-nothing/no-mutation
+      - [x] B4 runtime proof path: add focused proof for failed-batch all-or-nothing/no-mutation
       behavior and stale receipt refresh-before-retry, or record an explicit non-intersection
       disposition if truly outside this phase gate.
 

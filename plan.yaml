@@ -93325,7 +93325,7 @@ phases:
       escape; guard status passed.'
   - id: cli-surface-preservation-uiux-audit
     name: CLI surface preservation UI/UX audit after residual remediation
-    status: claimed
+    status: done
     description: 'VALIDATION / UIUX AUDIT. As an independent `uiux-auditor`, rerun
       the CLI output/readability audit after the focused residual full-guard remediation
       path completes.
@@ -93515,6 +93515,184 @@ phases:
     agent: uiux-auditor
     claimed_by: uiux-auditor
     claimed_at: '2026-05-18T12:51:32.842802+00:00'
+    done_at: '2026-05-18T12:59:41.509266+00:00'
+    evidence: '## refs Read Confirmation
+
+      - AGENTS.md — Auditor read evidence and step-ID guidance; evidence is mandatory.
+
+      - INVAR.md — Auditor read escape-hatch guidance; escape hatches must be rare
+      and reasoned.
+
+
+      ## UI/UX Audit Evidence
+
+      Commit hash(es): none (verify-only, no changes).
+
+      Files changed: none; temporary `test_json.py` and `test_regression.py` artifacts
+      were removed; final worktree status was clean.
+
+      Spec link: step_id `cli-surface-preservation-uiux-audit`.
+
+
+      ### Audit Decision
+
+      headline: PASS
+
+      proof_gap_status: NONE
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+
+      ### Pasted Help/Surface Snapshots
+
+      Auditor pasted complete help captures for:
+
+      - `.venv/bin/vectl --help` — root command list including `mcp`, `render`, `agents-md`,
+      `status`, `show`, mutation/lifecycle commands, `dashboard`, `repair`, and `orch`.
+
+      - `.venv/bin/vectl orch --help` — orchestration commands including run/resume/recover/status/events/logs/artifacts/actions/case/control/config/drive/migration
+      surfaces.
+
+      - `.venv/bin/vectl orch inspect --help` — inspect subcommands: status/events/logs/artifacts/actions.
+
+      - `.venv/bin/vectl orch case --help` — case subcommands: list/show/respond.
+
+      - `.venv/bin/vectl show --help` — target argument and plan option.
+
+      - `.venv/bin/vectl agents-md --help` — `--dir`, `--target`, and help options.
+
+
+      ### Command Executability Matrix
+
+      | Surface | Command | Expected result class | Exit status | PASS/FAIL |
+
+      |---|---|---|---|---|
+
+      | Root | `vectl --help` | Help text, lists commands | 0 | PASS |
+
+      | Orchestration | `vectl orch --help` | Help text, lists orch commands | 0 |
+      PASS |
+
+      | Orchestration Inspect | `vectl orch inspect --help` | Help text, lists inspect
+      tools | 0 | PASS |
+
+      | Orchestration Case | `vectl orch case --help` | Help text, lists case tools
+      | 0 | PASS |
+
+      | Plan Read/Show | `vectl show --help` | Help text, target/options | 0 | PASS
+      |
+
+      | Agent Render | `vectl agents-md --help` | Help text, onboarding/agents options
+      | 0 | PASS |
+
+      | Legacy Facade | `from vectl.core import RecoverResult` | Import success |
+      0 | PASS |
+
+      | JSON Machine-readable | `vectl checkpoint --lite` | Parseable JSON dict |
+      0 | PASS |
+
+
+      ### Facade Import Check
+
+      ```text
+
+      $ .venv/bin/python -c "from vectl.core import RecoverResult; print(''RecoverResult
+      import ok:'', RecoverResult)"
+
+      RecoverResult import ok: <class ''vectl.core_plan_mutations.RecoverResult''>
+
+      ```
+
+
+      ### JSON ANSI Check
+
+      ```text
+
+      $ .venv/bin/python test_json.py
+
+      PASS: No ANSI escapes found.
+
+      PASS: Successfully parsed JSON.
+
+      PASS: Found schema vectl.checkpoint/v1 and 2 active steps.
+
+      ```
+
+      Orchestrator mainline check also passed: `checkpoint json parse: PASS vectl.checkpoint/v1`
+      and no ANSI detected.
+
+
+      ### Regression/Dangling Detection
+
+      ```text
+
+      $ .venv/bin/python test_regression.py
+
+      Running .venv/bin/vectl --help
+
+      Running .venv/bin/vectl orch --help
+
+      Running .venv/bin/vectl orch inspect --help
+
+      Running .venv/bin/vectl orch case --help
+
+      Running .venv/bin/vectl show --help
+
+      Running .venv/bin/vectl agents-md --help
+
+      PASS: Facade import RecoverResult OK.
+
+      PASS: All commands exited 0 and showed no errors.
+
+      ```
+
+
+      ### Mainline Verification
+
+      Orchestrator re-ran mainline CLI checks with `uv run vectl --help`, `orch --help`,
+      `orch inspect --help`, `orch case --help`, `show --help`, `agents-md --help`,
+      `from vectl.core import RecoverResult`, and `vectl checkpoint --lite` JSON parse/no-ANSI
+      check. All passed.
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | CLI-HELP-ROOT | Root CLI help executable | exit 0 with help | `vectl --help`
+      snapshot | PROVEN | PASS | Rendered cleanly without exception |
+
+      | CLI-HELP-ORCH | Orchestration commands executable | exit 0 with help | `vectl
+      orch --help` snapshot | PROVEN | PASS | Rendered cleanly with command groups
+      |
+
+      | CLI-HELP-INSPECT | Nested inspect/case commands work | exit 0 with help |
+      inspect/case snapshots | PROVEN | PASS | Rendered cleanly with bound commands
+      |
+
+      | CLI-HELP-AGENTS | agents-md surface works | exit 0 with help | `vectl agents-md
+      --help` snapshot | PROVEN | PASS | Rendered cleanly |
+
+      | FACADE-COMPAT | Legacy `vectl.core` import works | `RecoverResult` import
+      ok | Python import check | PROVEN | PASS | Import succeeded |
+
+      | JSON-CLEAN | Checkpoint output JSON parseable and ANSI-free | JSON parse +
+      ANSI scan | Python JSON check | PROVEN | PASS | Machine-readable payload validated
+      |
+
+
+      ### Gaps/Notes
+
+      None. CLI terminal surfaces are readable, commands render without handler/import
+      failures, machine-readable checkpoint output is parseable and ANSI-free, and
+      the prior `RecoverResult` facade regression is resolved.'
   - id: fix-io-storage-claims-residual
     name: Fix claims residual invar guard findings
     status: done

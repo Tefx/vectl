@@ -107895,7 +107895,7 @@ phases:
       - [x] Document legacy human keyword toggle path separately from deterministic
       item_id/revision path.
 
-      - [ ] Document supported first-version fields: `description` and `verification`
+      - [x] Document supported first-version fields: `description` and `verification`
       only.
 
       - [ ] Document `evidence_template` as deferred/unsupported for first version.

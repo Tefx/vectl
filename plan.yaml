@@ -100811,7 +100811,7 @@ phases:
       \ completion.\n\n## Acceptance Checklist\n- [x] A standalone artifact file exists\
       \ under `docs/invar_guard_remediation/` and is not a managed plan summary.\n\
       - [x] Artifact includes pasted help/surface snapshots for the required CLI surfaces\
-      \ or justified current equivalents.\n- [ ] Artifact includes command executability\
+      \ or justified current equivalents.\n- [x] Artifact includes command executability\
       \ matrix with actual commands, expected result classes, exit statuses, PASS/FAIL\
       \ values, and evidence references.\n- [ ] Artifact includes JSON parseability\
       \ and zero-ANSI proof with exact command and pasted output.\n- [ ] Artifact\

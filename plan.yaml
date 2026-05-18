@@ -105138,7 +105138,7 @@ phases:
 
       - [x] Marker-only mutation invariant holds for single and batch paths.
 
-      - [ ] Batch mutation is all-or-nothing with per-selector diagnostics.
+      - [x] Batch mutation is all-or-nothing with per-selector diagnostics.
 
       - [ ] CLI/MCP surfaces are runnable and legacy compatible.
 

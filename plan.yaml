@@ -104117,16 +104117,16 @@ phases:
 
 
       Independence Level: L2 (cross-module CLI/MCP/orchestration seams).'
-    verification: '- [ ] phase-check protecting `det_check_impl_gate`: run `pytest
+    verification: '- [x] phase-check protecting `det_check_impl_gate`: run `pytest
       tests/test_checklist.py tests/test_cli.py tests/test_mcp.py -k ''checklist or
       deterministic or batch or revision'' -q` and report output.
 
-      - [ ] Run focused orchestration receipt tests if present and report output.
+      - [x] Run focused orchestration receipt tests if present and report output.
 
-      - [ ] Provide one real CLI invocation and one MCP-wrapper/tool-call proof exercising
+      - [x] Provide one real CLI invocation and one MCP-wrapper/tool-call proof exercising
       source → sink path.
 
-      - [ ] Structured behavioral proof register covers PROVEN/NEEDS_TEST/UNPROVEN
+      - [x] Structured behavioral proof register covers PROVEN/NEEDS_TEST/UNPROVEN
       status for each contract requirement.'
     evidence_template: '## Verification Report
 

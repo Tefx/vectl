@@ -108363,7 +108363,7 @@ phases:
 
       Review checklist:
 
-      - [ ] Canonical core checklist service/parser owns inventory, revision, selector
+      - [x] Canonical core checklist service/parser owns inventory, revision, selector
       resolution, and marker mutation for CLI and MCP.
 
       - [ ] CLI/MCP/orchestration surfaces delegate to core service and do not re-derive

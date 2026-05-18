@@ -102608,7 +102608,7 @@ phases:
       - [x] Legacy keyword toggle remains case-insensitive and fuzzy-compatible for
       human usage.
 
-      - [ ] Invalid selector-mode combinations are rejected deterministically.
+      - [x] Invalid selector-mode combinations are rejected deterministically.
 
       - [ ] Marker-only preservation keeps item text, indentation, ordering, and surrounding
       Markdown unchanged.

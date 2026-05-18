@@ -90838,7 +90838,7 @@ phases:
       - [x] Authoritative `uvx invar-tools guard --all` output is pasted from current
       mainline.
 
-      - [ ] Doctest/CrossHair/property phases are not skipped due to prior failures
+      - [x] Doctest/CrossHair/property phases are not skipped due to prior failures
       unless the tool explicitly reports no applicable checks.
 
       - [ ] No uncontracted `**/core/**` code was introduced.

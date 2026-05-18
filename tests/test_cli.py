@@ -3987,3 +3987,45 @@ class TestDriveCLI:
         assert "pause" in result.output
         assert "unpause" in result.output
         assert "stop" in result.output
+
+
+class TestDeterministicCheckCLI:
+    def test_legacy_keyword_toggle_works(self, plan_file):
+        from tests.test_cli import runner, app
+        result = runner.invoke(app, ["check", "s3", "Item A", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert "Updated checklist" in result.output
+
+    def test_deterministic_mutation_requires_revision(self, plan_file):
+        from tests.test_cli import runner, app
+        # If --revision is missing, it should fail with a structured error, but right now the CLI parser fails.
+        # Let's assert it fails with the specific StaleRevisionError or missing argument error.
+        result = runner.invoke(app, ["check", "s3", "--item-id", "some-id", "--checked", "true", "--plan", str(plan_file)])
+        assert result.exit_code != 0
+        assert "Missing required parameter" in result.output or "checklist_inventory_revision" in result.output
+
+    def test_deterministic_mutation_stale_revision(self, plan_file):
+        from tests.test_cli import runner, app
+        # Passing a stale revision should fail with StaleRevisionError and RetryGuidance
+        result = runner.invoke(app, ["check", "s3", "--revision", "stale-hash", "--item-id", "some-id", "--checked", "true", "--plan", str(plan_file)])
+        assert result.exit_code != 0
+        assert "StaleRevisionError" in result.output
+        assert "refresh_inventory" in result.output
+
+    def test_invalid_selector_modes_fail(self, plan_file):
+        from tests.test_cli import runner, app
+        result = runner.invoke(app, ["check", "s3", "Item A", "--item-id", "some-id", "--checked", "true", "--plan", str(plan_file)])
+        assert result.exit_code != 0
+        assert "InvalidSelectorError" in result.output
+
+    def test_batch_mutation_atomic(self, plan_file):
+        from tests.test_cli import runner, app
+        result = runner.invoke(app, ["check", "s3", "--batch", '[{"selector": {"item_id": "a"}, "checked": true}]', "--revision", "hash", "--json", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert '"diagnostics":' in result.output
+
+    def test_inventory_machine_readable(self, plan_file):
+        from tests.test_cli import runner, app
+        result = runner.invoke(app, ["check-inventory", "s3", "--json", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert '"checklist_inventory_revision":' in result.output

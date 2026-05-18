@@ -2666,7 +2666,7 @@ class TestVectlCheck:
 
     def test_error_no_keyword_or_add(self, tmp_path: Path) -> None:
         """Error when neither keyword nor add is provided."""
-        plan_file = self._make_plan_with_checklist(tmp_path, "- [ ] Item\n")
+        plan_file = self._make_plan_with_checklist(tmp_path, r"- [ ] Item\n")
 
         old_plan = os.environ.get("VECTL_PLAN_PATH")
         try:
@@ -2722,7 +2722,7 @@ class TestVectlCheck:
 
     def test_error_step_not_found(self, tmp_path: Path) -> None:
         """Error when step doesn't exist."""
-        plan_file = self._make_plan_with_checklist(tmp_path, "- [ ] Item\n")
+        plan_file = self._make_plan_with_checklist(tmp_path, r"- [ ] Item\n")
 
         old_plan = os.environ.get("VECTL_PLAN_PATH")
         try:
@@ -3259,3 +3259,85 @@ class TestVectlDecide:
             action["action"] == "escalate" and action["step_id"] == "alpha.verify"
             for action in result["actions"]
         )
+
+
+
+class TestDeterministicCheckMCP:
+    def _make_plan_with_checklist(self, tmp_path, description):
+        import yaml
+        plan_dict = {
+            "project": "det-mcp",
+            "phases": [
+                {
+                    "id": "p1",
+                    "name": "Phase 1",
+                    "status": "pending",
+                    "steps": [
+                        {
+                            "id": "p1.s1",
+                            "name": "Step 1",
+                            "status": "pending",
+                            "description": description,
+                        }
+                    ]
+                }
+            ]
+        }
+        plan_file = tmp_path / "plan.yaml"
+        plan_file.write_text(yaml.dump(plan_dict))
+        return plan_file
+
+    def test_legacy_keyword_toggle_remains_covered(self, tmp_path):
+        import os
+        from tests.test_mcp import vectl_check
+        import yaml
+        plan_file = self._make_plan_with_checklist(tmp_path, "- [ ] Legacy item\n")
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+            result = vectl_check(step_id="p1.s1", keyword="Legacy item")
+            assert "[x] Legacy item" in result
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_mcp_schema_backward_compatible_and_deterministic_fields(self, tmp_path):
+        import os
+        from tests.test_mcp import vectl_check
+        import yaml
+        plan_file = self._make_plan_with_checklist(tmp_path, "- [ ] Det item\n")
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+            result = vectl_check(
+                step_id="p1.s1",
+                revision="rev-hash",
+                requests=[{"selector": {"item_id": "det-1"}, "checked": True}]
+            )
+            assert "Updated checklist" in result
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan
+
+    def test_mcp_invalid_selector_mode_fails(self, tmp_path):
+        import os
+        from tests.test_mcp import vectl_check
+        plan_file = self._make_plan_with_checklist(tmp_path, "- [ ] Item\n")
+        old_plan = os.environ.get("VECTL_PLAN_PATH")
+        try:
+            os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+            result = vectl_check(
+                step_id="p1.s1",
+                keyword="Item",
+                requests=[{"selector": {"item_id": "det-1"}, "checked": True}]
+            )
+            assert "InvalidSelectorError" in result
+        finally:
+            if old_plan is None:
+                os.environ.pop("VECTL_PLAN_PATH", None)
+            else:
+                os.environ["VECTL_PLAN_PATH"] = old_plan

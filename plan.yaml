@@ -90841,7 +90841,7 @@ phases:
       - [x] Doctest/CrossHair/property phases are not skipped due to prior failures
       unless the tool explicitly reports no applicable checks.
 
-      - [ ] No uncontracted `**/core/**` code was introduced.
+      - [x] No uncontracted `**/core/**` code was introduced.
 
       - [ ] Any remaining warning/info/failure has a precise non-blocking disposition
       or a blocking owner; no residual is dismissed as pre-existing/out-of-scope.'

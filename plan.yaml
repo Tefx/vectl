@@ -108366,7 +108366,7 @@ phases:
       - [x] Canonical core checklist service/parser owns inventory, revision, selector
       resolution, and marker mutation for CLI and MCP.
 
-      - [ ] CLI/MCP/orchestration surfaces delegate to core service and do not re-derive
+      - [x] CLI/MCP/orchestration surfaces delegate to core service and do not re-derive
       source-of-truth facts.
 
       - [ ] Orchestrator-owned mutation boundary is respected; workers only provide

@@ -107913,14 +107913,14 @@ phases:
 
 
       Do not modify product code in this documentation step.'
-    verification: '- [ ] Confirm docs explain legacy vs deterministic checklist paths.
+    verification: '- [x] Confirm docs explain legacy vs deterministic checklist paths.
 
-      - [ ] Confirm docs explain worker/orchestrator checklist receipt flow and mutation
+      - [x] Confirm docs explain worker/orchestrator checklist receipt flow and mutation
       authority.
 
-      - [ ] Confirm examples match actual CLI/MCP field names and supported fields.
+      - [x] Confirm examples match actual CLI/MCP field names and supported fields.
 
-      - [ ] Confirm no product implementation files were modified.'
+      - [x] Confirm no product implementation files were modified.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

@@ -105316,7 +105316,7 @@ phases:
 
       ## Blockers to close in this single batch
 
-      - [ ] B1 stale revision bypass: remove production acceptance of literal stale
+      - [x] B1 stale revision bypass: remove production acceptance of literal stale
       revision `rev1`; update tests/fixtures to use actual inventory revision or isolate
       compatibility in non-production helpers only.
 

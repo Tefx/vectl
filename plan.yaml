@@ -90798,7 +90798,7 @@ phases:
       - product implementation files modified: false."
   - id: invar_guard_remediation.verify-full-guard
     name: Verify full invar guard closure
-    status: claimed
+    status: done
     description: 'As an independent verifier, run the authoritative full invar guard
       from a fresh perspective after every domain remediation step, the focused residual
       remediation DAG, the UI/UX rerun, and the escape-budget residual retest complete.
@@ -90950,6 +90950,195 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-18T13:01:29.330301+00:00'
+    done_at: '2026-05-18T13:07:18.210602+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Verifier read Core/Shell/escape-hatch constraints; guard enforces
+      uncontracted Core and reasoned hatches.
+
+      - AGENTS.md — Verifier read managed-state/evidence/final-gate guidance.
+
+
+      ## Full Guard Closure Verification
+
+      Commit hash(es): none (verify-only, no changes).
+
+      Files changed: none.
+
+      Spec link: step_id `invar_guard_remediation.verify-full-guard`.
+
+
+      ### Semantic Fields
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: none
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+      product_implementation_files_modified: false
+
+
+      ### Command
+
+      ```text
+
+      uvx invar-tools guard --all
+
+      exit code: 0
+
+      ```
+
+
+      ### Current-Mainline Output Excerpt
+
+      ```text
+
+      status: passed
+
+      static.passed: true
+
+      static.errors: 0
+
+      static.warnings: 57
+
+      static.infos: 7
+
+      summary.files_checked: 143
+
+      summary.errors: 0
+
+      summary.warnings: 57
+
+      summary.infos: 7
+
+      escape_hatches.count: 6
+
+      escape_hatches.by_rule: shell_complexity=1, entry_point_too_thick=2, dead_param=1,
+      file_size=2
+
+      escape_hatches.gating.status: warning
+
+      escape_hatches.gating.budget.used: 14
+
+      escape_hatches.gating.budget.limit: 15
+
+      doctest.passed: true
+
+      crosshair.status: skipped; reason: no core files found
+
+      property_tests.status: skipped; reason: no core files
+
+      ```
+
+      Orchestrator mainline re-run also passed with exit 0, `summary.errors=0`, weighted
+      budget `14/15`, doctest passed.
+
+
+      ### Prerequisite Evidence Checked
+
+      - focused residual DAG complete: YES.
+
+      - `invar_guard_remediation.full-guard-residual-disposition-retest` complete:
+      YES; canonical plan proof showed DONE and remediation lineage into later batched
+      fix/retest.
+
+      - UI/UX audit rerun complete: YES; PASS, no blockers.
+
+      - escape-budget full-guard retest complete: YES; PASS, exact command green.
+
+      - downstream current guard proof: YES; verifier reran `uvx invar-tools guard
+      --all` in assigned isolated worktree and observed exit 0.
+
+
+      ### Residual Disposition Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | full guard | authoritative guard passes | `uvx invar-tools guard --all` exit
+      0 | status passed, errors 0 | PROVEN | none | green authoritative command |
+
+      | doctest | doctest phase runs/passes | guard doctest report | doctest passed=true
+      | PROVEN | none | non-blocking |
+
+      | crosshair/property | skipped only if no applicable checks | guard phase reasons
+      | no core files found/no core files | PROVEN | none | tool explicitly reports
+      no applicable checks |
+
+      | core contracts | no uncontracted Core code introduced | static guard errors=0
+      | summary errors=0 | PROVEN | none | guard passed |
+
+      | escape hatch budget | broad allows within budget | guard budget | weighted
+      budget 14/15, warning, non_suppressible=[] | PROVEN_WITH_NON_BLOCKING_RESIDUAL
+      | monitor below hard limit | within allowed limit and command exits 0 |
+
+      | residual warnings/infos | advisory only | guard status and severity | warnings=57,
+      infos=7, status passed | PROVEN_WITH_NON_BLOCKING_RESIDUAL | future cleanup
+      may address | authoritative guard passed |
+
+      | prerequisite ordering | all prerequisites complete before verifier | orchestrator
+      canonical plan proof | supplied prerequisite proof and downstream completions
+      | PROVEN | none | canonical plan evidence |
+
+
+      ### Behavioral Proof Register
+
+      | behavior | proof_status | evidence |
+
+      |---|---|---|
+
+      | authoritative full invar guard is green | PROVEN | `uvx invar-tools guard
+      --all` exit 0, status passed |
+
+      | doctest phase not skipped due prior failures | PROVEN | doctest passed=true
+      |
+
+      | CrossHair/property explicit no-applicable-checks disposition | PROVEN | skipped
+      because no core files found/no core files |
+
+      | no uncontracted Core code introduced | PROVEN | static errors=0 |
+
+      | prerequisite residual disposition retest complete | PROVEN | canonical plan
+      status DONE and remediation lineage supplied |
+
+      | no product implementation files modified by verifier | PROVEN | final `git
+      status --short` no output |
+
+
+      ### Decision
+
+      PASS
+
+
+      ### Stale Evidence Check
+
+      No discarded branch commit `68fcddb6486745572905c5f16248e0c64aa23e37` or cleaned-worktree
+      evidence was used; verification used assigned isolated worktree plus newly supplied
+      canonical prerequisite proof and fresh guard rerun.
+
+
+      ### Git Cleanliness
+
+      ```text
+
+      git status --short
+
+      (no output)
+
+      ```'
   - id: invar_guard_remediation.gate
     name: Gate invar guard remediation closure
     status: pending

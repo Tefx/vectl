@@ -100405,7 +100405,7 @@ phases:
       were satisfied and toggled/updated before completion.'
   - id: invar_guard_remediation.post-blocker-closure-regate
     name: Fresh regate after batched blocker closure
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       step_intent: retest_green
@@ -100557,6 +100557,8 @@ phases:
     - invar_guard_remediation.close-post-gate-blockers-batched
     - invar_guard_remediation.uiux-audit-post-blocker-closure
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-18T13:49:22.510509+00:00'
   - id: invar_guard_remediation.uiux-audit-post-blocker-closure
     name: Audit UI/UX proof after batched blocker closure
     status: done

@@ -95847,7 +95847,7 @@ phases:
 
       - [x] No stale evidence from branch worktrees is used as mainline proof.
 
-      - [ ] Each residual finding is mapped to PROVEN closure, BLOCKING owner, or
+      - [x] Each residual finding is mapped to PROVEN closure, BLOCKING owner, or
       explicit non-intersection disposition.
 
       - [ ] Public/model-visible contract risks from config/projection, path/recovery,

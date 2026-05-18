@@ -103356,7 +103356,7 @@ phases:
 
       - [x] Target-state mutation is idempotent when the marker already matches.
 
-      - [ ] Legacy keyword toggle still toggles exactly one fuzzy match and preserves
+      - [x] Legacy keyword toggle still toggles exactly one fuzzy match and preserves
       ambiguous/no-match errors.
 
       - [ ] Marker-only preservation changes only the checkbox marker.

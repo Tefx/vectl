@@ -108985,7 +108985,7 @@ phases:
       - [x] Evidence includes a disposition table for every remaining failure/warning
       that could intersect final review.
 
-      - [ ] Table columns are `command`, `finding`, `classification`, `provenance`,
+      - [x] Table columns are `command`, `finding`, `classification`, `provenance`,
       `disposition`, `intersects_det_check_arch_review`, `intersects_det_check_final_gate`,
       `closure_path`.
 

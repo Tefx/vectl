@@ -102778,7 +102778,7 @@ phases:
       - [x] MCP schema remains backward compatible for legacy `keyword`/`add` calls
       and adds deterministic request/response fields without removing legacy fields.
 
-      - [ ] CLI covers legacy human keyword toggle output and deterministic machine-readable
+      - [x] CLI covers legacy human keyword toggle output and deterministic machine-readable
       inventory/mutation output where applicable.
 
       - [ ] CLI/MCP deterministic calls require `checklist_inventory_revision` and

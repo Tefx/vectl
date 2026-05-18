@@ -101010,7 +101010,7 @@ phases:
       were satisfied and toggled/updated before completion.'
   - id: invar_guard_remediation.uiux-audit-durable-artifact
     name: Audit durable UI/UX proof artifact
-    status: pending
+    status: claimed
     description: "step_type: verification\nstep_intent: retest_green\nexpected_result:\
       \ green\nverification_scope: phase-check\nagent_source: project\nindependence_level:\
       \ L1\nrisk_tags:\n  - cli_uiux_surface_evidence\n  - terminal_output\n  - json_ansi_cleanliness\n\
@@ -101151,6 +101151,8 @@ phases:
     depends_on:
     - invar_guard_remediation.persist-standalone-uiux-proof-artifact
     agent: uiux-auditor
+    claimed_by: uiux-auditor
+    claimed_at: '2026-05-18T14:08:43.158955+00:00'
   - id: invar_guard_remediation.final-regate-durable-uiux-artifact
     name: Final regate after durable UI/UX artifact
     status: pending

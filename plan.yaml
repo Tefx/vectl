@@ -101819,6 +101819,268 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-18T14:33:24.945639+00:00'
+  - id: det_check_contract_fix_gate_blockers
+    name: Fix contract gate blockers for deterministic checklist contract
+    status: pending
+    description: 'Batched remediation for deterministic checklist contract gate failure.
+
+
+      step_type: implementation
+
+      work_type: defect_repair
+
+      agent_source: default
+
+      provenance: introduced_now from det_check_contract_lock/gate evidence
+
+
+      Scope: fix ALL blockers and should-fix issues reported by det_check_contract_gate
+      in one bounded remediation path. Preserve contract purity: do NOT implement
+      full deterministic checklist handling in this step. Only restore the existing
+      public runtime behavior that was regressed, refine contract stubs/types/docs
+      needed for expected-red tests, and remove hygiene defects.
+
+
+      Authoritative refs to read:
+
+      - docs/RFC-deterministic-checklists.md
+
+      - src/vectl/core_checklist.py
+
+      - src/vectl/core_plan_mutations.py
+
+      - tests/test_checklist.py
+
+      - tests/test_mcp.py
+
+      - tests/test_cli.py
+
+
+      Issues to own (ALL, not just the first):
+
+
+      ### B1_PUBLIC_SURFACE_REGRESSION (blocker)
+
+      Locations: src/vectl/core_plan_mutations.py:44-61 and callers/tests of update_checklist.
+
+      Required outcome: restore/preserve the legacy public surface `update_checklist(plan,
+      step_id, *, check=None, append=None) -> Plan` expected by existing callers and
+      tests.
+
+      Constraints:
+
+      - Existing checklist runtime behavior must continue to work for legacy callers.
+
+      - Contract/stub additions must not replace the legacy implementation with a
+      narrower stub.
+
+      - If deterministic checklist contract stubs are needed, keep them acceptance-only
+      and clearly separate from legacy runtime behavior.
+
+      - Do NOT ship the full deterministic checklist implementation in this contract
+      remediation step.
+
+
+      Targeted failures to reproduce/fix:
+
+      - `./.venv/bin/python -m pytest tests/test_checklist.py -q` (gate saw 12/12
+      failures)
+
+      - `./.venv/bin/python -m pytest tests/test_mcp.py -q -k checklist` (gate saw
+      2/2 failures: unexpected keyword argument `check`)
+
+      - `./.venv/bin/python -m pytest tests/test_cli.py -q -k check` (gate saw selected
+      failures from same regression)
+
+
+      ### B2_REQUIRED_REF_MISSING (gate evidence issue)
+
+      The prior gate guidance included nonexistent `tools/vectl/README.md`. Do not
+      add or require that path as a blocking ref. Future evidence should use existing
+      authoritative refs listed above, or explicitly mark absent optional refs as
+      non-blocking with reason.
+
+
+      ### B3_DIFF_CHECK_FAILURE (hygiene blocker/should-fix)
+
+      Remove trailing whitespace reported by `git diff --check 55a750dd^ 55a750dd`
+      in:
+
+      - src/vectl/core_checklist.py
+
+      - src/vectl/core_plan_mutations.py
+
+
+      ### Contract detail concerns for red-test readiness (should-fix)
+
+      Sharpen acceptance-only contract wording/types for:
+
+      - unsupported-field API paths
+
+      - invalid mixed selector modes
+
+      - error payload and retry guidance
+
+      - concrete orchestrator receipt schema
+
+      Do this without completing the deterministic checklist implementation.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: contract-lock work replaced or shadowed an existing public runtime
+      function with an incompatible contract stub.
+
+      - Symptom: existing checklist, MCP, and CLI callers fail because `update_checklist`
+      no longer accepts `check=`/`append=` or no longer preserves legacy behavior.
+
+      - Why this fix is not surface-level: it must restore public-surface compatibility
+      while keeping deterministic checklist contract artifacts pure and acceptance-only.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION remediation step for a regression caused by a contract
+      stub. Stub-only completion is NOT acceptable for restored legacy runtime behavior.
+      Each restored legacy path MUST contain substantive logic that processes `plan`,
+      `step_id`, `check`, and `append` inputs according to the existing tests. Deterministic
+      checklist future behavior may remain stubs/contracts only.
+
+
+      ## Gate Preview (what the retest/gate WILL reject)
+
+      1. `update_checklist` no longer accepts `check=` and `append=` keyword arguments.
+
+      2. Existing checklist/MCP/CLI tests still fail from public-surface regression.
+
+      3. `tools/vectl/README.md` is treated as a blocking required ref.
+
+      4. `git diff --check` reports trailing whitespace in the remediation diff.
+
+      5. Contract details remain too vague for expected-red test authors to write
+      unsupported-field, mixed-selector, retry/error, and receipt-schema tests.
+
+      6. Full deterministic checklist implementation is shipped in this contract-purity
+      step.
+
+
+      ## Verification Checklist
+
+      - [ ] Restore `update_checklist(plan, step_id, *, check=None, append=None) ->
+      Plan` compatibility for existing callers.
+
+      - [ ] Keep deterministic checklist contract artifacts acceptance-only; do not
+      implement full deterministic checklist behavior.
+
+      - [ ] Refine contract wording/types for unsupported fields, mixed selector modes,
+      error payload/retry guidance, and orchestrator receipt schema.
+
+      - [ ] Remove trailing whitespace from the remediation diff.
+
+      - [ ] Run the targeted checklist, MCP checklist, and CLI check pytest commands
+      and record actual outputs.
+
+      - [ ] Run `git diff --check` against the remediation diff and record actual
+      output.
+
+      - [ ] Confirm no evidence path requires nonexistent `tools/vectl/README.md`.'
+    verification: '- [ ] `./.venv/bin/python -m pytest tests/test_checklist.py -q`
+      passes or any non-pass is unrelated and explicitly documented with file/line
+      evidence.
+
+      - [ ] `./.venv/bin/python -m pytest tests/test_mcp.py -q -k checklist` passes
+      or any non-pass is unrelated and explicitly documented with file/line evidence.
+
+      - [ ] `./.venv/bin/python -m pytest tests/test_cli.py -q -k check` passes or
+      any non-pass is unrelated and explicitly documented with file/line evidence.
+
+      - [ ] `git diff --check` for the remediation diff reports no trailing whitespace.
+
+      - [ ] Public surface `update_checklist(plan, step_id, *, check=None, append=None)
+      -> Plan` is preserved for legacy callers.
+
+      - [ ] Contract-only deterministic checklist details are sharp enough for expected-red
+      tests and do not ship full implementation.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_plan_mutations.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_checklist.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_mcp.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_cli.py — key passage or "NOT READ: <reason>"
+
+
+      `tools/vectl/README.md` is intentionally NOT a required ref because gate evidence
+      reported it absent.
+
+
+      ## Batched Remediation Evidence
+
+
+      **Public surface restored**:
+
+      - Signature observed:
+
+      - Legacy behavior proof:
+
+
+      **Contract purity preserved**:
+
+      - Full deterministic implementation avoided: YES/NO
+
+      - Acceptance-only contract refinements made:
+
+
+      **Targeted command outputs**:
+
+      ```text
+
+      ./.venv/bin/python -m pytest tests/test_checklist.py -q
+
+      <paste output>
+
+
+      ./.venv/bin/python -m pytest tests/test_mcp.py -q -k checklist
+
+      <paste output>
+
+
+      ./.venv/bin/python -m pytest tests/test_cli.py -q -k check
+
+      <paste output>
+
+
+      git diff --check
+
+      <paste output>
+
+      ```
+
+
+      **B1/B2/B3 closure mapping**:
+
+      - B1 public-surface regression:
+
+      - B2 missing required ref handled without blocking nonexistent path:
+
+      - B3 trailing whitespace removed:
+
+
+      **Remaining gaps, if any**:
+
+      - <none or explicit non-intersection / downstream owner>'
+    depends_on:
+    - det_check_contract_gate
+    agent: python-senior
 - id: det_check_tests
   name: 'Deterministic Checklist Handling: Expected-Red Test Definitions'
   status: locked

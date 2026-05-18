@@ -108628,7 +108628,7 @@ phases:
 
       - [x] Run `uv run invar guard --all` and paste the summary.
 
-      - [ ] If remediation touches checklist, CLI, MCP, orchestration, or receipt
+      - [x] If remediation touches checklist, CLI, MCP, orchestration, or receipt
       paths, also run `uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
       -k ''checklist or deterministic or batch or revision'' -q` and `uv run pytest
       tests/orchestration tests/repro -k ''checklist or receipt or prompt'' -q`.

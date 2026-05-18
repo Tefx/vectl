@@ -103884,7 +103884,7 @@ phases:
       \ files `test_mod.py` and `test_mod_2.py`, not blocker-class errors."
   - id: det_check_impl_orch_receipts
     name: Wire orchestrator checklist receipts
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       tags: ["integration"]
@@ -104031,6 +104031,8 @@ phases:
     depends_on:
     - det_check_impl_cli_mcp
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T16:27:44.175875+00:00'
   - id: det_check_impl_integration_proof
     name: Verify checklist seam integration
     status: pending

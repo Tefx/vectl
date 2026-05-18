@@ -95850,7 +95850,7 @@ phases:
       - [x] Each residual finding is mapped to PROVEN closure, BLOCKING owner, or
       explicit non-intersection disposition.
 
-      - [ ] Public/model-visible contract risks from config/projection, path/recovery,
+      - [x] Public/model-visible contract risks from config/projection, path/recovery,
       event/control, prompt/materialization, inspection/drive queries, orch_app/driver,
       and recovery fallback are represented in the proof register.
 

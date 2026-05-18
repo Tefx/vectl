@@ -109077,7 +109077,7 @@ phases:
     agent: integration-verifier
   - id: det_check_full_plan_residual_remediation
     name: Remediate residual full-suite failures
-    status: pending
+    status: claimed
     description: 'Batched residual remediation for the remaining `uv run pytest -q`
       failures discovered during `det_check_full_plan_remediation`.
 
@@ -109315,3 +109315,5 @@ phases:
     depends_on:
     - det_check_full_plan_remediation
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T19:53:43.562231+00:00'

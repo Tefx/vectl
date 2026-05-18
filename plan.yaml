@@ -104102,7 +104102,7 @@ phases:
       - [x] Happy path: inventory from `description` and `verification`, deterministic
       single set-state, deterministic batch, legacy keyword toggle.
 
-      - [ ] Edge cases: empty fields, stale revision, invalid selector-mode combinations,
+      - [x] Edge cases: empty fields, stale revision, invalid selector-mode combinations,
       unsupported `evidence_template`.
 
       - [ ] Error scenarios: stale revision retry guidance, batch diagnostics, ambiguous/no

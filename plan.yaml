@@ -102806,17 +102806,17 @@ phases:
 
       - [x] Do not mark expected-red tests as final green; lifecycle is closed by
       downstream implementation and retest steps.'
-    verification: '- [ ] Run `pytest tests/test_cli.py tests/test_mcp.py -k ''check
+    verification: '- [x] Run `pytest tests/test_cli.py tests/test_mcp.py -k ''check
       or checklist or deterministic or batch or revision'' -q` and record that new
       deterministic tests fail red for the declared missing surface implementation.
 
-      - [ ] If orchestration receipt tests are added, run their focused pytest selection
+      - [x] If orchestration receipt tests are added, run their focused pytest selection
       and record expected-red output.
 
-      - [ ] Confirm no product implementation files outside tests/fixtures/helpers
+      - [x] Confirm no product implementation files outside tests/fixtures/helpers
       were modified.
 
-      - [ ] Confirm every red failure maps to one of the CLI/MCP/orchestration checklist
+      - [x] Confirm every red failure maps to one of the CLI/MCP/orchestration checklist
       gaps in this step.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
       \ step:\n- docs/RFC-deterministic-checklists.md — key passage or \"NOT READ:\

@@ -103641,7 +103641,7 @@ phases:
       \ not blocker-class errors."
   - id: det_check_impl_cli_mcp
     name: Wire checklist CLI and MCP surfaces
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       tags: ["integration"]
@@ -103792,6 +103792,96 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-18T16:14:12.128766+00:00'
+    done_at: '2026-05-18T16:27:10.276964+00:00'
+    evidence: "status: SUCCESS\n\n## Integration Evidence\n\n### refs Read Confirmation\
+      \ (MANDATORY)\n- `docs/RFC-deterministic-checklists.md` — read; core checklist\
+      \ service is single owner; deterministic mutation requires revision plus item_id\
+      \ or field+index and exact checked state; structured errors require retry guidance.\n\
+      - `src/vectl/cli_plan.py` — read; compatibility facade only, checklist commands\
+      \ imported from split command modules.\n- `src/vectl/mcp_core_tools.py` — read;\
+      \ compatibility facade imports `vectl_check` from `mcp_core_misc_tools`.\n-\
+      \ `src/vectl/mcp_server.py` — read; `vectl_check` is registered with FastMCP\
+      \ and wrapped by `_ToolWrapper` for direct test calls.\n- `src/vectl/core_checklist.py`\
+      \ — read; authoritative `ItemIdSelector`, `FieldIndexSelector`, `MutationRequest`,\
+      \ `get_inventory`, `mutate_checklist`, and structured error payload types.\n\
+      - `tests/test_cli.py` — read; legacy check command must remain, deterministic\
+      \ tests require revision errors, batch JSON diagnostics, and check-inventory\
+      \ JSON revision data.\n- `tests/test_mcp.py` — read; legacy `vectl_check` string\
+      \ compatibility remains; deterministic MCP calls require additive request fields\
+      \ and structured error compatibility.\n- `tools/vectl/README.md` — NOT READ:\
+      \ file not found at required path in isolated worktree.\n\n## Implementation\
+      \ Evidence\n- Commit hash(es):\n  - worker branch commit: `2b299837fda19c956e15dbacb1c8fb59ff7c15e8`\n\
+      \  - mainline squash merge commit: `6031e50`\n- Files changed:\n  - `src/vectl/cli.py`\n\
+      \  - `src/vectl/cli_plan.py`\n  - `src/vectl/cli_plan_lifecycle_commands.py`\n\
+      \  - `src/vectl/cli_plan_checklist_commands.py`\n  - `src/vectl/mcp_core_misc_tools.py`\n\
+      - Spec link: `docs/RFC-deterministic-checklists.md`\n- Path exercised: CLI/MCP\
+      \ surface → `core_checklist.get_inventory` / `core_checklist.mutate_checklist`\
+      \ → plan save/result.\n\n## Verification\nWorker-local verification:\n```bash\n\
+      .venv/bin/python -m pytest tests/test_cli.py tests/test_mcp.py -k 'check or\
+      \ checklist or deterministic or batch or revision' -q\ninvar guard --changed\n\
+      ```\nOutput:\n```text\n33 passed, 390 deselected in 1.54s\ninvar_guard: passed;\
+      \ static errors: 0; doctest: passed; warnings only (existing claim function\
+      \ size and MCP adapter shell-pure-logic classification)\n```\n\nMainline final-state\
+      \ verification after squash merge:\n```bash\nuv run pytest tests/test_cli.py\
+      \ tests/test_mcp.py -k \"check or checklist or deterministic or batch or revision\"\
+      \ -q\nuv run invar guard --changed\nuv run vectl check --help && uv run vectl\
+      \ check-inventory --help\n```\nOutput:\n```text\ntests/test_cli.py ..............\n\
+      tests/test_mcp.py ...................\n33 passed, 390 deselected in 1.55s\n\n\
+      invar guard --changed: status passed; files_checked: 2; errors: 0; warnings:\
+      \ 0; infos: 2 (pre-existing test_only_export infos in untracked test_mod.py/test_mod_2.py);\
+      \ doctest passed\n\nCLI help commands returned 0 and listed `check` and `check-inventory`\
+      \ surfaces with deterministic options: --revision/--checklist-inventory-revision,\
+      \ --item-id, --field, --index, --checked, --batch, --json.\n```\n\n## Real CLI\
+      \ Invocation Output\n- Legacy human mode command + output:\n```bash\n.venv/bin/vectl\
+      \ check s1 'Item A' --plan /tmp/.../plan.yaml\nUpdated checklist: s1\n\n→ vectl\
+      \ show s1\n```\n- Machine-readable deterministic mode command + output:\n```bash\n\
+      .venv/bin/vectl check s1 --revision \"$rev\" --item-id \"$item\" --checked true\
+      \ --json --plan \"$plan\"\n{\n  \"ok\": true,\n  \"step_id\": \"s1\",\n  \"\
+      checklist_inventory_revision\": \"sha256:85820655...\",\n  \"diagnostics\":\
+      \ {\"total_requested\": 1, \"matched_items\": 1, \"changed_items\": 1, ...},\n\
+      \  \"items\": [...]\n}\n```\nOutput parsed successfully with `python -m json.tool`.\n\
+      \n## Real MCP Proof\n- Direct MCP wrapper invocation:\n```python\nfrom vectl.mcp_server\
+      \ import vectl_check\nfn = vectl_check.fn\nlegacy = fn(step_id=\"p1.s1\", keyword=\"\
+      MCP item\")\ninv = fn(step_id=\"p1.s1\", inventory=True)\nsingle = fn(step_id=\"\
+      p1.s1\", revision=inv[\"checklist_inventory_revision\"], item_id=item, checked=True)\n\
+      stale = fn(step_id=\"p1.s1\", revision=\"stale\", requests=[{\"selector\": {\"\
+      item_id\": item}, \"checked\": False}])\n```\nProof output included legacy markdown\
+      \ string with `**Updated checklist:** p1.s1`, inventory payload with `checklist_inventory_revision`\
+      \ and item ids, deterministic single payload with `ok: true`, `diagnostics`,\
+      \ updated revision/items, and stale batch payload with `ok: false`, `StaleRevisionError`,\
+      \ `code: stale_revision`, `retry.action: refresh_inventory`.\n\n## CLI Surface\
+      \ Snapshot\n- Top-level checklist-related commands: `check`, `check-inventory`.\n\
+      - `vectl check --help` lists positional `STEP_ID`, optional legacy `KEYWORD`,\
+      \ `--add`, `--revision/--checklist-inventory-revision`, `--item-id`, `--field`,\
+      \ `--index`, `--checked`, `--batch`, `--json`, `--plan`, `--help`.\n- `vectl\
+      \ check-inventory --help` lists positional `STEP_ID`, `--json`, `--plan`, `--help`.\n\
+      \n## CLI Executability Matrix\n| Command | Surface Listed? | Handler Exists?\
+      \ | --help Works? | Smoke Test | Status |\n|---|---|---|---|---|---|\n| `vectl\
+      \ check` | yes | `check_cmd` registered in `src/vectl/cli.py` | yes, exit 0\
+      \ | legacy toggle and deterministic JSON mutation | PASS |\n| `vectl check-inventory`\
+      \ | yes | `check_inventory_cmd` registered in `src/vectl/cli.py` | yes, exit\
+      \ 0 | JSON inventory parsed with `json.tool` | PASS |\n\n## Regression / Dangling\
+      \ Detection\n- Legacy keyword toggle availability confirmed via `.venv/bin/vectl\
+      \ check s1 'Item A' --plan ...`.\n- Deterministic mode additive/parseable confirmed\
+      \ via `check-inventory --json` and `check --revision ... --json`, both parsed\
+      \ as JSON.\n- Registered surfaces have handler paths: `cli.py` registers `check_cmd`\
+      \ and `check_inventory_cmd`; `mcp_server.py` registers/wraps `vectl_check`.\n\
+      \n## Delegation Proof\n- CLI deterministic adapter calls `core_checklist.get_inventory.__wrapped__`\
+      \ for inventory and `core_checklist.mutate_checklist.__wrapped__` for mutation.\n\
+      - MCP deterministic adapter delegates through shared CLI checklist surface helpers,\
+      \ which call the same canonical core service.\n- No markdown checklist parser\
+      \ was added in CLI/MCP adapters.\n\n## Checklist Receipt\n- [x] CLI legacy keyword\
+      \ toggle path still works.\n- [x] CLI deterministic inventory/mutation path\
+      \ emits machine-readable revision/item data where applicable.\n- [x] MCP legacy\
+      \ call remains schema-compatible.\n- [x] MCP deterministic single and batch\
+      \ paths return structured result/errors.\n- [x] Surface adapters delegate to\
+      \ the core checklist service and do not duplicate parser ownership.\n- [x] CLI/MCP\
+      \ deterministic tests pass green.\n- [x] Real CLI legacy human invocation provided.\n\
+      - [x] Real CLI deterministic machine-readable invocation provided.\n- [x] Real\
+      \ MCP deterministic proof provided.\n- [x] CLI executability matrix provided.\n\
+      \n## Deviation Records\n- none\n\n## Gaps/Notes\n- `uv run invar guard --changed`\
+      \ passed on mainline with two informational findings in pre-existing untracked\
+      \ files `test_mod.py` and `test_mod_2.py`, not blocker-class errors."
   - id: det_check_impl_orch_receipts
     name: Wire orchestrator checklist receipts
     status: pending

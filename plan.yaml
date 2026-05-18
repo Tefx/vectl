@@ -100145,7 +100145,7 @@ phases:
       - [x] Each cited Core warning is either fixed with non-vacuous semantic contract/doctest\
       \ evidence or dispositioned narrowly with downstream non-intersection proof.\n\
       - [x] Evidence states why any remaining warning is non-blocking under INVAR\
-      \ policy and names a future owner if that status changes.\n- [ ] Evidence is\
+      \ policy and names a future owner if that status changes.\n- [x] Evidence is\
       \ current-mainline, not discarded-branch or stale partial-success proof.\n-\
       \ [ ] The downstream regate step can decide OPEN/BLOCK without consulting unstated\
       \ context."

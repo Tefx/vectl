@@ -105142,7 +105142,7 @@ phases:
 
       - [x] CLI/MCP surfaces are runnable and legacy compatible.
 
-      - [ ] Orchestrator receipts use item_id/revision and avoid natural-language
+      - [x] Orchestrator receipts use item_id/revision and avoid natural-language
       fuzzy mapping.
 
       - [ ] UI/output audit and liveness proof are present.

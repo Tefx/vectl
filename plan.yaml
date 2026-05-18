@@ -99028,7 +99028,7 @@ phases:
       `plan_path`, `migration`, `cli_orchestration_inspect_commands`, `orch_app`,
       `core_plan_mutations`, `control`, and `continuity_protocols`.
 
-      - [ ] Provide exact targeted test commands and outputs for every touched public
+      - [x] Provide exact targeted test commands and outputs for every touched public
       surface.
 
       - [ ] Provide compatibility smoke commands and outputs for every touched public

@@ -108989,7 +108989,7 @@ phases:
       `disposition`, `intersects_det_check_arch_review`, `intersects_det_check_final_gate`,
       `closure_path`.
 
-      - [ ] `NEEDS_TEST`, `UNPROVEN`, or `UNCERTAIN_BLOCKING` items receive explicit
+      - [x] `NEEDS_TEST`, `UNPROVEN`, or `UNCERTAIN_BLOCKING` items receive explicit
       remediation/retest ownership and cannot be bypassed by final gate.
 
       - [ ] Any non-blocking claim proves non-intersection with both downstream locked

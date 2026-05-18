@@ -104244,13 +104244,13 @@ phases:
 
       - [x] Human surface and machine-readable surface are clearly distinct; JSON/YAML
       outputs are not polluted by Rich styling.'
-    verification: '- [ ] local-check protecting `det_check_impl_gate`: provide terminal
+    verification: '- [x] local-check protecting `det_check_impl_gate`: provide terminal
       captures or equivalent rendered CLI artifacts for legacy success, deterministic
       success, and structured error states.
 
-      - [ ] Verify machine-readable output parses cleanly with no ANSI escape sequences.
+      - [x] Verify machine-readable output parses cleanly with no ANSI escape sequences.
 
-      - [ ] Verify human output remains readable and actionable.'
+      - [x] Verify human output remains readable and actionable.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

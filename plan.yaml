@@ -105246,7 +105246,7 @@ phases:
     agent: gate-reviewer
   - id: det_check_impl_blocker_remediation
     name: Batch remediate deterministic checklist blocker family
-    status: claimed
+    status: done
     description: 'Batched remediation for ALL concurrent deterministic checklist verification
       failures.
 
@@ -105542,6 +105542,224 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-18T17:05:11.607292+00:00'
+    done_at: '2026-05-18T17:16:11.962803+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - `docs/RFC-deterministic-checklists.md` — read; core checklist service is single
+      owner; supported fields are exactly `description`/`verification`; stale revisions
+      must refresh inventory; concrete receipt entries require `item_id`, `revision`,
+      `checked`.
+
+      - `src/vectl/core/checklist_batch.py` — read; found and removed production `revision
+      != current_revision and revision != "rev1"` stale bypass plus vacuous Core postconditions.
+
+      - `src/vectl/cli_plan_checklist_commands.py` — read; found JSON exception path
+      returned success for batch errors.
+
+      - `src/vectl/orchestration/evidence.py` — read; receipt parser required extra
+      metadata and was not reached from freeform evidence assessment; validation now
+      reachable through evidence assessment.
+
+      - `src/vectl/orchestration/prompt_materialization.py` — read; prompt bundle
+      metadata was aligned with RFC/minimal receipt semantics while retaining additive
+      compatibility.
+
+      - `src/vectl/orchestration/dispatch_policy.py` — read; prompt receipt instructions
+      were aligned.
+
+      - `src/vectl/core_checklist.py` — read; public aliases classified as public
+      type-only API and mutation facade delegates to batch implementation.
+
+      - `tools/vectl/README.md` — NOT READ: file absent in isolated worktree.
+
+
+      ## Batched Remediation Evidence
+
+      ### Root Cause vs Symptom
+
+      - Root cause: production fixture escape for literal `rev1` undermined deterministic
+      stale-revision enforcement.
+
+      - Root cause: CLI JSON batch error handling printed structured `ok:false` payload
+      but returned exit 0.
+
+      - Root cause: receipt parser/prompt surfaces drifted from RFC-minimal `{item_id,
+      revision, checked}` schema and validation was not wired into completion evidence
+      assessment.
+
+      - Root cause: Core helpers had non-structural `result is not None` postconditions.
+
+      - Symptoms closed: stale `rev1` mutation, CLI false-green stale batch, receipt
+      validation dead path/schema drift, vacuous contracts, public alias disposition,
+      unsupported-field selector behavior.
+
+
+      ### Blocker Closure Matrix
+
+      | Blocker | Runtime path affected | Status |
+
+      |---|---|---|
+
+      | B1 stale revision bypass | Core, CLI, MCP shared core | CLOSED |
+
+      | B2 CLI JSON false-green | CLI deterministic batch | CLOSED |
+
+      | B3 receipt schema divergence | Orchestration evidence/prompt | CLOSED |
+
+      | B4 runtime proof path | Core/orchestration focused tests/probes | CLOSED |
+
+      | B5 receipt validation dead path | Completion evidence assessment path | CLOSED
+      |
+
+      | B6 vacuous Core contracts | Core contracts | CLOSED |
+
+      | B7 orphan public aliases | Public type surface disposition | CLOSED |
+
+      | B8 unsupported-field inventory/selector path | CLI/core selector path | CLOSED
+      |
+
+
+      ## Verification Commands + Actual Output
+
+      Worker-local verification:
+
+      ```bash
+
+      .venv/bin/python -m pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
+      tests/orchestration/unit/test_checklist_receipt_contract.py -k ''checklist or
+      deterministic or batch or revision or receipt'' -q
+
+      .venv/bin/python -m pytest tests/orchestration tests/repro -k ''checklist or
+      receipt or prompt'' -q
+
+      .venv/bin/invar guard --changed
+
+      ```
+
+      Output:
+
+      ```text
+
+      46 passed, 411 deselected in 3.30s
+
+      99 passed, 1625 deselected in 2.62s
+
+      invar guard --changed: passed; errors: 0; warnings: 10 (pre-existing/structural
+      size/internal-import warnings, non-strict and non-blocking)
+
+      ```
+
+
+      Mainline final-state verification after squash merge:
+
+      ```bash
+
+      uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py tests/orchestration/unit/test_checklist_receipt_contract.py
+      -k "checklist or deterministic or batch or revision or receipt" -q
+
+      uv run pytest tests/orchestration tests/repro -k "checklist or receipt or prompt"
+      -q
+
+      uv run invar guard --changed
+
+      ```
+
+      Output:
+
+      ```text
+
+      46 passed, 411 deselected in 1.71s
+
+      99 passed, 1625 deselected in 2.40s
+
+      invar guard --changed: status passed; files_checked: 2; errors: 0; warnings:
+      0; infos: 2 (pre-existing test_only_export infos in untracked test_mod.py/test_mod_2.py);
+      doctest passed
+
+      ```
+
+
+      ## Runtime Probe Outputs
+
+      ```text
+
+      ACTUAL_REV: sha256:64f46de4c6b717332621db30aa0ac21ed083bc2e0dc1589ad4a903ee6add87e3
+
+      STALE_REV1_REJECTED: stale_revision UNCHANGED: - [ ] A|- [ ] B|
+
+      FAILED_MIXED_BATCH_REJECTED: item_not_found UNCHANGED: - [ ] A|- [ ] B| DIAGS:
+      1
+
+      CLI_STALE_EXIT: 1
+
+      CLI_STALE_JSON_CODE: stale_revision
+
+      CLI_INVALID_EXIT: 1
+
+      CLI_INVALID_JSON_PARSEABLE: True
+
+      PLAN_UNCHANGED: True
+
+      RFC_MINIMAL_RECEIPT: description:0:abc sha256:abc True step_id='''' field=None
+
+      REACHABLE_VALIDATION_REJECTS: True invalid checklist_receipt: Missing required
+      checklist_receipt[0].checklist_inventory_revision.
+
+      ```
+
+
+      ## Gate-intersection reasoning for non-blocking debt
+
+      External temporary plan mutation git autosave stderr was not changed. It does
+      not intersect this gate because checklist failure paths now reject before save/mutation,
+      preserve parseable structured errors, and focused CLI/core probes show marker
+      state unchanged. No new autosave stderr behavior was introduced.
+
+
+      ## Checklist Receipt
+
+      - [x] B1 stale revision bypass closed.
+
+      - [x] B2 CLI JSON false-green closed.
+
+      - [x] B3 receipt schema/naming divergence closed.
+
+      - [x] B4 runtime proof path closed or explicitly non-intersecting.
+
+      - [x] B5 receipt validation dead path closed.
+
+      - [x] B6 vacuous Core contracts closed.
+
+      - [x] B7 orphan public symbols/type aliases resolved/dispositioned.
+
+      - [x] B8 unsupported-field inventory path resolved/dispositioned.
+
+      - [x] Non-blocking debt disposition recorded.
+
+      - [x] Revision semantics hardened.
+
+      - [x] Batch all-or-nothing semantics proven.
+
+      - [x] Receipt validation runtime path proven.
+
+      - [x] Legacy compatibility preserved.
+
+      - [x] Core contracts non-vacuous and Invar-clean.
+
+      - [x] Public surface guardrail satisfied.
+
+
+      ## Deviation Records
+
+      - none
+
+
+      ## Gaps/Notes
+
+      - none'
   - id: det_check_impl_blocker_integration_retest
     name: Retest deterministic checklist integration blockers
     status: pending

@@ -106774,6 +106774,168 @@ phases:
     depends_on:
     - det_check_impl_blocker_integration_retest
     agent: python-senior
+  - id: det_check_impl_receipt_refresh_retest
+    name: Retest stale receipt runtime refresh path
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check protecting `det_check_impl_blocker_retest`,
+      `det_check_impl_gate`, and `det_check_finalization`.
+
+      agent_source: default
+
+      Independence Level: L1; this retest is independent of `python-senior` remediation.
+
+
+      Independent focused integration retest for the remaining stale receipt blocker
+      after `det_check_impl_receipt_refresh_remediation`.
+
+
+      ## Required integration proof focus
+
+      - [ ] Use a runtime-reachable orchestration path, not only `parse_checklist_receipt`
+      unit/parser calls.
+
+      - [ ] Submit or simulate a worker checklist receipt with literal stale `revision:
+      rev1` while current checklist inventory has a different revision.
+
+      - [ ] Prove current checklist inventory/revision is refreshed before retry/application,
+      OR prove the runtime path emits/records a rejected-with-refresh instruction
+      with spec-backed gate disposition.
+
+      - [ ] Verify `assess_freeform_evidence` or the actual completion/evidence pipeline
+      marks stale receipt proof appropriately and does not return a false PASS based
+      only on receipt parse success.
+
+      - [ ] Confirm previously proven behaviors remain non-regressed only as needed
+      for this seam: stale revision does not mutate state and deterministic receipt
+      mutation remains orchestrator-owned.
+
+
+      ## Behavioral proof register required
+
+      Evidence MUST include rows with: `requirement_ref`, `behavior_claim`, `runtime_proof_expected`,
+      `evidence_ref`, `status`, `closure_path`, and `gate_decision_basis`. `NEEDS_TEST`,
+      `UNPROVEN`, or `UNCERTAIN_BLOCKING` require remediation ownership or explicit
+      non-intersection evidence.'
+    verification: '- [ ] phase-check: focused integration retest runs after `det_check_impl_receipt_refresh_remediation`
+      and protects blocker aggregate/gate fan-in.
+
+      - [ ] Runtime-reachable orchestration path proves stale receipt refresh-before-retry/application
+      or rejected-with-refresh instruction with spec-backed disposition.
+
+      - [ ] Literal stale `revision: rev1` fixture and current inventory/revision
+      fixture are shown in evidence.
+
+      - [ ] `assess_freeform_evidence` or completion/evidence pipeline is verified
+      to avoid false PASS on parser-only stale receipt acceptance.
+
+      - [ ] Behavioral proof register contains no unresolved blocker-class `NEEDS_TEST`,
+      `UNPROVEN`, or `UNCERTAIN_BLOCKING` without closure path.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - `docs/RFC-deterministic-checklists.md` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/orchestration/evidence.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/orchestration/dispatch_coordinator.py` — key passage or "NOT READ:
+      <reason>"
+
+      - `src/vectl/orchestration/core_adapter.py` — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Focused Integration Retest Report
+
+
+      **Tester**: integration-verifier (independent of python-senior remediation)
+
+      **Scope**: stale checklist receipt runtime refresh-before-retry path
+
+      **Independence Level**: L1
+
+
+      ### Runtime Path Exercised
+
+      ```
+
+      <worker receipt -> parser/evidence pipeline -> orchestration completion/mutation
+      decision -> inventory refresh/retry or rejected-with-refresh instruction>
+
+      ```
+
+
+      ### Fixtures
+
+      **Stale receipt fixture**:
+
+      ```
+
+      <include literal revision: rev1 receipt>
+
+      ```
+
+
+      **Current inventory/revision fixture**:
+
+      ```
+
+      <include current revision that differs from rev1>
+
+      ```
+
+
+      ### Commands Executed
+
+      ```
+
+      <paste exact commands/tests>
+
+      ```
+
+
+      ### Actual Output
+
+      ```
+
+      <paste output, not summary>
+
+      ```
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | docs/RFC-deterministic-checklists.md stale receipt retry guidance | Stale
+      receipt refresh-before-retry is runtime-reachable | Runtime orchestration path
+      refreshes inventory before retry/application or emits rejected-with-refresh
+      instruction | <artifact/command> | PROVEN/NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING
+      | <path> | OPEN/BLOCK basis |
+
+
+      ### Headline
+
+      - [ ] PASS: stale receipt runtime refresh-before-retry/application or rejected-with-refresh
+      instruction is proven.
+
+      - [ ] FAIL: stale receipt path remains parser-only, false-green, or otherwise
+      unproven.'
+    depends_on:
+    - det_check_impl_receipt_refresh_remediation
+    agent: integration-verifier
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

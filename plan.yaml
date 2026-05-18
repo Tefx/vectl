@@ -102747,7 +102747,7 @@ phases:
       step owns making these tests green.'
   - id: det_check_tests_surfaces_red
     name: Define CLI MCP and orchestration expected-red tests
-    status: claimed
+    status: done
     description: 'step_type: test_define_red
 
       step_intent: test_define_red
@@ -102838,6 +102838,109 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-05-18T14:56:51.506931+00:00'
+    done_at: '2026-05-18T15:25:12.814508+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## refs Read Confirmation
+
+      - docs/RFC-deterministic-checklists.md — deterministic CLI/MCP/orchestrator
+      receipt contract covers revisions, selector modes, structured retry guidance,
+      batch diagnostics, and receipts.
+
+      - src/vectl/core_checklist.py — contract dataclasses and stubs define missing
+      deterministic API surfaces.
+
+      - src/vectl/core_plan_mutations.py — legacy compatibility surface remains available.
+
+      - tests/test_cli.py — legacy CLI check tests remain and deterministic expected-red
+      tests were added.
+
+      - tests/test_mcp.py — legacy MCP checklist tests remain and deterministic expected-red
+      tests were added.
+
+      - tests/orchestration/unit/test_checklist_receipt_contract.py — expected-red
+      orchestration receipt parser/import gap added.
+
+
+      ## Expected-Red Surface Test Evidence
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      observed_result: red
+
+      failure_alignment: Failures map to missing deterministic CLI flags/commands,
+      missing MCP deterministic kwargs, and missing orchestration receipt parser surface.
+      No product implementation was touched.
+
+      verdict: PASS
+
+      blockers: []
+
+      product_implementation_files_modified: false
+
+      modified_files:
+
+      - `tests/test_cli.py`
+
+      - `tests/test_mcp.py`
+
+      - `tests/orchestration/unit/test_checklist_receipt_contract.py`
+
+      command: `./.venv/bin/python -m pytest tests/test_cli.py tests/test_mcp.py tests/orchestration/unit/test_checklist_receipt_contract.py
+      -k ''check or checklist or deterministic or batch or revision'' -q`
+
+      actual_output: 8 failed / 26 passed / 390 deselected; failures are expected
+      red for missing deterministic surface implementation.
+
+      exposed_gaps:
+
+      - MCP deterministic schema fields/revision/requests
+
+      - CLI machine-readable inventory/mutation command/options
+
+      - structured stale-revision guidance
+
+      - invalid selector modes on CLI/MCP surfaces
+
+      - batch atomic diagnostics
+
+      - orchestrator receipt parser using item_id/revision/no fuzzy mapping
+
+      - legacy keyword compatibility remains covered
+
+
+      ## Verification
+
+      - `./.venv/bin/python -m pytest tests/test_cli.py tests/test_mcp.py tests/orchestration/unit/test_checklist_receipt_contract.py
+      -k ''check or checklist or deterministic or batch or revision'' -q` — EXPECTED
+      RED, 8 failed / 26 passed / 390 deselected.
+
+      - `git diff --check --cached` before commit — PASS after worker whitespace repair.
+
+
+      ## Files changed
+
+      - `tests/test_cli.py`
+
+      - `tests/test_mcp.py`
+
+      - `tests/orchestration/unit/test_checklist_receipt_contract.py`
+
+
+      ## Commit hash(es)
+
+      - worker repaired branch: `e5d43ebb`
+
+      - mainline squash: `5ec6168`
+
+
+      ## Gaps/Notes
+
+      - Expected-red lifecycle accepted: downstream implementation and retest steps
+      own green closure.'
   - id: det_check_tests_gate
     name: Gate expected-red checklist tests
     status: pending

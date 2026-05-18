@@ -102953,7 +102953,7 @@ phases:
 
       - [x] Both expected-red test steps changed only tests/fixtures/helpers.
 
-      - [ ] Red failures map to declared deterministic checklist gaps.
+      - [x] Red failures map to declared deterministic checklist gaps.
 
       - [ ] No product implementation files were changed in this phase.
 

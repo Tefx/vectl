@@ -102599,7 +102599,7 @@ phases:
       - [x] `item_id` values are snapshot-scoped and change only when the canonicalized
       inventory snapshot changes.
 
-      - [ ] `checklist_inventory_revision` stale values reject deterministic mutation
+      - [x] `checklist_inventory_revision` stale values reject deterministic mutation
       with structured retry guidance.
 
       - [ ] Deterministic single set-state mutation is idempotent when target state

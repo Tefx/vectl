@@ -105930,7 +105930,7 @@ phases:
 
       ## Required spec conformance focus
 
-      - [ ] RFC stale revision invariant maps to implementation behavior without a
+      - [x] RFC stale revision invariant maps to implementation behavior without a
       production `rev1` bypass.
 
       - [ ] RFC worker receipt schema with `item_id`, `revision`, `checked` is accepted

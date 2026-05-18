@@ -105246,7 +105246,7 @@ phases:
     agent: gate-reviewer
   - id: det_check_impl_blocker_remediation
     name: Batch remediate deterministic checklist blocker family
-    status: pending
+    status: claimed
     description: 'Batched remediation for ALL concurrent deterministic checklist verification
       failures.
 
@@ -105540,6 +105540,8 @@ phases:
     - det_check_impl_spec_conformance
     - det_check_impl_wiring_audit
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T17:05:11.607292+00:00'
   - id: det_check_impl_blocker_integration_retest
     name: Retest deterministic checklist integration blockers
     status: pending

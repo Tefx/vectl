@@ -101291,7 +101291,7 @@ phases:
       \ `det_check_contracts`, `det_check_tests`, `det_check_impl`, and `det_check_finalization`\
       \ phases. It is the authoritative closure path for `invar_guard_remediation`\
       \ after the failed `invar_guard_remediation.post-blocker-closure-regate` review.\n\
-      \n## Acceptance Checklist\n- [ ] Fresh/cold `uvx invar-tools guard --all` evidence\
+      \n## Acceptance Checklist\n- [x] Fresh/cold `uvx invar-tools guard --all` evidence\
       \ is reviewed and current-mainline.\n- [ ] Durable standalone UI/UX artifact\
       \ file is reviewed directly and contains all required subproofs rather than\
       \ plan-summary references.\n- [ ] New durable-artifact `uiux-auditor` validation\

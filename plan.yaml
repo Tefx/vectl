@@ -99015,7 +99015,7 @@ phases:
       - [x] Capture exact BEFORE `uvx invar-tools guard --all` excerpt showing weighted
       budget `17/15`, residual rows, and file-size budget green (`file_size 2/5`).
 
-      - [ ] Map all nine residual rows to a concrete remediation decision before editing.
+      - [x] Map all nine residual rows to a concrete remediation decision before editing.
 
       - [ ] Remove/refactor enough residual weight to reach weighted budget `<=15/15`
       without budget lowering, suppression, ignored files, deleted findings, or policy

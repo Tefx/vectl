@@ -108378,7 +108378,7 @@ phases:
       - [x] Revision scope excludes unrelated metadata and includes canonicalized
       raw Markdown of both supported fields.
 
-      - [ ] Batch atomicity and stale-revision semantics are architecture-safe under
+      - [x] Batch atomicity and stale-revision semantics are architecture-safe under
       concurrent worker/orchestrator scenarios.
 
       - [ ] No module-level mutable state, registry corruption path, or unbounded

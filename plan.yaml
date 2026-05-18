@@ -100272,6 +100272,159 @@ phases:
     - invar_guard_remediation.verify-full-guard
     - invar_guard_remediation.fix-full-guard-weighted-budget-residuals
     agent: python-senior
+  - id: invar_guard_remediation.post-blocker-closure-regate
+    name: Fresh regate after batched blocker closure
+    status: pending
+    description: 'step_type: gate
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: full-plan-check
+
+      agent_source: default
+
+
+      Fresh/cold retest and regate for `invar_guard_remediation` after `invar_guard_remediation.close-post-gate-blockers-batched`
+      completes. This step exists so downstream phases do not open on stale partial-success
+      evidence from the semantically failed `invar_guard_remediation.gate` review.
+
+
+      As an independent `gate-reviewer`, decide whether the phase can close after
+      the batched remediation. Use a fresh context and reject summaries that lack
+      artifact-level proof.
+
+
+      ## Required Fresh/Cold Checks
+
+      - Run or verify a fresh/cold `uvx invar-tools guard --all` execution on current
+      mainline state.
+
+      - Confirm full guard output includes exit status, `status`, `errors`, `warnings`,
+      `infos`, and escape-budget count.
+
+      - Verify every remaining warning relevant to new/changed `**/core/**` functions
+      has either semantic contract/doctest closure or explicit non-blocking residual
+      disposition with downstream non-intersection proof.
+
+      - Verify standalone UI/UX artifact exists outside managed plan summaries and
+      contains pasted help/surface snapshots, command executability matrix, JSON ANSI
+      check, facade import check, and behavioral proof register.
+
+      - Verify the UI/UX artifact applies uiux-auditor-compatible criteria or contains
+      a uiux-auditor validation note produced within the same batched path.
+
+
+      ## Gate Decision Basis
+
+      The decision basis MUST map each behavioral/runtime obligation to:
+
+      - requirement_ref
+
+      - behavior_claim
+
+      - runtime_proof_expected
+
+      - evidence_ref
+
+      - status: PROVEN | NON_BLOCKING | NEEDS_TEST | UNPROVEN | UNCERTAIN_BLOCKING
+
+      - closure_path
+
+      - gate_decision_basis
+
+
+      `OPEN` is allowed only when all blocker-class obligations are PROVEN or have
+      explicit non-intersection proof. `NEEDS_TEST`, `UNPROVEN`, and `UNCERTAIN_BLOCKING`
+      must BLOCK unless accompanied by explicit non-intersection evidence.
+
+
+      ## Downstream Protection
+
+      This full-plan-check protects the locked `det_check_contracts`, `det_check_tests`,
+      `det_check_impl`, and `det_check_finalization` phases. It must be treated as
+      the authoritative closure path for `invar_guard_remediation` after the failed
+      gate.
+
+
+      ## Acceptance Checklist
+
+      - [ ] Fresh/cold `uvx invar-tools guard --all` evidence is reviewed and current-mainline.
+
+      - [ ] Standalone UI/UX artifact is reviewed and contains all required subproofs
+      rather than plan-summary references.
+
+      - [ ] Core contract warning register is reviewed and every cited warning is
+      fixed or dispositioned with downstream non-intersection proof.
+
+      - [ ] Gate decision basis includes structured behavioral proof register fields
+      for each blocker family.
+
+      - [ ] OPEN decision is denied if evidence relies on stale partial success, discarded
+      branch state, or managed plan summaries alone.
+
+      - [ ] Downstream deterministic-checklist phases remain blocked unless this regate
+      opens.'
+    verification: '- [ ] Fresh/cold `uvx invar-tools guard --all` was run or independently
+      verified on current mainline and output includes exit status, status/errors/warnings/infos,
+      and escape budget.
+
+      - [ ] Standalone UI/UX artifact includes pasted help/surface snapshots, command
+      executability matrix, JSON ANSI check, facade import check, and behavioral proof
+      register.
+
+      - [ ] UI/UX proof is validated against uiux-auditor-compatible criteria and
+      any missing artifact blocks OPEN.
+
+      - [ ] Each cited Core contract warning is proven fixed with non-vacuous @pre/@post/doctest
+      or has narrow non-blocking residual disposition under INVAR policy with downstream
+      non-intersection proof.
+
+      - [ ] Gate decision basis records PROVEN/NON_BLOCKING/BLOCK for each blocker
+      family and does not open on stale partial-success evidence.
+
+      - [ ] The decision explicitly states whether `det_check_contracts` and later
+      locked phases may proceed.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- INVAR.md — key passage or \"NOT READ: <reason>\"\n- AGENTS.md — key\
+      \ passage or \"NOT READ: <reason>\"\n- src/vectl/core/orchestration/event_schema.py\
+      \ — key passage or \"NOT READ: <reason>\"\n- src/vectl/core/orchestration/runner_payloads.py\
+      \ — key passage or \"NOT READ: <reason>\"\n- src/vectl/core/orchestration/config_defaults.py\
+      \ — key passage or \"NOT READ: <reason>\"\n\nIf no refs were provided, state:\
+      \ \"No refs for this step.\"\n\n## Fresh Regate Report\n\n**Reviewer**: gate-reviewer\n\
+      **Phase**: invar_guard_remediation\n**Fresh/cold context**: <how freshness was\
+      \ ensured>\n\n### Full Guard Evidence\n```\n<uvx invar-tools guard --all command,\
+      \ exit status, and output summary including status/errors/warnings/infos/escape\
+      \ budget>\n```\n\n### Standalone UI/UX Artifact Verification\n| Required subproof\
+      \ | Evidence ref | Status | Notes |\n|---|---|---|---|\n| Pasted help/surface\
+      \ snapshots | <ref> | PROVEN/UNPROVEN | <notes> |\n| Command executability matrix\
+      \ | <ref> | PROVEN/UNPROVEN | <notes> |\n| JSON ANSI check | <ref> | PROVEN/UNPROVEN\
+      \ | <notes> |\n| Facade import check | <ref> | PROVEN/UNPROVEN | <notes> |\n\
+      | Behavioral proof register | <ref> | PROVEN/UNPROVEN | <notes> |\n| uiux-auditor-compatible\
+      \ handoff | <ref> | PROVEN/UNPROVEN | <notes> |\n\n### Core Contract Closure\
+      \ Verification\n| Warning | Evidence reviewed | Verdict | Blocks downstream?\
+      \ |\n|---|---|---|---|\n| event_schema.py:37 redundant_type_contract | <ref>\
+      \ | PROVEN/NON_BLOCKING/BLOCK | YES/NO |\n| runner_payloads.py:85 redundant_type_contract\
+      \ | <ref> | PROVEN/NON_BLOCKING/BLOCK | YES/NO |\n| runner_payloads.py:103 partial_contract\
+      \ | <ref> | PROVEN/NON_BLOCKING/BLOCK | YES/NO |\n| runner_payloads.py:169 redundant_type_contract\
+      \ | <ref> | PROVEN/NON_BLOCKING/BLOCK | YES/NO |\n| config_defaults.py:115 semantic_tautology\
+      \ | <ref> | PROVEN/NON_BLOCKING/BLOCK | YES/NO |\n| config_defaults.py:126 semantic_tautology\
+      \ | <ref> | PROVEN/NON_BLOCKING/BLOCK | YES/NO |\n\n### Behavioral Proof Register\
+      \ / Gate Decision Basis\n| requirement_ref | behavior_claim | runtime_proof_expected\
+      \ | evidence_ref | status | closure_path | gate_decision_basis |\n|---|---|---|---|---|---|---|\n\
+      | UIUX-STANDALONE-ARTIFACT | <claim> | <proof> | <ref> | PROVEN/NON_BLOCKING/BLOCK\
+      \ | <path> | <basis> |\n| CORE-NONVACUOUS-CONTRACTS | <claim> | <proof> | <ref>\
+      \ | PROVEN/NON_BLOCKING/BLOCK | <path> | <basis> |\n| FULL-GUARD-FRESHNESS |\
+      \ <claim> | <proof> | <ref> | PROVEN/NON_BLOCKING/BLOCK | <path> | <basis> |\n\
+      \n### Downstream Decision\n- `det_check_contracts` may proceed: YES | NO\n-\
+      \ Reason:\n\n### Gate Decision\n- [ ] OPEN: All blocker-class obligations are\
+      \ PROVEN or explicitly NON_BLOCKING with non-intersection proof.\n- [ ] BLOCKED:\
+      \ One or more blocker-class obligations remain UNPROVEN/NEEDS_TEST/UNCERTAIN_BLOCKING.\n\
+      \  - Required follow-up owner(s): <step ids or replan request>"
+    depends_on:
+    - invar_guard_remediation.close-post-gate-blockers-batched
+    agent: gate-reviewer
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

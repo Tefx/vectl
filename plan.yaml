@@ -103672,7 +103672,7 @@ phases:
 
       Integration evidence required:
 
-      - [ ] CLI legacy keyword toggle path still works.
+      - [x] CLI legacy keyword toggle path still works.
 
       - [ ] CLI deterministic inventory/mutation path emits machine-readable revision/item
       data where applicable.

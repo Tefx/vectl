@@ -100076,7 +100076,7 @@ phases:
       guard reports `no core files found` and exits 0.'
   - id: invar_guard_remediation.close-post-gate-blockers-batched
     name: Close post-gate blockers in one batched path
-    status: claimed
+    status: done
     description: "step_type: implementation\nwork_type: proof_closure\nagent_source:\
       \ default\nverification_scope: phase-check\nrisk_tags:\n  - symbolic_testing\n\
       \  - core_contract_semantics\n  - cli_uiux_surface_evidence\n  - stale_gate_evidence\n\
@@ -100275,6 +100275,134 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-18T13:30:47.806788+00:00'
+    done_at: '2026-05-18T13:43:02.695832+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Core files under `**/core/**` require `@pre`, `@post`, and doctest;
+      contracts must be semantic, not type-only.
+
+      - AGENTS.md — `plan.yaml` is vectl-managed state; subagent did not edit it directly
+      or use vectl CLI/lifecycle.
+
+      - src/vectl/core/orchestration/event_schema.py — `_percent_decode` was one cited
+      type-only contract site.
+
+      - src/vectl/core/orchestration/runner_payloads.py — payload classifier/finder
+      helpers were cited contract warning sites.
+
+      - src/vectl/core/orchestration/config_defaults.py — built-in role profile helpers
+      were cited tautological contract warning sites.
+
+      - tools/vectl/README.md — NOT READ: file absent in isolated worktree.
+
+
+      ## Batched Remediation Evidence
+
+
+      ### Blocker Ownership Summary
+
+      - B1 standalone UI/UX artifact: FIXED. Subagent produced inline standalone artifact
+      with pasted help/surface snapshots, command executability matrix, JSON ANSI
+      check, facade import check, behavioral proof register, and `handoff_decision:
+      PASS` for downstream `uiux-auditor` validation.
+
+      - B2 Core contract proof: FIXED. All six cited Core warnings were mapped to
+      `FIXED_WITH_SEMANTIC_CONTRACT`.
+
+
+      ### Core Contract Warning Register
+
+      - `src/vectl/core/orchestration/event_schema.py:37` — FIXED_WITH_SEMANTIC_CONTRACT
+      via semantic NUL/%00 precondition and no-NUL postcondition; doctests pass; final
+      guard no longer reports cited warning.
+
+      - `src/vectl/core/orchestration/runner_payloads.py:85` — FIXED_WITH_SEMANTIC_CONTRACT
+      via non-empty string mapping-key precondition; doctests pass; final guard no
+      longer reports cited warning.
+
+      - `src/vectl/core/orchestration/runner_payloads.py:103` — FIXED_WITH_SEMANTIC_CONTRACT
+      via precondition covering `value` and `parse_strings`; doctests pass; final
+      guard no longer reports cited partial-contract warning.
+
+      - `src/vectl/core/orchestration/runner_payloads.py:169` — FIXED_WITH_SEMANTIC_CONTRACT
+      via non-empty string mapping-key precondition; doctests pass; final guard no
+      longer reports cited warning.
+
+      - `src/vectl/core/orchestration/config_defaults.py:115` — FIXED_WITH_SEMANTIC_CONTRACT
+      via optional injected profiles parameter with non-empty/id precondition; role-profile
+      tests and doctests pass; final guard no longer reports cited tautology.
+
+      - `src/vectl/core/orchestration/config_defaults.py:126` — FIXED_WITH_SEMANTIC_CONTRACT
+      via optional injected profiles parameter with non-empty unique-id precondition;
+      role-profile tests and doctests pass; final guard no longer reports cited tautology.
+
+
+      ### Verification
+
+      Subagent worktree verification:
+
+      - `uvx invar-tools guard --all` — PASS; `status: passed`, `errors: 0`, `warnings:
+      54`, `infos: 4`.
+
+      - `.venv/bin/python -m pytest tests/orchestration/unit/test_role_profile_overrides.py
+      tests/orchestration/unit/test_rfc_role_profile_overrides_matrix.py -q` — PASS;
+      `102 passed in 0.40s`.
+
+      - `.venv/bin/python -m doctest -v src/vectl/core/orchestration/event_schema.py
+      src/vectl/core/orchestration/runner_payloads.py src/vectl/core/orchestration/config_defaults.py`
+      — PASS; event_schema 9 passed, runner_payloads 13 passed, config_defaults 6
+      passed.
+
+      - UI/UX artifact captured representative `vectl --help`, `vectl recover --help`,
+      `vectl orch --help`, `vectl orch recover --help`, `vectl orch drive-recover
+      --help`, and `vectl orch config tools --json` via Typer runner; JSON parsed
+      with ANSI count 0; `from vectl.core import RecoverResult` import succeeded.
+
+
+      Mainline final-state verification after squash merge:
+
+      - `uvx invar-tools guard --all && uv run python -m pytest tests/orchestration/unit/test_role_profile_overrides.py
+      tests/orchestration/unit/test_rfc_role_profile_overrides_matrix.py -q && uv
+      run python -m doctest -v src/vectl/core/orchestration/event_schema.py src/vectl/core/orchestration/runner_payloads.py
+      src/vectl/core/orchestration/config_defaults.py` — PASS. Guard `status: passed`,
+      `errors: 0`; role-profile tests `102 passed`; doctests all passed.
+
+
+      ### Files changed
+
+      - `src/vectl/core/orchestration/event_schema.py`
+
+      - `src/vectl/core/orchestration/runner_payloads.py`
+
+      - `src/vectl/core/orchestration/config_defaults.py`
+
+
+      ### Commit hash(es)
+
+      - Subagent branch commit: `bac41366587b09eb9849f8cb684240ef3f6c1342` — `Fix
+      orchestration core contracts`.
+
+      - Mainline squash commit: `a9e8c55` — `[vectl] step-invar_guard_remediation.close-post-gate-blockers-batched
+      completed`.
+
+
+      ### Gaps/Notes
+
+      - Remaining guard warnings are outside the six assigned B2 warning sites and
+      remain warning-level with full guard passing; downstream regate must decide
+      final OPEN/BLOCK.
+
+      - A broader non-closure pytest command reported two local home-config bleed
+      failures; not introduced by this step and not part of the required closure commands.
+
+      - No product CLI behavior was changed; UI/UX evidence is proof-only for downstream
+      `uiux-auditor` validation.
+
+
+      ### checklist_receipt
+
+      All description acceptance checklist items and verification checklist items
+      were satisfied and toggled/updated before completion.'
   - id: invar_guard_remediation.post-blocker-closure-regate
     name: Fresh regate after batched blocker closure
     status: pending

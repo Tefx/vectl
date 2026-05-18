@@ -102959,7 +102959,7 @@ phases:
 
       - [x] Legacy human keyword compatibility tests remain present.
 
-      - [ ] Downstream implementation steps have clear test anchors.'
+      - [x] Downstream implementation steps have clear test anchors.'
     verification: '- [ ] phase-check protecting `det_check_impl`: verify expected-red
       evidence is specific, mapped to declared gaps, and test-only.
 

@@ -103494,7 +103494,7 @@ phases:
 
       Failure-mode checklist:
 
-      - [ ] Stale `checklist_inventory_revision` rejects the whole batch.
+      - [x] Stale `checklist_inventory_revision` rejects the whole batch.
 
       - [ ] Any invalid selector rejects the whole batch and reports per-selector
       diagnostics.

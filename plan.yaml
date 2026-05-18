@@ -102289,7 +102289,7 @@ phases:
       - [x] No public-surface authority conflict remains for `update_checklist` legacy
       signature/behavior.
 
-      - [ ] Contract details are sufficient for expected-red test authors.
+      - [x] Contract details are sufficient for expected-red test authors.
 
       - [ ] Contract purity is preserved; no full deterministic checklist implementation
       was completed in the contract phase.

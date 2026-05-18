@@ -104231,7 +104231,7 @@ phases:
 
       Audit checklist:
 
-      - [ ] Legacy human keyword toggle output remains understandable and points users
+      - [x] Legacy human keyword toggle output remains understandable and points users
       to `vectl show` or equivalent follow-up.
 
       - [ ] Deterministic machine-readable output is parseable and free of ANSI escape

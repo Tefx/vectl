@@ -1,4 +1,3 @@
-# @invar:allow file_size: deterministic inventory and mutation contracts are co-located by RFC ownership for this scoped implementation step.
 """Pure core checklist inventory and mutation service.
 
 Authority: docs/RFC-deterministic-checklists.md
@@ -7,10 +6,13 @@ Authority: docs/RFC-deterministic-checklists.md
 from __future__ import annotations
 
 from dataclasses import dataclass
-import hashlib
-import re
 from typing import Literal, Optional, Union
 
+from vectl.core_checklist_inventory import (
+    canonicalize_markdown_impl,
+    inventory_snapshot_impl as _raw_inventory_snapshot_impl,
+    set_item_marker_impl,
+)
 from vectl.models import Step
 from invar_runtime import pre, post
 
@@ -164,107 +166,16 @@ class NoLegacyMatch(ChecklistContractError):
 
 # -- Core Functions --
 
-_CHECKLIST_ITEM_RE = re.compile(r"^(?P<prefix>\s*[-*+]\s+\[)(?P<marker>[ xX])(?P<suffix>\]\s*)(?P<text>.*)$")
-
-
-@post(lambda result: isinstance(result, str))
-def _canonicalize_markdown(value: str | None) -> str:
-    """Return Markdown with deterministic line endings for hashing/parsing."""
-    if value is None:
-        return ""
-    return value.replace("\r\n", "\n").replace("\r", "\n")
-
-
-_canonicalize_markdown_impl = _canonicalize_markdown.__wrapped__
-
-
-@pre(lambda step: step is not None)
-def _revision_material(step: Step) -> str:
-    """Build the exact supported-field revision input.
-
-    The separator is part of the hash framing only; the raw Markdown bytes for
-    each supported field remain otherwise unchanged after line-ending
-    canonicalization. Unsupported metadata, including evidence_template, is not
-    read here by design.
-    """
-    description = _canonicalize_markdown_impl(step.description)
-    verification = _canonicalize_markdown_impl(step.verification)
-    return f"description\0{description}\0verification\0{verification}"
-
-
-_revision_material_impl = _revision_material.__wrapped__
-
-
-@pre(lambda step: step is not None)
-def _calculate_revision(step: Step) -> ChecklistInventoryRevision:
-    digest = hashlib.sha256(_revision_material_impl(step).encode("utf-8")).hexdigest()
-    return f"sha256:{digest}"
-
-
-_calculate_revision_impl = _calculate_revision.__wrapped__
-
-
-@pre(lambda revision, field, index, line: revision != "" and index >= 0)
-def _item_id(revision: ChecklistInventoryRevision, field: SupportedChecklistField, index: int, line: str) -> str:
-    fragment = hashlib.sha256(f"{revision}\0{field}\0{index}\0{line}".encode("utf-8")).hexdigest()[:12]
-    return f"{field}:{index}:{fragment}"
-
-
-_item_id_impl = _item_id.__wrapped__
-
-
-@pre(lambda field, markdown, revision: revision != "")
-def _items_for_field(
-    field: SupportedChecklistField,
-    markdown: str,
-    revision: ChecklistInventoryRevision,
-) -> list[ChecklistItem]:
-    items: list[ChecklistItem] = []
-    for line in markdown.split("\n"):
-        match = _CHECKLIST_ITEM_RE.match(line)
-        if match is None:
-            continue
-        index = len(items)
-        items.append(
-            ChecklistItem(
-                item_id=_item_id_impl(revision, field, index, line),
-                field=field,
-                index=index,
-                text=match.group("text"),
-                checked=match.group("marker").lower() == "x",
-            )
-        )
-    return items
-
-
-_items_for_field_impl = _items_for_field.__wrapped__
-
 
 @pre(lambda code: code != "")
 def _retry_guidance(code: ChecklistErrorCode) -> RetryGuidance:
     if code == "stale_revision":
-        return RetryGuidance(
-            retryable=True,
-            action="refresh_inventory",
-            message="Refresh the checklist inventory and retry against the latest revision.",
-        )
+        return RetryGuidance(True, "refresh_inventory", "Refresh the checklist inventory and retry against the latest revision.")
     if code == "ambiguous_legacy_match":
-        return RetryGuidance(
-            retryable=True,
-            action="narrow_selector",
-            message="Use a more specific keyword or a deterministic selector.",
-        )
+        return RetryGuidance(True, "narrow_selector", "Use a more specific keyword or a deterministic selector.")
     if code == "unsupported_field":
-        return RetryGuidance(
-            retryable=False,
-            action="unsupported",
-            message="Restrict checklist operations to description and verification.",
-        )
-    return RetryGuidance(
-        retryable=True,
-        action="fix_request",
-        message="Fix the selector or request shape before retrying.",
-    )
+        return RetryGuidance(False, "unsupported", "Restrict checklist operations to description and verification.")
+    return RetryGuidance(True, "fix_request", "Fix the selector or request shape before retrying.")
 
 
 _retry_guidance_impl = _retry_guidance.__wrapped__
@@ -332,109 +243,40 @@ def _validate_request_modes(requests: list[MutationRequest]) -> None:
         if isinstance(selector, LegacyKeywordSelector):
             saw_legacy = True
             if request.checked is not None:
-                _raise_impl(
-                    InvalidSelectorError,
-                    _error_payload_impl(
-                        "invalid_selector",
-                        "Legacy keyword selectors must omit checked and toggle state.",
-                    ),
-                )
+                _raise_invalid_selector_impl("Legacy keyword selectors must omit checked and toggle state.")
         elif isinstance(selector, (ItemIdSelector, FieldIndexSelector)):
             saw_deterministic = True
             if request.checked is None:
-                _raise_impl(
-                    InvalidSelectorError,
-                    _error_payload_impl(
-                        "invalid_selector",
-                        "Deterministic selectors require an explicit checked boolean.",
-                    ),
-                )
+                _raise_invalid_selector_impl("Deterministic selectors require an explicit checked boolean.")
         else:
-            _raise_impl(
-                InvalidSelectorError,
-                _error_payload_impl("invalid_selector", "Unknown checklist selector type."),
-            )
+            _raise_invalid_selector_impl("Unknown checklist selector type.")
 
     if saw_legacy and saw_deterministic:
-        _raise_impl(
-            InvalidSelectorError,
-            _error_payload_impl(
-                "invalid_selector",
-                "Cannot mix legacy keyword toggle selectors with deterministic selectors.",
-            ),
-        )
+        _raise_invalid_selector_impl("Cannot mix legacy keyword toggle selectors with deterministic selectors.")
 
 
 _validate_request_modes_impl = _validate_request_modes.__wrapped__
 
 
-# @invar:allow function_size: selector resolution keeps RFC error mapping in one atomic validation point for all-or-nothing mutation.
+@pre(lambda message: message != "")
+def _raise_invalid_selector(message: str) -> None:
+    _raise_impl(InvalidSelectorError, _error_payload_impl("invalid_selector", message))
+
+
+_raise_invalid_selector_impl = _raise_invalid_selector.__wrapped__
+
+
 @pre(lambda request, items: request is not None and items is not None)
 def _resolve_request(request: MutationRequest, items: list[ChecklistItem]) -> ChecklistItem:
     selector = request.selector
     if isinstance(selector, ItemIdSelector):
-        for item in items:
-            if item.item_id == selector.item_id:
-                return item
-        _raise_impl(
-            ItemNotFoundError,
-            _error_payload_impl(
-                "item_not_found",
-                f"No checklist item found for item_id: {selector.item_id}",
-                item_id=selector.item_id,
-            ),
-        )
+        return _resolve_item_id_selector_impl(selector, items)
 
     if isinstance(selector, FieldIndexSelector):
-        field = _ensure_supported_field_impl(selector.field)
-        if selector.index < 0:
-            _raise_impl(
-                InvalidSelectorError,
-                _error_payload_impl(
-                    "invalid_selector",
-                    f"Checklist index must be non-negative: {selector.index}",
-                    field=field,
-                    index=selector.index,
-                ),
-            )
-        for item in items:
-            if item.field == field and item.index == selector.index:
-                return item
-        _raise_impl(
-            ItemNotFoundError,
-            _error_payload_impl(
-                "item_not_found",
-                f"No checklist item found for {field}[{selector.index}]",
-                field=field,
-                index=selector.index,
-            ),
-        )
+        return _resolve_field_index_selector_impl(selector, items)
 
     if isinstance(selector, LegacyKeywordSelector):
-        keyword = selector.keyword.casefold()
-        if keyword == "":
-            _raise_impl(
-                InvalidSelectorError,
-                _error_payload_impl("invalid_selector", "Legacy keyword selector cannot be empty."),
-            )
-        matches = [item for item in items if keyword in item.text.casefold()]
-        if len(matches) == 1:
-            return matches[0]
-        if len(matches) == 0:
-            _raise_impl(
-                NoLegacyMatch,
-                _error_payload_impl(
-                    "no_legacy_match",
-                    f"No checklist item matched legacy keyword: {selector.keyword}",
-                ),
-            )
-        _raise_impl(
-            AmbiguousLegacyMatch,
-            _error_payload_impl(
-                "ambiguous_legacy_match",
-                f"Legacy keyword matched multiple checklist items: {selector.keyword}",
-            ),
-        )
+        return _resolve_legacy_keyword_selector_impl(selector, items)
 
     _raise_impl(
         InvalidSelectorError,
@@ -446,44 +288,131 @@ def _resolve_request(request: MutationRequest, items: list[ChecklistItem]) -> Ch
 _resolve_request_impl = _resolve_request.__wrapped__
 
 
-@pre(lambda markdown, target_index, checked: target_index >= 0)
-def _set_item_marker(markdown: str, target_index: int, checked: bool) -> tuple[str, bool]:
-    lines = markdown.splitlines(keepends=True)
-    if markdown and not lines:
-        lines = [markdown]
-
-    seen = 0
-    changed = False
-    replacement_marker = "x" if checked else " "
-    for offset, line in enumerate(lines):
-        line_body = line[:-1] if line.endswith("\n") else line
-        newline = "\n" if line.endswith("\n") else ""
-        match = _CHECKLIST_ITEM_RE.match(line_body)
-        if match is None:
-            continue
-        if seen == target_index:
-            current_marker = match.group("marker")
-            changed = current_marker != replacement_marker
-            if changed:
-                lines[offset] = (
-                    f"{match.group('prefix')}{replacement_marker}"
-                    f"{match.group('suffix')}{match.group('text')}{newline}"
-                )
-            break
-        seen += 1
-    return "".join(lines), changed
+@pre(lambda selector, items: selector.item_id != "" and items is not None)
+def _resolve_item_id_selector(
+    selector: ItemIdSelector, items: list[ChecklistItem]
+) -> ChecklistItem:
+    for item in items:
+        if item.item_id == selector.item_id:
+            return item
+    _raise_impl(
+        ItemNotFoundError,
+        _error_payload_impl(
+            "item_not_found",
+            f"No checklist item found for item_id: {selector.item_id}",
+            item_id=selector.item_id,
+        ),
+    )
+    raise AssertionError("unreachable")
 
 
-_set_item_marker_impl = _set_item_marker.__wrapped__
+_resolve_item_id_selector_impl = _resolve_item_id_selector.__wrapped__
+
+
+@pre(lambda selector, items: selector is not None and items is not None)
+def _resolve_field_index_selector(
+    selector: FieldIndexSelector, items: list[ChecklistItem]
+) -> ChecklistItem:
+    field = _ensure_supported_field_impl(selector.field)
+    if selector.index < 0:
+        _raise_invalid_index_impl(field, selector.index)
+    for item in items:
+        if item.field == field and item.index == selector.index:
+            return item
+    _raise_impl(
+        ItemNotFoundError,
+        _error_payload_impl(
+            "item_not_found",
+            f"No checklist item found for {field}[{selector.index}]",
+            field=field,
+            index=selector.index,
+        ),
+    )
+    raise AssertionError("unreachable")
+
+
+_resolve_field_index_selector_impl = _resolve_field_index_selector.__wrapped__
+
+
+@pre(lambda field, index: field in ("description", "verification") and index < 0)
+def _raise_invalid_index(field: SupportedChecklistField, index: int) -> None:
+    _raise_impl(
+        InvalidSelectorError,
+        _error_payload_impl(
+            "invalid_selector",
+            f"Checklist index must be non-negative: {index}",
+            field=field,
+            index=index,
+        ),
+    )
+
+
+_raise_invalid_index_impl = _raise_invalid_index.__wrapped__
+
+
+@pre(lambda selector, items: selector is not None and items is not None)
+def _resolve_legacy_keyword_selector(
+    selector: LegacyKeywordSelector, items: list[ChecklistItem]
+) -> ChecklistItem:
+    keyword = selector.keyword.casefold()
+    if keyword == "":
+        _raise_impl(
+            InvalidSelectorError,
+            _error_payload_impl("invalid_selector", "Legacy keyword selector cannot be empty."),
+        )
+    matches = [item for item in items if keyword in item.text.casefold()]
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) == 0:
+        _raise_no_legacy_match_impl(selector.keyword)
+    _raise_ambiguous_legacy_match_impl(selector.keyword)
+    raise AssertionError("unreachable")
+
+
+_resolve_legacy_keyword_selector_impl = _resolve_legacy_keyword_selector.__wrapped__
+
+
+@pre(lambda keyword: keyword != "")
+def _raise_no_legacy_match(keyword: str) -> None:
+    _raise_impl(
+        NoLegacyMatch,
+        _error_payload_impl(
+            "no_legacy_match",
+            f"No checklist item matched legacy keyword: {keyword}",
+        ),
+    )
+
+
+_raise_no_legacy_match_impl = _raise_no_legacy_match.__wrapped__
+
+
+@pre(lambda keyword: keyword != "")
+def _raise_ambiguous_legacy_match(keyword: str) -> None:
+    _raise_impl(
+        AmbiguousLegacyMatch,
+        _error_payload_impl(
+            "ambiguous_legacy_match",
+            f"Legacy keyword matched multiple checklist items: {keyword}",
+        ),
+    )
+
+
+_raise_ambiguous_legacy_match_impl = _raise_ambiguous_legacy_match.__wrapped__
 
 
 @pre(lambda step: step is not None)
 def _inventory_snapshot(step: Step) -> tuple[ChecklistInventoryRevision, list[ChecklistItem]]:
-    revision = _calculate_revision_impl(step)
-    description = _canonicalize_markdown_impl(step.description)
-    verification = _canonicalize_markdown_impl(step.verification)
-    items = _items_for_field_impl("description", description, revision)
-    items.extend(_items_for_field_impl("verification", verification, revision))
+    revision, rows = _raw_inventory_snapshot_impl(step)
+    items = [
+        ChecklistItem(
+            item_id=row.item_id,
+            field=row.field,
+            index=row.index,
+            text=row.text,
+            checked=row.checked,
+        )
+        for row in rows
+    ]
     return revision, items
 
 

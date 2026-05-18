@@ -102804,7 +102804,7 @@ phases:
       - [x] Red failures must map to declared surface gaps, not unrelated import or
       syntax errors.
 
-      - [ ] Do not mark expected-red tests as final green; lifecycle is closed by
+      - [x] Do not mark expected-red tests as final green; lifecycle is closed by
       downstream implementation and retest steps.'
     verification: '- [ ] Run `pytest tests/test_cli.py tests/test_mcp.py -k ''check
       or checklist or deterministic or batch or revision'' -q` and record that new

@@ -95843,7 +95843,7 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] The authoritative full-guard command output is pasted verbatim.
+      - [x] The authoritative full-guard command output is pasted verbatim.
 
       - [ ] No stale evidence from branch worktrees is used as mainline proof.
 

@@ -7,6 +7,28 @@ from dataclasses import dataclass
 from enum import Enum
 
 from vectl.core_plan_clipboard import *  # noqa: F403
+from vectl.core_checklist import (  # noqa: F401
+    AmbiguousLegacyMatch,
+    BatchDiagnostics,
+    ChecklistContractError,
+    ChecklistErrorPayload,
+    ChecklistInventoryRevision,
+    ChecklistItem,
+    FieldIndexSelector,
+    InvalidSelectorError,
+    ItemIdSelector,
+    ItemNotFoundError,
+    LegacyKeywordSelector,
+    MutationBatchResult,
+    MutationRequest,
+    NoLegacyMatch,
+    OrchestratorChecklistReceipt,
+    RetryGuidance,
+    StaleRevisionError,
+    UnsupportedFieldError,
+    get_inventory,
+    mutate_checklist,
+)
 from vectl.core_plan_step_add import *  # noqa: F403
 from vectl.core_plan_step_edit import *  # noqa: F403
 from vectl.core_duplicate_step_id import require_unambiguous_target_step_id
@@ -60,9 +82,11 @@ def update_checklist(
     runtime API used by CLI, MCP, and tests:
     ``update_checklist(plan, step_id, *, check=None, append=None) -> Plan``.
 
-    Deterministic item-id/revision checklist handling is acceptance-only in
-    :mod:`vectl.core_checklist` until the full RFC implementation lands; this
-    adapter must not accept or partially implement deterministic selectors.
+    Deterministic item-id/revision checklist handling lives in
+    :mod:`vectl.core_checklist` and is re-exported from this facade for callers
+    that import through ``vectl.core``.  This legacy adapter keeps keyword
+    toggle/append semantics unchanged and does not accept deterministic selector
+    arguments on the historical ``update_checklist`` signature.
 
     Authority: docs/RFC-deterministic-checklists.md and tests/test_checklist.py.
     """

@@ -104505,7 +104505,7 @@ phases:
 
       - [x] CLI entry point starts and accepts at least one legacy checklist operation.
 
-      - [ ] CLI entry point accepts at least one deterministic checklist operation
+      - [x] CLI entry point accepts at least one deterministic checklist operation
       or inventory command if exposed.
 
       - [ ] MCP checklist tool wrapper can be invoked through the registered tool

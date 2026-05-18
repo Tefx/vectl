@@ -108624,7 +108624,7 @@ phases:
 
       ## Required commands before handoff
 
-      - [ ] Run `uv run pytest -q` and paste the collection/result summary.
+      - [x] Run `uv run pytest -q` and paste the collection/result summary.
 
       - [ ] Run `uv run invar guard --all` and paste the summary.
 

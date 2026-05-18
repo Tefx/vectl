@@ -103130,7 +103130,7 @@ phases:
   steps:
   - id: det_check_impl_core_inventory
     name: Complete core checklist inventory service
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -103254,6 +103254,67 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-18T15:30:45.752097+00:00'
+    done_at: '2026-05-18T15:53:02.820154+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## Commit hash(es)
+
+      - c9a0eae
+
+      - 177984bd
+
+
+      ## Files changed
+
+      - `src/vectl/core_checklist.py`
+
+      - `src/vectl/core_checklist_inventory.py`
+
+
+      ## Spec link
+
+      - `docs/RFC-deterministic-checklists.md`
+
+      - Upstream contract/test artifacts named in the step: `src/vectl/core_checklist.py`,
+      `tests/test_checklist.py`
+
+
+      ## Verification
+
+      - `pytest tests/test_checklist.py -k ''inventory or revision or snapshot or
+      field'' -q` passed: 4 passed, 17 deselected.
+
+      - `uvx invar-tools guard --all` passed: errors: 0, warnings only.
+
+
+      ## Checklist receipt / acceptance evidence
+
+      - Revision input is exactly canonicalized raw Markdown for `description` and
+      `verification`; unrelated metadata is excluded.
+
+      - Missing/empty fields produce empty inventories and stable revision behavior.
+
+      - `evidence_template` is explicitly unsupported/deferred for first version.
+
+      - No module-level mutable registry/cache is introduced for inventory state.
+
+      - Concurrent callers cannot share or corrupt inventory snapshots because inventory
+      objects are pure values.
+
+      - Cleanup/reset semantics are unnecessary because inventory objects are pure
+      values.
+
+      - Snapshot-scoped item IDs are deterministic for the same snapshot and not persisted
+      as stable cross-snapshot IDs.
+
+      - Evidence proves no product mutation logic outside the core checklist inventory
+      service was completed in this step.
+
+
+      ## Gaps/Notes
+
+      - None reported for this step.'
   - id: det_check_impl_single_mutation
     name: Complete deterministic single checklist mutation
     status: pending

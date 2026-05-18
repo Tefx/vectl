@@ -105600,6 +105600,172 @@ phases:
     depends_on:
     - det_check_impl_blocker_remediation
     agent: wiring-auditor
+  - id: det_check_impl_blocker_retest
+    name: Aggregate deterministic checklist blocker retest closure
+    status: pending
+    description: 'Aggregate retest closure for the batched deterministic checklist
+      remediation path.
+
+
+      step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check protecting `det_check_impl_gate` and `det_check_finalization`.
+
+      agent_source: default
+
+      Independence Level: L1; reviewer is independent of `python-senior` remediation.
+
+
+      This step does not implement fixes. It reviews the three family retests and
+      decides whether the concurrent blocker set B1-B8 is closed enough for the phase
+      gate to proceed.
+
+
+      ## Closure inputs
+
+      - [ ] `det_check_impl_blocker_integration_retest` — integration/runtime blocker
+      family.
+
+      - [ ] `det_check_impl_blocker_spec_retest` — spec conformance blocker family.
+
+      - [ ] `det_check_impl_blocker_wiring_retest` — wiring/contract blocker family.
+
+
+      ## Required closure checks
+
+      - [ ] B1 stale revision bypass is closed with no production `rev1` bypass and
+      no mutation on stale revision.
+
+      - [ ] B2 CLI JSON false-green is closed with parseable JSON and non-zero status
+      for deterministic contract errors.
+
+      - [ ] B3 RFC receipt schema alignment is closed for minimal `{item_id, revision,
+      checked}` receipts.
+
+      - [ ] B4 failed batch all-or-nothing and stale receipt refresh-before-retry
+      have runtime proof or blocking closure ownership.
+
+      - [ ] B5 receipt validation has a runtime-reachable path or explicit private
+      tested disposition.
+
+      - [ ] B6 Core checklist batch contracts are non-vacuous.
+
+      - [ ] B7 public aliases are used or explicitly governed as type-only/private.
+
+      - [ ] B8 unsupported-field inventory behavior is implemented/verified or RFC-deferred
+      with non-intersection evidence.
+
+      - [ ] Non-blocking liveness debt has a valid non-intersection disposition if
+      still present.
+
+
+      ## Gate decision basis required
+
+      Evidence MUST include the structured behavioral proof register and final OPEN/BLOCK
+      recommendation. The recommendation may be OPEN only if every blocker-class obligation
+      is PROVEN or has explicit non-intersection evidence.'
+    verification: '- [ ] phase-check: all remediation family retests are complete
+      and independently evidenced.
+
+      - [ ] B1-B8 closure matrix shows PROVEN or explicit non-intersection for every
+      blocker-class obligation.
+
+      - [ ] Behavioral proof register includes `requirement_ref`, `behavior_claim`,
+      `runtime_proof_expected`, `evidence_ref`, `status`, `closure_path`, and `gate_decision_basis`.
+
+      - [ ] No unresolved NEEDS_TEST, UNPROVEN, or UNCERTAIN_BLOCKING item is allowed
+      to pass without a remediation owner.
+
+      - [ ] Final recommendation is OPEN only if integration, spec conformance, and
+      wiring/contract retests are all PASS or PASS_WITH_NON_INTERSECTING_DEBT.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - `docs/RFC-deterministic-checklists.md` — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Aggregate Blocker Retest Closure
+
+
+      **Reviewer**: gate-reviewer (independent of remediation)
+
+      **Remediation step**: `det_check_impl_blocker_remediation`
+
+
+      ### Family Retest Review
+
+      | Retest step | Agent | Headline | Evidence quality | Remaining blockers |
+
+      | --- | --- | --- | --- | --- |
+
+      | det_check_impl_blocker_integration_retest | integration-verifier | PASS/PASS_WITH_DEBT/FAIL
+      | | |
+
+      | det_check_impl_blocker_spec_retest | spec-verifier | PASS/PASS_WITH_DEBT/FAIL
+      | | |
+
+      | det_check_impl_blocker_wiring_retest | wiring-auditor | PASS/PASS_WITH_DEBT/FAIL
+      | | |
+
+
+      ### B1-B8 Closure Matrix
+
+      | Blocker | Closure evidence ref | Status | Closure path | Gate decision basis
+      |
+
+      | --- | --- | --- | --- | --- |
+
+      | B1 stale revision bypass | | PROVEN/UNPROVEN | | |
+
+      | B2 CLI JSON false-green | | PROVEN/UNPROVEN | | |
+
+      | B3 receipt schema divergence | | PROVEN/UNPROVEN | | |
+
+      | B4 runtime proof/refresh path | | PROVEN/UNPROVEN | | |
+
+      | B5 receipt validation dead path | | PROVEN/UNPROVEN | | |
+
+      | B6 vacuous Core contracts | | PROVEN/UNPROVEN | | |
+
+      | B7 orphan public symbols | | PROVEN/UNPROVEN | | |
+
+      | B8 unsupported-field inventory path | | PROVEN/UNPROVEN | | |
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ### Final Recommendation
+
+      - [ ] OPEN: blocker family closed; `det_check_impl_gate` may review phase.
+
+      - [ ] BLOCK: unresolved blocker-class issue remains.
+
+
+      ### Required Follow-up If BLOCK
+
+      - Blocking issue(s): <list>
+
+      - Required remediation owner/path: <step or new step request>'
+    depends_on:
+    - det_check_impl_blocker_integration_retest
+    - det_check_impl_blocker_spec_retest
+    - det_check_impl_blocker_wiring_retest
+    agent: gate-reviewer
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

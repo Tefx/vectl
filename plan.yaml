@@ -108356,7 +108356,7 @@ phases:
       boundary and remediation ownership only.'
   - id: det_check_arch_review
     name: Review checklist architecture and authority
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT ARCHITECT (software-architect), review deterministic
       checklist architecture after implementation and full-plan verification.
 
@@ -108440,6 +108440,8 @@ phases:
     depends_on:
     - det_check_full_plan_retest
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-05-18T20:13:01.722871+00:00'
   - id: det_check_final_gate
     name: Final gate deterministic checklist handling
     status: pending

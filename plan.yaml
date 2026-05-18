@@ -99024,7 +99024,7 @@ phases:
       - [x] Preserve public import compatibility for every touched module listed in
       Compatibility Preservation Required.
 
-      - [ ] Preserve CLI/MCP/runtime behavior for touched public surfaces, especially
+      - [x] Preserve CLI/MCP/runtime behavior for touched public surfaces, especially
       `plan_path`, `migration`, `cli_orchestration_inspect_commands`, `orch_app`,
       `core_plan_mutations`, `control`, and `continuity_protocols`.
 

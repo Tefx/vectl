@@ -105762,7 +105762,7 @@ phases:
       - none'
   - id: det_check_impl_blocker_integration_retest
     name: Retest deterministic checklist integration blockers
-    status: pending
+    status: claimed
     description: 'Independent integration retest for the batched deterministic checklist
       blocker remediation.
 
@@ -105901,6 +105901,8 @@ phases:
     depends_on:
     - det_check_impl_blocker_remediation
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-18T17:16:53.545514+00:00'
   - id: det_check_impl_blocker_spec_retest
     name: Retest deterministic checklist spec conformance blockers
     status: pending

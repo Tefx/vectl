@@ -103496,7 +103496,7 @@ phases:
 
       - [x] Stale `checklist_inventory_revision` rejects the whole batch.
 
-      - [ ] Any invalid selector rejects the whole batch and reports per-selector
+      - [x] Any invalid selector rejects the whole batch and reports per-selector
       diagnostics.
 
       - [ ] Duplicate or conflicting selectors are deterministic and documented by

@@ -103502,7 +103502,7 @@ phases:
       - [x] Duplicate or conflicting selectors are deterministic and documented by
       structured diagnostics.
 
-      - [ ] Successful batch changes only requested checkbox markers.
+      - [x] Successful batch changes only requested checkbox markers.
 
       - [ ] Empty batch behavior follows the contract exactly.
 

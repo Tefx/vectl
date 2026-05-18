@@ -103354,7 +103354,7 @@ phases:
 
       - [x] `field+index` selector rejects unsupported fields and out-of-range indexes.
 
-      - [ ] Target-state mutation is idempotent when the marker already matches.
+      - [x] Target-state mutation is idempotent when the marker already matches.
 
       - [ ] Legacy keyword toggle still toggles exactly one fuzzy match and preserves
       ambiguous/no-match errors.

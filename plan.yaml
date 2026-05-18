@@ -101609,7 +101609,7 @@ phases:
       \ — dataclass/type/signature stubs for inventory, selectors, mutation requests/results,\
       \ batch diagnostics, and structured errors.\n- `src/vectl/core_plan_mutations.py`\
       \ — `update_checklist` compatibility contract notes or adapter stub only, preserving\
-      \ legacy behavior.\n\nAcceptance checklist:\n- [ ] Contract identifies pure\
+      \ legacy behavior.\n\nAcceptance checklist:\n- [x] Contract identifies pure\
       \ core checklist service/parser as the sole owner for CLI and MCP.\n- [ ] Contract\
       \ limits first-version inventory to `description` and `verification`; `evidence_template`\
       \ is documented as deferred.\n- [ ] Contract defines snapshot-scoped `item_id`,\

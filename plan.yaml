@@ -108649,7 +108649,7 @@ phases:
 
       Final gate checklist:
 
-      - [ ] Contract-first/test-first sequence was preserved: contract -> expected-red
+      - [x] Contract-first/test-first sequence was preserved: contract -> expected-red
       tests -> implementation -> green verification.
 
       - [ ] Documentation sync covers legacy vs deterministic paths and worker/orchestrator

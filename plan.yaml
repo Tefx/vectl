@@ -97727,7 +97727,7 @@ phases:
       - `verdict`\n- `blockers`\n- `gate_open_allowed`\n- `orchestrator_action_hint`\n\
       - `product_implementation_files_modified`\n- `behavioral_proof_register`\n\n\
       ## Checklist\n- [x] Confirm this retest runs after all four focused residual\
-      \ implementation steps are complete and merged to current mainline.\n- [ ] Review\
+      \ implementation steps are complete and merged to current mainline.\n- [x] Review\
       \ owner evidence for BEFORE/AFTER guard excerpts and compatibility smoke proofs.\n\
       - [ ] Run exact command `uvx invar-tools guard --all` in a fresh/cold environment.\n\
       - [ ] Record exact command, exit code, summary, and relevant guard excerpts.\n\

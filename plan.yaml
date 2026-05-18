@@ -104790,7 +104790,7 @@ phases:
       - [x] Omission drift: every MUST in `docs/RFC-deterministic-checklists.md` has
       corresponding implementation or explicit deferred disposition.
 
-      - [ ] Contract surface drift: CLI/MCP request/response fields are additive and
+      - [x] Contract surface drift: CLI/MCP request/response fields are additive and
       legacy-compatible.
 
       - [ ] Behavioral precedence claims are marked PROVEN only with runtime/test

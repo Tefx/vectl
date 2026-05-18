@@ -106556,7 +106556,7 @@ phases:
 
       - [x] B6 Core checklist batch contracts are non-vacuous.
 
-      - [ ] B7 public aliases are used or explicitly governed as type-only/private.
+      - [x] B7 public aliases are used or explicitly governed as type-only/private.
 
       - [ ] B8 unsupported-field inventory behavior is implemented/verified or RFC-deferred
       with non-intersection evidence.

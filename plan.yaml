@@ -103372,16 +103372,16 @@ phases:
 
       If a contract artifact is wrong or incomplete, document a deviation record (type,
       what, why, impact) — do NOT silently rewrite.'
-    verification: '- [ ] Run `pytest tests/test_checklist.py -k ''single or idempotent
+    verification: '- [x] Run `pytest tests/test_checklist.py -k ''single or idempotent
       or stale or legacy or marker or selector'' -q` and show deterministic single
       mutation tests pass green.
 
-      - [ ] Evidence shows stale revision and invalid selector failure paths, not
+      - [x] Evidence shows stale revision and invalid selector failure paths, not
       only happy path.
 
-      - [ ] Evidence shows legacy keyword toggle behavior remains compatible.
+      - [x] Evidence shows legacy keyword toggle behavior remains compatible.
 
-      - [ ] Evidence shows mutation is marker-only by before/after string comparison.'
+      - [x] Evidence shows mutation is marker-only by before/after string comparison.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
       \ step:\n- docs/RFC-deterministic-checklists.md — key passage or \"NOT READ:\
       \ <reason>\"\n- src/vectl/core_checklist.py — key passage or \"NOT READ: <reason>\"\

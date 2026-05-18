@@ -99044,7 +99044,7 @@ phases:
       disposition, non-intersection proof, downstream gate impact, and future owner
       if applicable.
 
-      - [ ] State explicitly that no guard policy, budget, ignored-path, suppression,
+      - [x] State explicitly that no guard policy, budget, ignored-path, suppression,
       or bypass changes were made.'
     verification: '- [ ] Exact BEFORE guard excerpt includes command `uvx invar-tools
       guard --all`, exit code 1, weighted budget `17/15`, `file_size 2/5`, and all

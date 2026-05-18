@@ -6,7 +6,6 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from pathlib import Path
 from typing import NamedTuple
 
 from vectl import claims as _claims
@@ -26,304 +25,21 @@ from vectl.models import (
 from vectl.semantics import is_step_locked as _is_step_locked_shared
 
 from vectl.core_duplicate_step_id import analyze_duplicate_step_ids
-
-def validate_plan(
-    plan: Plan,
-    *,
-    check_refs: bool = False,
-    base_path: Path | None = None,
-    include_completed_evidence_guard: bool = True,
-) -> list[PlanValidationIssue]:
-    """Validate plan structure, DAG, and consistency.
-
-    Args:
-        plan: The plan to validate.
-        check_refs: If True, check that files in refs[] exist on disk.
-        base_path: Base path for resolving refs (defaults to cwd).
-    """
-    errors: list[PlanValidationIssue] = []
-
-    # Phase ID uniqueness
-    phase_ids: set[str] = set()
-    for phase in plan.phases:
-        if phase.id in phase_ids:
-            errors.append(PlanValidationIssue(f"Duplicate phase ID: '{phase.id}'"))
-        phase_ids.add(phase.id)
-
-    # Phase DAG: valid depends_on refs
-    for phase in plan.phases:
-        for dep in phase.depends_on:
-            if dep not in phase_ids:
-                errors.append(
-                    PlanValidationIssue(f"Phase '{phase.id}' depends on unknown phase '{dep}'")
-                )
-
-    # Phase DAG: cycle detection
-    phase_cycle = _detect_cycle({p.id: p.depends_on for p in plan.phases})
-    if phase_cycle:
-        errors.append(PlanValidationIssue(f"Phase DAG cycle detected: {' → '.join(phase_cycle)}"))
-
-    duplicate_diagnostics = analyze_duplicate_step_ids(plan)
-
-    # Per-phase checks
-    for phase in plan.phases:
-        # Step IDs in this phase (used for dependency validation only).
-        # Duplicate-ID diagnostics are generated plan-wide by
-        # analyze_duplicate_step_ids().
-        step_ids: set[str] = set()
-        for step in phase.steps:
-            step_ids.add(step.id)
-
-        # Step DAG: valid depends_on refs (within same phase)
-        for step in phase.steps:
-            for dep in step.depends_on:
-                if dep not in step_ids:
-                    errors.append(
-                        PlanValidationIssue(
-                            f"Step '{step.id}' depends on unknown step '{dep}' (phase '{phase.id}')"
-                        )
-                    )
-
-        # Step DAG: cycle detection
-        step_cycle = _detect_cycle({s.id: s.depends_on for s in phase.steps})
-        if step_cycle:
-            errors.append(
-                PlanValidationIssue(
-                    f"Step DAG cycle in phase '{phase.id}': {' → '.join(step_cycle)}"
-                )
-            )
-
-        # Status consistency
-        if phase.status == PhaseStatus.LOCKED:
-            for step in phase.steps:
-                if step.status not in (StepStatus.PENDING, StepStatus.SKIPPED):
-                    errors.append(
-                        PlanValidationIssue(
-                            f"Step '{step.id}' has status '{step.status.value}' "
-                            f"but phase '{phase.id}' is locked"
-                        )
-                    )
-
-        # Phase done but steps not all done/skipped
-        if phase.status == PhaseStatus.DONE:
-            for step in phase.steps:
-                if step.status not in (StepStatus.DONE, StepStatus.SKIPPED):
-                    errors.append(
-                        PlanValidationIssue(
-                            f"Phase '{phase.id}' is done but step '{step.id}' "
-                            f"has status '{step.status.value}'"
-                        )
-                    )
-
-    for conflict in duplicate_diagnostics.conflicts:
-        conflict_phase_list = ", ".join(conflict.phase_ids)
-        errors.append(
-            PlanValidationIssue(
-                f"Duplicate step ID '{conflict.step_id}' appears {conflict.occurrences} "
-                f"times across phases: {conflict_phase_list}. "
-                "Repair required before validation/gate checks can pass. "
-                "Run `vectl migrate-step-id --dry-run` then "
-                "`vectl migrate-step-id --yes`.",
-            )
-        )
-
-    # Refs check (optional)
-    if check_refs and base_path is not None:
-        for phase in plan.phases:
-            for step in phase.steps:
-                for ref in step.refs:
-                    # Strip fragment (e.g., "file.md#section")
-                    file_part = ref.split("#")[0]
-                    if file_part and not (base_path / file_part).exists():
-                        errors.append(
-                            PlanValidationIssue(
-                                f"Step '{step.id}' ref '{ref}' — file not found",
-                                is_warning=True,
-                            )
-                        )
-
-    if include_completed_evidence_guard:
-        errors.extend(_completed_evidence_guard_issues(plan))
-
-    return errors
-
-
-_EVIDENCE_GUARD_STEP_HINTS = (
-    "review",
-    "gate",
-    "test",
-    "verify",
-    "verification",
-    "pytest",
-    "smoke",
-    "regression",
-    "validation",
-    "acceptance",
-    "runtime non-closure",
-    "gate_open_allowed",
-    "review_outcome",
+from vectl.core_plan_validation import (
+    validate_plan,
+    _detect_cycle,
+    _completed_evidence_guard_issues,
+    _is_evidence_guard_candidate,
+    _evidence_failure_reasons,
+    _evidence_has_closure,
+    _has_later_same_phase_closure,
+    _has_intentional_red_or_nonblocking_disposition,
 )
 
-_EVIDENCE_FAILURE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("gate_open_allowed=false", re.compile(r"\bgate_open_allowed\s*[:=]\s*false\b", re.I)),
-    ("NEEDS_REVISION", re.compile(r"\bNEEDS_REVISION\b", re.I)),
-    (
-        "runtime non-closure: fail",
-        re.compile(r"\bruntime\s+non[- ]closure\s*:\s*fail\b", re.I),
-    ),
-    ("failed tests", re.compile(r"\b[1-9]\d*\s+failed\b", re.I)),
-    ("FAIL", re.compile(r"\bFAIL(?:ED|URE)?\b")),
-)
-
-_EVIDENCE_CLOSURE_PATTERNS = (
-    re.compile(r"\bgate_open_allowed\s*[:=]\s*true\b", re.I),
-    re.compile(r"\breview_outcome\s*[:=]\s*(?:pass|passed|approved|accepted)\b", re.I),
-    re.compile(r"\bruntime\s+non[- ]closure\s*:\s*(?:pass|closed|ok)\b", re.I),
-    re.compile(r"\b(?:green verification|retest passed|all tests pass(?:ed)?|tests PASS|PASS)\b"),
-    re.compile(r"\bOPEN\b"),
-)
+# @shell_complexity: Branches preserve ordered validation diagnostics for phase IDs, DAGs, statuses, duplicate IDs, refs, and evidence guard.
 
 
-def _completed_evidence_guard_issues(plan: Plan) -> list[PlanValidationIssue]:
-    """Flag completed verification-like steps with unclosed failure evidence."""
-
-    issues: list[PlanValidationIssue] = []
-    for phase in plan.phases:
-        for index, step in enumerate(phase.steps):
-            if step.status != StepStatus.DONE or not step.evidence:
-                continue
-            if not _is_evidence_guard_candidate(step):
-                continue
-            reasons = _evidence_failure_reasons(step.evidence)
-            if not reasons:
-                continue
-            if _has_intentional_red_or_nonblocking_disposition(step):
-                continue
-            if _has_later_same_phase_closure(phase, after_index=index):
-                continue
-            issues.append(
-                PlanValidationIssue(
-                    "Completed evidence guard: "
-                    f"step '{step.id}' in phase '{phase.id}' has unclosed failure evidence "
-                    f"({', '.join(reasons)}). Add a later same-phase closure step with "
-                    "green/OPEN/gate_open_allowed=true evidence, or record expected-red/non-blocking "
-                    "owner/lifecycle/gate-intersection disposition."
-                )
-            )
-    return issues
-
-
-def _is_evidence_guard_candidate(step: Step) -> bool:
-    """Return True for completed steps whose text is verification-like."""
-
-    haystack = "\n".join(
-        (
-            step.id,
-            step.name,
-            step.description,
-            step.verification,
-            step.evidence or "",
-        )
-    ).lower()
-    return any(token in haystack for token in _EVIDENCE_GUARD_STEP_HINTS)
-
-
-def _evidence_failure_reasons(evidence: str) -> list[str]:
-    """Return unique failure tokens visible in evidence text."""
-
-    reasons: list[str] = []
-    for label, pattern in _EVIDENCE_FAILURE_PATTERNS:
-        if pattern.search(evidence) and label not in reasons:
-            reasons.append(label)
-    return reasons
-
-
-def _evidence_has_closure(evidence: str) -> bool:
-    """Return True when evidence mechanically closes a prior gate/test failure."""
-
-    if re.search(r"\bgate_open_allowed\s*[:=]\s*true\b", evidence, re.I):
-        return True
-    if _evidence_failure_reasons(evidence):
-        return False
-    return any(pattern.search(evidence) for pattern in _EVIDENCE_CLOSURE_PATTERNS)
-
-
-def _has_later_same_phase_closure(phase: Phase, *, after_index: int) -> bool:
-    """Return True when a later completed step visibly closes the blocker."""
-
-    for later in phase.steps[after_index + 1 :]:
-        if later.status == StepStatus.DONE and later.evidence and _evidence_has_closure(later.evidence):
-            return True
-    return False
-
-
-def _has_intentional_red_or_nonblocking_disposition(step: Step) -> bool:
-    """Allow explicit expected-red/non-blocking evidence with lifecycle proof."""
-
-    evidence = step.evidence or ""
-    lower = evidence.lower()
-    has_owner = bool(re.search(r"\bowner\s*[:=]|\bowned by\b", lower))
-    has_lifecycle = any(token in lower for token in ("lifecycle", "disposition", "expires", "tracked"))
-    has_gate_proof = any(
-        token in lower
-        for token in (
-            "gate-intersection proof",
-            "non-intersection",
-            "nonintersection",
-            "does not intersect",
-            "no gate intersection",
-            "outside gate",
-        )
-    )
-
-    is_expected_red = (
-        step.verify == "expected_red" or "expected-red" in lower or "expected_red" in lower
-    )
-    if is_expected_red and has_owner and has_lifecycle and has_gate_proof:
-        return True
-
-    is_nonblocking = "non-blocking" in lower or "not blocking" in lower
-    return is_nonblocking and has_owner and has_lifecycle and has_gate_proof
-
-
-def _detect_cycle(graph: dict[str, list[str]]) -> list[str] | None:
-    """Detect a cycle in a directed graph. Returns cycle path or None."""
-    WHITE, GRAY, BLACK = 0, 1, 2
-    color: dict[str, int] = {node: WHITE for node in graph}
-    parent: dict[str, str | None] = {node: None for node in graph}
-
-    def dfs(node: str) -> list[str] | None:
-        color[node] = GRAY
-        for neighbor in graph.get(node, []):
-            if neighbor not in color:
-                continue
-            if color[neighbor] == GRAY:
-                # Found cycle — reconstruct path
-                cycle = [neighbor, node]
-                cur = node
-                prev = parent[cur]
-                while prev is not None and prev != neighbor:
-                    cycle.append(prev)
-                    cur = prev
-                    prev = parent[cur]
-                cycle.reverse()
-                return cycle
-            if color[neighbor] == WHITE:
-                parent[neighbor] = node
-                result = dfs(neighbor)
-                if result:
-                    return result
-        color[node] = BLACK
-        return None
-
-    for node in graph:
-        if color[node] == WHITE:
-            result = dfs(node)
-            if result:
-                return result
-    return None
-
-
+# @shell_complexity: DFS branches preserve neighbor filtering, back-edge reconstruction, recursive traversal, and no-cycle sentinel semantics.
 def get_next_steps(plan: Plan, agent: str | None = None) -> list[Step]:
     """Get all claimable steps across active phases.
 
@@ -374,6 +90,7 @@ def get_next_steps(plan: Plan, agent: str | None = None) -> list[Step]:
     return result
 
 
+# @shell_complexity: Branches preserve locked-but-eligible inclusion without mutating phase status.
 def _get_active_phase_ids(plan: Plan) -> set[str]:
     """Get IDs of phases that are active or eligible (deps satisfied).
 
@@ -416,6 +133,7 @@ def auto_unlock_phases(plan: Plan) -> list[str]:
     return unlocked
 
 
+# @shell_complexity: Branches encode documented non-regression and locked/pending recalculation rules in one ordered pass.
 def recalc_lock_status(plan: Plan) -> list[str]:
     """Recalculate LOCKED/PENDING status for all phases based on dependency state.
 
@@ -490,6 +208,7 @@ def format_lock_changes(changed: list[str], plan: Plan) -> str:
     return f"[vectl] Lock status updated: {parts}"
 
 
+# @shell_complexity: Branches preserve regex/substr matching, phase/status filtering, phase-field matches, step-field matches, and snippets.
 def search_plan(
     plan: Plan,
     pattern: str,
@@ -572,6 +291,7 @@ def search_plan(
     return results
 
 
+# @shell_complexity: Branches preserve regex and substring match-line extraction, truncation, and first-line fallback.
 def _extract_snippet(text: str, pattern: str, use_regex: bool, max_len: int = 80) -> str:
     """Extract the line containing the match, truncated to max_len."""
     if use_regex:
@@ -606,6 +326,7 @@ def _extract_snippet(text: str, pattern: str, use_regex: bool, max_len: int = 80
     return first_line
 
 
+# @shell_complexity: Branches preserve validation invocation, progress totals, active phase filtering, and ref reverse-index construction.
 def review_plan(
     plan: Plan,
     *,
@@ -724,304 +445,14 @@ _STEP_ICON = {
 }
 
 
-def render_plan(plan: Plan, phase_id: str | None = None, full: bool = False) -> str:
-    """Render plan as Markdown stakeholder report.
-
-    Deliberately less detail than review_plan: omits claimed_by, claimed_at,
-    rejection_history. Shows phase progress, step status, and one-line
-    description summaries (unless ``full=True``).
-
-    Args:
-        plan: The plan to render.
-        phase_id: If provided, render only this phase.
-        full: If True, show complete step descriptions without truncation.
-
-    Returns:
-        Markdown string.
-
-    Raises:
-        PlanError: If phase_id is provided but not found.
-    """
-    if phase_id is not None:
-        ph = plan.find_phase(phase_id)
-        if ph is None:
-            raise PlanError(f"Phase '{phase_id}' not found.")
-        return _render_phase(plan, ph, full=full)
-
-    lines: list[str] = [f"# {plan.project}\n"]
-
-    # Summary table
-    lines.append("| Status | Phase | Name | Progress |")
-    lines.append("|--------|-------|------|----------|")
-    for ph in plan.phases:
-        done = sum(1 for s in ph.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED))
-        total = len(ph.steps)
-        pct = (done / total * 100) if total > 0 else 0
-        icon = _PHASE_ICON.get(ph.status, "?")
-        lines.append(
-            f"| {icon} {ph.status.value} | {ph.id} | {ph.name} | {done}/{total} ({pct:.0f}%) |"
-        )
-    lines.append("")
-
-    # Per-phase detail
-    for ph in plan.phases:
-        lines.append(_render_phase(plan, ph, full=full))
-
-    return "\n".join(lines)
-
-
-def _render_phase(plan: Plan, ph: Phase, full: bool = False) -> str:
-    """Render a single phase as Markdown section.
-
-    Uses shared ``is_step_locked`` from *semantics* so lock icons are
-    consistent across CLI, MCP, and ``render_plan`` output.
-
-    Args:
-        plan: The plan (for lock detection).
-        ph: The phase to render.
-        full: If True, show complete step descriptions without truncation.
-    """
-    done = sum(1 for s in ph.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED))
-    total = len(ph.steps)
-    pct = (done / total * 100) if total > 0 else 0
-    icon = _PHASE_ICON.get(ph.status, "?")
-
-    lines: list[str] = [f"## {icon} {ph.id} — {ph.name} ({done}/{total}, {pct:.0f}%)\n"]
-
-    if ph.context:
-        lines.append(f"> {ph.context.strip()}\n")
-    if ph.gate:
-        lines.append(f"**Gate:** {ph.gate}\n")
-
-    for step in ph.steps:
-        si = _STEP_ICON.get(step.status, "?")
-        if _is_step_locked_shared(plan, ph, step):
-            si = "🔒"
-        if full and step.description.strip():
-            lines.append(f"- {si} **{step.id}** {step.name}")
-            # Indent full description under the bullet
-            for desc_line in step.description.strip().splitlines():
-                lines.append(f"  {desc_line}")
-        else:
-            summary = _first_line(step.description)
-            suffix = f" — {summary}" if summary else ""
-            lines.append(f"- {si} **{step.id}** {step.name}{suffix}")
-
-    lines.append("")
-    return "\n".join(lines)
-
-
-def _first_line(text: str, max_len: int = 72) -> str:
-    """Extract first non-empty line, truncated."""
-    for line in text.strip().splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("- ["):
-            continue
-        if len(stripped) > max_len:
-            return stripped[: max_len - 1] + "…"
-        return stripped
-    return ""
-
-
-def generate_mermaid_dag(plan: Plan, phase_id: str | None = None) -> str:
-    """Generate Mermaid flowchart syntax from plan dependency graph.
-
-    Two-level zoom:
-    - Default (phase_id=None): nodes are phases, edges are phase depends_on.
-    - With phase_id: nodes are steps within that phase, edges are step depends_on.
-
-    Node labels include status icon and progress info.
-
-    Args:
-        plan: The plan to visualize.
-        phase_id: If provided, show step-level DAG for this phase.
-
-    Returns:
-        Mermaid flowchart string (LR direction).
-
-    Raises:
-        PlanError: If phase_id is provided but not found.
-
-    >>> from vectl.models import Plan, Phase, Step, PhaseStatus, StepStatus
-    >>> p = Plan(project="test", phases=[
-    ...     Phase(id="a", name="Alpha", status=PhaseStatus.DONE, steps=[
-    ...         Step(id="a.1", name="S1", status=StepStatus.DONE),
-    ...     ]),
-    ...     Phase(id="b", name="Beta", status=PhaseStatus.PENDING, depends_on=["a"], steps=[
-    ...         Step(id="b.1", name="S1", status=StepStatus.PENDING),
-    ...     ]),
-    ... ])
-    >>> mmd = generate_mermaid_dag(p)
-    >>> "flowchart TD" in mmd
-    True
-    >>> "a --> b" in mmd
-    True
-    """
-    if phase_id is not None:
-        return _mermaid_step_dag(plan, phase_id)
-    return _mermaid_phase_dag(plan)
-
-
-def _mermaid_phase_dag(plan: Plan) -> str:
-    """Generate phase-level Mermaid DAG."""
-    lines: list[str] = ["flowchart TD"]
-
-    for ph in plan.phases:
-        icon = _PHASE_ICON.get(ph.status, "?")
-        done = sum(1 for s in ph.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED))
-        total = len(ph.steps)
-        label = f"{icon} {ph.name} ({done}/{total})"
-        lines.append(f'  {ph.id}["{label}"]')
-
-    for ph in plan.phases:
-        for dep in ph.depends_on:
-            lines.append(f"  {dep} --> {ph.id}")
-
-    # Hint
-    lines.append("")
-    lines.append("%% Drill into a phase: vectl dag --phase <id>")
-
-    return "\n".join(lines)
-
-
-def _mermaid_step_dag(plan: Plan, phase_id: str) -> str:
-    """Generate step-level Mermaid DAG for a single phase."""
-    ph = plan.find_phase(phase_id)
-    if ph is None:
-        raise PlanError(f"Phase '{phase_id}' not found.")
-
-    lines: list[str] = ["flowchart TD"]
-
-    for step in ph.steps:
-        icon = _STEP_ICON.get(step.status, "?")
-        if _is_step_locked_shared(plan, ph, step):
-            icon = "🔒"
-        label = f"{icon} {step.name}"
-        lines.append(f'  {_mermaid_node_id(step.id)}["{label}"]')
-
-    for step in ph.steps:
-        for dep in step.depends_on:
-            lines.append(f"  {_mermaid_node_id(dep)} --> {_mermaid_node_id(step.id)}")
-
-    return "\n".join(lines)
-
-
-def _mermaid_node_id(step_id: str) -> str:
-    """Convert step ID to valid Mermaid node ID.
-
-    Mermaid node IDs cannot contain dots or certain special chars.
-    Replace dots and hyphens with underscores.
-
-    >>> _mermaid_node_id("core.validate-plan")
-    'core_validate_plan'
-    """
-    return step_id.replace(".", "_").replace("-", "_")
-
-
-def diff_plans(old: Plan, new: Plan) -> DiffResult:
-    """Compare two plan states and produce a structured diff.
-
-    Pure function: no I/O, no git. Callers provide the two Plan objects.
-
-    Args:
-        old: Previous plan state.
-        new: Current plan state.
-
-    Returns:
-        DiffResult with phase and step changes.
-    """
-    phase_changes: list[PhaseChange] = []
-    step_changes: list[StepChange] = []
-
-    old_phases = {p.id: p for p in old.phases}
-    new_phases = {p.id: p for p in new.phases}
-
-    # Phase-level changes
-    for pid in new_phases:
-        if pid not in old_phases:
-            np = new_phases[pid]
-            phase_changes.append(PhaseChange(phase_id=pid, phase_name=np.name, kind="added"))
-        else:
-            op, np = old_phases[pid], new_phases[pid]
-            if op.status != np.status:
-                phase_changes.append(
-                    PhaseChange(
-                        phase_id=pid,
-                        phase_name=np.name,
-                        kind="status_changed",
-                        old_status=op.status,
-                        new_status=np.status,
-                    )
-                )
-
-    for pid in old_phases:
-        if pid not in new_phases:
-            op = old_phases[pid]
-            phase_changes.append(PhaseChange(phase_id=pid, phase_name=op.name, kind="removed"))
-
-    # Step-level changes
-    old_steps: dict[str, tuple[str, Step]] = {}
-    for p in old.phases:
-        for s in p.steps:
-            old_steps[s.id] = (p.id, s)
-
-    new_steps: dict[str, tuple[str, Step]] = {}
-    for p in new.phases:
-        for s in p.steps:
-            new_steps[s.id] = (p.id, s)
-
-    for sid in new_steps:
-        npid, ns = new_steps[sid]
-        if sid not in old_steps:
-            step_changes.append(
-                StepChange(
-                    step_id=sid,
-                    step_name=ns.name,
-                    phase_id=npid,
-                    kind="added",
-                    new_status=ns.status,
-                )
-            )
-        else:
-            opid, os_ = old_steps[sid]
-            if os_.status != ns.status:
-                step_changes.append(
-                    StepChange(
-                        step_id=sid,
-                        step_name=ns.name,
-                        phase_id=npid,
-                        kind="status_changed",
-                        old_status=os_.status,
-                        new_status=ns.status,
-                    )
-                )
-            elif os_.name != ns.name or os_.description != ns.description:
-                detail_parts: list[str] = []
-                if os_.name != ns.name:
-                    detail_parts.append(f"name: {os_.name!r} → {ns.name!r}")
-                if os_.description != ns.description:
-                    detail_parts.append("description changed")
-                step_changes.append(
-                    StepChange(
-                        step_id=sid,
-                        step_name=ns.name,
-                        phase_id=npid,
-                        kind="modified",
-                        detail="; ".join(detail_parts),
-                    )
-                )
-
-    for sid in old_steps:
-        if sid not in new_steps:
-            opid, os_ = old_steps[sid]
-            step_changes.append(
-                StepChange(
-                    step_id=sid,
-                    step_name=os_.name,
-                    phase_id=opid,
-                    kind="removed",
-                    old_status=os_.status,
-                )
-            )
-
-    return DiffResult(phase_changes=phase_changes, step_changes=step_changes)
+# @shell_complexity: Branches preserve selected-phase rendering, summary table construction, per-phase detail, and progress math.
+from vectl.core_plan_rendering import (
+    _first_line,
+    _mermaid_node_id,
+    _mermaid_phase_dag,
+    _mermaid_step_dag,
+    _render_phase,
+    diff_plans,
+    generate_mermaid_dag,
+    render_plan,
+)

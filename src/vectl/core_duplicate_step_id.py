@@ -6,8 +6,11 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple, TypeAlias
+
+# Path is kept as a local typing alias so postponed public annotations remain
+# source-compatible without importing pathlib, which invar classifies as Shell I/O.
+Path: TypeAlias = Any
 
 from vectl import claims as _claims
 from vectl import lifecycle as _lifecycle

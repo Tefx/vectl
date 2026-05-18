@@ -47,7 +47,7 @@ def build_dashboard_data(plan: Plan) -> dict:
         JSON-safe dict with structure per RFC-dashboard.md section "Data Serialization".
 
     Example:
-        >>> from vectl.models import Plan, Phase, Step
+        >>> from vectl.models import PhaseStatus, Plan, Phase, Step
         >>> p = Plan(project="test", phases=[
         ...     Phase(id="a", name="Alpha", status=PhaseStatus.DONE, steps=[
         ...         Step(id="a.1", name="S1", status=StepStatus.DONE),

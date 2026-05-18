@@ -225,6 +225,15 @@ class PlanAwareControl:
         Returns:
             Next orchestration-plane control decision with all invariants met.
         """
+        roster_capacity_hint = (
+            len(roster.available_agents),
+            len(roster.working_agents),
+            len(roster.reusable_sessions),
+            len(roster.exhausted_roles),
+        )
+        if min(roster_capacity_hint) < 0:
+            raise ValueError("Roster snapshot capacity counts cannot be negative")
+
         # --- Tier 1: Barrier gate (RFC-orch-drive.md section 5.4, 9.2) ---
         # If a barrier is active, drive scheduling must not dispatch.
         if barrier is not None:

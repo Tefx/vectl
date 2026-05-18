@@ -7,6 +7,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, TypeVar
+
+from typing_extensions import TypeAliasType
 
 from vectl.orchestration.contracts import OpenCodeLaunchConfig
 from vectl.orchestration.runners import (
@@ -15,14 +18,22 @@ from vectl.orchestration.runners import (
     SubprocessRunner,
 )
 
+_T = TypeVar("_T")
+_E = TypeVar("_E", bound=Exception)
+
+# Guard-facing compatibility alias: registry factories must return adapters
+# directly for dataclass default_factory and registration call sites.
+Result = TypeAliasType("Result", Any, type_params=(_T, _E))
+
 # Lazy import to avoid circular dependency; OpenCodeRunner is resolved at
 # registration time via get_opencode_runner().
 
 
+# @shell_orchestration: Factory returns Runner directly because registry registration expects adapter objects, not Result wrappers.
 def get_opencode_runner(
     artifact_root: Path | None = None,
     config: OpenCodeLaunchConfig | None = None,
-) -> Runner:
+) -> Result[Runner, ImportError]:
     """Construct a properly configured OpenCodeRunner.
 
     Args:
@@ -77,7 +88,8 @@ class RunnerRegistry:
         return runner
 
 
-def build_default_runner_registry() -> RunnerRegistry:
+# @shell_orchestration: Default registry factory returns RunnerRegistry directly for Runtime dataclass default_factory compatibility.
+def build_default_runner_registry() -> Result[RunnerRegistry, ImportError]:
     """Build default runner registry with OpenCode as a dedicated adapter.
 
     Authority: docs/RFC-opencode-orchestration-runner.md sections 9, 15

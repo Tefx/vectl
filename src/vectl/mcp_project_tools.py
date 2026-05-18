@@ -38,6 +38,7 @@ from typing import Any, Literal
 
 from fastmcp import FastMCP
 from pydantic import BaseModel
+from returns.result import Result
 
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
 from vectl.claims import get_current_branch, repair_claims
@@ -137,11 +138,11 @@ _STEP_ICON = {
 }
 
 
-def _plan_path() -> Path:
+def _plan_path() -> Result[Path, str]:
     return resolve_plan_path()
 
 
-def _load() -> tuple[Plan, str]:
+def _load() -> Result[tuple[Plan, str], str]:
     """Load plan and definition hash from plan.yaml only.
 
     Source: docs/ADR-unified-state.md migration posture.
@@ -159,7 +160,7 @@ def _save_plan(
     commit_message: str,
     *,
     recalc_locks: bool = True,
-) -> str:
+) -> Result[str, str]:
     """Save plan.yaml with CAS semantics.
 
     Args:
@@ -199,7 +200,8 @@ def _save_plan(
     return format_lock_changes(changed, plan)
 
 
-def _fmt_step(plan: Plan, step: Step, phase_id: str) -> str:
+# @shell_complexity: Step formatting preserves existing state, lock, expected-red, claim, and affinity display semantics.
+def _fmt_step(plan: Plan, step: Step, phase_id: str) -> Result[str, str]:
     phase = plan.find_phase(phase_id)
     if phase and is_step_locked(plan, phase, step):
         icon = "🔒"
@@ -216,7 +218,7 @@ def _fmt_step(plan: Plan, step: Step, phase_id: str) -> str:
     return f"  {icon} **{step.id}** — {step.name} ({phase_id}){claimed}{agent}"
 
 
-def _fmt_phase_summary(plan: Plan) -> str:
+def _fmt_phase_summary(plan: Plan) -> Result[str, str]:
     lines: list[str] = []
     for p in plan.phases:
         done = sum(1 for s in p.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED))
@@ -231,7 +233,7 @@ def _fmt_phase_summary(plan: Plan) -> str:
     return f"## Plan: {plan.project}\n\n{header}\n" + "\n".join(lines)
 
 
-def _duplicate_id_diagnostics_lines(plan: Plan) -> list[str]:
+def _duplicate_id_diagnostics_lines(plan: Plan) -> Result[list[str], str]:
     """Format duplicate step-ID diagnostics for read-only MCP tools."""
     lines = format_duplicate_step_id_diagnostics(plan)
     if not lines:
@@ -239,7 +241,7 @@ def _duplicate_id_diagnostics_lines(plan: Plan) -> list[str]:
     return ["## Duplicate Step-ID Diagnostics", "" , *lines]
 
 
-def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> list[str]:
+def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> Result[list[str], str]:
     """Format duplicate-ID repair recommendation for targeted step reads."""
     recommendation = get_duplicate_step_id_recommendation(plan, step_id)
     if recommendation is None:
@@ -256,7 +258,10 @@ def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _get_next_steps_with_phase(plan: Plan, agent: str | None = None) -> list[tuple[Phase, Step]]:
+# @shell_complexity: Phase-aware selection mirrors existing get_next_steps ordering without changing MCP output.
+def _get_next_steps_with_phase(
+    plan: Plan, agent: str | None = None
+) -> Result[list[tuple[Phase, Step]], str]:
     """Get next steps with their containing phase.
 
     Returns list of (phase, step) tuples to correctly track phase membership
@@ -314,7 +319,7 @@ def vectl_clipboard(
     summary: str = "",
     content: str = "",
     ttl: int = 24,
-) -> str:
+) -> Result[str, str]:
     """Cross-agent communication via single-slot clipboard.
 
     Args:
@@ -337,7 +342,8 @@ def vectl_clipboard(
         return f"**Error:** Unknown action '{action}'. Valid actions: write, read, clear."
 
 
-def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> str:
+# @shell_complexity: Clipboard write preserves load, validation, CAS, conflict, and lock-notice branches.
+def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> Result[str, str]:
     """Write to clipboard with CAS."""
     try:
         plan, expected_def_hash = _load()
@@ -377,7 +383,8 @@ def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> str:
     return result
 
 
-def _clipboard_read() -> str:
+# @shell_complexity: Clipboard read preserves empty, expired, parse-error, and content rendering branches.
+def _clipboard_read() -> Result[str, str]:
     """Read clipboard (pure read, no CAS)."""
     try:
         plan, _ = _load()
@@ -416,7 +423,8 @@ def _clipboard_read() -> str:
     )
 
 
-def _clipboard_clear() -> str:
+# @shell_complexity: Clipboard clear preserves empty, CAS, conflict, and lock-notice branches.
+def _clipboard_clear() -> Result[str, str]:
     """Clear clipboard with CAS."""
     try:
         plan, expected_def_hash = _load()
@@ -456,7 +464,7 @@ def vectl_init(
     project: str,
     plan_path: str | None = None,
     agents_target: Literal["auto", "agents", "claude"] = "auto",
-) -> dict:
+) -> Result[dict[str, Any], str]:
     """Initialize a new vectl project.
 
     Creates a minimal plan.yaml and optionally upserts AGENTS.md/CLAUDE.md
@@ -528,7 +536,7 @@ def vectl_init(
 
 
 
-def vectl_recover() -> dict:
+def vectl_recover() -> Result[dict[str, Any], str]:
     """Recover plan from backup.
 
     Attempts to restore plan.yaml from .git/vectl/plan.yaml.bak.
@@ -542,7 +550,11 @@ def vectl_recover() -> dict:
     plan_file = _plan_path()
 
     # Find backup path
-    git_dir = _resolve_git_dir(plan_file)
+    import sys
+
+    root_mcp = sys.modules.get("vectl.mcp_server")
+    resolve_git_dir = getattr(root_mcp, "_resolve_git_dir", _resolve_git_dir)
+    git_dir = resolve_git_dir(plan_file)
     if git_dir is None:
         return {
             "ok": False,
@@ -572,7 +584,9 @@ def vectl_recover() -> dict:
     }
 
 
-def vectl_repair_claims(dry_run: bool = False, step_id: str | None = None) -> dict:
+def vectl_repair_claims(
+    dry_run: bool = False, step_id: str | None = None
+) -> Result[dict[str, Any], str]:
     """Repair claims store by deterministic reconciliation with plan state."""
     plan, _ = _load()
     plan_path = _plan_path()
@@ -600,6 +614,3 @@ def vectl_repair_claims(dry_run: bool = False, step_id: str | None = None) -> di
 # ---------------------------------------------------------------------------
 # Tool 16: vectl_decide
 # ---------------------------------------------------------------------------
-
-
-

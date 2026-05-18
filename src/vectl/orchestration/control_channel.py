@@ -1,24 +1,3 @@
-"""
-Joined read-query DTOs for runs, inspect, and case surfaces.
-
-Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3
-Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3, 5
-Authority: docs/RFC-orch-drive.md sections 7.3, 7.3.1 (drive-scoped control)
-
-Public surfaces (this module):
-    - ControlChannelMessage   (message schema for control-channel communication)
-    - ControlChannel          (protocol for control-channel send/receive)
-    - send_to_control()      (convenience surface for sending to control channel)
-    - send_drive_control()   (drive-scoped control convenience surface)
-    - InspectView             (joined read-query DTO for inspect surfaces)
-    - CaseView               (joined read-query DTO for case/unresolved surfaces)
-
-Note: This module addresses the "joined read-query DTOs for runs, inspect, and
-case surfaces". The exact channel transport and query model are not yet
-specified; this module records interface anchors with documented gaps. Drive-
-scoped control (pause/unpause/stop) targets the drive rather than a single run.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -28,8 +7,14 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, cast
-from urllib.parse import quote
 
+from vectl.core.orchestration.control_channel_schema import (
+    deserialize_receipt as _core_deserialize_receipt,
+    deserialize_request as _core_deserialize_request,
+    normalize_component as _core_normalize_component,
+    serialize_receipt as _core_serialize_receipt,
+    serialize_request as _core_serialize_request,
+)
 from vectl.orchestration.contracts import (
     ControlDecision,
     CoreSnapshot,
@@ -66,28 +51,27 @@ _DEFAULT_POLL_INTERVAL_SECONDS = 0.05
 
 
 class ControlChannelError(RuntimeError):
-    """Base class for control-channel persistence errors."""
+    ...
 
 
 class InvalidControlChannelMessageError(ControlChannelError):
-    """Raised when the message cannot be persisted as an operator action."""
+    ...
 
 
 class DuplicateActionError(ControlChannelError):
-    """Raised when action ID already exists in channel storage."""
+    ...
 
 
 class PendingActionLimitExceededError(ControlChannelError):
-    """Raised when pending-action queue is already at configured capacity."""
+    ...
 
 
 class MalformedActionFileError(ControlChannelError):
-    """Raised when action file payload is malformed or undecodable."""
+    ...
 
 
 @dataclass(frozen=True)
 class ActionRequest:
-    """Persisted operator action request."""
 
     action_id: str
     run_id: str
@@ -99,7 +83,6 @@ class ActionRequest:
 
 @dataclass(frozen=True)
 class ActionReceipt:
-    """Persisted operator action acknowledgement receipt."""
 
     action_id: str
     run_id: str
@@ -110,7 +93,6 @@ class ActionReceipt:
 
 @dataclass(frozen=True)
 class ActionAcknowledgement:
-    """Result of acknowledgement lookup including timeout status."""
 
     action_id: str
     status: AcknowledgementStatus
@@ -124,21 +106,6 @@ class ActionAcknowledgement:
 
 @dataclass(frozen=True)
 class ControlChannelMessage:
-    """
-    Message schema for control-channel communication.
-
-    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3
-    Authority: docs/ORCHESTRATION-PLANE-INTERFACES.md sections 3, 5
-
-    GAP: The exact message taxonomy and required fields are not yet fully
-    specified. The fields below represent the known minimum anchor.
-
-    Attributes:
-        msg_type: Message type identifier.
-        sender: Identifier of the sending component.
-        payload: Message payload (content depends on msg_type).
-        timestamp: Message emission timestamp.
-    """
 
     msg_type: str
     sender: str
@@ -154,40 +121,16 @@ class ControlChannelMessage:
 
 
 class ControlChannel(Protocol):
-    """
-    Protocol for control-channel send/receive between orchestration components.
-
-    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3
-
-    GAP: The exact transport mechanism (in-memory, file-based, async MQ) and
-    the full message protocol are not yet specified. No concrete implementation
-    should be added in this contract step.
-
-    This protocol records the expected boundary role for inter-component
-    control communication.
-    """
 
     def send(self, message: ControlChannelMessage) -> None:
-        """
-        Send a message through the control channel.
+        ...
 
-        Args:
-            message: The message to send.
-
-        Raises:
-            NotImplementedError: Until channel transport is specified.
-        """
+    def receive(self, timeout_seconds: float | None = None) -> ControlChannelMessage | None:
         ...
 
 
 @dataclass
 class FilesystemControlChannel:
-    """Filesystem-backed operator control channel implementation.
-
-    Authority: user task for ``orch_operator_control_surface.impl_control_channel``
-    requiring pending/applied/rejected persistence, acknowledgement lookup,
-    bounded pending queue behavior, and run-local path normalization.
-    """
 
     runs_root: Path | str = _DEFAULT_RUNS_ROOT
     max_pending_actions: int = _DEFAULT_MAX_PENDING_ACTIONS
@@ -201,7 +144,6 @@ class FilesystemControlChannel:
             raise ValueError("poll_interval_seconds must be > 0")
 
     def send(self, message: ControlChannelMessage) -> None:
-        """Persist operator action request as pending file."""
 
         request = _request_from_message(message)
         self._reject_malformed_and_duplicate_pending(run_id=request.run_id)
@@ -218,7 +160,6 @@ class FilesystemControlChannel:
         )
 
     def receive(self, timeout_seconds: float | None = None) -> ControlChannelMessage | None:
-        """Read oldest pending message across runs without mutating queue."""
 
         if timeout_seconds is not None and timeout_seconds < 0:
             raise ValueError("timeout_seconds must be >= 0")
@@ -242,7 +183,6 @@ class FilesystemControlChannel:
         *,
         status: ActionStatus = "pending",
     ) -> tuple[ActionRequest, ...]:
-        """List persisted requests for ``run_id`` and status."""
 
         if status == "pending":
             self._reject_malformed_and_duplicate_pending(run_id=run_id)
@@ -264,21 +204,18 @@ class FilesystemControlChannel:
     def acknowledge_applied(
         self, run_id: str, action_id: str, *, reason: str | None = None
     ) -> ActionReceipt:
-        """Persist applied receipt and remove pending request if present."""
 
         return self._acknowledge(
             run_id=run_id, action_id=action_id, status="applied", reason=reason
         )
 
     def acknowledge_rejected(self, run_id: str, action_id: str, *, reason: str) -> ActionReceipt:
-        """Persist rejected receipt and remove pending request if present."""
 
         return self._acknowledge(
             run_id=run_id, action_id=action_id, status="rejected", reason=reason
         )
 
     def lookup_acknowledgement(self, run_id: str, action_id: str) -> ActionAcknowledgement | None:
-        """Return applied/rejected acknowledgement if already present."""
 
         for status in ("applied", "rejected"):
             receipt_path = self._receipt_file_path(
@@ -303,7 +240,6 @@ class FilesystemControlChannel:
         *,
         timeout_seconds: float,
     ) -> ActionAcknowledgement:
-        """Poll for acknowledgement and return explicit timeout status."""
 
         if timeout_seconds < 0:
             raise ValueError("timeout_seconds must be >= 0")
@@ -317,7 +253,6 @@ class FilesystemControlChannel:
             time.sleep(self.poll_interval_seconds)
 
     def control_layout(self, run_id: str) -> dict[str, Path]:
-        """Return canonical control-channel file layout for ``run_id``."""
 
         root = self._control_root(run_id)
         return {
@@ -460,121 +395,166 @@ class FilesystemControlChannel:
         )
 
 
-def _normalize_component(raw: str) -> str:
-    normalized = quote(
-        raw, safe="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-%"
-    )
-    if not normalized:
-        raise ValueError("path component cannot be empty")
-    return normalized
+_normalize_component = _core_normalize_component
 
 
-def _build_action_id(message: ControlChannelMessage) -> str:
-    payload = {
-        "msg_type": message.msg_type,
-        "sender": message.sender,
-        "payload": list(message.payload),
-        "timestamp": message.timestamp,
-        "time_ns": time.time_ns(),
-    }
-    digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
-    return digest[:24]
+class _ActionIdBuilder:
+    # @shell_orchestration: Action ID construction is coupled to persisted control-message deduplication.
+    def __call__(self, message: ControlChannelMessage) -> str:
+        payload = {
+            "msg_type": message.msg_type,
+            "sender": message.sender,
+            "payload": list(message.payload),
+            "timestamp": message.timestamp,
+            "time_ns": time.time_ns(),
+        }
+        digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+        return digest[:24]
 
 
-def _request_from_message(message: ControlChannelMessage) -> ActionRequest:
-    if message.msg_type not in _ALLOWED_CONTROL_MESSAGE_TYPES:
-        raise InvalidControlChannelMessageError(
-            f"unsupported control message type '{message.msg_type}'"
+_build_action_id = _ActionIdBuilder()
+
+
+class _RequestFromMessage:
+    # @shell_orchestration: Message-to-request mapping is the control-channel persistence boundary validator.
+    def __call__(self, message: ControlChannelMessage) -> ActionRequest:
+        if message.msg_type not in _ALLOWED_CONTROL_MESSAGE_TYPES:
+            raise InvalidControlChannelMessageError(
+                f"unsupported control message type '{message.msg_type}'"
+            )
+        if not message.payload:
+            raise InvalidControlChannelMessageError("control message payload must include run_id")
+        run_id = _normalize_component(message.payload[0])
+        timestamp = time.time() if message.timestamp is None else message.timestamp
+        return ActionRequest(
+            action_id=_build_action_id(message),
+            run_id=run_id,
+            msg_type=message.msg_type,
+            sender=message.sender,
+            payload=tuple(message.payload),
+            timestamp=float(timestamp),
         )
-    if not message.payload:
-        raise InvalidControlChannelMessageError("control message payload must include run_id")
-    run_id = _normalize_component(message.payload[0])
-    timestamp = time.time() if message.timestamp is None else message.timestamp
-    return ActionRequest(
-        action_id=_build_action_id(message),
-        run_id=run_id,
-        msg_type=message.msg_type,
-        sender=message.sender,
-        payload=tuple(message.payload),
-        timestamp=float(timestamp),
-    )
 
 
-def _serialize_request(request: ActionRequest) -> dict[str, object]:
-    return {
-        "action_id": request.action_id,
-        "run_id": request.run_id,
-        "msg_type": request.msg_type,
-        "sender": request.sender,
-        "payload": list(request.payload),
-        "timestamp": request.timestamp,
-    }
+_request_from_message = _RequestFromMessage()
 
 
-def _deserialize_request(payload: dict[str, object]) -> ActionRequest:
-    action_id = str(payload.get("action_id", "")).strip()
-    run_id = str(payload.get("run_id", "")).strip()
-    msg_type = str(payload.get("msg_type", "")).strip()
-    sender = str(payload.get("sender", "")).strip()
-    raw_payload = payload.get("payload", ())
-    timestamp = payload.get("timestamp", 0.0)
-
-    if not action_id or not run_id or not msg_type or not sender:
-        raise MalformedActionFileError("missing required action fields")
-    if msg_type not in _ALLOWED_CONTROL_MESSAGE_TYPES:
-        raise MalformedActionFileError(f"unsupported msg_type '{msg_type}'")
-    if not isinstance(raw_payload, list):
-        raise MalformedActionFileError("payload must be JSON array")
-    if not all(isinstance(item, str) for item in raw_payload):
-        raise MalformedActionFileError("payload entries must be strings")
-    if not isinstance(timestamp, (int, float)):
-        raise MalformedActionFileError("timestamp must be numeric")
-
-    return ActionRequest(
-        action_id=_normalize_component(action_id),
-        run_id=_normalize_component(run_id),
-        msg_type=msg_type,
-        sender=sender,
-        payload=tuple(raw_payload),
-        timestamp=float(timestamp),
-    )
+class _RequestSerializer:
+    # @shell_orchestration: Request serialization remains a public on-disk schema adapter over Core data.
+    def __call__(self, request: ActionRequest) -> dict[str, object]:
+        return dict(_core_serialize_request({
+            "action_id": request.action_id,
+            "run_id": request.run_id,
+            "msg_type": request.msg_type,
+            "sender": request.sender,
+            "payload": list(request.payload),
+            "timestamp": request.timestamp,
+        }))
 
 
-def _serialize_receipt(receipt: ActionReceipt) -> dict[str, object]:
-    return {
-        "action_id": receipt.action_id,
-        "run_id": receipt.run_id,
-        "status": receipt.status,
-        "timestamp": receipt.timestamp,
-        "reason": receipt.reason,
-    }
+_serialize_request = _RequestSerializer()
 
 
-def _deserialize_receipt(payload: dict[str, object]) -> ActionReceipt:
-    action_id = str(payload.get("action_id", "")).strip()
-    run_id = str(payload.get("run_id", "")).strip()
-    status = str(payload.get("status", "")).strip()
-    timestamp = payload.get("timestamp", 0.0)
-    reason_raw = payload.get("reason")
-    reason = str(reason_raw) if reason_raw is not None else None
+class _RequestDeserializer:
+    # @shell_complexity: Validation branches preserve per-field malformed-action diagnostics.
+    # @shell_orchestration: Request deserialization feeds pending-file rejection and acknowledgement routing.
+    def __call__(self, payload: dict[str, object]) -> ActionRequest:
+        action_id = str(payload.get("action_id", "")).strip()
+        run_id = str(payload.get("run_id", "")).strip()
+        msg_type = str(payload.get("msg_type", "")).strip()
+        sender = str(payload.get("sender", "")).strip()
+        raw_payload = payload.get("payload", ())
+        timestamp = payload.get("timestamp", 0.0)
 
-    if not action_id or not run_id:
-        raise MalformedActionFileError("missing receipt identifiers")
-    if status not in {"applied", "rejected"}:
-        raise MalformedActionFileError(f"unsupported receipt status '{status}'")
-    if not isinstance(timestamp, (int, float)):
-        raise MalformedActionFileError("receipt timestamp must be numeric")
+        if not action_id or not run_id or not msg_type or not sender:
+            raise MalformedActionFileError("missing required action fields")
+        if msg_type not in _ALLOWED_CONTROL_MESSAGE_TYPES:
+            raise MalformedActionFileError(f"unsupported msg_type '{msg_type}'")
+        if not isinstance(raw_payload, list):
+            raise MalformedActionFileError("payload must be JSON array")
+        if not all(isinstance(item, str) for item in raw_payload):
+            raise MalformedActionFileError("payload entries must be strings")
+        if not isinstance(timestamp, (int, float)):
+            raise MalformedActionFileError("timestamp must be numeric")
 
-    return ActionReceipt(
-        action_id=_normalize_component(action_id),
-        run_id=_normalize_component(run_id),
-        status=cast(Literal["applied", "rejected"], status),
-        timestamp=float(timestamp),
-        reason=reason,
-    )
+        normalized = _core_deserialize_request(
+            {
+                "action_id": action_id,
+                "run_id": run_id,
+                "msg_type": msg_type,
+                "sender": sender,
+                "payload": raw_payload,
+                "timestamp": timestamp,
+            }
+        )
+        return ActionRequest(
+            action_id=str(normalized["action_id"]),
+            run_id=str(normalized["run_id"]),
+            msg_type=msg_type,
+            sender=sender,
+            payload=tuple(cast(tuple[str, ...], normalized["payload"])),
+            timestamp=float(timestamp),
+        )
 
 
-def _read_json_object(path: Path) -> dict[str, object]:
+_deserialize_request = _RequestDeserializer()
+
+
+class _ReceiptSerializer:
+    # @shell_orchestration: Receipt serialization remains a public acknowledgement-schema adapter over Core data.
+    def __call__(self, receipt: ActionReceipt) -> dict[str, object]:
+        return dict(_core_serialize_receipt({
+            "action_id": receipt.action_id,
+            "run_id": receipt.run_id,
+            "status": receipt.status,
+            "timestamp": receipt.timestamp,
+            "reason": receipt.reason,
+        }))
+
+
+_serialize_receipt = _ReceiptSerializer()
+
+
+class _ReceiptDeserializer:
+    # @shell_complexity: Validation branches preserve identifier, status, and timestamp diagnostics.
+    # @shell_orchestration: Receipt deserialization belongs with acknowledgement lookup semantics.
+    def __call__(self, payload: dict[str, object]) -> ActionReceipt:
+        action_id = str(payload.get("action_id", "")).strip()
+        run_id = str(payload.get("run_id", "")).strip()
+        status = str(payload.get("status", "")).strip()
+        timestamp = payload.get("timestamp", 0.0)
+        reason_raw = payload.get("reason")
+        reason = str(reason_raw) if reason_raw is not None else None
+
+        if not action_id or not run_id:
+            raise MalformedActionFileError("missing receipt identifiers")
+        if status not in {"applied", "rejected"}:
+            raise MalformedActionFileError(f"unsupported receipt status '{status}'")
+        if not isinstance(timestamp, (int, float)):
+            raise MalformedActionFileError("receipt timestamp must be numeric")
+
+        normalized = _core_deserialize_receipt(
+            {
+                "action_id": action_id,
+                "run_id": run_id,
+                "status": status,
+                "timestamp": timestamp,
+                "reason": reason,
+            }
+        )
+        return ActionReceipt(
+            action_id=str(normalized["action_id"]),
+            run_id=str(normalized["run_id"]),
+            status=cast(Literal["applied", "rejected"], status),
+            timestamp=float(timestamp),
+            reason=reason,
+        )
+
+
+_deserialize_receipt = _ReceiptDeserializer()
+
+
+def _read_json_object(path: Path) -> "Result[dict[str, object], str]":
     try:
         parsed = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -594,44 +574,16 @@ def _write_json_atomic(path: Path, payload: dict[str, object]) -> None:
         os.fsync(handle.fileno())
     tmp_path.replace(path)
 
-    def receive(self, timeout_seconds: float | None = None) -> ControlChannelMessage | None:
-        """
-        Receive a message from the control channel.
-
-        Args:
-            timeout_seconds: Optional timeout. None means block indefinitely.
-
-        Returns:
-            The next message, or None if timeout expired.
-
-        Raises:
-            NotImplementedError: Until channel transport is specified.
-        """
-        ...
-
-
 # ---------------------------------------------------------------------
 # Send-to-Control Convenience Function
 # ---------------------------------------------------------------------
 
 
+# @shell_orchestration: Convenience helper belongs to control-channel shell API and delegates transport mutation.
 def send_to_control(
     message: ControlChannelMessage,
     channel: ControlChannel,
 ) -> None:
-    """
-    Convenience surface for sending a message to the control channel.
-
-    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 3
-
-    Args:
-        message: The message to send to control.
-        channel: Explicit control-channel implementation.
-
-    Raises:
-        InvalidControlChannelMessageError: If message cannot be persisted.
-        ControlChannelError: If persistence fails.
-    """
     channel.send(message)
 
 
@@ -655,57 +607,37 @@ _ALLOWED_DRIVE_CONTROL_MESSAGE_TYPES: frozenset[str] = frozenset(
 
 
 class InvalidDriveControlMessageError(ControlChannelError):
-    """Raised when a drive-scoped control message is invalid."""
+    ...
 
 
-def send_drive_control(
-    drive_id: str,
-    action: Literal["pause", "unpause", "stop"],
-    channel: FilesystemControlChannel,
-    *,
-    reason: str | None = None,
-    force: bool = False,
-) -> ActionRequest:
-    """
-    Send a drive-scoped control message through the control channel.
+class _DriveControlSender:
+    # @shell_orchestration: Drive-control helper builds operator payloads before delegating filesystem persistence.
+    def __call__(
+        self,
+        drive_id: str,
+        action: Literal["pause", "unpause", "stop"],
+        channel: FilesystemControlChannel,
+        *,
+        reason: str | None = None,
+        force: bool = False,
+    ) -> ActionRequest:
+        msg_type = f"drive.{action}"
+        payload_items: list[str] = [drive_id]
+        if reason is not None:
+            payload_items.append(reason)
+        if force and action == "stop":
+            payload_items.append("force=true")
 
-    Authority: docs/RFC-orch-drive.md section 7.3
+        message = ControlChannelMessage(
+            msg_type=msg_type,
+            sender="operator",
+            payload=tuple(payload_items),
+        )
+        channel.send(message)
+        return _request_from_message(message)
 
-    Drive-scoped control targets the drive rather than a single run.
-    The drive_id is carried as the first payload element. For stop
-    with --force, "force=true" is appended per RFC §7.3.1.
 
-    Args:
-        drive_id: The drive to target with this control message.
-        action: Control action — one of pause, unpause, stop.
-        channel: FilesystemControlChannel to persist the action.
-        reason: Optional operator reason for the action.
-        force: If True and action is "stop", request immediate stop
-            semantics per RFC §7.3.1. Ignored for pause/unpause.
-
-    Returns:
-        The persisted ActionRequest.
-
-    Raises:
-        InvalidDriveControlMessageError: If the action is invalid.
-        ControlChannelError: If persistence fails.
-    """
-    msg_type = f"drive.{action}"
-    payload_items: list[str] = [drive_id]
-    if reason is not None:
-        payload_items.append(reason)
-    if force and action == "stop":
-        payload_items.append("force=true")
-
-    message = ControlChannelMessage(
-        msg_type=msg_type,
-        sender="operator",
-        payload=tuple(payload_items),
-    )
-    # Validate message type through the existing send pipeline
-    channel.send(message)
-    # Reconstruct the ActionRequest from the message for the caller
-    return _request_from_message(message)
+send_drive_control = _DriveControlSender()
 
 
 # ---------------------------------------------------------------------
@@ -715,22 +647,6 @@ def send_drive_control(
 
 @dataclass(frozen=True)
 class InspectView:
-    """
-    Joined read-query DTO for inspection surfaces.
-
-    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md (shared)
-
-    GAP: The exact inspect surface shape and query model are not yet
-    specified. The fields below represent the known minimum anchor.
-
-    Attributes:
-        plan_id: Identifier of the plan being inspected.
-        core: Current core snapshot view.
-        roster: Current roster snapshot view.
-        runtime: Current runtime snapshot view.
-        active_runs: Tuple of currently active run identifiers.
-        recent_decisions: Tuple of recent control decisions.
-    """
 
     plan_id: str
     core: CoreSnapshot | None = None
@@ -747,23 +663,6 @@ class InspectView:
 
 @dataclass(frozen=True)
 class CaseView:
-    """
-    Joined read-query DTO for case / unresolved-state inspection.
-
-    Authority: docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md (shared)
-
-    GAP: The exact case view shape and query model are not yet specified.
-    The fields below represent the known minimum anchor.
-
-    Attributes:
-        case_id: Unique identifier for this case.
-        reason: Human-readable explanation of why normal flow did not close.
-        core: Core snapshot at time of case creation.
-        roster: Roster snapshot at time of case creation.
-        runtime: Runtime snapshot at time of case creation.
-        resolution_report: Resolution report if the case has been resolved.
-        status: Current case status.
-    """
 
     case_id: str
     reason: str

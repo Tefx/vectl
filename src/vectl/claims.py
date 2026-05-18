@@ -9,7 +9,7 @@ import os
 import subprocess
 import tempfile
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -91,15 +91,37 @@ class RepairClaimsResult:
         }
 
 
-def _claim_key(branch: str, step_id: str) -> str:
+__all__ = [
+    "ClaimEntry",
+    "RepairAction",
+    "RepairClaimsResult",
+    "RepairStatus",
+    "acquire_claim",
+    "cleanup_stale_claims",
+    "get_claim_info",
+    "get_current_branch",
+    "load_claims",
+    "load_claims_for_branch",
+    "release_claim",
+    "repair_claims",
+    "resolve_claims_path",
+    "save_claims",
+]
+
+
+# @shell_orchestration: pure key formatter remains in claims shell to preserve established string API
+def _claim_key(branch: str, step_id: str):
     return f"{branch}:{step_id}"
 
 
-def _now_iso() -> str:
+# @shell_orchestration: timestamp helper remains in claims shell to preserve persisted claim format
+def _now_iso():
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _parse_iso8601(timestamp: str) -> datetime | None:
+# @shell_orchestration: internal parser uses None sentinel expected by stale-claim semantics
+# @shell_complexity: ISO parsing handles empty, Zulu, invalid, and naive timestamps
+def _parse_iso8601(timestamp: str):
     value = timestamp.strip()
     if not value:
         return None
@@ -114,14 +136,17 @@ def _parse_iso8601(timestamp: str) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
-def _is_stale(entry: ClaimEntry, ttl_hours: float) -> bool:
+# @shell_orchestration: stale predicate remains in claims shell to preserve boolean API
+def _is_stale(entry: ClaimEntry, ttl_hours: float):
     parsed = _parse_iso8601(entry.claimed_at)
     if parsed is None:
         return True
     return datetime.now(timezone.utc) - parsed > timedelta(hours=ttl_hours)
 
 
-def _validate_claims_mapping(raw: object) -> dict[str, ClaimEntry]:
+# @shell_orchestration: validation raises PlanError per public claims loading contract
+# @shell_complexity: schema validation must distinguish top-level, key, value, and model errors
+def _validate_claims_mapping(raw: object):
     if raw is None:
         return {}
     if not isinstance(raw, dict):
@@ -140,7 +165,8 @@ def _validate_claims_mapping(raw: object) -> dict[str, ClaimEntry]:
     return parsed
 
 
-def _read_claims_file(claims_path: Path) -> dict[str, ClaimEntry]:
+# @shell_orchestration: loader raises PlanError/OSError per existing persistence contract
+def _read_claims_file(claims_path: Path):
     if not claims_path.exists():
         return {}
     text = claims_path.read_text(encoding="utf-8")
@@ -166,10 +192,8 @@ def _write_claims_file(claims_path: Path, claims: dict[str, ClaimEntry]) -> None
             os.fsync(tmp_file.fileno())
         os.replace(tmp_path, claims_path)
     except Exception:
-        try:
+        with suppress(OSError):
             os.unlink(tmp_path)
-        except OSError:
-            pass
         raise
 
 
@@ -185,12 +209,14 @@ def _locked_claims_file(claims_path: Path) -> Iterator[None]:
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
-def resolve_claims_path(plan_path: Path) -> Path:
+# @shell_orchestration: public compatibility requires returning Path, not Result
+def resolve_claims_path(plan_path: Path):
     """Resolve claims.json location shared by linked worktrees when possible."""
     return _resolve_claims_path(plan_path)
 
 
-def load_claims(claims_path: Path) -> dict[str, ClaimEntry]:
+# @shell_orchestration: public compatibility requires returning claims mapping, not Result
+def load_claims(claims_path: Path):
     """Load claims map from disk.
 
     Missing claims file is treated as no active claims.
@@ -201,7 +227,8 @@ def load_claims(claims_path: Path) -> dict[str, ClaimEntry]:
         return _read_claims_file(claims_path)
 
 
-def load_claims_for_branch(claims_path: Path, branch: str) -> dict[str, ClaimEntry]:
+# @shell_orchestration: public compatibility requires returning branch claim mapping, not Result
+def load_claims_for_branch(claims_path: Path, branch: str):
     """Load only claims entries for one branch, keyed by step ID."""
     with _locked_claims_file(claims_path):
         claims = _read_claims_file(claims_path)
@@ -220,7 +247,8 @@ def save_claims(claims: dict[str, ClaimEntry], claims_path: Path) -> None:
         _write_claims_file(claims_path, claims)
 
 
-def cleanup_stale_claims(claims_path: Path, ttl_hours: float = 2.0) -> int:
+# @shell_orchestration: public compatibility requires returning removed count, not Result
+def cleanup_stale_claims(claims_path: Path, ttl_hours: float = 2.0):
     """Remove expired claim entries and return removed count."""
     with _locked_claims_file(claims_path):
         claims = _read_claims_file(claims_path)
@@ -233,7 +261,8 @@ def cleanup_stale_claims(claims_path: Path, ttl_hours: float = 2.0) -> int:
         return len(stale_keys)
 
 
-def get_claim_info(step_id: str, branch: str, claims_path: Path) -> ClaimEntry | None:
+# @shell_orchestration: public compatibility requires ClaimEntry-or-None lookup semantics
+def get_claim_info(step_id: str, branch: str, claims_path: Path):
     """Get claim entry for a specific step on a branch.
 
     Returns the ClaimEntry if it exists, regardless of staleness.
@@ -246,7 +275,8 @@ def get_claim_info(step_id: str, branch: str, claims_path: Path) -> ClaimEntry |
         return claims.get(key)
 
 
-def acquire_claim(step_id: str, branch: str, agent: str, claims_path: Path) -> bool:
+# @shell_orchestration: public compatibility requires bool success and PlanError conflict semantics
+def acquire_claim(step_id: str, branch: str, agent: str, claims_path: Path):
     """Acquire a branch-scoped claim for a step.
 
     Raises:
@@ -273,7 +303,8 @@ def acquire_claim(step_id: str, branch: str, agent: str, claims_path: Path) -> b
         return True
 
 
-def release_claim(step_id: str, branch: str, claims_path: Path) -> bool:
+# @shell_orchestration: public compatibility requires bool released/not-found semantics
+def release_claim(step_id: str, branch: str, claims_path: Path):
     """Release a branch-scoped claim if present."""
     key = _claim_key(branch, step_id)
     with _locked_claims_file(claims_path):
@@ -285,7 +316,8 @@ def release_claim(step_id: str, branch: str, claims_path: Path) -> bool:
         return True
 
 
-def get_current_branch() -> str:
+# @shell_orchestration: public compatibility requires fallback branch string, not Result
+def get_current_branch():
     """Return current git branch name, or ``unknown`` if unavailable."""
     try:
         result = subprocess.run(
@@ -303,6 +335,100 @@ def get_current_branch() -> str:
     return branch or "unknown"
 
 
+# @shell_orchestration: static policy text helper remains in claims shell for repair payload compatibility
+def _repair_policy_text():
+    return (
+        "plan_precedence: for current branch, ensure claims entry exists iff "
+        "step is claimed in plan; "
+        "for matching keys, plan claimed_by/claimed_at overwrite stale claims fields; "
+        "outside branch/scope entries are preserved byte-for-byte in memory"
+    )
+
+
+# @shell_orchestration: plan projection remains in claims shell to preserve repair_claims mapping API
+def _desired_claims_for_branch(plan: Plan, branch: str):
+    plan_steps = {step.id: step for phase in plan.phases for step in phase.steps}
+    desired: dict[str, ClaimEntry] = {}
+    for step in plan_steps.values():
+        if step.status != StepStatus.CLAIMED or step.claimed_by is None:
+            continue
+        key = _claim_key(branch, step.id)
+        desired[key] = ClaimEntry(
+            step_id=step.id,
+            branch=branch,
+            agent=step.claimed_by,
+            claimed_at=step.claimed_at or _now_iso(),
+        )
+    return desired
+
+
+# @shell_orchestration: repair scope calculation remains local to claims reconciliation
+def _scoped_repair_keys(
+    claims: dict[str, ClaimEntry],
+    desired_for_branch: dict[str, ClaimEntry],
+    branch: str,
+    step_id: str | None,
+):
+    if step_id is not None:
+        return {_claim_key(branch, step_id)}
+    return {key for key, entry in claims.items() if entry.branch == branch} | set(
+        desired_for_branch.keys()
+    )
+
+
+# @shell_orchestration: mutating helper returns action list expected by repair_claims
+# @shell_complexity: reconciliation must handle remove, restore, update, and no-op cases
+def _apply_claim_repairs(
+    claims: dict[str, ClaimEntry],
+    desired_for_branch: dict[str, ClaimEntry],
+    scoped_keys: set[str],
+):
+    actions: list[RepairAction] = []
+    for key in sorted(scoped_keys):
+        before = claims.get(key)
+        desired = desired_for_branch.get(key)
+
+        if before is not None and desired is None:
+            claims.pop(key, None)
+            actions.append(
+                RepairAction(
+                    action="remove",
+                    key=key,
+                    reason="ghost_claim_or_non_claimed_step",
+                    before=before,
+                    after=None,
+                )
+            )
+            continue
+
+        if before is None and desired is not None:
+            claims[key] = desired
+            actions.append(
+                RepairAction(
+                    action="restore",
+                    key=key,
+                    reason="plan_claimed_missing_in_claims",
+                    before=None,
+                    after=desired,
+                )
+            )
+            continue
+
+        if before is not None and desired is not None and before != desired:
+            claims[key] = desired
+            actions.append(
+                RepairAction(
+                    action="update",
+                    key=key,
+                    reason="stale_claim_entry_plan_precedence",
+                    before=before,
+                    after=desired,
+                )
+            )
+    return actions
+
+
+# @shell_orchestration: public repair API returns structured RepairClaimsResult and raises PlanError
 def repair_claims(
     plan: Plan,
     plan_path: Path,
@@ -310,7 +436,7 @@ def repair_claims(
     *,
     dry_run: bool = False,
     step_id: str | None = None,
-) -> RepairClaimsResult:
+):
     """Reconcile claims.json against plan.yaml for current branch.
 
     Deterministic policy (task authority: claim-consistency-recovery.repair-claims-command):
@@ -322,85 +448,16 @@ def repair_claims(
     if step_id is not None and plan.find_step(step_id) is None:
         raise PlanError(f"Step '{step_id}' not found")
 
-    policy = (
-        "plan_precedence: for current branch, ensure claims entry exists iff "
-        "step is claimed in plan; "
-        "for matching keys, plan claimed_by/claimed_at overwrite stale claims fields; "
-        "outside branch/scope entries are preserved byte-for-byte in memory"
-    )
+    policy = _repair_policy_text()
 
     branch = get_current_branch()
     missing_file = not claims_path.exists()
-    plan_steps = {step.id: step for phase in plan.phases for step in phase.steps}
-
-    desired_for_branch: dict[str, ClaimEntry] = {}
-    for step in plan_steps.values():
-        if step.status != StepStatus.CLAIMED:
-            continue
-        if step.claimed_by is None:
-            continue
-        key = _claim_key(branch, step.id)
-        desired_for_branch[key] = ClaimEntry(
-            step_id=step.id,
-            branch=branch,
-            agent=step.claimed_by,
-            claimed_at=step.claimed_at or _now_iso(),
-        )
-
-    actions: list[RepairAction] = []
+    desired_for_branch = _desired_claims_for_branch(plan, branch)
 
     with _locked_claims_file(claims_path):
         claims = _read_claims_file(claims_path)
-
-        scoped_keys: set[str]
-        if step_id is not None:
-            scoped_keys = {_claim_key(branch, step_id)}
-        else:
-            scoped_keys = {key for key, entry in claims.items() if entry.branch == branch} | set(
-                desired_for_branch.keys()
-            )
-
-        for key in sorted(scoped_keys):
-            before = claims.get(key)
-            desired = desired_for_branch.get(key)
-
-            if before is not None and desired is None:
-                claims.pop(key, None)
-                actions.append(
-                    RepairAction(
-                        action="remove",
-                        key=key,
-                        reason="ghost_claim_or_non_claimed_step",
-                        before=before,
-                        after=None,
-                    )
-                )
-                continue
-
-            if before is None and desired is not None:
-                claims[key] = desired
-                actions.append(
-                    RepairAction(
-                        action="restore",
-                        key=key,
-                        reason="plan_claimed_missing_in_claims",
-                        before=None,
-                        after=desired,
-                    )
-                )
-                continue
-
-            if before is not None and desired is not None and before != desired:
-                claims[key] = desired
-                actions.append(
-                    RepairAction(
-                        action="update",
-                        key=key,
-                        reason="stale_claim_entry_plan_precedence",
-                        before=before,
-                        after=desired,
-                    )
-                )
+        scoped_keys = _scoped_repair_keys(claims, desired_for_branch, branch, step_id)
+        actions = _apply_claim_repairs(claims, desired_for_branch, scoped_keys)
 
         changed = len(actions) > 0
         if changed and not dry_run:

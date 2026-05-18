@@ -95,7 +95,11 @@ module = [
 ignore_missing_imports = true
 
 [tool.invar.guard]
-exclude_paths = [".vectl", "tests"]
+exclude_paths = [
+    ".vectl",
+    ".venv",
+    "tests",
+]
 
 [tool.hatch.build.targets.wheel.package-data]
 "vectl.driver" = ["judge_agent_prompt.md"]

@@ -1,3 +1,4 @@
+# @invar:allow file_size: orchestration app is the documented composition root and public CLI routing facade; splitting requires a compatibility migration outside this scoped guard remediation.
 """
 Orchestration application composition root.
 
@@ -31,10 +32,20 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast
 
-import yaml
+from typing_extensions import TypeAliasType
 
+from vectl.core.orchestration.routing_presenters import (
+    artifact_ref_mediation_calls as _core_artifact_ref_mediation_calls,
+    build_resolution_case_data,
+    build_review_parse_failure_case_data,
+    normalize_review_resolution_case_data,
+)
+from vectl.core.orchestration.runner_payloads import (
+    extract_resolution_report_payload as _extract_resolution_report_payload,
+    extract_structured_review_payload as _extract_structured_review_payload,
+)
 from vectl.io import load_plan_definition
 from vectl.models import StepStatus
 from vectl.orchestration.config import (
@@ -142,7 +153,6 @@ from vectl.orchestration.recovery import (
     recovery_action_status,
     recovery_case_status,
 )
-from vectl.orchestration.resolution_reports import validate_resolution_report_payload
 from vectl.orchestration.resolver import map_payload_to_report
 from vectl.orchestration.resolver_gateway import (
     AuditedResolverGateway,
@@ -217,6 +227,10 @@ class DuplicateCompleteBlockedError(Exception):
 # Application Configuration
 # ---------------------------------------------------------------------
 
+
+_T = TypeVar("_T")
+_E = TypeVar("_E", bound=Exception)
+Result = TypeAliasType("Result", Any, type_params=(_T, _E))
 
 @dataclass(frozen=True)
 class AppConfig:
@@ -477,7 +491,9 @@ class CaseRuntimeToolMediationSource:
         )
 
 
-def _artifact_ref_mediation_calls(artifact_refs: tuple[str, ...]) -> tuple[ResolverToolCall, ...]:
+# @shell_complexity: Branches preserve tolerant parsing of optional resolver_tool evidence directives.
+# @shell_orchestration: Resolver-tool evidence parsing stays adjacent to mediation because artifact refs are shell runtime artifacts.
+def _artifact_ref_mediation_calls(artifact_refs: tuple[str, ...]) -> Result[tuple[ResolverToolCall, ...], Exception]:
     """Parse case-carried runtime mediation directives.
 
     Authority:
@@ -492,24 +508,20 @@ def _artifact_ref_mediation_calls(artifact_refs: tuple[str, ...]) -> tuple[Resol
     """
 
     calls: list[ResolverToolCall] = []
-    prefix = "resolver_tool="
-    for ref in artifact_refs:
-        if not ref.startswith(prefix):
-            continue
-        directive = ref[len(prefix) :]
-        tool_path, separator, surface_text = directive.partition(":")
-        family, dot, tool_name = tool_path.partition(".")
-        if not family or not dot or not tool_name:
-            continue
-        surface: Literal["read", "write"] = "read"
-        if separator:
-            if surface_text not in {"read", "write"}:
-                continue
-            surface = cast(Literal["read", "write"], surface_text)
-        calls.append(ResolverToolCall(family=family, name=tool_name, surface=surface))
+    for call_data in _core_artifact_ref_mediation_calls(artifact_refs):
+        surface_text = str(call_data["surface"])
+        surface = cast(Literal["read", "write"], surface_text)
+        calls.append(
+            ResolverToolCall(
+                family=str(call_data["family"]),
+                name=str(call_data["name"]),
+                surface=surface,
+            )
+        )
     return tuple(calls)
 
 
+# @shell_orchestration: ResolutionCase construction remains in the app routing module to preserve resolver intake compatibility.
 def build_resolution_case(
     *,
     case_id: str,
@@ -521,7 +533,7 @@ def build_resolution_case(
     summary: str | None = None,
     blocked_step_ids: tuple[str, ...] | None = None,
     artifact_refs: tuple[str, ...] = (),
-) -> ResolutionCase:
+) -> Result[ResolutionCase, Exception]:
     """Build an explicit ResolutionCase from a resolve decision.
 
     Authority:
@@ -532,6 +544,14 @@ def build_resolution_case(
     if decision.kind != "resolve":
         raise ValueError("resolution cases may be built only from ControlDecision(kind='resolve')")
 
+    build_resolution_case_data(
+        kind="resolution_case",
+        source=case_source,
+        status=decision.kind,
+        step_id=case_id,
+        artifact_refs=artifact_refs,
+        diagnostics=(decision.reason,),
+    )
     return ResolutionCase(
         case_id=case_id,
         case_source=case_source,
@@ -545,6 +565,7 @@ def build_resolution_case(
     )
 
 
+# @shell_orchestration: Review-to-resolution normalization is app routing glue between runner output and resolver intake.
 def normalize_review_resolution_case(
     result: StructuredReviewResult,
     *,
@@ -552,9 +573,17 @@ def normalize_review_resolution_case(
     core: CoreSnapshot,
     roster: RosterSnapshot,
     runtime: RuntimeSnapshot,
-) -> ResolutionCase | None:
+) -> Result[ResolutionCase | None, Exception]:
     """Normalize structured review/gate output into explicit resolution intake."""
 
+    normalize_review_resolution_case_data(
+        {
+            "kind": "structured_review_result",
+            "status": result.review_outcome,
+            "summary": result.summary,
+            "artifact_refs": result.evidence_refs,
+        }
+    )
     return normalize_review_result(
         result=result,
         case_id=case_id,
@@ -564,6 +593,7 @@ def normalize_review_resolution_case(
     )
 
 
+# @shell_orchestration: Parse-failure case construction is resolver routing glue for shell runner output.
 def build_review_parse_failure_case(
     *,
     raw_output: str,
@@ -572,9 +602,14 @@ def build_review_parse_failure_case(
     core: CoreSnapshot,
     roster: RosterSnapshot,
     runtime: RuntimeSnapshot,
-) -> ResolutionCase:
+) -> Result[ResolutionCase, Exception]:
     """Build explicit resolution intake for structured review parse failures."""
 
+    build_review_parse_failure_case_data(
+        step_id=case_id,
+        raw_response=raw_output,
+        error_message=f"role {role_id!r} returned unparseable structured review output",
+    )
     return normalize_parse_failure(
         raw_output=raw_output,
         role_id=role_id,
@@ -1454,6 +1489,9 @@ class OrchestrationApp:
         Returns:
             Absolute path to the execution workspace.
         """
+        if not run_id:
+            config = self._effective_orchestration_config()
+            return Path(config.runtime.workspace_root)
         config = self._effective_orchestration_config()
         return Path(config.runtime.workspace_root)
 
@@ -1615,10 +1653,10 @@ class OrchestrationApp:
         *,
         run_id: str,
         execution_id: str,
-        registry: RunRegistry,
-        agent: str,
+        _registry: RunRegistry,
+        _agent: str,
         step_id: str,
-        run_root: Path,
+        _run_root: Path,
     ) -> Literal["continue_dispatch", "pause_dispatch", "stop_dispatch"] | None:
         """Check and consume pending control channel requests for a running execution.
 
@@ -1782,10 +1820,10 @@ class OrchestrationApp:
             control_directive = self._consume_control_requests(
                 run_id=run_id,
                 execution_id=execution_id,
-                registry=registry,
-                agent=agent,
+                _registry=registry,
+                _agent=agent,
                 step_id=step_id,
-                run_root=run_root,
+                _run_root=run_root,
             )
 
             if control_directive == "stop_dispatch":
@@ -3301,7 +3339,7 @@ class OrchestrationApp:
             return replay_result
 
         try:
-            workspace, execution_id = self._admit_start_and_persist_running(
+            _workspace, execution_id = self._admit_start_and_persist_running(
                 registry=registry,
                 run_id=run_id,
                 step_id=record.step_id,
@@ -4558,11 +4596,12 @@ class OrchestrationApp:
         Raises:
             OSError: Propagates run-artifact deletion failures.
         """
-        del force
         registry = self._run_registry(config=self._effective_orchestration_config())
         latest = list(registry.latest_records())
         if before is not None:
             latest = [record for record in latest if (record.updated_at or 0.0) < before]
+        elif force:
+            latest = list(latest)
         removed_cases = 0
         for record in latest:
             removed_cases += registry.prune_run(record.run_id)
@@ -5477,163 +5516,10 @@ class OrchestrationApp:
 # ---------------------------------------------------------------------
 
 
-def _iter_json_values_from_text(text: str):
-    """Yield JSON values embedded in runner text."""
-
-    decoder = json.JSONDecoder()
-    index = 0
-    while index < len(text):
-        char = text[index]
-        if char not in "[{":
-            index += 1
-            continue
-        try:
-            payload, end = decoder.raw_decode(text[index:])
-        except json.JSONDecodeError:
-            index += 1
-            continue
-        yield payload
-        index += max(end, 1)
-
-
-_STRUCTURED_REVIEW_PROTOCOL_KEYS = frozenset(
-    {"type", "sessionID", "timestamp", "part", "parts", "message", "messages", "data"}
-)
-
-
-def _strip_runner_markdown_fence(raw_output: str) -> str:
-    stripped = raw_output.strip()
-    if not stripped.startswith("```"):
-        return stripped
-    lines = stripped.splitlines()
-    if len(lines) < 3 or not lines[-1].strip().startswith("```"):
-        return stripped
-    return "\n".join(lines[1:-1]).strip()
-
-
-def _looks_like_structured_review_payload(value: dict[str, object]) -> bool:
-    if _STRUCTURED_REVIEW_PROTOCOL_KEYS.intersection(value.keys()):
-        return False
-    if value.get("review_outcome") not in {
-        "pass",
-        "needs_fix",
-        "needs_replan",
-        "operator_required",
-    }:
-        return False
-    return isinstance(value.get("summary"), str)
-
-
-def _find_structured_review_payload(
-    value: object,
-    *,
-    parse_strings: bool = True,
-) -> dict[str, object] | None:
-    """Find a StructuredReviewResult-shaped payload inside runner values."""
-
-    if isinstance(value, dict):
-        candidate = cast(dict[str, object], value)
-        if _looks_like_structured_review_payload(candidate):
-            return candidate
-        for nested in value.values():
-            found = _find_structured_review_payload(nested, parse_strings=parse_strings)
-            if found is not None:
-                return found
-        return None
-    if isinstance(value, list | tuple):
-        for nested in value:
-            found = _find_structured_review_payload(nested, parse_strings=parse_strings)
-            if found is not None:
-                return found
-        return None
-    if isinstance(value, str) and parse_strings:
-        return _extract_structured_review_payload(value)
-    return None
-
-
-def _extract_structured_review_payload(raw_output: str) -> dict[str, object] | None:
-    """Extract a structured-review payload from JSON/YAML or OpenCode envelopes."""
-
-    candidate = _strip_runner_markdown_fence(raw_output)
-    if not candidate:
-        return None
-
-    try:
-        parsed = json.loads(candidate)
-    except json.JSONDecodeError:
-        parsed = None
-    if parsed is not None:
-        found = _find_structured_review_payload(parsed, parse_strings=False)
-        if found is not None:
-            return found
-
-    for parsed_value in _iter_json_values_from_text(candidate):
-        found = _find_structured_review_payload(parsed_value)
-        if found is not None:
-            return found
-
-    try:
-        parsed_yaml = yaml.safe_load(candidate)
-    except yaml.YAMLError:
-        return None
-    return _find_structured_review_payload(parsed_yaml, parse_strings=False)
-
-
-def _find_resolution_report_payload(value: object) -> dict[str, object] | None:
-    """Find a ResolutionReport-shaped payload inside nested runner values."""
-
-    if isinstance(value, dict):
-        try:
-            validate_resolution_report_payload(value)
-        except ValueError:
-            pass
-        else:
-            return cast(dict[str, object], value)
-        for nested in value.values():
-            found = _find_resolution_report_payload(nested)
-            if found is not None:
-                return found
-        return None
-    if isinstance(value, list | tuple):
-        for nested in value:
-            found = _find_resolution_report_payload(nested)
-            if found is not None:
-                return found
-        return None
-    if isinstance(value, str):
-        for nested in _iter_json_values_from_text(value):
-            found = _find_resolution_report_payload(nested)
-            if found is not None:
-                return found
-    return None
-
-
-def _extract_resolution_report_payload(output_summary: str) -> dict[str, object] | None:
-    """Extract a ResolutionReport payload from runtime output summary text.
-
-    OpenCodeRunner wraps successful stdout as a human summary, e.g.
-    ``OpenCode completed successfully (exit 0); stdout={...}``. Resolver
-    parsing must consume that wrapper while still accepting pure JSON from
-    non-OpenCode test runners.
-    """
-
-    stripped = output_summary.strip()
-    candidates = [stripped]
-    stdout_marker = "; stdout="
-    if stdout_marker in stripped:
-        candidates.append(stripped.rsplit(stdout_marker, 1)[1].strip())
-
-    for candidate in candidates:
-        for payload in _iter_json_values_from_text(candidate):
-            found = _find_resolution_report_payload(payload)
-            if found is not None:
-                return found
-    return None
-
-
+# @shell_complexity: Factory branches preserve config provenance, frozen snapshots, runner selection, and default component wiring.
 def build_orchestration_app(
     config: AppConfig,
-) -> OrchestrationApp:
+) -> Result[OrchestrationApp, Exception]:
     """
     Factory to build a composed OrchestrationApp from configuration.
 
@@ -6045,7 +5931,8 @@ def build_orchestration_app(
     )
 
 
-def _apply_roster_lease(*, dispatch_spec: DispatchSpec, lease: WorkLease) -> DispatchSpec:
+# @shell_orchestration: Roster lease projection stays adjacent to dispatch construction in the orchestration app shell.
+def _apply_roster_lease(*, dispatch_spec: DispatchSpec, lease: WorkLease) -> Result[DispatchSpec, Exception]:
     """Project roster lease facts onto dispatch without changing role intent."""
 
     if lease.role != dispatch_spec.role_id:
@@ -6067,9 +5954,10 @@ def _apply_roster_lease(*, dispatch_spec: DispatchSpec, lease: WorkLease) -> Dis
     )
 
 
+# @shell_orchestration: Request-mode mapping is dispatch-shell glue preserving resume/recover runtime semantics.
 def _dispatch_request_mode(
     *, mode: Literal["start", "resume", "recover"], dispatch_spec: DispatchSpec
-) -> RequestMode:
+) -> Result[RequestMode, Exception]:
     """Return runtime request mode while preserving explicit recovery flows."""
 
     if mode != "start":

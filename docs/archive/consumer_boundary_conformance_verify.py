@@ -228,6 +228,8 @@ def verify_recovery_report_dto_unused():
 
 
 def main():
+    # @invar:allow shell_complexity: archived conformance verifier is a linear shell script
+    # that deliberately runs and prints independent historical checks without changing behavior.
     print()
     print("=" * 60)
     print("CONSUMER-BOUNDARY CONFORMANCE VERIFICATION")

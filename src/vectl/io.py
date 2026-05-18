@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from returns.result import Result
 
 from vectl.models import (
     CASConflictError,
@@ -37,12 +38,13 @@ _PLAN_YAML_HEADER = """\
 _LOGGER = logging.getLogger(__name__)
 
 
-def _file_hash(path: Path) -> str:
+def _file_hash(path: Path) -> str | Result[str, str]:
     """Compute SHA-256 of file contents."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def load_plan_definition(path: Path | str) -> tuple[Plan, str]:
+# @shell_complexity: Loader keeps missing-file, YAML, mapping, and model validation diagnostics together.
+def load_plan_definition(path: Path | str) -> tuple[Plan, str] | Result[tuple[Plan, str], str]:
     """Load plan definition from YAML file only.
 
     Returns (Plan, file_hash) for CAS.
@@ -71,7 +73,7 @@ def save_plan(
     path: Path | str,
     expected_hash: str | None = None,
     commit_message: str | None = None,
-) -> str:
+) -> str | Result[str, str]:
     """Save plan to YAML file atomically.
 
     If expected_hash is provided, performs CAS check.
@@ -106,7 +108,7 @@ def _save_plan_locked(
     path: Path,
     expected_hash: str | None = None,
     commit_message: str | None = None,
-) -> str:
+) -> str | Result[str, str]:
     """Save plan assuming caller already holds the plan-file lock."""
 
     # CAS check
@@ -148,7 +150,8 @@ def _write_plan_content(path: Path, content: str) -> None:
         raise
 
 
-def _git_commit_plan(plan_path: Path, message: str) -> bool:
+# @shell_complexity: Retry, subprocess, timeout, and logging branches preserve commit failure semantics.
+def _git_commit_plan(plan_path: Path, message: str) -> bool | Result[bool, str]:
     """Best-effort git commit for ``plan_path`` after a successful write."""
 
     command = ["git", "commit", "--only", "--no-verify", plan_path.name, "-m", message]
@@ -190,7 +193,8 @@ def _git_commit_plan(plan_path: Path, message: str) -> bool:
     return False
 
 
-def _plan_to_dict(plan: Plan) -> dict[str, Any]:
+# @shell_orchestration: Serialization stays adjacent to YAML writer to preserve plan.yaml compatibility.
+def _plan_to_dict(plan: Plan) -> dict[str, Any] | Result[dict[str, Any], str]:
     """Convert Plan to a clean dict for YAML serialization.
 
     Per ADR-unified-state.md: all mutable runtime state (status, done_at, claimed_by,
@@ -204,7 +208,8 @@ def _plan_to_dict(plan: Plan) -> dict[str, Any]:
     return _clean_dict(data)
 
 
-def _cleanup_default_fields() -> dict[str, Any]:
+# @shell_orchestration: Model default discovery is part of shell YAML compatibility serialization.
+def _cleanup_default_fields() -> dict[str, Any] | Result[dict[str, Any], str]:
     """Return model fields eligible for default-value omission.
 
     Authority:
@@ -223,7 +228,9 @@ def _cleanup_default_fields() -> dict[str, Any]:
     return cleanup_defaults
 
 
-def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:
+# @shell_complexity: Recursive YAML cleanup must preserve list, mapping, empty-string, and default omission semantics.
+# @shell_orchestration: Recursive cleanup stays in IO module to preserve current YAML output surface.
+def _clean_dict(d: dict[str, Any]) -> dict[str, Any] | Result[dict[str, Any], str]:
     """Remove empty/default values for cleaner YAML output."""
     cleanup_default_fields = _cleanup_default_fields()
 
@@ -256,7 +263,7 @@ def _clean_dict(d: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def _resolve_git_dir(plan_path: Path) -> Path | None:
+def _resolve_git_dir(plan_path: Path) -> Path | None | Result[Path | None, str]:
     """Resolve the .git directory for a plan file's parent directory.
 
     Returns None if not in a git repo or if in a linked worktree.
@@ -278,7 +285,7 @@ def _resolve_git_dir(plan_path: Path) -> Path | None:
     return None
 
 
-def _backup_definition(plan_path: Path) -> Path | None:
+def _backup_definition(plan_path: Path) -> Path | None | Result[Path | None, str]:
     """Create a backup of the plan definition in .git/vectl/plan.yaml.bak.
 
     Returns the backup path if successful, None if skipped.

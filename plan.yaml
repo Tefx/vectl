@@ -106758,7 +106758,7 @@ phases:
       retry/application, or a clearly tested rejected-with-refresh instruction path
       with spec-backed non-intersection disposition.
 
-      - [ ] `assess_freeform_evidence` or the actual completion/evidence pipeline
+      - [x] `assess_freeform_evidence` or the actual completion/evidence pipeline
       marks stale receipt proof as failed/unproven unless refresh-before-retry or
       rejected-with-refresh instruction evidence exists.
 

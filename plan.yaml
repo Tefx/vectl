@@ -90831,7 +90831,7 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] All remediation domain steps, focused residual slices, `invar_guard_remediation.full-guard-residual-disposition-retest`,
+      - [x] All remediation domain steps, focused residual slices, `invar_guard_remediation.full-guard-residual-disposition-retest`,
       `cli-surface-preservation-uiux-audit`, and `invar_guard_remediation.escape-budget-full-guard-retest`
       are complete before this verifier runs.
 

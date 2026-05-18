@@ -104108,7 +104108,7 @@ phases:
       - [x] Error scenarios: stale revision retry guidance, batch diagnostics, ambiguous/no
       legacy keyword match.
 
-      - [ ] Integration path: CLI/MCP/orchestration surfaces delegate to canonical
+      - [x] Integration path: CLI/MCP/orchestration surfaces delegate to canonical
       core service.
 
 

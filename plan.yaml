@@ -101822,7 +101822,7 @@ phases:
     skipped_reason: superseded
   - id: det_check_contract_fix_gate_blockers
     name: Fix contract gate blockers for deterministic checklist contract
-    status: claimed
+    status: done
     description: 'Batched remediation for deterministic checklist contract gate failure.
 
 
@@ -102084,6 +102084,110 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-18T14:42:20.225123+00:00'
+    done_at: '2026-05-18T14:48:53.425454+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## refs Read Confirmation
+
+      - docs/RFC-deterministic-checklists.md — establishes core_checklist ownership,
+      supported fields, selector modes, errors/retry guidance, and orchestrator receipt
+      contract.
+
+      - src/vectl/core_checklist.py — deterministic API remains acceptance-only; contract
+      types/docs refined without full implementation.
+
+      - src/vectl/core_plan_mutations.py — legacy public `update_checklist` surface
+      restored by delegating to the legacy implementation.
+
+      - tests/test_checklist.py — verifies legacy checklist toggle/add/no-match/ambiguous
+      behavior.
+
+      - tests/test_mcp.py — verifies MCP `vectl_check` calls `update_checklist(...,
+      check=..., append=...)` correctly.
+
+      - tests/test_cli.py — verifies CLI `check` legacy behavior.
+
+
+      ## Batched Remediation Evidence
+
+      **Public surface restored**:
+
+      - Signature observed: `update_checklist(plan: Plan, step_id: str, *, check:
+      str | None = None, append: str | None = None) -> Plan`.
+
+      - Legacy behavior proof: checklist, MCP checklist, and CLI check targeted tests
+      passed on mainline.
+
+
+      **Contract purity preserved**:
+
+      - Full deterministic implementation avoided: YES.
+
+      - Acceptance-only contract refinements made for unsupported fields, invalid
+      mixed selector modes, error payload/retry guidance, and concrete orchestrator
+      receipt schema.
+
+
+      **Blockers closed**:
+
+      - B1_PUBLIC_SURFACE_REGRESSION: Closed by restoring legacy `check=`/`append=`
+      compatibility and delegation.
+
+      - B2_REQUIRED_REF_MISSING: Closed; evidence path no longer requires nonexistent
+      `tools/vectl/README.md`.
+
+      - B3_DIFF_CHECK_FAILURE: Closed; `git diff --check HEAD^ HEAD` produced no output.
+
+      - Contract detail concerns: Closed via RFC/type refinements while keeping deterministic
+      functions as stubs.
+
+
+      ## Verification
+
+      - `./.venv/bin/python -m pytest tests/test_checklist.py -q` — PASS, 12 passed.
+
+      - `./.venv/bin/python -m pytest tests/test_mcp.py -q -k checklist` — PASS, 2
+      passed / 173 deselected.
+
+      - `./.venv/bin/python -m pytest tests/test_cli.py -q -k check` — PASS, 8 passed
+      / 231 deselected.
+
+      - `git diff --check HEAD^ HEAD` — PASS, no output.
+
+
+      ## Files changed
+
+      - `docs/RFC-deterministic-checklists.md`
+
+      - `src/vectl/core_checklist.py`
+
+      - `src/vectl/core_plan_mutations.py`
+
+
+      ## Commit hash(es)
+
+      - worker branch: `be72b8eb0aef5438f0ba29727eeaa7576e265821`
+
+      - mainline squash: `0b1a0a6`
+
+
+      ## Spec link
+
+      - `docs/RFC-deterministic-checklists.md`
+
+
+      ## Checklist receipt
+
+      - All remediation and verification checklist items were satisfied and toggled
+      complete.
+
+
+      ## Gaps/Notes
+
+      - Deterministic checklist implementation remains intentionally unimplemented
+      for later expected-red and implementation phases; this step only restored legacy
+      behavior and sharpened the contract.'
   - id: det_check_contract_retest_gate
     name: Retest and gate deterministic checklist contract remediation
     status: pending

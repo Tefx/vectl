@@ -102602,7 +102602,7 @@ phases:
       - [x] `checklist_inventory_revision` stale values reject deterministic mutation
       with structured retry guidance.
 
-      - [ ] Deterministic single set-state mutation is idempotent when target state
+      - [x] Deterministic single set-state mutation is idempotent when target state
       already matches.
 
       - [ ] Legacy keyword toggle remains case-insensitive and fuzzy-compatible for

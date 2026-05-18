@@ -102558,7 +102558,7 @@ phases:
       - No blockers remain for expected-red test authoring.'
 - id: det_check_tests
   name: 'Deterministic Checklist Handling: Expected-Red Test Definitions'
-  status: pending
+  status: in_progress
   gate: Expected-red tests expose deterministic checklist gaps without product implementation
     changes.
   depends_on:
@@ -102566,7 +102566,7 @@ phases:
   steps:
   - id: det_check_tests_core_red
     name: Define core checklist expected-red tests
-    status: pending
+    status: claimed
     description: 'step_type: test_define_red
 
       step_intent: test_define_red
@@ -102651,6 +102651,8 @@ phases:
       - Downstream implementation owner: det_check_impl_core_inventory / det_check_impl_single_mutation\
       \ / det_check_impl_batch_mutation"
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-18T14:56:43.173461+00:00'
   - id: det_check_tests_surfaces_red
     name: Define CLI MCP and orchestration expected-red tests
     status: pending

@@ -100425,6 +100425,7 @@ phases:
       \  - Required follow-up owner(s): <step ids or replan request>"
     depends_on:
     - invar_guard_remediation.close-post-gate-blockers-batched
+    - invar_guard_remediation.uiux-audit-post-blocker-closure
     agent: gate-reviewer
   - id: invar_guard_remediation.uiux-audit-post-blocker-closure
     name: Audit UI/UX proof after batched blocker closure

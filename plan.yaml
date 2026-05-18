@@ -103159,7 +103159,7 @@ phases:
 
       Hardened acceptance for mutable state/revision semantics:
 
-      - [ ] Revision input is exactly canonicalized raw Markdown for `description`
+      - [x] Revision input is exactly canonicalized raw Markdown for `description`
       and `verification`; unrelated metadata is excluded.
 
       - [x] Missing/empty fields produce empty inventories and stable revision behavior.

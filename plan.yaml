@@ -102951,7 +102951,7 @@ phases:
 
       Acceptance checklist:
 
-      - [ ] Both expected-red test steps changed only tests/fixtures/helpers.
+      - [x] Both expected-red test steps changed only tests/fixtures/helpers.
 
       - [ ] Red failures map to declared deterministic checklist gaps.
 

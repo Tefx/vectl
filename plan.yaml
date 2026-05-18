@@ -99021,7 +99021,7 @@ phases:
       without budget lowering, suppression, ignored files, deleted findings, or policy
       bypass.
 
-      - [ ] Preserve public import compatibility for every touched module listed in
+      - [x] Preserve public import compatibility for every touched module listed in
       Compatibility Preservation Required.
 
       - [ ] Preserve CLI/MCP/runtime behavior for touched public surfaces, especially

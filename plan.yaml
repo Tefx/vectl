@@ -102618,7 +102618,7 @@ phases:
 
       Scope guardrails:
 
-      - [ ] Do not change `src/` implementation files in this test-definition step.
+      - [x] Do not change `src/` implementation files in this test-definition step.
 
       - [ ] Red failures must map to the declared deterministic checklist gaps, not
       unrelated import or syntax errors.

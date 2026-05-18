@@ -101570,7 +101570,7 @@ phases:
       were satisfied and toggled/updated before completion.'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
-  status: in_progress
+  status: done
   gate: Contract phase gates deterministic checklist ownership, selectors, revision
     semantics, and structured error contract before tests or implementation.
   depends_on:
@@ -102190,7 +102190,7 @@ phases:
       behavior and sharpened the contract.'
   - id: det_check_contract_retest_gate
     name: Retest and gate deterministic checklist contract remediation
-    status: claimed
+    status: done
     description: 'Fresh adversarial retest/gate for deterministic checklist contract
       remediation.
 
@@ -102438,9 +102438,127 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-18T14:49:25.388042+00:00'
+    done_at: '2026-05-18T14:55:35.568604+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## Gate Review Report
+
+      **Reviewer**: gate-reviewer (independent of `det_check_contract_fix_gate_blockers`)
+
+      **Phase**: det_check_contracts
+
+      **Retest target**: det_check_contract_fix_gate_blockers
+
+      **Headline**: PASS
+
+      **Verdict**: PASS
+
+      **gate_open_allowed**: true
+
+      **blockers**: []
+
+      **orchestrator_action_hint**: COMPLETE
+
+
+      ### refs Read Confirmation
+
+      - docs/RFC-deterministic-checklists.md — single-owner contract, supported fields,
+      invalid mixed modes, structured error/retry payloads, and receipt schema confirmed.
+
+      - src/vectl/core_checklist.py — acceptance-only dataclasses/errors and `NotImplementedError`
+      stubs confirmed; no full deterministic implementation.
+
+      - src/vectl/core_plan_mutations.py — legacy-compatible `update_checklist(plan,
+      step_id, *, check=None, append=None) -> Plan` facade confirmed.
+
+      - tests/test_checklist.py — legacy checklist toggle/add/no-match/ambiguous behavior
+      confirmed.
+
+      - tests/test_mcp.py — MCP checklist behavior confirmed.
+
+      - tests/test_cli.py — CLI check behavior confirmed.
+
+      - tools/vectl/README.md — NOT READ: path absent; non-blocking because current
+      remediation refs use existing authoritative sources.
+
+
+      ### Targeted Command Evidence
+
+      - `./.venv/bin/python -m pytest tests/test_checklist.py -q` — PASS, 12 passed.
+
+      - `./.venv/bin/python -m pytest tests/test_mcp.py -q -k checklist` — PASS, 2
+      passed / 173 deselected.
+
+      - `./.venv/bin/python -m pytest tests/test_cli.py -q -k check` — PASS, 8 passed
+      / 231 deselected.
+
+      - `git diff --check HEAD^ HEAD` — PASS, no output.
+
+
+      ### Gate Decision Basis
+
+      - status: PROVEN for targeted runtime behavior, public-surface compatibility,
+      contract purity, expected-red adequacy, and nonexistent optional ref handling.
+
+      - gate_decision_basis: OPEN.
+
+
+      ### Behavioral Proof Register
+
+      - targeted checklist/MCP/CLI behavior restored: PROVEN.
+
+      - no public-surface authority conflict remains: PROVEN.
+
+      - contract purity preserved: PROVEN.
+
+      - contract details adequate for expected-red tests: PROVEN.
+
+
+      ### Wiring / Authority Audit
+
+      - W1 owner identified: PASS (`core_checklist.py` owner in RFC).
+
+      - W2 entry surfaces delegate/compatibility expectation: PASS (legacy-compatible
+      `update_checklist`, targeted tests pass).
+
+      - W3 unsupported fields disposition: PASS (`UnsupportedFieldError`, `unsupported_field`).
+
+      - W4 revision scope: PASS (description + verification canonicalized Markdown).
+
+      - W5 selector modes: PASS (legacy, deterministic single, batch, invalid mixed
+      mode).
+
+      - W6 error semantics: PASS (structured payload with code/message/retry/context).
+
+      - W7 batch semantics: PASS (all-or-nothing contract).
+
+      - W8 orchestrator receipt semantics: PASS (`item_id`, `revision`, `checked`).
+
+      - Escape hatch audit: no blocker found.
+
+
+      ## Verification
+
+      - Mainline re-run by orchestrator also passed the three targeted pytest commands
+      and `git diff --check HEAD^ HEAD`.
+
+      - Files changed: none (read-only gate).
+
+      - Commit hash(es): none (read-only gate).
+
+
+      ## Checklist receipt
+
+      - All gate and verification checklist items were satisfied and toggled complete.
+
+
+      ## Gaps/Notes
+
+      - No blockers remain for expected-red test authoring.'
 - id: det_check_tests
   name: 'Deterministic Checklist Handling: Expected-Red Test Definitions'
-  status: locked
+  status: pending
   gate: Expected-red tests expose deterministic checklist gaps without product implementation
     changes.
   depends_on:

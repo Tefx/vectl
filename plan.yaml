@@ -93408,7 +93408,7 @@ phases:
       - [x] UI/UX audit decision is a parseable PASS / PASS_WITH_DEBT / FAIL handoff
       with blockers clearly identified.
 
-      - [ ] Behavioral proof register is present for CLI surface obligations.
+      - [x] Behavioral proof register is present for CLI surface obligations.
 
 
       ## Verification Scope Declaration

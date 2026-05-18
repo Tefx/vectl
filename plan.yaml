@@ -108580,7 +108580,7 @@ phases:
       because `tests/test_arch_demolition_wave0_characterization.py` imports `_get_next_steps_with_phase`
       from `vectl.cli` and that symbol is no longer importable.
 
-      - [ ] Invar blocker: `uv run invar guard --all` fails `escape_hatch_budget`
+      - [x] Invar blocker: `uv run invar guard --all` fails `escape_hatch_budget`
       with weighted budget `17/15`.
 
       - [ ] Checklist-adjacent invar warnings are analyzed for gate intersection,

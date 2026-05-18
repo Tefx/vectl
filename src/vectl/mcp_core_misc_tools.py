@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from returns.result import Success
+
 from vectl.mcp_core_common import *
 
 # @shell_complexity: Checklist tool preserves validation and detailed match diagnostics in one public surface.
@@ -52,7 +54,7 @@ def vectl_check(
             index=index,
             checked=checked,
             inventory=inventory,
-        )
+        ).unwrap()
 
     if keyword is None and add is None:
         return "**Error:** Must provide either 'keyword' or 'add'."
@@ -95,7 +97,7 @@ def vectl_check(
     return f"**Updated checklist:** {step_id}"
 
 
-# @invar:allow shell_result: MCP tool adapter returns JSON-serializable payloads for FastMCP compatibility.
+# @shell_orchestration: Loads/saves plan through shared shell helpers and adapts JSON-serializable FastMCP payloads.
 # @shell_complexity: Deterministic checklist surface must preserve inventory, mutation, and structured error branches.
 def _vectl_check_deterministic(
     *,
@@ -108,7 +110,7 @@ def _vectl_check_deterministic(
     index: int | None,
     checked: bool | None,
     inventory: bool,
-) -> dict[str, Any]:
+) -> Result[dict[str, Any], str]:
     from vectl.cli_plan_checklist_commands import (
         _batch_diagnostics_payload,
         _checklist_exception_payload,
@@ -121,21 +123,21 @@ def _vectl_check_deterministic(
     plan, expected_def_hash = _load()
     found = plan.find_step(step_id)
     if found is None:
-        return {
+        return Success({
             "ok": False,
             "markdown": f"**Error:** Step not found: {step_id}",
             "error": {"type": "PlanError", "code": "not_found", "message": f"Step not found: {step_id}"},
-        }
+        })
     if inventory:
         _phase, step = found
         revision_value, items = get_inventory.__wrapped__(step)
-        return {
+        return Success({
             "ok": True,
             "markdown": f"**Checklist inventory:** {step_id}",
             "step_id": step_id,
             "checklist_inventory_revision": revision_value,
             "items": [_checklist_item_payload(item) for item in items],
-        }
+        })
     try:
         batch_text = None
         if requests is not None:
@@ -158,7 +160,7 @@ def _vectl_check_deterministic(
         payload["Updated checklist"] = True
         if lock_notice:
             payload["lock_notice"] = lock_notice
-        return payload
+        return Success(payload)
     except Exception as exc:
         payload = _checklist_exception_payload(exc)
         error_type = payload.get("error", {}).get("type", exc.__class__.__name__)
@@ -180,7 +182,7 @@ def _vectl_check_deterministic(
                 )
             except Exception:
                 pass
-        return payload
+        return Success(payload)
 
 
 # ---------------------------------------------------------------------------

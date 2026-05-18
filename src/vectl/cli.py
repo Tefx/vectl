@@ -84,6 +84,7 @@ from vectl.cli_plan import (
     unlock,
     validate,
 )
+from vectl.cli_plan_common import _get_next_steps_with_phase
 from vectl.cli_render import _load, _save_plan, diff_cmd, log_cmd, render
 from vectl.io import _resolve_git_dir
 from vectl.merge_driver import merge_plans

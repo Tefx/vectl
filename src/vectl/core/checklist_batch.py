@@ -7,6 +7,17 @@ from __future__ import annotations
 
 from invar_runtime import post, pre
 
+from vectl import core_checklist as c
+from vectl.core_checklist import (
+    ChecklistContractError,
+    ChecklistErrorPayload,
+    FieldIndexSelector,
+    ItemIdSelector,
+    LegacyKeywordSelector,
+    SelectorDiagnostic,
+    _resolve_request_impl,
+)
+from vectl.core_checklist_inventory import canonicalize_markdown_impl, set_item_marker_impl
 from vectl.models import Step
 
 
@@ -42,8 +53,6 @@ def _stale_diagnostics(requests: list[object], current_revision: str) -> tuple[o
     >>> _stale_diagnostics_impl([object()], 'rev')[0].revision
     'rev'
     """
-    from vectl.core_checklist import SelectorDiagnostic
-
     return tuple(
         SelectorDiagnostic(
             request_index=request_index,
@@ -68,9 +77,6 @@ def _mode_diagnostics(requests: list[object]) -> tuple[object, ...]:
     >>> _mode_diagnostics_impl([MutationRequest(LegacyKeywordSelector('x'), True)])[0].code
     'invalid_selector'
     """
-    from vectl.core_checklist import FieldIndexSelector, ItemIdSelector, LegacyKeywordSelector
-    from vectl.core_checklist import SelectorDiagnostic
-
     diagnostics: list[object] = []
     saw_legacy = False
     saw_deterministic = False
@@ -100,9 +106,6 @@ def _resolve_batch(requests: list[object], items: list[object]) -> tuple[list[tu
     >>> _resolve_batch_impl([], [])
     ([], ())
     """
-    from vectl.core_checklist import ChecklistContractError, ChecklistErrorPayload
-    from vectl.core_checklist import LegacyKeywordSelector, SelectorDiagnostic, _resolve_request_impl
-
     resolved: list[tuple[int, object, bool]] = []
     diagnostics: list[object] = []
     for request_index, request in enumerate(requests):
@@ -132,8 +135,6 @@ def _raise_resolution_error(diagnostics: tuple[object, ...]) -> None:
     """
     if not diagnostics:
         return
-    from vectl import core_checklist as c
-
     first = diagnostics[0]
     error_type = {
         "item_not_found": c.ItemNotFoundError,
@@ -155,8 +156,6 @@ def _duplicate_diagnostics(resolved: list[tuple[int, object, bool]]) -> tuple[ob
     >>> _duplicate_diagnostics_impl([])
     ()
     """
-    from vectl.core_checklist import SelectorDiagnostic
-
     seen: dict[str, tuple[int, bool]] = {}
     diagnostics: list[object] = []
     for request_index, item, target_checked in resolved:
@@ -183,9 +182,6 @@ def _apply_resolved(step: Step, resolved: list[tuple[int, object, bool]]) -> tup
     >>> _apply_resolved_impl(Step(id='s', name='S'), [])[1]
     0
     """
-    from vectl.core_checklist import SelectorDiagnostic
-    from vectl.core_checklist_inventory import canonicalize_markdown_impl, set_item_marker_impl
-
     description = canonicalize_markdown_impl(step.description)
     verification = canonicalize_markdown_impl(step.verification)
     changed_items = 0
@@ -214,8 +210,6 @@ def mutate_checklist_batch(step: Step, revision: str, requests: list[object]) ->
     >>> mutate_checklist_batch_impl(step, current, [MutationRequest(FieldIndexSelector('description', 0), True)]).step.description
     '- [x] A'
     """
-    from vectl import core_checklist as c
-
     current_revision, items = c._inventory_snapshot_impl(step)
     if revision != current_revision:
         diagnostics = _stale_diagnostics_impl(requests, current_revision)

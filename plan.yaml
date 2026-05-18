@@ -105145,7 +105145,7 @@ phases:
       - [x] Orchestrator receipts use item_id/revision and avoid natural-language
       fuzzy mapping.
 
-      - [ ] UI/output audit and liveness proof are present.
+      - [x] UI/output audit and liveness proof are present.
 
 
       YOU ARE THE QUALITY GATE. Block progress if behavioral runtime evidence is missing.'

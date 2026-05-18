@@ -106504,7 +106504,7 @@ phases:
       - none'
   - id: det_check_impl_blocker_retest
     name: Aggregate deterministic checklist blocker retest closure
-    status: pending
+    status: claimed
     description: 'Aggregate retest closure for the batched deterministic checklist
       remediation path.
 
@@ -106669,6 +106669,8 @@ phases:
     - det_check_impl_blocker_wiring_retest
     - det_check_impl_receipt_refresh_retest
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-18T17:53:45.907765+00:00'
   - id: det_check_impl_receipt_refresh_remediation
     name: Repair stale receipt runtime refresh path
     status: done

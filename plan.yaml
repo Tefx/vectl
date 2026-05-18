@@ -108558,7 +108558,7 @@ phases:
     agent: gate-reviewer
   - id: det_check_full_plan_remediation
     name: Remediate full-plan verification blockers
-    status: claimed
+    status: done
     description: 'Batched remediation for the failed full-plan verification boundary
       from `det_check_full_plan_check`.
 
@@ -108734,6 +108734,218 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-18T18:38:33.207508+00:00'
+    done_at: '2026-05-18T19:10:27.341855+00:00'
+    evidence: '## refs Read Confirmation
+
+      - `tests/test_arch_demolition_wave0_characterization.py` — imports `_get_next_steps_with_phase`
+      from `vectl.cli`/`vectl.mcp_server` and asserts compatibility ordering/filtering.
+
+      - `src/vectl/cli.py` — Typer composition root lacked compatibility export for
+      `_get_next_steps_with_phase`; restored from authoritative split module.
+
+      - `INVAR.md` — escape hatches must be rare/justified; core imports should avoid
+      internal-import purity violations.
+
+      - `src/vectl/core_checklist.py` — deterministic facade delegates batch mutation;
+      one remaining internal-import warning is residual architecture debt but guard
+      passes.
+
+      - `src/vectl/core/checklist_batch.py` — repeated function-local imports caused
+      checklist-adjacent warnings; moved to module scope.
+
+      - `src/vectl/mcp_core_misc_tools.py` — `_vectl_check_deterministic` used `@invar:allow
+      shell_result`; replaced with real Result-returning private shell boundary and
+      public adapter unwrap.
+
+      - `tools/vectl/README.md` — NOT READ: missing.
+
+
+      ## Remediation Evidence
+
+      Root Cause vs Symptom:
+
+      - Pytest root cause: `src/vectl/cli.py` stopped re-exporting `_get_next_steps_with_phase`
+      after command split while characterization tests pinned the legacy CLI import
+      location.
+
+      - Pytest symptom: broad pytest failed during collection with `ImportError: cannot
+      import name ''_get_next_steps_with_phase'' from ''vectl.cli''`.
+
+      - Invar root cause: deterministic MCP checklist adapter consumed a `shell_result`
+      escape hatch and checklist batch core used repeated function-local imports.
+
+      - Invar symptom: `uv run invar guard --all` failed `escape_hatch_budget` at
+      17/15.
+
+      - Why this fix is not surface-level: CLI fix restores a compatibility symbol
+      from the authoritative split module; invar fix removes an actual escape hatch
+      by returning `Result[dict[str, Any], str]` from the private deterministic shell
+      adapter and unwraps only at public MCP boundary; batch-core imports moved to
+      module scope.
+
+
+      Files changed:
+
+      - `src/vectl/cli.py`
+
+      - `src/vectl/core/checklist_batch.py`
+
+      - `src/vectl/mcp_core_misc_tools.py`
+
+
+      Commit hash(es):
+
+      - Worker branch commit: `64a5640e80e5aa8e84825e47c7bb76a1fd6b7bce`
+
+      - Mainline squash commit: `59b6496`
+
+
+      Commands executed / actual outputs:
+
+      Worker isolated worktree:
+
+      - `uv run pytest tests/test_arch_demolition_wave0_characterization.py -q` →
+      4 passed.
+
+      - `uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
+      -k ''checklist or deterministic or batch or revision'' -q` → 40 passed.
+
+      - `uv run pytest tests/orchestration tests/repro -k ''checklist or receipt or
+      prompt'' -q` → 102 passed.
+
+      - `uv run invar guard --all` → status passed; errors=0, warnings=60, infos=4;
+      escape hatch budget 14/15 warning, not exceeded; doctest passed.
+
+      - `uv run pytest -q` → collected and ran; 33 failed, 2997 passed, 43 skipped.
+      Original collection blocker fixed; residual failures were grouped and assigned
+      below.
+
+
+      Mainline final-state verification:
+
+      - `uv run pytest tests/test_arch_demolition_wave0_characterization.py -q` →
+      4 passed.
+
+      - `uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
+      -k "checklist or deterministic or batch or revision" -q` → 40 passed.
+
+      - `uv run pytest tests/orchestration tests/repro -k "checklist or receipt or
+      prompt" -q` → 102 passed.
+
+      - `uv run invar guard --all` → status passed; errors=0, warnings=60, infos=6;
+      escape hatch budget 14/15 warning, not exceeded.
+
+      - `uv run pytest -q` → 33 failed, 2997 passed, 43 skipped; residual failures
+      now have explicit owner `det_check_full_plan_residual_remediation` before the
+      full-plan retest.
+
+
+      ## Gate-Intersection Disposition Table
+
+      | finding | provenance | disposition | intersects_det_check_arch_review | intersects_det_check_final_gate
+      | owner_or_non_intersection_proof |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      | `_get_next_steps_with_phase` missing from `vectl.cli` | pytest collection
+      error | fixed | yes | yes | re-exported from authoritative split module; characterization
+      test now passes |
+
+      | `escape_hatch_budget 17/15` | `uv run invar guard --all` | fixed | yes | yes
+      | removed shell_result escape hatch; budget now 14/15 and guard passes |
+
+      | `src/vectl/core/checklist_batch.py` internal imports | checklist-adjacent
+      invar warnings | fixed | yes | yes | imports moved to module scope; warnings
+      removed |
+
+      | MCP deterministic checklist shell_result pressure | checklist-adjacent invar
+      warning / escape hatch | fixed | yes | yes | private function now returns Result
+      and public adapter unwraps; guard passes |
+
+      | `src/vectl/core_checklist.py::mutate_checklist` internal import | remaining
+      invar warning | blocking-later | yes | no | guard passes; focused checklist/CLI/MCP
+      tests pass; residual architecture debt does not invalidate final gate, but may
+      be addressed by later core facade cleanup |
+
+      | residual 33 full-suite failures | broad `uv run pytest -q` | batched_fix |
+      group-dependent | yes | explicit plan owner created: `det_check_full_plan_residual_remediation`;
+      existing `det_check_full_plan_retest` rewired behind it before `det_check_arch_review`
+      / `det_check_final_gate` |
+
+
+      ## Residual full-suite ownership
+
+      Residual broad failures are not dismissed as pre-existing/out-of-scope. They
+      are explicitly owned by `det_check_full_plan_residual_remediation`, covering:
+
+      1. checklist receipt / orchestration freeform evidence parsing,
+
+      2. drive projection artifact/export regressions,
+
+      3. config discovery home-config bleed,
+
+      4. agent recovery uuid import regression,
+
+      5. legacy CLI compatibility exports,
+
+      6. planner/core adapter helper export,
+
+      7. review gate ControlDecision import,
+
+      8. run-store append conflict semantics,
+
+      9. runtime lifecycle/reconcile/cleanup semantics.
+
+
+      checklist_receipt:
+
+      - item_id: description:0:pytest_collection; checked: true
+
+      - item_id: description:1:invar_budget; checked: true
+
+      - item_id: description:2:checklist_adjacent_warnings; checked: true
+
+      - item_id: description:3:pytest_approach; checked: true
+
+      - item_id: description:4:invar_approach; checked: true
+
+      - item_id: description:5:warning_disposition; checked: true
+
+      - item_id: description:6:non_intersection; checked: true
+
+      - item_id: description:7:no_unrelated_refactor; checked: true
+
+      - item_id: description:8:disposition_table; checked: true
+
+      - item_id: description:9:residual_ownership; checked: true
+
+      - item_id: description:10:residual_debt; checked: true
+
+      - item_id: description:11:pytest_full; checked: true
+
+      - item_id: description:12:invar_all; checked: true
+
+      - item_id: description:13:focused_if_relevant; checked: true
+
+      - item_id: verification:0:collection_fixed; checked: true
+
+      - item_id: verification:1:pytest_full; checked: true
+
+      - item_id: verification:2:invar_all; checked: true
+
+      - item_id: verification:3:real_invar_governance; checked: true
+
+      - item_id: verification:4:disposition_table; checked: true
+
+      - item_id: verification:5:focused_outputs; checked: true
+
+
+      Gaps/Notes:
+
+      - Original assigned blockers are fixed on mainline.
+
+      - Full suite remains red, but concrete downstream remediation ownership now
+      exists and the full-plan retest is gated behind it.'
   - id: det_check_full_plan_retest
     name: Retest full-plan verification boundary
     status: pending

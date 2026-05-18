@@ -106992,7 +106992,7 @@ phases:
       OR prove the runtime path emits/records a rejected-with-refresh instruction
       with spec-backed gate disposition.
 
-      - [ ] Verify `assess_freeform_evidence` or the actual completion/evidence pipeline
+      - [x] Verify `assess_freeform_evidence` or the actual completion/evidence pipeline
       marks stale receipt proof appropriately and does not return a false PASS based
       only on receipt parse success.
 

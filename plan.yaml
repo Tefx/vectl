@@ -104798,8 +104798,8 @@ phases:
 
 
       YOU ARE THE QUALITY GATE. Block progress if behavioral runtime evidence is missing.'
-    verification: '- [ ] phase-check protecting `det_check_finalization`: all implementation
-      and verification steps completed with adequate evidence.
+    verification: '- [ ] phase-check protecting `det_check_finalization`: all implementation,
+      failed-report, remediation, and verification steps completed with adequate evidence.
 
       - [ ] Runnable CLI/MCP evidence identifies entrypoint/invocation, command/tool
       call, and real path output.
@@ -104810,7 +104810,11 @@ phases:
       - [ ] No implementation agent in this phase performed this gate review.
 
       - [ ] Legacy keyword toggle compatibility and deterministic item_id/revision
-      paths are both green.'
+      paths are both green.
+
+      - [ ] Batched blocker remediation path (`det_check_impl_blocker_remediation`
+      -> family retests -> `det_check_impl_blocker_retest`) is complete and closes
+      B1-B8 without unresolved blocker-class debt.'
     evidence_template: '## Gate Review Report
 
 
@@ -104883,6 +104887,11 @@ phases:
     - det_check_impl_wiring_audit
     - det_check_impl_liveness_probe
     - det_check_impl_spec_conformance
+    - det_check_impl_blocker_remediation
+    - det_check_impl_blocker_integration_retest
+    - det_check_impl_blocker_spec_retest
+    - det_check_impl_blocker_wiring_retest
+    - det_check_impl_blocker_retest
     agent: gate-reviewer
   - id: det_check_impl_blocker_remediation
     name: Batch remediate deterministic checklist blocker family

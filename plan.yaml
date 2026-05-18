@@ -108977,7 +108977,7 @@ phases:
 
       - [x] Run `uv run pytest -q` and paste output.
 
-      - [ ] Run `uv run invar guard --all` and paste output.
+      - [x] Run `uv run invar guard --all` and paste output.
 
 
       ## Broad failure disposition if anything remains

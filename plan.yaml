@@ -106982,7 +106982,7 @@ phases:
 
       ## Required integration proof focus
 
-      - [ ] Use a runtime-reachable orchestration path, not only `parse_checklist_receipt`
+      - [x] Use a runtime-reachable orchestration path, not only `parse_checklist_receipt`
       unit/parser calls.
 
       - [ ] Submit or simulate a worker checklist receipt with literal stale `revision:

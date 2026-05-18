@@ -108099,7 +108099,7 @@ phases:
       - [x] Invar guard is run with the authoritative project command if relevant
       after core/shell changes.
 
-      - [ ] Any broad verifier failure receives explicit remediation ownership or
+      - [x] Any broad verifier failure receives explicit remediation ownership or
       explicit non-intersection evidence; do not dismiss as pre-existing/out-of-scope
       without gate-intersection analysis.'
     verification: '- [ ] full-plan-check protecting final review: run `pytest tests/test_checklist.py

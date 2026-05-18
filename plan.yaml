@@ -101985,22 +101985,22 @@ phases:
       output.
 
       - [x] Confirm no evidence path requires nonexistent `tools/vectl/README.md`.'
-    verification: '- [ ] `./.venv/bin/python -m pytest tests/test_checklist.py -q`
+    verification: '- [x] `./.venv/bin/python -m pytest tests/test_checklist.py -q`
       passes or any non-pass is unrelated and explicitly documented with file/line
       evidence.
 
-      - [ ] `./.venv/bin/python -m pytest tests/test_mcp.py -q -k checklist` passes
+      - [x] `./.venv/bin/python -m pytest tests/test_mcp.py -q -k checklist` passes
       or any non-pass is unrelated and explicitly documented with file/line evidence.
 
-      - [ ] `./.venv/bin/python -m pytest tests/test_cli.py -q -k check` passes or
+      - [x] `./.venv/bin/python -m pytest tests/test_cli.py -q -k check` passes or
       any non-pass is unrelated and explicitly documented with file/line evidence.
 
-      - [ ] `git diff --check` for the remediation diff reports no trailing whitespace.
+      - [x] `git diff --check` for the remediation diff reports no trailing whitespace.
 
-      - [ ] Public surface `update_checklist(plan, step_id, *, check=None, append=None)
+      - [x] Public surface `update_checklist(plan, step_id, *, check=None, append=None)
       -> Plan` is preserved for legacy callers.
 
-      - [ ] Contract-only deterministic checklist details are sharp enough for expected-red
+      - [x] Contract-only deterministic checklist details are sharp enough for expected-red
       tests and do not ship full implementation.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

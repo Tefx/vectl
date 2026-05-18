@@ -108089,7 +108089,7 @@ phases:
 
       Required checks:
 
-      - [ ] Focused checklist tests pass green.
+      - [x] Focused checklist tests pass green.
 
       - [ ] CLI/MCP/orchestration focused tests pass green.
 

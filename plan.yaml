@@ -97729,7 +97729,7 @@ phases:
       ## Checklist\n- [x] Confirm this retest runs after all four focused residual\
       \ implementation steps are complete and merged to current mainline.\n- [x] Review\
       \ owner evidence for BEFORE/AFTER guard excerpts and compatibility smoke proofs.\n\
-      - [ ] Run exact command `uvx invar-tools guard --all` in a fresh/cold environment.\n\
+      - [x] Run exact command `uvx invar-tools guard --all` in a fresh/cold environment.\n\
       - [ ] Record exact command, exit code, summary, and relevant guard excerpts.\n\
       - [ ] Report all required semantic fields.\n- [ ] Verify no product implementation\
       \ files were modified by this retest.\n- [ ] Mark `observed_result: green` only\

@@ -100817,7 +100817,7 @@ phases:
       \ and zero-ANSI proof with exact command and pasted output.\n- [x] Artifact\
       \ includes facade import proof for `from vectl.core import RecoverResult` with\
       \ exact command and pasted output.\n- [x] Artifact includes behavioral proof\
-      \ register with all required control-plane closure fields.\n- [ ] Artifact includes\
+      \ register with all required control-plane closure fields.\n- [x] Artifact includes\
       \ uiux-auditor-compatible validation note and does not rely on plan summaries\
       \ alone.\n- [ ] Evidence records the exact artifact path and confirms current-mainline\
       \ command provenance."

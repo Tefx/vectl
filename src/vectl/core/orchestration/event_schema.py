@@ -34,8 +34,8 @@ def _percent_encode(value: str, safe: str) -> str:
     return "".join(parts)
 
 
-@pre(lambda value: isinstance(value, str))
-@post(lambda result: isinstance(result, str))
+@pre(lambda value: "\x00" not in value and "%00" not in value.lower())
+@post(lambda result: "\x00" not in result)
 def _percent_decode(value: str) -> str:
     output = bytearray()
     index = 0

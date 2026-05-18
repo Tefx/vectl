@@ -82,7 +82,7 @@ def strip_runner_markdown_fence(raw_output: str) -> str:
     return "\n".join(lines[1:-1]).strip()
 
 
-@pre(lambda value: isinstance(value, Mapping))
+@pre(lambda value: all(isinstance(key, str) and key.strip() for key in value.keys()))
 @post(lambda result: result in {True, False})
 def looks_like_structured_review_payload(value: Mapping[str, object]) -> bool:
     """Return whether a mapping is a structured-review payload, not a runner envelope.
@@ -100,7 +100,10 @@ def looks_like_structured_review_payload(value: Mapping[str, object]) -> bool:
     return isinstance(value.get("summary"), str)
 
 
-@pre(lambda value, parse_strings=True: parse_strings in {True, False})
+@pre(
+    lambda value, parse_strings=True: not isinstance(value, bytes)
+    and parse_strings in {True, False}
+)
 @post(lambda result: result is None or isinstance(result, dict))
 def find_structured_review_payload(
     value: object,
@@ -166,7 +169,7 @@ def extract_structured_review_payload(raw_output: str) -> dict[str, object] | No
     return find_structured_review_payload(parsed_yaml, parse_strings=False)
 
 
-@pre(lambda value: isinstance(value, Mapping))
+@pre(lambda value: all(isinstance(key, str) and key.strip() for key in value.keys()))
 @post(lambda result: result in {True, False})
 def looks_like_resolution_report_payload(value: Mapping[str, object]) -> bool:
     """Return whether a mapping satisfies the resolver report payload envelope.

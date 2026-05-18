@@ -112,26 +112,44 @@ _ALLOWED_OVERRIDE_FIELDS = frozenset(
 )
 
 
-@pre(lambda: len("builtin_role_ids") > 0)
-@post(lambda result: isinstance(result, frozenset) and len(result) > 0 and all(role_id.strip() for role_id in result))
-def builtin_role_ids() -> frozenset[str]:
+@pre(
+    lambda profiles=_DEFAULT_ROLE_PROFILES: len(profiles) > 0
+    and all(str(profile.get("id", "")).strip() for profile in profiles)
+)
+@post(
+    lambda result: isinstance(result, frozenset)
+    and len(result) > 0
+    and all(role_id.strip() for role_id in result)
+)
+def builtin_role_ids(
+    profiles: Sequence[Mapping[str, object]] = _DEFAULT_ROLE_PROFILES,
+) -> frozenset[str]:
     """Return non-empty built-in role identifiers.
     
     >>> "python-executor" in builtin_role_ids()
     True
     """
-    return frozenset(str(profile["id"]) for profile in _DEFAULT_ROLE_PROFILES)
+    return frozenset(str(profile["id"]) for profile in profiles)
 
 
-@pre(lambda: len("default_role_profiles") > 0)
-@post(lambda result: isinstance(result, tuple) and len({profile["id"] for profile in result if isinstance(profile, Mapping) and "id" in profile}) == len(result))
-def default_role_profiles() -> tuple[Mapping[str, object], ...]:
+@pre(
+    lambda profiles=_DEFAULT_ROLE_PROFILES: len(profiles) > 0
+    and len({str(profile.get("id", "")) for profile in profiles}) == len(profiles)
+)
+@post(
+    lambda result: isinstance(result, tuple)
+    and len({profile["id"] for profile in result if isinstance(profile, Mapping) and "id" in profile})
+    == len(result)
+)
+def default_role_profiles(
+    profiles: Sequence[Mapping[str, object]] = _DEFAULT_ROLE_PROFILES,
+) -> tuple[Mapping[str, object], ...]:
     """Return built-in role profiles without duplicate effective role IDs.
     
     >>> default_role_profiles()[0]["id"]
     'python-executor'
     """
-    return tuple(dict(profile) for profile in _DEFAULT_ROLE_PROFILES)
+    return tuple(dict(profile) for profile in profiles)
 
 
 @pre(lambda role_id, override, builtin_ids: bool(role_id.strip()) and isinstance(override, Mapping) and all(str(key).strip() for key in override.keys()) and all(item.strip() for item in builtin_ids))

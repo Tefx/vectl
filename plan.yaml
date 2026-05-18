@@ -108369,7 +108369,7 @@ phases:
       - [x] CLI/MCP/orchestration surfaces delegate to core service and do not re-derive
       source-of-truth facts.
 
-      - [ ] Orchestrator-owned mutation boundary is respected; workers only provide
+      - [x] Orchestrator-owned mutation boundary is respected; workers only provide
       item_id/revision receipts.
 
       - [ ] `description` and `verification` are first-version fields; `evidence_template`

@@ -97732,7 +97732,7 @@ phases:
       - [x] Run exact command `uvx invar-tools guard --all` in a fresh/cold environment.\n\
       - [x] Record exact command, exit code, summary, and relevant guard excerpts.\n\
       - [x] Report all required semantic fields.\n- [x] Verify no product implementation\
-      \ files were modified by this retest.\n- [ ] Mark `observed_result: green` only\
+      \ files were modified by this retest.\n- [x] Mark `observed_result: green` only\
       \ when guard is green or all residuals have structured non-blocking non-intersection\
       \ proof under invar policy.\n- [ ] Set `gate_open_allowed: false` and `orchestrator_action_hint:\
       \ DO_NOT_COMPLETE` if blocker-class residuals remain.\n- [ ] Include behavioral\

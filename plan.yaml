@@ -105320,7 +105320,7 @@ phases:
       revision `rev1`; update tests/fixtures to use actual inventory revision or isolate
       compatibility in non-production helpers only.
 
-      - [ ] B2 CLI deterministic JSON false-green: stale/invalid deterministic batch
+      - [x] B2 CLI deterministic JSON false-green: stale/invalid deterministic batch
       errors return non-zero command status while preserving a parseable JSON error
       payload and legacy compatibility.
 

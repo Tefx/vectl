@@ -108880,3 +108880,243 @@ phases:
     depends_on:
     - det_check_full_plan_remediation
     agent: integration-verifier
+  - id: det_check_full_plan_residual_remediation
+    name: Remediate residual full-suite failures
+    status: pending
+    description: 'Batched residual remediation for the remaining `uv run pytest -q`
+      failures discovered during `det_check_full_plan_remediation`.
+
+
+      work_type: technical_debt_remediation
+
+      step_type: implementation
+
+      agent_source: project
+
+      symbolic_testing: true
+
+      command_family_lock: `uv run pytest -q` and `uv run invar guard --all`
+
+      verification_scope: full-plan-check
+
+      Protects downstream `det_check_full_plan_retest`, `det_check_arch_review`, and
+      `det_check_final_gate`.
+
+
+      ## Scope: fix ALL 9 residual groups in one batched pass
+
+      - [ ] Group 1 — Checklist receipt / orchestration freeform evidence parsing:
+      fix `tests/orchestration/integration/test_orch_e2e_lifecycle.py::*` (7 failures)
+      and `tests/repro/test_orch_liveness.py::test_orch_liveness_cli_entrypoint`;
+      fingerprint `invalid checklist_receipt: Checklist receipt payload must be a
+      mapping`.
+
+      - [ ] Group 2 — Drive projection artifact/export regressions: fix `tests/orchestration/test_drive_events_config_observability.py::*`;
+      fingerprints `_write_json` NameError and missing `_rebuild_drive_projection_from_records`
+      export.
+
+      - [ ] Group 3 — Config discovery home-config bleed: fix `tests/orchestration/unit/test_config_roundtrip_and_isolation.py::*`
+      and `tests/orchestration/unit/test_config_state_impl.py::*`; fingerprint expected
+      `path is None`, got `/Users/tefx/.config/vectl/vectl.yaml`.
+
+      - [ ] Group 4 — Agent recovery UUID import regression: fix `tests/orchestration/unit/test_drive_auto_resolution.py::test_agent_assisted_recovery_opens_case_and_invokes_resolver`;
+      fingerprint `NameError: name ''uuid'' is not defined`.
+
+      - [ ] Group 5 — Legacy CLI compatibility exports: restore or update missing
+      `_enrich_drive_scope_result` and `is_step_locked` from `vectl.cli` without broad
+      CLI API reshaping.
+
+      - [ ] Group 6 — Planner/core adapter helper export: restore or update `_as_str_list`
+      for `tests/orchestration/unit/test_planner_loop_integration.py::TestAsStrList::*`.
+
+      - [ ] Group 7 — Review gate integration ControlDecision regression: fix `tests/orchestration/unit/test_review_gate_integration.py::...`;
+      fingerprint `NameError: name ''ControlDecision'' is not defined`.
+
+      - [ ] Group 8 — Run-store append conflict semantics: fix `test_append_conflict_retry_is_bounded_and_observable`
+      and `test_append_conflict_raises_after_retry_budget`.
+
+      - [ ] Group 9 — Runtime lifecycle / reconcile / cleanup semantics: fix runtime
+      lifecycle tests expecting reconcile lock/result/cleanup semantics.
+
+
+      ## Required remediation approach
+
+      - [ ] Treat these failures as blocker-class residual debt because they intersect
+      `det_check_arch_review` and/or `det_check_final_gate`.
+
+      - [ ] Fix all nine groups in one batched pass; do not create serial fix chains
+      or leave any group ownerless.
+
+      - [ ] Preserve deterministic checklist behavior, checklist receipts, revision
+      semantics, and orchestrator-owned mutation boundaries.
+
+      - [ ] Use focused, authoritative compatibility corrections where tests cover
+      legacy exports; do not perform unrelated refactors, API redesigns, threshold
+      lowering, suppressions, or plan-state edits.
+
+      - [ ] For config discovery, prevent user home config bleed in isolated test/runtime
+      contexts while preserving legitimate config discovery behavior.
+
+      - [ ] For run-store conflict handling, preserve bounded retry observability
+      and explicit raise-after-budget semantics.
+
+      - [ ] For runtime lifecycle cleanup, preserve reconcile lock/result/cleanup
+      semantics and avoid masking cleanup failures.
+
+
+      ## Failure-mode checklist
+
+      - [ ] Relative vs absolute config path behavior is explicitly verified.
+
+      - [ ] Missing-file fallback behavior is explicitly verified.
+
+      - [ ] Explicit clear / null overwrite semantics are preserved where relevant.
+
+      - [ ] Stale-definition vs new-state precedence is preserved where relevant.
+
+      - [ ] Partial-write / append-conflict retry behavior is verified.
+
+      - [ ] Concurrent or repeated runtime lifecycle cleanup does not leak locks,
+      result state, or temp resources.
+
+
+      ## Broad failure disposition requirements
+
+      - [ ] Evidence includes a table with columns: `group`, `command`, `finding`,
+      `provenance`, `disposition`, `intersects_det_check_arch_review`, `intersects_det_check_final_gate`,
+      `owner_or_non_intersection_proof`.
+
+      - [ ] If any failure remains after remediation, evidence assigns explicit owner/closure
+      path and does not dismiss it as pre-existing or out-of-scope.
+
+      - [ ] Any non-blocking claim proves non-intersection with both downstream review/gate
+      steps.
+
+
+      ## Required commands before handoff
+
+      - [ ] Run `uv run pytest -q` and paste the full summary line including failures/passes/skips.
+
+      - [ ] Run `uv run invar guard --all` and paste the summary.
+
+      - [ ] Because this step touches checklist/orchestration/receipt paths, run `uv
+      run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py -k ''checklist
+      or deterministic or batch or revision'' -q` and paste output.
+
+      - [ ] Because this step touches orchestration receipt/prompt paths, run `uv
+      run pytest tests/orchestration tests/repro -k ''checklist or receipt or prompt''
+      -q` and paste output.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION remediation step. Stub-only completion is NOT acceptable.
+      Each code deliverable MUST contain substantive logic that processes its inputs
+      and produces outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
+    verification: '- [ ] full-plan-check protecting architecture review and final
+      gate: all nine residual failure groups are addressed in one batched remediation
+      pass.
+
+      - [ ] `uv run pytest -q` is green, or every remaining failure has explicit blocker
+      ownership/non-intersection proof in the required disposition table.
+
+      - [ ] `uv run invar guard --all` is green and escape-hatch budget remains within
+      policy.
+
+      - [ ] Focused checklist CLI/MCP command is run and pasted because checklist/orchestration
+      receipt paths are in scope.
+
+      - [ ] Focused orchestration/repro receipt prompt command is run and pasted because
+      orchestration receipt paths are in scope.
+
+      - [ ] No unrelated refactors, threshold lowering, suppressions, or plan-state
+      edits are included.
+
+      - [ ] Main path and highest-risk failure path evidence are provided for config
+      isolation, drive projection export, run-store append conflicts, and runtime
+      lifecycle cleanup.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Residual Full-Suite Remediation Evidence
+
+
+      **Commands executed**:
+
+      ```bash
+
+      uv run pytest -q
+
+      uv run invar guard --all
+
+      uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py -k
+      ''checklist or deterministic or batch or revision'' -q
+
+      uv run pytest tests/orchestration tests/repro -k ''checklist or receipt or prompt''
+      -q
+
+      ```
+
+
+      **Actual output summaries**:
+
+      ```text
+
+      <paste full pytest/invar summaries here>
+
+      ```
+
+
+      ## Group Closure Table
+
+      | Group | Files/tests fixed | Root cause | Change made | Main-path proof | Failure-path
+      proof | Status |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | 1 checklist receipt parsing | | | | | | PASS/OPEN |
+
+      | 2 drive projection/export | | | | | | PASS/OPEN |
+
+      | 3 config discovery isolation | | | | | | PASS/OPEN |
+
+      | 4 uuid import regression | | | | | | PASS/OPEN |
+
+      | 5 CLI compatibility exports | | | | | | PASS/OPEN |
+
+      | 6 _as_str_list export | | | | | | PASS/OPEN |
+
+      | 7 ControlDecision integration | | | | | | PASS/OPEN |
+
+      | 8 run-store append conflicts | | | | | | PASS/OPEN |
+
+      | 9 runtime lifecycle cleanup | | | | | | PASS/OPEN |
+
+
+      ## Broad Failure Disposition Table
+
+      | group | command | finding | provenance | disposition | intersects_det_check_arch_review
+      | intersects_det_check_final_gate | owner_or_non_intersection_proof |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Guardrails
+
+      - Confirm no unrelated refactors, threshold lowering, suppressions, or plan-state
+      edits were made.
+
+      - Confirm deterministic checklist behavior and orchestrator receipt semantics
+      were preserved.'
+    depends_on:
+    - det_check_full_plan_remediation
+    agent: python-senior

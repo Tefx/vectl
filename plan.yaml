@@ -106539,7 +106539,7 @@ phases:
 
       ## Required closure checks
 
-      - [ ] B1 stale revision bypass is closed with no production `rev1` bypass and
+      - [x] B1 stale revision bypass is closed with no production `rev1` bypass and
       no mutation on stale revision.
 
       - [ ] B2 CLI JSON false-green is closed with parseable JSON and non-zero status

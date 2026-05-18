@@ -103121,7 +103121,7 @@ phases:
       anchors.'
 - id: det_check_impl
   name: 'Deterministic Checklist Handling: Implementation and Surface Wiring'
-  status: in_progress
+  status: done
   gate: Implementation phase gates canonical core service, deterministic single/batch
     mutations, CLI/MCP surfaces, orchestrator receipts, wiring, liveness, UI/output
     audit, and spec conformance.
@@ -105114,7 +105114,7 @@ phases:
       No blocker is waived.'
   - id: det_check_impl_gate
     name: Gate deterministic checklist implementation
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the deterministic
       checklist implementation phase meets the quality bar for finalization.
 
@@ -105248,6 +105248,347 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-18T18:05:43.963065+00:00'
+    done_at: '2026-05-18T18:15:52.571244+00:00'
+    evidence: '## Gate Review Report
+
+      Reviewer: gate-reviewer (independent of phase implementation)
+
+      Phase: det_check_impl
+
+      verdict: PASS
+
+      headline: PASS_WITH_DEBT
+
+      proof_gap_status: NON_BLOCKING
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+      product_implementation_files_modified: false
+
+      Commit hash(es): none — verify-only gate made no repo changes; worktree branch
+      was clean.
+
+
+      ### refs Read Confirmation
+
+      - `docs/RFC-deterministic-checklists.md` — core checklist authority, marker-only
+      mutation, supported fields `description`/`verification`, stale retry action
+      `refresh_inventory`, and receipt schema keyed by `item_id` + `revision`.
+
+      - `src/vectl/core_checklist.py` — public core service defines selectors/errors/receipt
+      DTOs and delegates mutation to batch core.
+
+      - `src/vectl/core/checklist_batch.py` — batch validates revision/modes/resolution/duplicates
+      before apply, preserving all-or-nothing semantics.
+
+      - `src/vectl/cli_plan.py` and `src/vectl/cli_plan_checklist_commands.py` — compatibility
+      facade and deterministic CLI handlers delegate to core, expose structured JSON
+      errors.
+
+      - `src/vectl/mcp_core_tools.py` and `src/vectl/mcp_server.py` — MCP facade/registration
+      exposes `vectl_check` registered tool path.
+
+      - `src/vectl/orchestration/dispatch_policy.py` and `src/vectl/orchestration/prompt_materialization.py`
+      — prompt/materialized artifacts inject checklist inventory/revision and receipt
+      contract with `item_id`, `revision`, `checked`.
+
+      - `src/vectl/orchestration/evidence.py`, `src/vectl/orchestration/core_adapter.py`,
+      `src/vectl/orch_app.py` — receipt parser/assessment, authoritative inventory
+      loading, and terminal freeform evidence route block stale receipts before completion.
+
+      - Focused tests were read by reviewer: `tests/test_checklist.py`, `tests/test_cli.py`,
+      `tests/test_mcp.py`, `tests/orchestration/unit/test_checklist_receipt_contract.py`,
+      `tests/orchestration/unit/test_orch_app.py`.
+
+      - `tools/vectl/README.md` — NOT READ: missing.
+
+
+      ### Execution Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | det_check_impl_core_inventory | complete | Strong; core inventory sampled
+      directly and targeted tests green | None blocking |
+
+      | det_check_impl_single_mutation | complete | Strong; core mutation facade and
+      CLI/MCP smoke verified | None blocking |
+
+      | det_check_impl_batch_mutation | complete | Strong; batch validation before
+      apply and focused tests green | None blocking |
+
+      | det_check_impl_cli_mcp | complete | Strong; CLI help/smoke and MCP wrapper
+      smoke verified | Non-blocking external temp-plan autosave stderr observed |
+
+      | det_check_impl_orch_receipts | complete | Strong; receipt parser/stale route
+      tests green | None blocking |
+
+      | det_check_impl_integration_proof | failure artifact accepted/remediated |
+      Adequate; B1/B2 were routed to remediation/retests | No unresolved blocker |
+
+      | det_check_impl_spec_conformance | failure artifact accepted/remediated | Adequate;
+      B1-B4 routed to remediation/retests | No unresolved blocker |
+
+      | det_check_impl_wiring_audit | failure artifact accepted/remediated | Adequate;
+      reachability/contracts/aliases retested | No unresolved blocker |
+
+      | det_check_impl_uiux_audit | complete | Adequate; CLI human/JSON/error/ANSI
+      evidence accepted | None blocking |
+
+      | det_check_impl_liveness_probe | complete | Strong; blind-tester Mode D ran
+      real CLI and registered MCP wrapper | External-plan autosave stderr non-blocking
+      |
+
+      | det_check_impl_blocker_remediation / family retests / aggregate retest | complete
+      | Strong; B1-B8 closed with PROVEN/NON_INTERSECTING dispositions | None blocking
+      |
+
+      | det_check_impl_receipt_refresh_remediation / retest | complete | Strong; route-level
+      stale receipt closure proven | None blocking |
+
+
+      ### Gate Decision Matrix
+
+      | Focus | Status | Evidence refs | Gate decision basis |
+
+      | --- | --- | --- | --- |
+
+      | Core checklist service canonical | PASS | RFC, core modules, CLI/MCP/orch
+      delegation | no independent inventory/revision re-derivation in material paths
+      |
+
+      | Marker-only mutation | PASS | core inventory/batch tests | marker flips preserve
+      surrounding markdown |
+
+      | Batch all-or-nothing diagnostics | PASS | batch core/tests/CLI diagnostics
+      | validation precedes apply; failures leave plan unmutated |
+
+      | CLI/MCP runnable and legacy-compatible | PASS_WITH_DEBT | help, CLI smoke,
+      MCP smoke, tests | runnable; external temp-plan git autosave stderr does not
+      affect success/failure semantics |
+
+      | Orchestrator receipts deterministic | PASS | prompt/evidence/orch_app tests
+      | receipts use `item_id`/`revision`/`checked`; stale receipts block completion
+      |
+
+      | UI/output audit and liveness | PASS_WITH_DEBT | UI audit and blind liveness
+      + local smoke | user-facing/JSON surfaces present; nonblocking external autosave
+      debt documented |
+
+      | NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING | PASS | aggregate retest + focused
+      commands | none unresolved |
+
+
+      ### behavioral_proof_register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | RFC core authority | CLI/MCP/orch delegate to core | code/test/smoke | CLI/MCP/orch
+      modules and selected tests | PASS | implementation + wiring audit | no material
+      shadow parser found |
+
+      | RFC unsupported fields | unsupported fields reject with `unsupported_field`
+      | core/CLI JSON error | targeted tests | PASS | blocker retest B8 | non-silent
+      failure verified |
+
+      | RFC stale revision | stale revisions reject before mutation | CLI/MCP/core
+      stale paths | selected tests and smoke | PASS | B1/B2 retests | stale `rev1`
+      rejected; no mutation |
+
+      | RFC marker-only | mutation changes only checkbox marker | exact preservation
+      tests | selected tests | PASS | core mutation tests | surrounding text preserved
+      |
+
+      | RFC batch atomicity | failed batch does not partially mutate | invalid mixed
+      batch | selected tests/source | PASS | B4 retest | validation before apply |
+
+      | RFC receipt schema | worker receipts use `item_id`, `revision`, `checked`
+      | parser/prompt/route | receipt contract and route tests | PASS | receipt refresh
+      remediation/retest | no fuzzy natural-language mapping required |
+
+      | CLI preservation | `check` and `check-inventory` executable | help + smoke
+      | mainline/worktree help and smoke | PASS | liveness and gate smoke | entrypoints
+      runnable |
+
+      | MCP preservation | registered wrapper supports inventory/mutation/stale |
+      real wrapper invocation | gate smoke/prior liveness | PASS_WITH_DEBT | liveness
+      | external temp-plan git autosave stderr nonblocking |
+
+
+      ### Wiring Audit Results (W1-W8)
+
+      - W1 Core authority: PASS — CLI/MCP/orchestration use core checklist service.
+
+      - W2 Revision authority: PASS — revision from canonical supported fields.
+
+      - W3 Single deterministic mutation: PASS — facade delegates to batch implementation.
+
+      - W4 Batch atomicity/diagnostics: PASS — diagnostics before apply.
+
+      - W5 CLI wiring: PASS — `check` and `check-inventory` registered and help works.
+
+      - W6 MCP wiring: PASS_WITH_DEBT — registered wrapper works; external temp-plan
+      autosave stderr nonfatal.
+
+      - W7 Orchestrator receipt validation reachability: PASS — freeform evidence
+      path validates and checks stale revision before completion.
+
+      - W8 Prompt/materialization: PASS — artifacts expose item_id/revision receipt
+      contract and ban fuzzy matching.
+
+
+      ### Escape Hatch Audit
+
+      Relevant `@invar:allow` findings were reviewed. `src/vectl/orch_app.py:1` file_size
+      and `src/vectl/mcp_core_misc_tools.py:98` shell_result are governed composition/adapter
+      exceptions and covered by route/MCP tests. No blocker-class escape hatch was
+      found in core checklist mutation/inventory implementation. `uv run invar guard
+      --changed` passed.
+
+
+      ### CLI Surface Snapshot / Executability Matrix
+
+      Mainline `uv run vectl check --help` and `uv run vectl check-inventory --help`
+      exited 0.
+
+      | Command | Surface Listed? | Handler Exists? | --help Works? | Smoke Test |
+      Status |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      | `vectl check` | Yes | `check_cmd` registered/imported | Yes | legacy toggle,
+      deterministic item_id mutation, stale JSON all verified by gate/liveness/tests
+      | PASS |
+
+      | `vectl check-inventory` | Yes | `check_inventory_cmd` registered/imported
+      | Yes | JSON inventory with revision/items verified | PASS |
+
+      Regression/dangling: both deterministic checklist commands are registered and
+      resolve to concrete handlers; no dangling deterministic command found.
+
+
+      ### UI/Output Audit Disposition
+
+      Legacy human output remains understandable, deterministic JSON is parseable,
+      stale errors include `refresh_inventory`, ambiguous legacy keyword errors are
+      actionable, and machine-readable output is not Rich/ANSI polluted per prior
+      UI audit plus local smoke.
+
+
+      ### Liveness / Smoke Evidence
+
+      Gate reviewer ran real `.venv/bin/vectl` help and temp-plan CLI smoke, plus
+      registered MCP wrapper smoke using worktree `.venv/bin/python`; CLI inventory/mutation/stale
+      and MCP inventory/mutation/stale paths produced expected structured results.
+      Prior blind-tester Mode D liveness probe independently exercised CLI entrypoint
+      and registered MCP tool wrapper.
+
+
+      ### Real integration vs fixture distinction
+
+      Real runtime evidence includes installed CLI entrypoint and registered MCP wrapper
+      smoke against temporary YAML plan paths. Stale receipt route evidence uses a
+      route-level unit test with boundary monkeypatches; this is sufficient for route
+      ordering and stale rejection branch, while CLI/MCP liveness is covered by separate
+      real entrypoint smoke.
+
+
+      ### Verification commands
+
+      Worker isolated worktree:
+
+      - `uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
+      tests/orchestration/unit/test_checklist_receipt_contract.py tests/orchestration/unit/test_orch_app.py
+      -k "checklist or deterministic or batch or revision or stale_receipt" -q` →
+      49 passed, 487 deselected.
+
+      - `uv run invar guard --changed` → passed, 0 errors/warnings/infos; no changed
+      files.
+
+      - `.venv/bin/vectl check --help` and `.venv/bin/vectl check-inventory --help`
+      → exit 0.
+
+      - CLI temp-plan smoke → inventory exit 0, deterministic exit 0, stale exit 1,
+      legacy exit 0.
+
+      - MCP smoke with worktree `.venv/bin/python` → structured inventory/mutation/stale
+      paths passed; nonfatal external-plan git autosave stderr observed.
+
+
+      Mainline final-state verification:
+
+      - `uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
+      tests/orchestration/unit/test_checklist_receipt_contract.py tests/orchestration/unit/test_orch_app.py
+      -k "checklist or deterministic or batch or revision or stale_receipt" -q` →
+      49 passed, 487 deselected.
+
+      - `uv run invar guard --changed` → status passed; 0 errors, 0 warnings; informational
+      findings only on pre-existing untracked `test_mod.py` and `test_mod_2.py`.
+
+      - `uv run vectl check --help` → exit 0.
+
+      - `uv run vectl check-inventory --help` → exit 0.
+
+
+      Final recommendation: OPEN
+
+      uncertainty_sources:
+
+      - Phase completion status was supplied by orchestrator plan state; gate reviewer
+      did not inspect/mutate plan due no-vectl policy.
+
+      - External temp-plan autosave stderr remains operational debt but is non-intersecting
+      with deterministic checklist correctness and documented by liveness evidence.
+
+      unresolved_NEEDS_TEST: []
+
+      unresolved_UNPROVEN: []
+
+      unresolved_UNCERTAIN_BLOCKING: []
+
+      no_implementation_agent_performed_this_gate_review: true
+
+
+      checklist_receipt:
+
+      - item_id: description:0:core_canonical; checked: true
+
+      - item_id: description:1:marker_only; checked: true
+
+      - item_id: description:2:batch_atomic; checked: true
+
+      - item_id: description:3:cli_mcp_runnable; checked: true
+
+      - item_id: description:4:orchestrator_receipts; checked: true
+
+      - item_id: description:5:ui_output_liveness; checked: true
+
+      - item_id: verification:0:phase_check; checked: true
+
+      - item_id: verification:1:runnable_evidence; checked: true
+
+      - item_id: verification:2:proof_gap; checked: true
+
+      - item_id: verification:3:independent_review; checked: true
+
+      - item_id: verification:4:legacy_and_deterministic; checked: true
+
+      - item_id: verification:5:blocker_closure; checked: true
+
+
+      Gaps/Notes:
+
+      - PASS_WITH_DEBT is limited to external temporary-plan git autosave stderr in
+      CLI/MCP liveness smoke; it is non-blocking/non-intersecting with deterministic
+      checklist correctness and does not reopen implementation gate blockers.'
   - id: det_check_impl_blocker_remediation
     name: Batch remediate deterministic checklist blocker family
     status: done
@@ -107536,7 +107877,7 @@ phases:
       \ checked: true\n\nGaps/Notes: None."
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
-  status: locked
+  status: pending
   gate: Finalization gate requires docs, repo-appropriate tests/invar guard, and independent
     architecture/gate review to close checklist handling feature.
   depends_on:

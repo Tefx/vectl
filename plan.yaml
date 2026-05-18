@@ -97690,7 +97690,7 @@ phases:
       slices and cold retest.'
   - id: invar_guard_remediation.full-guard-escape-budget-batched-retest
     name: Retest full guard after focused residual remediation
-    status: claimed
+    status: done
     description: "Independent cold retest after post-salvage focused escape-budget\
       \ residual remediation slices complete.\n\nstep_type: test\nstep_intent: retest_green\n\
       expected_result: green\nverification_scope: full-plan-check\nagent_source: default\n\
@@ -97849,6 +97849,193 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-18T12:45:00.279415+00:00'
+    done_at: '2026-05-18T12:50:59.458903+00:00'
+    evidence: '## refs Read Confirmation
+
+      - INVAR.md — Read by verifier; key passages cited: Core requires contracts/doctests,
+      Shell handles I/O, escape hatches must be rare and reasoned.
+
+      - AGENTS.md — Read by verifier; key passages cited: `plan.yaml` is managed state;
+      evidence is mandatory; final gates require repo-wide regression command or explicit
+      exception.
+
+
+      ## Cold Full-Guard Retest Evidence
+
+      Commit hash(es): none (verify-only, no changes).
+
+      Files changed: none.
+
+      Spec link: step_id `invar_guard_remediation.full-guard-escape-budget-batched-retest`.
+
+
+      ### Semantic Fields
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: none
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+      product_implementation_files_modified: false
+
+
+      ### Prerequisite Owner Evidence Review
+
+      Verifier reviewed orchestrator-supplied evidence for:
+
+      - `split-mcp-and-cli-public-surfaces` — targeted tests/smokes green; no blocker
+      gap.
+
+      - `split-orch-app-and-core-plan-compat-surfaces` — targeted tests/import/boot
+      smokes green; no blocker gap.
+
+      - `split-orchestration-config-runtime-persistence-surfaces` — config/runtime/run-store
+      tests and smokes green; no blocker gap.
+
+      - `split-orchestration-driver-state-machine-surface` — driver/runtime tests
+      and lifecycle smoke green; no blocker gap.
+
+      - `invar_guard_remediation.fix-full-guard-weighted-budget-residuals` — full
+      guard already proved green after merge; retest independently re-proved.
+
+
+      ### Command
+
+      ```text
+
+      uvx invar-tools guard --all
+
+      exit code: 0
+
+      ```
+
+
+      ### Output
+
+      ```text
+
+      status: passed
+
+      summary: files_checked=143, errors=0, warnings=57, infos=7
+
+      doctest.passed: true
+
+      crosshair.status: skipped; reason: no core files found
+
+      property_tests.status: skipped; reason: no core files
+
+      escape_hatches.count: 6
+
+      escape_hatches.by_rule: shell_complexity=1, entry_point_too_thick=2, dead_param=1,
+      file_size=2
+
+      escape_hatches.gating.status: warning
+
+      escape_hatches.gating.budget.used: 14
+
+      escape_hatches.gating.budget.limit: 15
+
+      escape_hatches.details:
+
+      - docs/archive/consumer_boundary_conformance_verify.py:231 shell_complexity
+      — archived conformance verifier is a linear shell script
+
+      - src/vectl/plan_path.py:182 entry_point_too_thick — git-common-dir fallback
+      must remain a single public resolver
+
+      - src/vectl/cli_orchestration_inspect_commands.py:277 dead_param — drive_id
+      is retained as a public Typer positional compatibility placeholder for drive-scoped
+      case responses
+
+      - src/vectl/orch_app.py:1 file_size — documented composition root/public CLI
+      routing facade rationale
+
+      - src/vectl/core_plan_mutations.py:1 file_size — plan mutation compatibility
+      module rationale
+
+      - src/vectl/migration.py:64 entry_point_too_thick — legacy split-state path
+      fallback remains public
+
+      ```
+
+
+      ### Mainline Final-State Verification
+
+      Orchestrator re-ran `uvx invar-tools guard --all` on main after verifier return:
+      exit 0, `status: passed`, `summary.files_checked=145`, `errors=0`, `warnings=57`,
+      `infos=9`, `escape_hatches.count=6`, weighted budget `14/15`, doctest passed,
+      CrossHair/property skipped only because no core files found.
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | full-guard | Full invar guard is green | `uvx invar-tools guard --all` exits
+      0 | Command/Output + mainline verification | PROVEN | None | Gate may open |
+
+      | escape_hatch_budget | Escape-hatch usage is within budget | Budget used <=
+      limit | used=14, limit=15 | PROVEN | Monitor warning debt | Non-blocking warning
+      under budget |
+
+      | file_size/orch_app.py | Composition-root hatch structured/non-blocking | Guard
+      lists reason and remains green | escape_hatches.details | PROVEN | Future compatibility
+      migration only if needed | No blocker emitted; owner smokes preserved behavior
+      |
+
+      | file_size/core_plan_mutations.py | Mutation compatibility hatch structured/non-blocking
+      | Guard lists reason and remains green | escape_hatches.details | PROVEN | Continue
+      internals migration behind stable re-exports | No blocker emitted; public imports
+      preserved |
+
+      | dead_param/cli_orchestration_inspect_commands.py | `drive_id` retained for
+      Typer positional compatibility | Guard lists compatibility reason and remains
+      green | escape_hatches.details line 277 | PROVEN | Remove only with CLI compatibility
+      migration | Non-intersection: protected CLI contract preserved |
+
+      | entry_point_too_thick/plan_path.py | Git common-dir fallback remains public
+      resolver | Guard lists reason and remains green | escape_hatches.details line
+      182 | PROVEN | Refactor only with compatibility proof | Public path compatibility
+      retained |
+
+      | entry_point_too_thick/migration.py | Legacy split-state fallback remains public
+      | Guard lists reason and remains green | escape_hatches.details line 64 | PROVEN
+      | Refactor only with migration compatibility proof | Migration compatibility
+      retained |
+
+      | shell_complexity/archive verifier | Archive verifier complexity is informational/non-blocking
+      | Guard lists archive reason and remains green | docs/archive line 231 | PROVEN
+      | Split only if archive policy changes | Archived docs path and info severity
+      |
+
+      | doctest | Doctests pass | Guard doctest phase passed | doctest.passed=true
+      | PROVEN | None | Gate may open |
+
+      | crosshair/property | Skips are not due to prior failures | Skip reasons show
+      no core files found | guard crosshair/property output | PROVEN | Add core targets
+      if future core files exist | Non-blocking absence of core files |
+
+
+      ### Gaps/Notes
+
+      No product implementation files were modified by this retest. No budget lowering,
+      broad suppression, ignored product files, deleted findings, stale branch-local
+      proof, or blocker-class residual remained. Remaining escape-hatch budget finding
+      is warning-only under budget with structured reasons for all six hatches.'
   - id: split-mcp-and-cli-public-surfaces
     name: Split MCP and CLI public surfaces without compatibility loss
     status: done

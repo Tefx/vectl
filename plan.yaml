@@ -100426,6 +100426,98 @@ phases:
     depends_on:
     - invar_guard_remediation.close-post-gate-blockers-batched
     agent: gate-reviewer
+  - id: invar_guard_remediation.uiux-audit-post-blocker-closure
+    name: Audit UI/UX proof after batched blocker closure
+    status: pending
+    description: "step_type: verification\nstep_intent: retest_green\nexpected_result:\
+      \ green\nverification_scope: phase-check\nagent_source: project\nrisk_tags:\n\
+      \  - cli_uiux_surface_evidence\n  - terminal_output\n  - json_ansi_cleanliness\n\
+      \  - behavioral_proof_register\n\nVerify-only downstream UI/UX audit for `invar_guard_remediation.close-post-gate-blockers-batched`.\
+      \ This step exists to close the `UIUX_AUDIT_MISSING` pre-dispatch gate violation\
+      \ by adding independent `uiux-auditor` review of the standalone UI/UX proof\
+      \ artifact before the final regate consumes it.\n\nThis step MUST NOT modify\
+      \ product code, tests, docs, or plan state. It is read-only validation of evidence\
+      \ produced by the batched remediation. Keep batched remediation as the single\
+      \ implementation/fix ownership path.\n\nAs `uiux-auditor`, inspect the standalone\
+      \ artifact and verify that terminal/CLI surface evidence is sufficient for the\
+      \ downstream `gate-reviewer` to make an OPEN/BLOCK decision without relying\
+      \ on plan summaries or stale provenance.\n\n## Required Audit Checks\n- Confirm\
+      \ pasted help/surface snapshots exist for representative touched command groups\
+      \ and are readable enough to judge CLI/UIUX surface behavior.\n- Confirm a command\
+      \ executability matrix exists with actual command, expected result class, exit\
+      \ status, and PASS/FAIL for each command.\n- Confirm JSON ANSI check proves\
+      \ machine-readable JSON parses cleanly and contains no ANSI escape sequences\
+      \ where JSON output is expected.\n- Confirm facade import check proves `from\
+      \ vectl.core import RecoverResult` succeeds in the same current-mainline environment.\n\
+      - Confirm behavioral proof register exists with requirement_ref, behavior_claim,\
+      \ runtime_proof_expected, evidence_ref, status, closure_path, and gate_decision_basis.\n\
+      - Confirm the audit output includes parseable PASS / PASS_WITH_DEBT / FAIL closure\
+      \ signal, `blockers` array, and `gate_open_allowed` boolean.\n\n## Non-Goals\n\
+      - Do not implement or fix CLI behavior.\n- Do not edit the standalone artifact;\
+      \ report missing or insufficient evidence as blockers.\n- Do not replace the\
+      \ final regate; this step supplies UI/UX auditor evidence for the regate to\
+      \ consume.\n\n## Acceptance Checklist\n- [ ] Audit is read-only and no product\
+      \ code, tests, docs, or plan state are modified.\n- [ ] Pasted help/surface\
+      \ snapshots are reviewed for representative CLI surfaces.\n- [ ] Command executability\
+      \ matrix is reviewed for actual commands, expected result classes, exit statuses,\
+      \ and PASS/FAIL values.\n- [ ] JSON ANSI check is reviewed and proves parseable\
+      \ JSON with no ANSI escapes where applicable.\n- [ ] Facade import check is\
+      \ reviewed and proves `from vectl.core import RecoverResult` succeeds.\n- [\
+      \ ] Behavioral proof register is reviewed and contains all required control-plane\
+      \ closure fields.\n- [ ] Audit evidence emits PASS, PASS_WITH_DEBT, or FAIL\
+      \ plus `blockers` array and `gate_open_allowed` boolean."
+    verification: '- [ ] Verify-only audit made no product-code, test, documentation,
+      or plan-state changes.
+
+      - [ ] Pasted help/surface snapshots are present and sufficient for representative
+      CLI/UIUX command surfaces.
+
+      - [ ] Command executability matrix includes actual command, expected result
+      class, exit status, and PASS/FAIL for each audited command.
+
+      - [ ] JSON ANSI evidence proves JSON output is parseable and free of ANSI escapes
+      where machine-readable JSON is expected.
+
+      - [ ] Facade import evidence proves `from vectl.core import RecoverResult` succeeds
+      in the same current-mainline environment.
+
+      - [ ] Behavioral proof register contains requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis.
+
+      - [ ] Audit handoff contains parseable closure signal PASS, PASS_WITH_DEBT,
+      or FAIL, plus `blockers` array and `gate_open_allowed` boolean.
+
+      - [ ] `gate_open_allowed` is false when blockers are non-empty or any blocker-class
+      behavioral obligation remains UNPROVEN, NEEDS_TEST, or UNCERTAIN_BLOCKING without
+      non-intersection proof.'
+    evidence_template: "## UI/UX Audit Report\n\n### refs Read Confirmation (MANDATORY)\n\
+      For each ref in this step:\n- <filename> — key passage or \"NOT READ: <reason>\"\
+      \n\nIf no refs were provided, state: \"No refs for this step.\"\n\n### Read-Only\
+      \ Confirmation\n- Product code modified: YES/NO\n- Tests modified: YES/NO\n\
+      - Docs modified: YES/NO\n- Plan state modified: YES/NO\n\n### Pasted Help /\
+      \ Surface Snapshots Reviewed\n```text\n<paste representative CLI help/surface\
+      \ snapshots or cite exact artifact sections reviewed>\n```\n\n### Command Executability\
+      \ Matrix\n| Command | Expected Result Class | Exit Status | PASS/FAIL | Evidence\
+      \ Ref |\n| --- | --- | --- | --- | --- |\n| `<command>` | `<class>` | `<status>`\
+      \ | PASS/FAIL | `<artifact section>` |\n\n### JSON ANSI Check\n```text\n<paste\
+      \ parse/ANSI evidence reviewed; must prove parseable JSON and no ANSI escapes\
+      \ where applicable>\n```\nVerdict: PASS | PASS_WITH_DEBT | FAIL\n\n### Facade\
+      \ Import Check\n```text\n<paste evidence for: from vectl.core import RecoverResult>\n\
+      ```\nVerdict: PASS | PASS_WITH_DEBT | FAIL\n\n### Behavioral Proof Register\n\
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |\
+      \ status | closure_path | gate_decision_basis |\n| --- | --- | --- | --- | ---\
+      \ | --- | --- |\n| `<ref>` | `<claim>` | `<proof>` | `<artifact>` | PROVEN/NON_BLOCKING/NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING\
+      \ | `<closure>` | `<basis>` |\n\n### Closure Handoff\n```yaml\nclosure_signal:\
+      \ PASS | PASS_WITH_DEBT | FAIL\ngate_open_allowed: true | false\nblockers:\n\
+      \  - id: \"<blocker id>\"\n    severity: \"blocker|should_fix\"\n    description:\
+      \ \"<description>\"\n    required_action: \"<action>\"\n```\n\n### Headline\n\
+      - [ ] PASS: UI/UX artifact is sufficient and `gate_open_allowed: true`.\n- [\
+      \ ] PASS_WITH_DEBT: Only explicitly non-blocking debt remains, blockers array\
+      \ is empty, and `gate_open_allowed: true` is justified.\n- [ ] FAIL: Missing/insufficient\
+      \ artifact proof or blockers remain; `gate_open_allowed: false`."
+    depends_on:
+    - invar_guard_remediation.close-post-gate-blockers-batched
+    agent: uiux-auditor
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

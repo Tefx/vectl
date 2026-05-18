@@ -100808,7 +100808,7 @@ phases:
       \ IMPLEMENTATION step. Stub-only completion is NOT acceptable. The artifact\
       \ must contain substantive current command evidence and structured proof fields;\
       \ placeholders such as `TODO`, `see plan`, or `from prior evidence` do not satisfy\
-      \ completion.\n\n## Acceptance Checklist\n- [ ] A standalone artifact file exists\
+      \ completion.\n\n## Acceptance Checklist\n- [x] A standalone artifact file exists\
       \ under `docs/invar_guard_remediation/` and is not a managed plan summary.\n\
       - [ ] Artifact includes pasted help/surface snapshots for the required CLI surfaces\
       \ or justified current equivalents.\n- [ ] Artifact includes command executability\

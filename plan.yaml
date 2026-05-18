@@ -105242,6 +105242,8 @@ phases:
     - det_check_impl_blocker_integration_retest
     - det_check_impl_blocker_spec_retest
     - det_check_impl_blocker_wiring_retest
+    - det_check_impl_receipt_refresh_remediation
+    - det_check_impl_receipt_refresh_retest
     - det_check_impl_blocker_retest
     agent: gate-reviewer
   - id: det_check_impl_blocker_remediation

@@ -104767,7 +104767,7 @@ phases:
       \ 0 and successful mutation."
   - id: det_check_impl_spec_conformance
     name: Verify checklist spec conformance
-    status: claimed
+    status: done
     description: 'Spec conformance verification via adversarial divergence hunting.
 
 
@@ -104879,6 +104879,118 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-05-18T16:42:13.460110+00:00'
+    done_at: '2026-05-18T17:02:52.759083+00:00'
+    evidence: 'status: FAIL_REPORT_ACCEPTED
+
+      verdict: FAIL
+
+      blockers: [B1, B2, B3, B4]
+
+      orchestrator_action_hint: DO_NOT_COMPLETE
+
+      gate_open_allowed: false
+
+
+      ## Report disposition
+
+      This spec conformance report is complete as an adversarial failure-finding artifact.
+      Blockers were aggregated with integration/wiring failures into remediation path:
+      `det_check_impl_blocker_remediation` plus integration/spec/wiring/aggregate
+      retests. The gate remains closed until those pass.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - `docs/RFC-deterministic-checklists.md` — read; core owner/delegation, field
+      scope, revision semantics, selector modes, error/retry contract, orchestrator
+      receipt schema are normative.
+
+      - `src/vectl/core_checklist.py` — read; dataclasses/selectors/errors and `get_inventory`/`mutate_checklist`
+      facade.
+
+      - `src/vectl/core_plan_mutations.py` — read; legacy `update_checklist` preserved
+      and deterministic core re-exported.
+
+      - `src/vectl/cli_plan.py` and `src/vectl/mcp_core_tools.py` — read; facades
+      expose CLI/MCP checklist surfaces.
+
+      - `src/vectl/orchestration/dispatch_policy.py` and `prompt_materialization.py`
+      — read; prompt emits deterministic inventory and receipt instructions.
+
+      - `tools/vectl/README.md` — NOT READ: absent.
+
+
+      ## Requirements / Evidence Summary
+
+      - Requirements enumerated: 15.
+
+      - CONFORMS: 5; PARTIAL: 5; DIVERGES: 4; NEEDS_TEST: 1.
+
+      - Focused runtime command: `.venv/bin/python -m pytest tests/test_checklist.py
+      tests/orchestration/unit/test_checklist_receipt_contract.py -q` => 25 passed.
+
+      - Runtime divergence probe: literal `rev1` accepted while actual revision was
+      sha256, proving stale-revision bypass.
+
+
+      ## Blocking Assessment
+
+      - B1 selector/revision blocker: `src/vectl/core/checklist_batch.py` accepts
+      literal `rev1` even when it does not match current checklist_inventory_revision.
+
+      - B2 error/surface blocker: CLI JSON batch exceptions return success/exit 0
+      while producing `ok:false`; tests also expected exit_code 0 for stale/invalid
+      batch.
+
+      - B3 contract surface blocker: worker receipt implementation/prompt requires
+      extra `step_id`, `field`, and `checklist_inventory_revision`, while RFC concrete
+      schema requires `item_id`, `revision`, `checked`; valid RFC receipts may be
+      rejected.
+
+      - B4 proof blocker: all-or-nothing failed-batch/no-mutation behavior and stale
+      receipt refresh-before-retry lack runtime proof.
+
+
+      ## Behavioral Proof Ledger
+
+      - Empty/missing supported fields: PROVEN.
+
+      - Marker-only mutation preservation: PROVEN.
+
+      - Exact stale revision rejection: PROVEN_DIVERGENCE.
+
+      - All-or-nothing failed batch no mutation/no save: NEEDS_TEST.
+
+      - CLI/MCP deterministic errors surface as errors: PROVEN_DIVERGENCE for CLI
+      batch JSON.
+
+      - Receipt missing item_id/revision/checked rejected: PROVEN.
+
+      - Receipt stale revision refresh before retry: UNPROVEN.
+
+
+      ## Checklist Receipt
+
+      - [x] Naming and format semantics for item IDs, revisions, selector fields,
+      and structured error codes are exact.
+
+      - [x] Boundary values for empty fields, unsupported fields, stale revision,
+      and invalid selectors match contract.
+
+      - [x] Omission drift: every MUST in `docs/RFC-deterministic-checklists.md` has
+      corresponding implementation or explicit deferred disposition.
+
+      - [x] Contract surface drift: CLI/MCP request/response fields are additive and
+      legacy-compatible.
+
+      - [x] Behavioral precedence claims are marked PROVEN only with runtime/test
+      evidence; otherwise NEEDS_TEST with closure path.
+
+
+      ## Remediation ownership
+
+      All blockers are owned by `det_check_impl_blocker_remediation` and retests.
+      No blocker is waived.'
   - id: det_check_impl_gate
     name: Gate deterministic checklist implementation
     status: pending

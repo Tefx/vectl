@@ -105356,7 +105356,7 @@ phases:
 
       ## Hardened acceptance requirements
 
-      - [ ] Revision semantics: current revision is authoritative; stale literal or
+      - [x] Revision semantics: current revision is authoritative; stale literal or
       previous snapshot revisions must fail consistently in core, CLI, MCP, and orchestration
       paths.
 

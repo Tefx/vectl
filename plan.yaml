@@ -103466,7 +103466,7 @@ phases:
       \ and `test_mod_2.py`, not blocker-class errors."
   - id: det_check_impl_batch_mutation
     name: Complete atomic checklist batch mutation
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -103580,6 +103580,65 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-18T16:03:06.666324+00:00'
+    done_at: '2026-05-18T16:13:40.556239+00:00'
+    evidence: "status: SUCCESS\n\n## refs Read Confirmation (MANDATORY)\n- `docs/RFC-deterministic-checklists.md`\
+      \ — read; batch semantics are all-or-nothing, supported fields are only `description`\
+      \ and `verification`, marker-only mutation is invariant, structured errors require\
+      \ code/retry/selector context.\n- `src/vectl/core_checklist.py` — read; authoritative\
+      \ signatures include `MutationRequest`, `BatchDiagnostics`, `MutationBatchResult`,\
+      \ selector types, structured error payloads, and existing single mutation behavior.\n\
+      - `tests/test_checklist.py` — read; protected tests require stale revision rejection,\
+      \ idempotent deterministic mutation, legacy keyword compatibility, invalid mode\
+      \ combinations, marker-only preservation, and batch aggregate diagnostics.\n\
+      - `tools/vectl/README.md` — NOT READ: file absent at required path; read returned\
+      \ file not found.\n\n## Implementation Evidence\n- Commit hash(es):\n  - worker\
+      \ branch commit: `7b2210b7ed6e3b0de46034cc04d9093ea2cd6efe`\n  - mainline squash\
+      \ merge commit: `d90deee`\n- Files changed:\n  - `src/vectl/core_checklist.py`\n\
+      \  - `src/vectl/core/checklist_batch.py`\n- Spec link: `docs/RFC-deterministic-checklists.md`\n\
+      - Implemented batch validation before marker mutation, selector diagnostics,\
+      \ stale-revision whole-batch rejection, duplicate/conflict diagnostics, empty-batch\
+      \ behavior, marker-only successful mutation, and machine-readable diagnostic\
+      \ data for CLI/MCP consumers.\n\n## Verification\nWorker-local verification:\n\
+      ```bash\n./.venv/bin/python -m pytest tests/test_checklist.py -k 'batch or atomic\
+      \ or diagnostics' -q\n./.venv/bin/invar guard --changed\n./.venv/bin/python\
+      \ - <<'PY'\n# proof script for stale/invalid/conflict/marker-only/empty batch\
+      \ behavior\nPY\n```\nOutput:\n```text\npytest: 1 passed, 20 deselected in 0.14s\n\
+      invar guard --changed: status passed; static errors 0; doctest passed; warnings\
+      \ 9\nproof:\nSTALE_UNCHANGED True ... code='stale_revision'\nMIXED_INVALID_UNCHANGED\
+      \ True\nMIXED_INVALID_DIAGNOSTICS ... code='item_not_found' field='description'\
+      \ index=9\nCONFLICT_DIAGNOSTICS ... code='invalid_selector' for request_index\
+      \ 0 and 1\nMARKER_ONLY True ... status='changed'\nEMPTY_BATCH {'total_requested':\
+      \ 0, 'matched_items': 0, 'changed_items': 0, 'selector_diagnostics': ()}\n```\n\
+      \nMainline final-state verification after squash merge:\n```bash\nuv run pytest\
+      \ tests/test_checklist.py -k \"batch or atomic or diagnostics\" -q\nuv run invar\
+      \ guard --changed\n```\nOutput:\n```text\ntests/test_checklist.py .        \
+      \                                        [100%]\n1 passed, 20 deselected in\
+      \ 0.16s\n\ninvar guard --changed: status passed; files_checked: 2; errors: 0;\
+      \ warnings: 0; infos: 2 (pre-existing test_only_export infos in untracked test_mod.py/test_mod_2.py);\
+      \ doctest passed\n```\n\n## Atomicity proof\n- Stale revision and mixed valid/invalid\
+      \ batch proof script left original Markdown unchanged.\n- Implementation resolves\
+      \ modes, selectors, stale revision, duplicate/conflicting selectors before calling\
+      \ marker mutation.\n\n## Diagnostics sample\n- Invalid selector diagnostic includes\
+      \ request index, status, code, message, field/index.\n- Conflict diagnostic\
+      \ includes both request indexes and target states.\n\n## Marker-only proof\n\
+      - Successful mutation changed only `- [ ] Item B` to `- [x] Item B`; surrounding\
+      \ text remained identical.\n\n## Checklist Receipt\n- [x] Stale `checklist_inventory_revision`\
+      \ rejects the whole batch.\n- [x] Any invalid selector rejects the whole batch\
+      \ and reports per-selector diagnostics.\n- [x] Duplicate or conflicting selectors\
+      \ are deterministic and documented by structured diagnostics.\n- [x] Successful\
+      \ batch changes only requested checkbox markers.\n- [x] Empty batch behavior\
+      \ follows the contract exactly.\n- [x] Batch result exposes enough data for\
+      \ CLI/MCP machine-readable responses.\n- [x] Batch happy path green.\n- [x]\
+      \ Batch failure path green.\n- [x] Diagnostics are structured and selector-specific.\n\
+      \n## Deviation Records\n- type: contract_gap\n  artifact: `src/vectl/core_checklist.py::BatchDiagnostics`\n\
+      \  what: added `SelectorDiagnostic` and `BatchDiagnostics.selector_diagnostics`.\n\
+      \  why: step/RFC requires per-selector diagnostics and machine-readable CLI/MCP\
+      \ responses, but existing aggregate-only diagnostics were insufficient.\n  impact:\
+      \ backwards-compatible dataclass extension with default empty tuple; existing\
+      \ tests and aggregate fields preserved.\n\n## Gaps/Notes\n- `tools/vectl/README.md`\
+      \ absent.\n- `uv run invar guard --changed` passed on mainline with two informational\
+      \ findings in pre-existing untracked files `test_mod.py` and `test_mod_2.py`,\
+      \ not blocker-class errors."
   - id: det_check_impl_cli_mcp
     name: Wire checklist CLI and MCP surfaces
     status: pending

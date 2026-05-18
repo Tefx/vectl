@@ -108661,7 +108661,7 @@ phases:
       - [x] Architecture review confirms canonical service ownership and orchestrator
       mutation authority.
 
-      - [ ] CLI/MCP liveness and UI/output audit evidence are present.
+      - [x] CLI/MCP liveness and UI/output audit evidence are present.
 
       - [ ] No unresolved behavioral/runtime obligation is bypassed.'
     verification: '- [ ] full-plan-check gate: review doc sync, full-plan verification,

@@ -100593,8 +100593,8 @@ phases:
       \ matrix is reviewed for actual commands, expected result classes, exit statuses,\
       \ and PASS/FAIL values.\n- [x] JSON ANSI check is reviewed and proves parseable\
       \ JSON with no ANSI escapes where applicable.\n- [x] Facade import check is\
-      \ reviewed and proves `from vectl.core import RecoverResult` succeeds.\n- [\
-      \ ] Behavioral proof register is reviewed and contains all required control-plane\
+      \ reviewed and proves `from vectl.core import RecoverResult` succeeds.\n- [x]\
+      \ Behavioral proof register is reviewed and contains all required control-plane\
       \ closure fields.\n- [ ] Audit evidence emits PASS, PASS_WITH_DEBT, or FAIL\
       \ plus `blockers` array and `gate_open_allowed` boolean."
     verification: '- [ ] Verify-only audit made no product-code, test, documentation,

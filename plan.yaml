@@ -101297,7 +101297,7 @@ phases:
       \ plan-summary references.\n- [x] New durable-artifact `uiux-auditor` validation\
       \ is reviewed and gates on the artifact file itself.\n- [x] Core contract warning\
       \ register is reviewed and every cited warning is fixed or dispositioned with\
-      \ downstream non-intersection proof.\n- [ ] Gate decision basis includes structured\
+      \ downstream non-intersection proof.\n- [x] Gate decision basis includes structured\
       \ behavioral proof register fields for each blocker family.\n- [ ] OPEN decision\
       \ is denied if evidence relies on stale partial success, discarded branch state,\
       \ or managed plan summaries alone.\n- [ ] Downstream deterministic-checklist\

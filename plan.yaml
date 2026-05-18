@@ -105808,22 +105808,22 @@ phases:
       `evidence_ref`, `status`, `closure_path`, and `gate_decision_basis`. `NEEDS_TEST`,
       `UNPROVEN`, or `UNCERTAIN_BLOCKING` require remediation ownership or explicit
       non-intersection evidence.'
-    verification: '- [ ] phase-check: integration retest reruns the failed `det_check_impl_integration_proof`
+    verification: '- [x] phase-check: integration retest reruns the failed `det_check_impl_integration_proof`
       blocker family after remediation.
 
-      - [ ] Stale revision rejection and no-mutation behavior are proven with runtime/focused
+      - [x] Stale revision rejection and no-mutation behavior are proven with runtime/focused
       test output.
 
-      - [ ] CLI `--json` deterministic batch contract errors produce parseable JSON
+      - [x] CLI `--json` deterministic batch contract errors produce parseable JSON
       and non-zero exit status.
 
-      - [ ] Failed batch all-or-nothing behavior is proven with before/after state
+      - [x] Failed batch all-or-nothing behavior is proven with before/after state
       evidence.
 
-      - [ ] Stale receipt refresh-before-retry is proven through an actual orchestration
+      - [x] Stale receipt refresh-before-retry is proven through an actual orchestration
       path or recorded as blocking with closure owner.
 
-      - [ ] Behavioral proof register contains no unresolved blocker-class `NEEDS_TEST`,
+      - [x] Behavioral proof register contains no unresolved blocker-class `NEEDS_TEST`,
       `UNPROVEN`, or `UNCERTAIN_BLOCKING` without closure path.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

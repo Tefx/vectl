@@ -100076,7 +100076,7 @@ phases:
       guard reports `no core files found` and exits 0.'
   - id: invar_guard_remediation.close-post-gate-blockers-batched
     name: Close post-gate blockers in one batched path
-    status: pending
+    status: claimed
     description: "step_type: implementation\nwork_type: proof_closure\nagent_source:\
       \ default\nverification_scope: phase-check\nrisk_tags:\n  - symbolic_testing\n\
       \  - core_contract_semantics\n  - cli_uiux_surface_evidence\n  - stale_gate_evidence\n\
@@ -100273,6 +100273,8 @@ phases:
     - invar_guard_remediation.verify-full-guard
     - invar_guard_remediation.fix-full-guard-weighted-budget-residuals
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T13:30:47.806788+00:00'
   - id: invar_guard_remediation.post-blocker-closure-regate
     name: Fresh regate after batched blocker closure
     status: pending

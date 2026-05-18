@@ -95628,7 +95628,7 @@ phases:
       \ step."
   - id: invar_guard_remediation.escape-budget-full-guard-retest
     name: Retest escape-budget closure with full guard
-    status: pending
+    status: claimed
     description: 'VERIFICATION / full-plan-check. Independently retest the shared
       escape-hatch budget remediation family after authority decision, contract setup,
       focused residual slices, and final residual disposition retest complete.
@@ -95748,6 +95748,8 @@ phases:
     - invar_guard_remediation.full-guard-residual-disposition-retest
     - invar_guard_remediation.full-guard-escape-budget-batched-retest
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-18T12:51:40.012734+00:00'
   - id: invar_guard_remediation.investigate-prompt-materialization-shell-result-root-cause
     name: Investigate prompt_materialization shell_result root cause
     status: done

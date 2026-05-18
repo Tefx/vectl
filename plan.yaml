@@ -91209,7 +91209,7 @@ phases:
 
       ## Completion Criteria
 
-      - [ ] Every phase step and escape-budget residual owner is complete before gate
+      - [x] Every phase step and escape-budget residual owner is complete before gate
       review.
 
       - [ ] Gate decision basis maps all guard obligations to PROVEN closure, explicit

@@ -6,7 +6,7 @@ Authority: docs/RFC-deterministic-checklists.md
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Union, List, Optional
+from typing import Literal, Optional, Union
 
 from vectl.models import Step
 from invar_runtime import pre, post
@@ -15,6 +15,15 @@ from invar_runtime import pre, post
 # -- Types and Dataclasses --
 
 ChecklistInventoryRevision = str
+SupportedChecklistField = Literal["description", "verification"]
+ChecklistErrorCode = Literal[
+    "stale_revision",
+    "item_not_found",
+    "unsupported_field",
+    "invalid_selector",
+    "ambiguous_legacy_match",
+    "no_legacy_match",
+]
 
 
 @dataclass(frozen=True)
@@ -25,7 +34,7 @@ class ItemIdSelector:
 @dataclass(frozen=True)
 class FieldIndexSelector:
     """Selects a checklist item by its field and positional index."""
-    field: Literal["description", "verification"]
+    field: SupportedChecklistField
     index: int
 
 @dataclass(frozen=True)
@@ -41,7 +50,7 @@ ChecklistSelector = Union[ItemIdSelector, FieldIndexSelector, LegacyKeywordSelec
 class ChecklistItem:
     """A deterministic checklist item snapshot."""
     item_id: str
-    field: Literal["description", "verification"]
+    field: SupportedChecklistField
     index: int
     text: str
     checked: bool
@@ -49,7 +58,16 @@ class ChecklistItem:
 
 @dataclass(frozen=True)
 class MutationRequest:
-    """A request to mutate a checklist item."""
+    """A request to mutate a checklist item.
+
+    Acceptance-only contract:
+    - ``LegacyKeywordSelector`` is valid only with ``checked is None`` and means
+      legacy toggle mode.
+    - ``ItemIdSelector`` and ``FieldIndexSelector`` are valid only with an
+      explicit ``checked`` boolean and mean deterministic exact-state mode.
+    - Mixing legacy keyword selectors with deterministic exact-state requests
+      in one API call is an ``InvalidSelectorError``.
+    """
     selector: ChecklistSelector
     # If None, toggles state (only valid for LegacyKeywordSelector in legacy mode)
     # If bool, sets deterministic state
@@ -70,6 +88,45 @@ class MutationBatchResult:
     step: Step
     revision: ChecklistInventoryRevision
     diagnostics: BatchDiagnostics
+
+
+@dataclass(frozen=True)
+class RetryGuidance:
+    """Machine-readable retry advice for a structured checklist error."""
+
+    retryable: bool
+    action: Literal["refresh_inventory", "narrow_selector", "fix_request", "unsupported"]
+    message: str
+
+
+@dataclass(frozen=True)
+class ChecklistErrorPayload:
+    """Structured error payload required by deterministic API surfaces."""
+
+    code: ChecklistErrorCode
+    message: str
+    retry: RetryGuidance
+    item_id: str | None = None
+    field: SupportedChecklistField | str | None = None
+    index: int | None = None
+    revision: ChecklistInventoryRevision | None = None
+
+
+@dataclass(frozen=True)
+class ChecklistReceiptItem:
+    """Single orchestrator-owned receipt entry returned by workers."""
+
+    item_id: str
+    revision: ChecklistInventoryRevision
+    checked: bool
+
+
+@dataclass(frozen=True)
+class OrchestratorChecklistReceipt:
+    """Concrete receipt schema for worker-to-orchestrator checklist handoff."""
+
+    step_id: str
+    items: list[ChecklistReceiptItem]
 
 
 # -- Errors --

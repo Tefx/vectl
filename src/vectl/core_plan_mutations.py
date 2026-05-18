@@ -18,7 +18,13 @@ from vectl.models import (
 )
 from vectl.core_plan_clipboard import _clipboard_expired
 from vectl.core_plan_step_add import _slugify, _unique_phase_id, _unique_step_id
-from vectl.core_plan_step_edit import _CHECKLIST_RE, _SENTINEL, _Unset, _toggle_checklist_item
+from vectl.core_plan_step_edit import (
+    _CHECKLIST_RE,
+    _SENTINEL,
+    _Unset,
+    _toggle_checklist_item,
+    update_checklist as _legacy_update_checklist,
+)
 
 
 def claim_step(
@@ -45,20 +51,22 @@ def update_checklist(
     plan: Plan,
     step_id: str,
     *,
-    keyword: str | None = None,
-    add: str | None = None,
-    # Future deterministic fields:
-    # requests: list[MutationRequest] | None = None,
-    # revision: str | None = None,
-) -> tuple[Plan, str]:
-    """Compatibility adapter for checklist mutation.
-    
-    Delegates to pure core checklist service for deterministic updates,
-    falling back to legacy behavior for keyword toggle and add.
-    
-    Authority: docs/RFC-deterministic-checklists.md
+    check: str | None = None,
+    append: str | None = None,
+) -> Plan:
+    """Update a checklist in a step's description using the legacy surface.
+
+    This compatibility facade intentionally preserves the historical public
+    runtime API used by CLI, MCP, and tests:
+    ``update_checklist(plan, step_id, *, check=None, append=None) -> Plan``.
+
+    Deterministic item-id/revision checklist handling is acceptance-only in
+    :mod:`vectl.core_checklist` until the full RFC implementation lands; this
+    adapter must not accept or partially implement deterministic selectors.
+
+    Authority: docs/RFC-deterministic-checklists.md and tests/test_checklist.py.
     """
-    raise NotImplementedError("Contract stub only")
+    return _legacy_update_checklist(plan, step_id, check=check, append=append)
 
 
 def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None) -> Plan:

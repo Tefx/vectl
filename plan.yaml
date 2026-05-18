@@ -105360,7 +105360,7 @@ phases:
       previous snapshot revisions must fail consistently in core, CLI, MCP, and orchestration
       paths.
 
-      - [ ] State semantics: deterministic batch mutation remains all-or-nothing;
+      - [x] State semantics: deterministic batch mutation remains all-or-nothing;
       failed batches leave marker state unchanged and provide per-selector diagnostics.
 
       - [ ] Receipt semantics: worker receipt refresh/retry consumes or rejects receipts

@@ -107877,7 +107877,7 @@ phases:
       \ checked: true\n\nGaps/Notes: None."
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
-  status: in_progress
+  status: done
   gate: Finalization gate requires docs, repo-appropriate tests/invar guard, and independent
     architecture/gate review to close checklist handling feature.
   depends_on:
@@ -108630,7 +108630,7 @@ phases:
       were used by the worker.'
   - id: det_check_final_gate
     name: Final gate deterministic checklist handling
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether deterministic
       checklist handling is complete and safe to mark done.
 
@@ -108746,6 +108746,241 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-18T20:18:57.839995+00:00'
+    done_at: '2026-05-18T20:30:56.864780+00:00'
+    evidence: 'Headline: PASS
+
+      Blocking Status: CLOSED
+
+      Proof-Gap Status: NONE
+
+      Verdict: PASS
+
+      Gate Decision: OPEN
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+      blockers: []
+
+      unresolved_NEEDS_TEST_UNPROVEN_UNCERTAIN_BLOCKING: []
+
+      product_implementation_files_modified: no
+
+
+      ## Action Summary
+
+      Independent final gate review of deterministic checklist handling completed
+      in isolated worktree `/Users/tefx/Projects/vectl/.vectl/worktrees/det_check_final_gate`
+      on branch `vectl/step-det_check_final_gate`. Reviewer posture: independent auditor
+      / gate-reviewer. No implementation changes made. Commit hash(es): none — gate
+      review step.
+
+
+      ## Constitution Audit
+
+      `CONSTITUTION.md`: not found via workspace glob; no constitution fast-fail applicable.
+
+
+      ## refs Read Confirmation
+
+      - `tools/vectl/README.md`: NOT READ: file not found at required path.
+
+      - `docs/RFC-deterministic-checklists.md`: read. Key insight: `core_checklist.py`
+      is the single authoritative owner; CLI/MCP/orchestration MUST delegate and MUST
+      NOT re-derive checklist facts. Supported fields are exactly `description` and
+      `verification`; `evidence_template` is deferred/unsupported.
+
+      - `README.md`: read. Key insight: documents separate legacy keyword toggle vs
+      deterministic inventory/mutation, stale revision behavior, batch all-or-nothing
+      mutation, and worker/orchestrator receipt flow.
+
+      - `INVAR.md`: read. Key insight: Core functions require `@pre`/`@post` and doctests;
+      shell handles I/O; escape hatches must be rare and justified.
+
+      - `src/vectl/core_checklist.py`: read. Key insight: public facade defines deterministic
+      selectors, structured errors, receipt dataclasses, `get_inventory`, and `mutate_checklist`.
+
+      - `src/vectl/cli_plan.py`: read. Key insight: public CLI facade re-exports `check_cmd`
+      and `check_inventory_cmd`.
+
+      - `src/vectl/mcp_core_tools.py`: read. Key insight: public MCP facade re-exports
+      `vectl_check` from `mcp_core_misc_tools`.
+
+      - `src/vectl/orchestration/dispatch_policy.py`: read. Key insight: prompt rendering
+      injects deterministic checklist inventory and tells workers not to call checklist
+      mutation tools or fuzzy-map receipts.
+
+
+      ## Verification Run
+
+      - `uv run vectl --help` → exit 0; lists `check` and `check-inventory` commands.
+
+      - `uv run vectl check --help` → exit 0; shows `--revision/--checklist-inventory-revision`,
+      `--item-id`, `--field`, `--index`, `--checked`, `--batch`, `--json`.
+
+      - `uv run vectl check-inventory --help` → exit 0; shows deterministic inventory
+      command with `--json` and `--plan`.
+
+      - Python import/register check → exit 0; `mcp vectl_check: True`, `core get_inventory:
+      True mutate_checklist: True`, `cli handlers: True True`, `registered checklist
+      commands: [''check'', ''check-inventory'']`.
+
+      - `uv run pytest -q tests/test_checklist.py tests/test_cli.py::TestDeterministicCheckCLI
+      tests/orchestration/unit/test_checklist_receipt_contract.py` → `41 passed in
+      0.94s`.
+
+      - `uv run pytest -q tests/orchestration/unit/test_checklist_receipt_contract.py
+      tests/orchestration/unit/test_orch_app.py -k ''checklist_receipt or checklist_inventory''`
+      → `8 passed, 77 deselected in 0.26s`.
+
+      - `uv run pytest -q` → `3030 passed, 43 skipped in 132.22s`.
+
+      - `uv run invar guard --all` → `status: passed`, `errors: 0`, `warnings: 60`,
+      `infos: 4`, escape hatch budget `14/15`.
+
+      - `git status --short --branch && git diff --stat` → clean branch `## vectl/step-det_check_final_gate`.
+
+
+      ## Wiring Audit Results
+
+      - W1 core source-of-truth ownership: PASS. RFC assigns authority to `core_checklist.py`;
+      code delegates inventory parsing to `core_checklist_inventory.py` and mutation
+      to `core/checklist_batch.py`.
+
+      - W2 CLI boundary wiring: PASS. `src/vectl/cli.py` registers `check` and `check-inventory`;
+      help and tests pass.
+
+      - W3 MCP boundary wiring: PASS. `mcp_core_tools.py` exports `vectl_check`; import
+      liveness passed.
+
+      - W4 orchestration prompt/materialization wiring: PASS. `dispatch_policy.py`
+      renders item IDs/revision; `prompt_materialization.py` writes explicit checklist
+      receipt contract.
+
+      - W5 evidence parser/stale receipt handling wiring: PASS. `orchestration/evidence.py`
+      requires `item_id`, `revision`/alias, and boolean `checked`; stale revisions
+      produce refresh guidance.
+
+      - W6 persistence/CAS write safety: PASS. CLI/MCP mutation routes save through
+      expected-hash helpers; batch mutation validates before applying marker changes.
+
+      - W7 tests/verification wiring: PASS. Focused and full suites green.
+
+      - W8 docs/user-surface wiring: PASS. RFC and README document legacy vs deterministic
+      paths, supported fields, stale retry, batch behavior, and receipt flow.
+
+
+      ## Escape Hatch Audit
+
+      `uv run invar guard --all`: passed. Escape hatches count 6; weighted budget
+      14/15. Status: NON_BLOCKING; budget remains under limit and guard emitted warnings
+      only, no errors.
+
+
+      ## CLI Surface Snapshot and Executability Matrix
+
+      Deterministic checklist commands shown by `uv run vectl --help`: `check`, `check-inventory`.
+
+
+      | Command | Surface Listed? | Handler Exists? | --help Works? | Smoke Test |
+      Status |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      | `vectl check` | yes | `check_cmd` callable | yes, exit 0 | help/import/focused
+      CLI tests | PASS |
+
+      | `vectl check-inventory` | yes | `check_inventory_cmd` callable | yes, exit
+      0 | help/import/focused CLI tests | PASS |
+
+
+      Regression check: no deterministic checklist commands removed or broken. Dangling
+      detection: none; registered commands have callable handlers.
+
+
+      ## Integration vs Fixture Evidence
+
+      - Black-box/runtime surface checks: `uv run vectl --help`, `uv run vectl check
+      --help`, `uv run vectl check-inventory --help`, full `uv run pytest -q`.
+
+      - Import/liveness checks: `vectl.mcp_core_tools.vectl_check`, CLI handler callables
+      and Typer registration.
+
+      - Unit/fixture checks: `tests/test_checklist.py`, `tests/test_cli.py::TestDeterministicCheckCLI`,
+      `tests/orchestration/unit/test_checklist_receipt_contract.py`.
+
+      - Real integration coverage: full suite includes orchestration integration/repro
+      tests and CLI/MCP tests; all green.
+
+
+      ## Auxiliary Blind-Tester Mode D Liveness
+
+      Independent blind-tester Mode D also passed before gate completion:
+
+      - `uv run vectl --help` → exit 0; top-level help lists `check` and `check-inventory`.
+
+      - `uv run vectl check --help` → exit 0; help exposes deterministic flags.
+
+      - `uv run vectl check-inventory --help` → exit 0; help exposes `--json` and
+      `--plan`.
+
+      - Python import/liveness check → exit 0; `vectl_check`, `check_cmd`, and `check_inventory_cmd`
+      callable.
+
+      - CLI matrix: `check` PASS, `check-inventory` PASS. MCP liveness: PASS. Product
+      files modified: no.
+
+
+      ## Final Behavioral Proof Register
+
+      - Contract-first/test-first sequence: PROVEN by RFC authority, core contracts/doctests
+      present, expected-red/failure-path tests present, and green full verification.
+
+      - Documentation sync: PROVEN by `docs/RFC-deterministic-checklists.md` and `README.md`.
+
+      - Full-plan verification: PROVEN by `uv run pytest -q` = 3030 passed / 43 skipped
+      and `uv run invar guard --all` passed.
+
+      - Architecture review ownership/orchestrator authority: PROVEN by code wiring
+      and prior green architecture artifact; independently verified core/MCP/CLI/orchestration
+      boundaries.
+
+      - CLI/MCP liveness and UI/output audit: PROVEN by help commands, import/registration
+      checks, and blind-tester Mode D.
+
+      - No unresolved behavioral/runtime obligation bypassed: PROVEN; no blockers,
+      no unresolved NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING items.
+
+      - Skips/warnings: NON_BLOCKING; pytest skips are existing live/browser opt-outs,
+      invar warnings are budgeted and non-error.
+
+
+      ## Findings
+
+      Blockers: none.
+
+      Warnings: missing `tools/vectl/README.md` required ref is non-blocking because
+      other refs cover the contract; one attempted targeted orchestration test path
+      was absent and corrected by running existing receipt/prompt tests; `core_checklist.py`
+      near file-size warning threshold is a guard warning only, not gate-blocking.
+
+
+      ## Artifacts Modified
+
+      Product implementation files modified: no. Documentation files modified: no.
+      Orchestrator state files modified: no. Worktree status: clean.
+
+
+      ## checklist_receipt
+
+      All description and verification checklist items were satisfied and toggled
+      by the orchestrator from the worker''s receipt.
+
+
+      ## Programmatic Handoff JSON
+
+      {"headline":"PASS","proof_gap_status":"NONE","blocking_status":"CLOSED","verdict":"PASS","blockers":[],"gate_open_allowed":true,"orchestrator_action_hint":"COMPLETE","unresolved_NEEDS_TEST_UNPROVEN_UNCERTAIN_BLOCKING":[],"product_implementation_files_modified":"no"}'
   - id: det_check_full_plan_remediation
     name: Remediate full-plan verification blockers
     status: done

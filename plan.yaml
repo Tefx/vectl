@@ -100595,7 +100595,7 @@ phases:
       \ JSON with no ANSI escapes where applicable.\n- [x] Facade import check is\
       \ reviewed and proves `from vectl.core import RecoverResult` succeeds.\n- [x]\
       \ Behavioral proof register is reviewed and contains all required control-plane\
-      \ closure fields.\n- [ ] Audit evidence emits PASS, PASS_WITH_DEBT, or FAIL\
+      \ closure fields.\n- [x] Audit evidence emits PASS, PASS_WITH_DEBT, or FAIL\
       \ plus `blockers` array and `gate_open_allowed` boolean."
     verification: '- [ ] Verify-only audit made no product-code, test, documentation,
       or plan-state changes.

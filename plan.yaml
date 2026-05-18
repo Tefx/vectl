@@ -100819,7 +100819,7 @@ phases:
       \ exact command and pasted output.\n- [x] Artifact includes behavioral proof\
       \ register with all required control-plane closure fields.\n- [x] Artifact includes\
       \ uiux-auditor-compatible validation note and does not rely on plan summaries\
-      \ alone.\n- [ ] Evidence records the exact artifact path and confirms current-mainline\
+      \ alone.\n- [x] Evidence records the exact artifact path and confirms current-mainline\
       \ command provenance."
     verification: '- [ ] Confirm `docs/invar_guard_remediation/uiux-proof-artifact.md`
       or an explicitly equivalent standalone artifact file exists outside managed

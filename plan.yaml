@@ -103681,7 +103681,7 @@ phases:
 
       - [x] MCP deterministic single and batch paths return structured result/errors.
 
-      - [ ] Surface adapters delegate to the core checklist service and do not duplicate
+      - [x] Surface adapters delegate to the core checklist service and do not duplicate
       parser ownership.
 
 

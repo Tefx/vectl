@@ -103674,7 +103674,7 @@ phases:
 
       - [x] CLI legacy keyword toggle path still works.
 
-      - [ ] CLI deterministic inventory/mutation path emits machine-readable revision/item
+      - [x] CLI deterministic inventory/mutation path emits machine-readable revision/item
       data where applicable.
 
       - [ ] MCP legacy call remains schema-compatible.

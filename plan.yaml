@@ -103499,7 +103499,7 @@ phases:
       - [x] Any invalid selector rejects the whole batch and reports per-selector
       diagnostics.
 
-      - [ ] Duplicate or conflicting selectors are deterministic and documented by
+      - [x] Duplicate or conflicting selectors are deterministic and documented by
       structured diagnostics.
 
       - [ ] Successful batch changes only requested checkbox markers.

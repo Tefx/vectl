@@ -105363,7 +105363,7 @@ phases:
       - [x] State semantics: deterministic batch mutation remains all-or-nothing;
       failed batches leave marker state unchanged and provide per-selector diagnostics.
 
-      - [ ] Receipt semantics: worker receipt refresh/retry consumes or rejects receipts
+      - [x] Receipt semantics: worker receipt refresh/retry consumes or rejects receipts
       through a runtime-reachable validation path, not a dead helper.
 
       - [ ] Compatibility guardrail: legacy keyword toggle compatibility remains supported,

@@ -105789,7 +105789,7 @@ phases:
 
       ## Required integration proof focus
 
-      - [ ] Core deterministic stale revisions fail without mutating state, including
+      - [x] Core deterministic stale revisions fail without mutating state, including
       a literal stale `rev1` fixture.
 
       - [ ] CLI deterministic batch with stale/invalid revision and `--json` exits

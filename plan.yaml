@@ -102790,7 +102790,7 @@ phases:
       - [x] Batch mutation returns atomic all-or-nothing results with per-selector
       diagnostics on machine-readable surfaces.
 
-      - [ ] Orchestrator prompt/receipt tests prove receipts use item_id/revision
+      - [x] Orchestrator prompt/receipt tests prove receipts use item_id/revision
       and no natural-language fuzzy mapping when orchestration surfaces are touched.
 
       - [ ] Legacy human keyword toggle compatibility remains covered for CLI and

@@ -103162,7 +103162,7 @@ phases:
       - [ ] Revision input is exactly canonicalized raw Markdown for `description`
       and `verification`; unrelated metadata is excluded.
 
-      - [ ] Missing/empty fields produce empty inventories and stable revision behavior.
+      - [x] Missing/empty fields produce empty inventories and stable revision behavior.
 
       - [ ] `evidence_template` is explicitly unsupported/deferred for first version.
 

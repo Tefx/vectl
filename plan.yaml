@@ -105349,7 +105349,7 @@ phases:
       behavior for deterministic inventory selectors or update the RFC with explicit
       deferred disposition and non-intersection proof.
 
-      - [ ] Non-blocking debt disposition: classify external temporary plan mutation
+      - [x] Non-blocking debt disposition: classify external temporary plan mutation
       git autosave stderr as non-blocking only if it does not intersect remaining
       gates.
 

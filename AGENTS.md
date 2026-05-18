@@ -39,6 +39,10 @@ directly as a workaround. Use `vectl guide stuck` for troubleshooting.
 - One claimed step at a time.
 - Evidence is mandatory when completing (commands run + outputs + gaps).
 - Spec uncertainty: leave `# SPEC QUESTION: ...` in code, do not guess.
+- Checklist receipts are deterministic: orchestrators own mutation; workers
+  return `checklist_receipt` entries with exact `item_id`, `revision`, and
+  `checked` values instead of calling checklist tools or doing natural-language
+  fuzzy matching.
 
 ### Step ID Uniqueness
 **Step IDs must be globally unique across ALL phases.**

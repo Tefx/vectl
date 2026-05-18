@@ -38,6 +38,66 @@ an exact state, or combines legacy toggle requests with deterministic exact-stat
 requests in a batch, MUST fail with `InvalidSelectorError` and MUST NOT mutate
 the plan.
 
+### 4.1 CLI and MCP Surface Contract
+
+The legacy human CLI path remains separate from the deterministic path:
+
+```bash
+vectl check STEP_ID KEYWORD
+```
+
+This path uses the human keyword matcher, toggles the matched item, prints
+`Updated checklist: <step>`, and points the user at `vectl show <step>` for the
+updated Markdown. It does not accept `--revision`, exact selectors, or a target
+`checked` state.
+
+Deterministic CLI mutation uses the inventory revision plus an exact selector
+and target state:
+
+```bash
+vectl check STEP_ID \
+  --revision <checklist_inventory_revision> \
+  --item-id <item_id> \
+  --checked true \
+  --json
+```
+
+`--revision` is an alias for `--checklist-inventory-revision`. The supported
+single-selector forms are `--item-id <item_id>` or `--field description|verification
+--index <zero-based-index>`. Machine-readable CLI JSON MUST be parseable JSON
+without Rich/ANSI styling.
+
+Deterministic inventory is exposed as:
+
+```bash
+vectl check-inventory STEP_ID --json
+```
+
+The JSON payload includes `step_id`, `checklist_inventory_revision`, and `items`.
+Each item includes `item_id`, `field`, `index`, `text`, and `checked`.
+
+Deterministic batch mutation is all-or-nothing and uses `--batch` with a JSON
+array of request objects. Each request may provide top-level selector fields or a
+`selector` object plus a boolean `checked`:
+
+```bash
+vectl check STEP_ID \
+  --revision <checklist_inventory_revision> \
+  --batch '[{"item_id":"description:0:<hash>","checked":true}]' \
+  --json
+```
+
+If any selector is stale, invalid, unsupported, or ambiguous, no checklist item
+may be mutated; the response must include structured selector diagnostics where
+available.
+
+The MCP `vectl_check` wrapper exposes the same deterministic surface with
+`inventory`, `revision`, `item_id`, `field`, `index`, `checked`, and `requests`
+fields. Legacy MCP calls (`keyword` or `add` without deterministic fields)
+continue to return Markdown text; deterministic MCP inventory/mutation returns a
+structured JSON-serializable payload with the same inventory fields, diagnostics,
+and structured error payloads.
+
 ## 5. Structured Errors and Retry Guidance
 
 | Error | Cause | Retry Guidance |
@@ -62,11 +122,15 @@ Structured API error payloads MUST include:
 Retry guidance is normative: stale revisions use `refresh_inventory`, ambiguous
 legacy matches use `narrow_selector`, malformed/mixed selectors use
 `fix_request`, and unsupported fields use `unsupported` with `retryable: false`.
+A stale deterministic mutation MUST fail with `code: stale_revision`,
+`retry.action: refresh_inventory`, and no state mutation.
 
 ## 6. Orchestration Contract
 The orchestrator owns checklist mutations.
 It injects item-id/revision-based worker receipts into worker context.
 Workers return receipts keyed by `item_id` and `revision` and MUST NOT perform natural-language fuzzy mapping.
+Workers MUST NOT call vectl checklist tools directly in orchestrated worktree
+tasks; they report desired final states only through `checklist_receipt` entries.
 
 Concrete worker receipt schema:
 
@@ -80,3 +144,7 @@ checklist_receipt:
 The orchestrator MUST reject receipts missing `item_id`, `revision`, or
 `checked`, and MUST refresh inventory before retrying when a receipt revision is
 stale.
+When current inventory has changed, stale receipt revisions are rejected after
+the orchestrator refreshes the current `checklist_inventory_revision`; the
+orchestrator must not infer a replacement target from natural language or item
+text.

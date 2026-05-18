@@ -103706,17 +103706,17 @@ phases:
 
       If a contract artifact is wrong or incomplete, document a deviation record (type,
       what, why, impact) — do NOT silently rewrite.'
-    verification: '- [ ] Run `pytest tests/test_cli.py tests/test_mcp.py -k ''check
+    verification: '- [x] Run `pytest tests/test_cli.py tests/test_mcp.py -k ''check
       or checklist or deterministic or batch or revision'' -q` and show CLI/MCP deterministic
       tests pass green.
 
-      - [ ] Provide at least one real CLI command invocation output for legacy human
+      - [x] Provide at least one real CLI command invocation output for legacy human
       mode and one machine-readable deterministic mode.
 
-      - [ ] Provide at least one real MCP `vectl_check` tool-call proof or direct
+      - [x] Provide at least one real MCP `vectl_check` tool-call proof or direct
       MCP wrapper invocation showing additive deterministic fields.
 
-      - [ ] Confirm CLI/MCP adapters call the canonical core checklist service rather
+      - [x] Confirm CLI/MCP adapters call the canonical core checklist service rather
       than duplicating parser logic.'
     evidence_template: '## Integration Evidence
 

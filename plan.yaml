@@ -97734,7 +97734,7 @@ phases:
       - [x] Report all required semantic fields.\n- [x] Verify no product implementation\
       \ files were modified by this retest.\n- [x] Mark `observed_result: green` only\
       \ when guard is green or all residuals have structured non-blocking non-intersection\
-      \ proof under invar policy.\n- [ ] Set `gate_open_allowed: false` and `orchestrator_action_hint:\
+      \ proof under invar policy.\n- [x] Set `gate_open_allowed: false` and `orchestrator_action_hint:\
       \ DO_NOT_COMPLETE` if blocker-class residuals remain.\n- [ ] Include behavioral\
       \ proof register entries for every remaining guard finding with closure path\
       \ and gate decision basis."

@@ -108603,7 +108603,7 @@ phases:
       - [x] For each checklist-adjacent warning, decide `blocking-now`, `blocking-later`,
       or `non-blocking` based on gate intersection, not provenance.
 
-      - [ ] If any finding is claimed non-blocking, evidence proves non-intersection
+      - [x] If any finding is claimed non-blocking, evidence proves non-intersection
       with `det_check_arch_review` and `det_check_final_gate`.
 
       - [ ] No unrelated refactors, feature work, API reshaping, CLI behavior changes,

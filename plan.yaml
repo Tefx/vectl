@@ -108626,7 +108626,7 @@ phases:
 
       - [x] Run `uv run pytest -q` and paste the collection/result summary.
 
-      - [ ] Run `uv run invar guard --all` and paste the summary.
+      - [x] Run `uv run invar guard --all` and paste the summary.
 
       - [ ] If remediation touches checklist, CLI, MCP, orchestration, or receipt
       paths, also run `uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py

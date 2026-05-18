@@ -101732,7 +101732,7 @@ phases:
       raise `NotImplementedError` as required for contract purity.'
   - id: det_check_contract_gate
     name: Gate deterministic checklist contract
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the deterministic
       checklist contract phase meets the quality bar for expected-red test authoring.
 
@@ -101817,6 +101817,8 @@ phases:
     depends_on:
     - det_check_contract_lock
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-18T14:33:24.945639+00:00'
 - id: det_check_tests
   name: 'Deterministic Checklist Handling: Expected-Red Test Definitions'
   status: locked

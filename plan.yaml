@@ -108381,7 +108381,7 @@ phases:
       - [x] Batch atomicity and stale-revision semantics are architecture-safe under
       concurrent worker/orchestrator scenarios.
 
-      - [ ] No module-level mutable state, registry corruption path, or unbounded
+      - [x] No module-level mutable state, registry corruption path, or unbounded
       cache was introduced.'
     verification: '- [ ] phase-check protecting final gate: architecture review confirms
       source-of-truth ownership and consumer-boundary conformance.

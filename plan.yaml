@@ -108948,7 +108948,7 @@ phases:
       exists and the full-plan retest is gated behind it.'
   - id: det_check_full_plan_retest
     name: Retest full-plan verification boundary
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier), rerun the failed
       full-plan verification boundary after `det_check_full_plan_remediation` and
       the batched residual failure owner `det_check_full_plan_residual_remediation`.
@@ -109077,6 +109077,84 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-18T20:01:35.343485+00:00'
+    done_at: '2026-05-18T20:12:46.291534+00:00'
+    evidence: "## refs Read Confirmation\n\n- `tools/vectl/README.md` — NOT READ:\
+      \ required path does not exist in isolated worktree `/Users/tefx/Projects/vectl/.vectl/worktrees/det_check_full_plan_retest`;\
+      \ worker called read and received File not found. Adjacent root `README.md`\
+      \ was read for project context; key insight: vectl requires evidence before\
+      \ completion, `plan.yaml` must not be edited directly, and claim locking/CAS\
+      \ writes enforce safe parallelism.\n\nConflict / deviation note: required ref\
+      \ path `tools/vectl/README.md` is absent. Worker used the step description as\
+      \ authoritative and did not inspect/mutate plan state.\n\n## Retest Evidence\n\
+      \nCommit hash(es): none — verify-only step.\nFiles changed: none; `git status\
+      \ --short --branch` showed only `## vectl/step-det_check_full_plan_retest`.\n\
+      Spec link: det_check_full_plan_retest; ref `tools/vectl/README.md`.\n\nBoundary\
+      \ commands executed:\n```bash\nuv run pytest tests/test_checklist.py tests/test_cli.py\
+      \ tests/test_mcp.py -k 'checklist or deterministic or batch or revision' -q\n\
+      uv run pytest tests/orchestration tests/repro -k 'checklist or receipt or prompt'\
+      \ -q\nuv run pytest -q\nuv run invar guard --all\n```\n\nActual outputs:\n```text\n\
+      $ uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py\
+      \ -k 'checklist or deterministic or batch or revision' -q\ncollected 451 items\
+      \ / 411 deselected / 40 selected\ntests/test_checklist.py ........................\n\
+      tests/test_cli.py ..........\ntests/test_mcp.py ......\n======================\
+      \ 40 passed, 411 deselected in 3.34s ======================\n\n$ uv run pytest\
+      \ tests/orchestration tests/repro -k 'checklist or receipt or prompt' -q\ncollected\
+      \ 1727 items / 1625 deselected / 102 selected\n...\ntests/repro/test_orch_cli_full_flow.py\
+      \ .\ntests/repro/test_orch_observability_red.py .\n===================== 102\
+      \ passed, 1625 deselected in 3.56s =====================\n\n$ uv run pytest\
+      \ -q\nInitial run timed out at 120000 ms after collecting/running part of the\
+      \ suite; rerun with larger timeout completed:\ncollected 3073 items\n...\n=================\
+      \ 3030 passed, 43 skipped in 185.50s (0:03:05) =================\nsys:1: ResourceWarning:\
+      \ unclosed file <_io.TextIOWrapper name=16 encoding='utf-8'>\nsys:1: ResourceWarning:\
+      \ unclosed file <_io.TextIOWrapper name=19 encoding='utf-8'>\nsys:1: ResourceWarning:\
+      \ unclosed file <_io.TextIOWrapper name=18 encoding='utf-8'>\nsys:1: ResourceWarning:\
+      \ unclosed file <_io.TextIOWrapper name=30 encoding='utf-8'>\n\n$ uv run invar\
+      \ guard --all\n{\n  \"status\": \"passed\",\n  \"static\": {\"passed\": true,\
+      \ \"errors\": 0, \"warnings\": 60, \"infos\": 4},\n  \"summary\": {\"files_checked\"\
+      : 147, \"errors\": 0, \"warnings\": 60, \"infos\": 4},\n  \"escape_hatches\"\
+      : {\"count\": 6, \"gating\": {\"status\": \"warning\", \"budget\": {\"used\"\
+      : 14, \"limit\": 15}}},\n  \"verification_level\": \"STANDARD\",\n  \"doctest\"\
+      : {\"passed\": true, \"output\": \"\"},\n  \"crosshair\": {\"status\": \"skipped\"\
+      , \"reason\": \"no core files found\"},\n  \"property_tests\": {\"status\":\
+      \ \"skipped\", \"reason\": \"no core files\"}\n}\n```\n\n## Broad Failure Disposition\
+      \ Table\n| command | finding | classification | provenance | disposition | intersects_det_check_arch_review\
+      \ | intersects_det_check_final_gate | closure_path |\n| --- | --- | --- | ---\
+      \ | --- | --- | --- | --- |\n| `uv run pytest -q` | first attempt exceeded 120000\
+      \ ms timeout; rerun completed green | NON_BLOCKING_ENV_TIMEOUT | shell timeout\
+      \ metadata, then successful rerun | not a product failure; exact command completed\
+      \ with larger timeout | no | no | none |\n| `uv run pytest -q` | 43 skipped\
+      \ tests, mostly live smoke/UI surfaces | NON_BLOCKING_GOVERNED_SKIP | pytest\
+      \ summary `3030 passed, 43 skipped` | no collection error or failure group;\
+      \ suite green | no | no | none |\n| `uv run pytest -q` | ResourceWarning for\
+      \ unclosed file descriptors after green run | NON_BLOCKING_WARNING | pytest\
+      \ post-summary ResourceWarning lines | warning did not fail suite; optional\
+      \ test hygiene follow-up only if warning budget tightens | no | no | optional\
+      \ follow-up: test hygiene |\n| `uv run invar guard --all` | 60 warnings / 4\
+      \ infos, escape hatch budget 14/15 | NON_BLOCKING_POLICY_WARNING | invar JSON\
+      \ status `passed`, errors `0`, budget used `14`, limit `15` | guard is green\
+      \ under current policy; budget remains within limit | no | no | none unless\
+      \ policy changes |\n| required ref read | `tools/vectl/README.md` absent | NON_BLOCKING_SPEC_ARTIFACT_GAP\
+      \ | read returned File not found | documented NOT READ; root README read for\
+      \ context; did not affect boundary-command verification | no | no | orchestrator\
+      \ may correct stale ref path |\n\n## Headline\n- [x] PASS: all boundary commands\
+      \ are green.\n- [ ] BLOCKED: residual blocker-class failure remains.\n\n## Checklist\
+      \ receipt\nAll description and verification checklist items were satisfied and\
+      \ toggled by the orchestrator from the worker's receipt.\n\n## Closure Fields\n\
+      step_intent: retest_green\nexpected_result: green\nobserved_result: all required\
+      \ boundary commands completed green; full pytest needed longer timeout on rerun\n\
+      failure_alignment: none; no unresolved blocker-class pytest or invar failures\
+      \ observed\nverdict: PASS\nblockers: []\norchestrator_action_hint: COMPLETE\n\
+      gate_open_allowed: true\nbehavioral_proof_register:\n  - command: `uv run pytest\
+      \ tests/test_checklist.py tests/test_cli.py tests/test_mcp.py -k 'checklist\
+      \ or deterministic or batch or revision' -q`; proof: PROVEN — 40 passed, 411\
+      \ deselected\n  - command: `uv run pytest tests/orchestration tests/repro -k\
+      \ 'checklist or receipt or prompt' -q`; proof: PROVEN — 102 passed, 1625 deselected\n\
+      \  - command: `uv run pytest -q`; proof: PROVEN — 3030 passed, 43 skipped; no\
+      \ collection error\n  - command: `uv run invar guard --all`; proof: PROVEN —\
+      \ status passed, errors 0, escape hatch budget 14/15\nuncertainty_sources:\n\
+      \  - Required ref `tools/vectl/README.md` is absent from isolated worktree;\
+      \ documented NOT READ after read attempt.\nproduct_implementation_files_modified:\
+      \ no"
   - id: det_check_full_plan_residual_remediation
     name: Remediate residual full-suite failures
     status: done

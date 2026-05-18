@@ -101620,7 +101620,7 @@ phases:
       - [x] Contract requires marker-only mutations and explicit all-or-nothing batch\
       \ semantics.\n- [x] Contract defines structured errors with retry guidance for\
       \ stale revision, invalid selector/mode, unsupported field, and ambiguous/no\
-      \ legacy match.\n- [ ] Contract defines orchestrator-owned mutation and worker\
+      \ legacy match.\n- [x] Contract defines orchestrator-owned mutation and worker\
       \ receipts keyed by item_id/revision with no natural-language fuzzy mapping.\n\
       - [ ] Contract artifacts contain no completed business logic beyond stubs, signatures,\
       \ docstrings, and type definitions."

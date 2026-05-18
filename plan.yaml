@@ -93392,7 +93392,7 @@ phases:
       - [x] Pasted terminal/help captures are provided for all touched CLI command
       groups, not merely named or summarized.
 
-      - [ ] Command executability matrix covers orchestration, plan-management, render/agents,
+      - [x] Command executability matrix covers orchestration, plan-management, render/agents,
       top-level registration, prompt/core-adapter-adjacent surfaces, and residual-remediation
       CLI/operator-visible surfaces touched by remediation.
 

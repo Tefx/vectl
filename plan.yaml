@@ -106192,7 +106192,7 @@ phases:
       - [x] `ChecklistErrorCode` and `ChecklistSelector` are not orphan public surfaces
       without classification or runtime/public use.
 
-      - [ ] Core `@post` contracts in `src/vectl/core/checklist_batch.py` are non-vacuous
+      - [x] Core `@post` contracts in `src/vectl/core/checklist_batch.py` are non-vacuous
       and structurally meaningful.
 
       - [ ] Unsupported-field deterministic inventory behavior is reachable or explicitly

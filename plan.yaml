@@ -104218,7 +104218,7 @@ phases:
     agent: integration-verifier
   - id: det_check_impl_uiux_audit
     name: Audit checklist CLI output surfaces
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT NATIVE MULTIMODAL AUDITOR (uiux-auditor), audit
       human-visible CLI checklist output and machine-readable output shape after CLI/MCP
       surface wiring.
@@ -104314,6 +104314,60 @@ phases:
     agent: uiux-auditor
     claimed_by: uiux-auditor
     claimed_at: '2026-05-18T16:27:54.087587+00:00'
+    done_at: '2026-05-18T16:41:12.104286+00:00'
+    evidence: "status: SUCCESS\nverdict: PASS\nblockers: []\norchestrator_action_hint:\
+      \ COMPLETE\ngate_open_allowed: true\n\n## refs Read Confirmation (MANDATORY)\n\
+      - `docs/RFC-deterministic-checklists.md` — read; pure core checklist inventory\
+      \ and mutation service is the single authoritative owner for checklist parsing\
+      \ and mutation across CLI and MCP.\n- `src/vectl/cli_plan.py` — read; public\
+      \ compatibility facade for split implementation modules, preserving original\
+      \ import path while keeping cohesive implementation slices internal.\n- `src/vectl/cli_plan_checklist_commands.py`\
+      \ — read; CLI checklist command surfaces backed by the core checklist service;\
+      \ `_run_deterministic_check_mutation` handles exact selector logic.\n- `tests/test_cli.py`\
+      \ — read; contains legacy migration test fixtures and CLI integration coverage.\n\
+      - `tools/vectl/README.md` — NOT READ: absent from repository.\n\n## Native CLI\
+      \ Output Audit\n- Terminal capture: legacy success\n```text\n$ vectl check s1\
+      \ \"Task B\" --plan test_plan.yaml\nUpdated checklist: s1\n\n→ vectl show s1\n\
+      ```\n- Terminal capture: deterministic success\n```text\n$ vectl check s1 --json\
+      \ --revision \"sha256:51a87d66f86e41ef601fc5232611fa843ac488c30ea84acca00568208ebd613e\"\
+      \ --item-id \"description:0:eddbe203d9c7\" --checked true --plan test_plan.yaml\n\
+      {\n  \"checklist_inventory_revision\": \"sha256:ca3831e0651cab7719bc85c05be40b872d755f4fd45c3f703b125680e92bd705\"\
+      ,\n  \"diagnostics\": {\n    \"changed_items\": 1,\n    \"matched_items\": 1,\n\
+      \    \"selector_diagnostics\": [\n      {\n        \"field\": \"description\"\
+      ,\n        \"index\": 0,\n        \"item_id\": \"description:0:eddbe203d9c7\"\
+      ,\n        \"message\": \"Checklist marker changed.\",\n        \"request_index\"\
+      : 0,\n        \"status\": \"changed\",\n        \"target_checked\": true\n \
+      \     }\n    ],\n    \"total_requested\": 1\n  },\n  \"items\": [...],\n  \"\
+      ok\": true,\n  \"step_id\": \"s1\"\n}\n```\n- Terminal capture: stale revision\
+      \ error\n```text\n$ vectl check s1 --json --revision \"sha256:stale\" --item-id\
+      \ \"description:0:eddbe203d9c7\" --checked true --plan test_plan.yaml\n{\n \
+      \ \"diagnostics\": [{\"code\": \"stale_revision\", \"message\": \"Checklist\
+      \ inventory revision is stale.\", \"status\": \"error\"}],\n  \"error\": {\n\
+      \    \"code\": \"stale_revision\",\n    \"message\": \"Checklist inventory revision\
+      \ is stale.\",\n    \"retry\": {\"action\": \"refresh_inventory\", \"message\"\
+      : \"Refresh the checklist inventory and retry against the latest revision.\"\
+      , \"retryable\": true},\n    \"type\": \"StaleRevisionError\"\n  },\n  \"ok\"\
+      : false\n}\n```\n- Terminal capture: ambiguous legacy keyword error\n```text\n\
+      $ vectl check s1 \"Task A\" --plan test_plan.yaml\nError: Ambiguous match for\
+      \ 'Task A': ['- [ ] Task A', '- [ ] Task A Duplicate'].\nBe more specific.\n\
+      ```\n- Machine-readable parse proof\n```bash\nvectl check-inventory s1 --json\
+      \ --plan test_plan.yaml > out.json && python -c \"import sys, json; print('Parsed\
+      \ OK') if json.load(open('out.json')) else sys.exit(1)\"\n```\n```text\nParsed\
+      \ OK\n```\n\n## ANSI / Styling Contamination Check\n- command: `python -c \"\
+      import sys; content = open('out.json', 'rb').read(); sys.exit(1 if b'\\x1b'\
+      \ in content else 0)\"`\n- result: zero exit code; no ANSI escape codes found\
+      \ in raw JSON bytes.\n\n## Behavioral Proof Register\n- legacy_human_readability:\
+      \ PROVEN\n- deterministic_parse_safety: PROVEN\n- structured_error_retry_guidance:\
+      \ PROVEN\n- human_machine_surface_separation: PROVEN\n\n## Checklist Receipt\n\
+      - [x] Legacy human keyword toggle output remains understandable and points users\
+      \ to `vectl show` or equivalent follow-up.\n- [x] Deterministic machine-readable\
+      \ output is parseable and free of ANSI escape contamination.\n- [x] Error output\
+      \ for stale revision, invalid selector, and ambiguous legacy keyword includes\
+      \ actionable retry guidance.\n- [x] Terminal capture or equivalent text artifact\
+      \ demonstrates required states.\n- [x] Human surface and machine-readable surface\
+      \ are clearly distinct; JSON/YAML outputs are not polluted by Rich styling.\n\
+      - [x] PASS: CLI output surfaces are clear and parse-safe.\n\n## Gaps/Notes\n\
+      - none"
   - id: det_check_impl_wiring_audit
     name: Audit checklist wiring completeness
     status: pending

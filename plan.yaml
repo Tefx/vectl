@@ -108076,7 +108076,7 @@ phases:
       Gaps/Notes: None.'
   - id: det_check_full_plan_check
     name: Run checklist full-plan verification
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (integration-verifier), run the repo-appropriate
       full-plan verification boundary after deterministic checklist implementation
       and docs.
@@ -108185,6 +108185,8 @@ phases:
     depends_on:
     - det_check_docs_update
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-18T18:24:14.906246+00:00'
   - id: det_check_arch_review
     name: Review checklist architecture and authority
     status: pending

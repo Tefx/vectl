@@ -107900,7 +107900,7 @@ phases:
 
       - [x] Document `evidence_template` as deferred/unsupported for first version.
 
-      - [ ] Document `checklist_inventory_revision` scope and stale-retry behavior.
+      - [x] Document `checklist_inventory_revision` scope and stale-retry behavior.
 
       - [ ] Document single and batch selector modes, marker-only invariants, and
       structured errors.

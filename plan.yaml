@@ -107007,19 +107007,19 @@ phases:
       `evidence_ref`, `status`, `closure_path`, and `gate_decision_basis`. `NEEDS_TEST`,
       `UNPROVEN`, or `UNCERTAIN_BLOCKING` require remediation ownership or explicit
       non-intersection evidence.'
-    verification: '- [ ] phase-check: focused integration retest runs after `det_check_impl_receipt_refresh_remediation`
+    verification: '- [x] phase-check: focused integration retest runs after `det_check_impl_receipt_refresh_remediation`
       and protects blocker aggregate/gate fan-in.
 
-      - [ ] Runtime-reachable orchestration path proves stale receipt refresh-before-retry/application
+      - [x] Runtime-reachable orchestration path proves stale receipt refresh-before-retry/application
       or rejected-with-refresh instruction with spec-backed disposition.
 
-      - [ ] Literal stale `revision: rev1` fixture and current inventory/revision
+      - [x] Literal stale `revision: rev1` fixture and current inventory/revision
       fixture are shown in evidence.
 
-      - [ ] `assess_freeform_evidence` or completion/evidence pipeline is verified
+      - [x] `assess_freeform_evidence` or completion/evidence pipeline is verified
       to avoid false PASS on parser-only stale receipt acceptance.
 
-      - [ ] Behavioral proof register contains no unresolved blocker-class `NEEDS_TEST`,
+      - [x] Behavioral proof register contains no unresolved blocker-class `NEEDS_TEST`,
       `UNPROVEN`, or `UNCERTAIN_BLOCKING` without closure path.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

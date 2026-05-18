@@ -107905,7 +107905,7 @@ phases:
       - [x] Document single and batch selector modes, marker-only invariants, and
       structured errors.
 
-      - [ ] Document worker/orchestrator checklist receipt flow: orchestrator owns
+      - [x] Document worker/orchestrator checklist receipt flow: orchestrator owns
       mutation, workers return item_id/revision receipts, no natural-language fuzzy
       mapping.
 

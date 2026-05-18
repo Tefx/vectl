@@ -100140,7 +100140,7 @@ phases:
       \ logic or semantic contracts that process their real inputs and produce meaningful\
       \ assertions or outputs.\n\n## Acceptance Checklist\n- [x] Standalone UI/UX\
       \ proof artifact is pasted in evidence and does not rely on plan summaries alone.\n\
-      - [ ] UI/UX artifact includes help/surface snapshots, command executability\
+      - [x] UI/UX artifact includes help/surface snapshots, command executability\
       \ matrix, JSON ANSI check, facade import check, and behavioral proof register.\n\
       - [ ] Each cited Core warning is either fixed with non-vacuous semantic contract/doctest\
       \ evidence or dispositioned narrowly with downstream non-intersection proof.\n\

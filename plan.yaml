@@ -106160,7 +106160,7 @@ phases:
       - none'
   - id: det_check_impl_blocker_wiring_retest
     name: Retest deterministic checklist wiring and contract blockers
-    status: claimed
+    status: done
     description: 'Independent wiring/contract retest for the batched deterministic
       checklist blocker remediation.
 
@@ -106297,6 +106297,105 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-05-18T17:17:09.222557+00:00'
+    done_at: '2026-05-18T17:25:28.740654+00:00'
+    evidence: 'status: SUCCESS
+
+      verdict: PASS
+
+      blockers: []
+
+      orchestrator_action_hint: COMPLETE
+
+      gate_open_allowed: true
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - `src/vectl/orchestration/evidence.py` — read; `parse_checklist_receipt` validates
+      item_id, revision/checklist_inventory_revision, checked, raises `ChecklistReceiptValidationError`,
+      and is reached by `_checklist_receipt_failure_reason` inside `assess_freeform_evidence`.
+
+      - `src/vectl/orchestration/prompt_materialization.py` — read; prompt artifact
+      payload injects `checklist_receipt_contract` with required fields and deterministic
+      selector contract.
+
+      - `src/vectl/core/checklist_batch.py` — read; batch mutation validates stale
+      revisions, selector modes, resolution, duplicates, then applies marker-only
+      updates; unsupported resolution maps to `UnsupportedFieldError`.
+
+      - `src/vectl/core_checklist.py` — read; public type aliases classified as type-only/static
+      API surfaces; `ChecklistSelector` consumed by `MutationRequest.selector`; unsupported
+      fields raise structured `UnsupportedFieldError`.
+
+      - `docs/RFC-deterministic-checklists.md` — read; supported fields limited to
+      description/verification, evidence_template deferred, unsupported_field required,
+      receipt item_id/revision/checked required.
+
+      - `tools/vectl/README.md` — NOT READ: absent.
+
+
+      ## Wiring Retest Report
+
+      ### Trace Evidence
+
+      - Receipt validation callers: runtime static chain from `orch_app.py` evidence
+      normalization → `assess_freeform_evidence` → `_checklist_receipt_failure_reason`
+      → `parse_checklist_receipt`; malformed receipts convert `ChecklistReceiptValidationError`
+      to blocking failure reason. Direct tests cover malformed receipt rejection and
+      reachability.
+
+      - Public symbols: `ChecklistErrorCode` is documented type-only/static API and
+      consumed in `SelectorDiagnostic.code`, `ChecklistErrorPayload.code`, `_retry_guidance`,
+      `_error_payload`; `ChecklistSelector` consumed by `MutationRequest.selector`;
+      concrete selector dataclasses wired from CLI/core paths.
+
+      - Core contracts: `src/vectl/core/checklist_batch.py` postconditions structurally
+      constrain diagnostics/result tuples/codes/statuses/revision fields; no hollow/stub
+      path found.
+
+      - Unsupported-field path: CLI and core field selector resolution raises structured
+      `UnsupportedFieldError`; RFC-backed disposition confirmed.
+
+
+      ## Behavioral Proof Register
+
+      - receipt_validation_runtime_use: PROVEN
+
+      - deterministic_core_contract_strength: PROVEN
+
+      - public_symbol_disposition: PROVEN
+
+      - unsupported_field_path: PROVEN
+
+
+      ## Checklist Receipt
+
+      - [x] `parse_checklist_receipt` / `ChecklistReceiptValidationError` have a real
+      runtime caller outside the defining module, or a deliberately private tested
+      reachable entry point with documented disposition.
+
+      - [x] `ChecklistErrorCode` and `ChecklistSelector` are not orphan public surfaces
+      without classification or runtime/public use.
+
+      - [x] Core `@post` contracts in `src/vectl/core/checklist_batch.py` are non-vacuous
+      and structurally meaningful.
+
+      - [x] Unsupported-field deterministic inventory behavior is reachable or explicitly
+      deferred by RFC-backed disposition.
+
+
+      ## Verification Run
+
+      - Static/runtime trace script exited 0.
+
+      - Git status clean in isolated worktree.
+
+      - Read-only audit; no product/docs/orchestrator state files changed.
+
+
+      ## Gaps/Notes
+
+      - none'
   - id: det_check_impl_blocker_retest
     name: Aggregate deterministic checklist blocker retest closure
     status: pending

@@ -103927,7 +103927,7 @@ phases:
       - [x] Receipt validation rejects missing revision/item_id for deterministic
       paths.
 
-      - [ ] Natural-language fuzzy mapping is reserved only for legacy human keyword
+      - [x] Natural-language fuzzy mapping is reserved only for legacy human keyword
       compatibility, not orchestrator receipts.
 
 

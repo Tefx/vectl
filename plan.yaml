@@ -106996,7 +106996,7 @@ phases:
       marks stale receipt proof appropriately and does not return a false PASS based
       only on receipt parse success.
 
-      - [ ] Confirm previously proven behaviors remain non-regressed only as needed
+      - [x] Confirm previously proven behaviors remain non-regressed only as needed
       for this seam: stale revision does not mutate state and deterministic receipt
       mutation remains orchestrator-owned.
 

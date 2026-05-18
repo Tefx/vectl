@@ -105345,7 +105345,7 @@ phases:
       `ChecklistSelector` as intentionally type-only/private or add real runtime/public
       usage; avoid dead public API surface.
 
-      - [ ] B8 unsupported-field inventory path: implement/verify unsupported-field
+      - [x] B8 unsupported-field inventory path: implement/verify unsupported-field
       behavior for deterministic inventory selectors or update the RFC with explicit
       deferred disposition and non-intersection proof.
 

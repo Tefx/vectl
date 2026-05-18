@@ -103170,7 +103170,7 @@ phases:
 
       - [x] Concurrent callers cannot share or corrupt inventory snapshots.
 
-      - [ ] Cleanup/reset semantics are unnecessary because inventory objects are
+      - [x] Cleanup/reset semantics are unnecessary because inventory objects are
       pure values; evidence states this explicitly.
 
       - [ ] Snapshot-scoped item IDs are deterministic for the same snapshot and not

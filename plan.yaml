@@ -100559,7 +100559,7 @@ phases:
     agent: gate-reviewer
   - id: invar_guard_remediation.uiux-audit-post-blocker-closure
     name: Audit UI/UX proof after batched blocker closure
-    status: pending
+    status: claimed
     description: "step_type: verification\nstep_intent: retest_green\nexpected_result:\
       \ green\nverification_scope: phase-check\nagent_source: project\nrisk_tags:\n\
       \  - cli_uiux_surface_evidence\n  - terminal_output\n  - json_ansi_cleanliness\n\
@@ -100649,6 +100649,8 @@ phases:
     depends_on:
     - invar_guard_remediation.close-post-gate-blockers-batched
     agent: uiux-auditor
+    claimed_by: uiux-auditor
+    claimed_at: '2026-05-18T13:43:28.268144+00:00'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

@@ -101612,7 +101612,7 @@ phases:
       \ legacy behavior.\n\nAcceptance checklist:\n- [x] Contract identifies pure\
       \ core checklist service/parser as the sole owner for CLI and MCP.\n- [x] Contract\
       \ limits first-version inventory to `description` and `verification`; `evidence_template`\
-      \ is documented as deferred.\n- [ ] Contract defines snapshot-scoped `item_id`,\
+      \ is documented as deferred.\n- [x] Contract defines snapshot-scoped `item_id`,\
       \ `field+index`, and `checklist_inventory_revision` semantics.\n- [ ] Contract\
       \ defines revision scope as canonicalized raw Markdown of both supported fields\
       \ only.\n- [ ] Contract includes selector-mode table for legacy keyword toggle,\

@@ -104508,7 +104508,7 @@ phases:
 
       - [x] Config consumption: no new config field is parsed without a non-test consumer.
 
-      - [ ] Contract consumption: core `@pre`/`@post` contracts reference real parameters
+      - [x] Contract consumption: core `@pre`/`@post` contracts reference real parameters
       and contain non-vacuous comparisons.
 
       - [ ] Orchestration prompt/receipt wiring reaches actual prompt materialization

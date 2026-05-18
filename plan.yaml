@@ -108372,7 +108372,7 @@ phases:
       - [x] Orchestrator-owned mutation boundary is respected; workers only provide
       item_id/revision receipts.
 
-      - [ ] `description` and `verification` are first-version fields; `evidence_template`
+      - [x] `description` and `verification` are first-version fields; `evidence_template`
       remains explicitly deferred.
 
       - [ ] Revision scope excludes unrelated metadata and includes canonicalized

@@ -101039,7 +101039,7 @@ phases:
       \ read-only and no product code, tests, docs, or plan state are modified.\n\
       - [x] Durable artifact file path is explicitly named and inspected directly.\n\
       - [x] Pasted help/surface snapshots are reviewed from the artifact file, not\
-      \ from plan summaries.\n- [ ] Command executability matrix is reviewed from\
+      \ from plan summaries.\n- [x] Command executability matrix is reviewed from\
       \ the artifact file for actual commands, expected result classes, exit statuses,\
       \ and PASS/FAIL values.\n- [ ] JSON ANSI proof is reviewed from the artifact\
       \ file and proves parseable JSON with no ANSI escapes where applicable.\n- [\

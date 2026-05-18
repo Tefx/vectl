@@ -102801,7 +102801,7 @@ phases:
 
       - [x] Do not change `src/` implementation files in this test-definition step.
 
-      - [ ] Red failures must map to declared surface gaps, not unrelated import or
+      - [x] Red failures must map to declared surface gaps, not unrelated import or
       syntax errors.
 
       - [ ] Do not mark expected-red tests as final green; lifecycle is closed by

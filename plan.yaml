@@ -106542,7 +106542,7 @@ phases:
       - [x] B1 stale revision bypass is closed with no production `rev1` bypass and
       no mutation on stale revision.
 
-      - [ ] B2 CLI JSON false-green is closed with parseable JSON and non-zero status
+      - [x] B2 CLI JSON false-green is closed with parseable JSON and non-zero status
       for deterministic contract errors.
 
       - [ ] B3 RFC receipt schema alignment is closed for minimal `{item_id, revision,

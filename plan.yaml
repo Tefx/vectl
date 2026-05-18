@@ -109000,23 +109000,23 @@ phases:
       but this step may only provide a green handoff to downstream gates when the
       required boundary commands are green or each residual finding has explicit non-intersection
       proof and owner.'
-    verification: '- [ ] full-plan-check protecting architecture review and final
+    verification: '- [x] full-plan-check protecting architecture review and final
       gate: focused checklist command is green and output is pasted.
 
-      - [ ] full-plan-check protecting architecture review and final gate: orchestration
+      - [x] full-plan-check protecting architecture review and final gate: orchestration
       receipt/prompt command is green and output is pasted.
 
-      - [ ] full-plan-check protecting architecture review and final gate: `uv run
+      - [x] full-plan-check protecting architecture review and final gate: `uv run
       pytest -q` is green with no collection error and no unresolved residual failure
       group.
 
-      - [ ] full-plan-check protecting architecture review and final gate: `uv run
+      - [x] full-plan-check protecting architecture review and final gate: `uv run
       invar guard --all` is green, including escape-hatch budget within policy.
 
-      - [ ] If any failure remains, broad failure disposition table proves blocker
+      - [x] If any failure remains, broad failure disposition table proves blocker
       ownership or non-intersection before downstream gate work proceeds.
 
-      - [ ] Expected result is green; no unresolved blocker-class broad pytest or
+      - [x] Expected result is green; no unresolved blocker-class broad pytest or
       invar failure is passed downstream.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

@@ -103519,14 +103519,14 @@ phases:
 
       If a contract artifact is wrong or incomplete, document a deviation record (type,
       what, why, impact) — do NOT silently rewrite.'
-    verification: '- [ ] Run `pytest tests/test_checklist.py -k ''batch or atomic
+    verification: '- [x] Run `pytest tests/test_checklist.py -k ''batch or atomic
       or diagnostics'' -q` and show batch tests pass green.
 
-      - [ ] Evidence shows invalid selector and stale revision leave Markdown unchanged.
+      - [x] Evidence shows invalid selector and stale revision leave Markdown unchanged.
 
-      - [ ] Evidence includes per-selector diagnostics for mixed valid/invalid batch.
+      - [x] Evidence includes per-selector diagnostics for mixed valid/invalid batch.
 
-      - [ ] Evidence confirms marker-only behavior for successful batch.'
+      - [x] Evidence confirms marker-only behavior for successful batch.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

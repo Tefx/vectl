@@ -108093,7 +108093,7 @@ phases:
 
       - [x] CLI/MCP/orchestration focused tests pass green.
 
-      - [ ] Full relevant Python test suite or documented repo-appropriate subset
+      - [x] Full relevant Python test suite or documented repo-appropriate subset
       passes.
 
       - [ ] Invar guard is run with the authoritative project command if relevant

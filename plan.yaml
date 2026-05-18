@@ -103921,7 +103921,7 @@ phases:
       - [x] Worker receipt format records `step_id`, `field`, `item_id`, `checklist_inventory_revision`,
       and desired final state.
 
-      - [ ] Orchestrator-owned mutation boundary is explicit; worker receipts do not
+      - [x] Orchestrator-owned mutation boundary is explicit; worker receipts do not
       mutate plan state directly.
 
       - [ ] Receipt validation rejects missing revision/item_id for deterministic

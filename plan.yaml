@@ -104088,7 +104088,7 @@ phases:
       \ files `test_mod.py` and `test_mod_2.py`, not blocker-class errors."
   - id: det_check_impl_integration_proof
     name: Verify checklist seam integration
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (integration-verifier), validate deterministic
       checklist handling through real core, CLI, MCP, and orchestration seams from
       a fresh perspective.
@@ -104216,6 +104216,8 @@ phases:
     - det_check_impl_cli_mcp
     - det_check_impl_orch_receipts
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-18T16:41:53.396176+00:00'
   - id: det_check_impl_uiux_audit
     name: Audit checklist CLI output surfaces
     status: done

@@ -108618,7 +108618,7 @@ phases:
       - [x] Any remaining broad pytest or invar failure has explicit remediation ownership
       and is not dismissed as pre-existing or out-of-scope.
 
-      - [ ] If residual warning debt remains, evidence explains why it does not invalidate
+      - [x] If residual warning debt remains, evidence explains why it does not invalidate
       the deterministic checklist architecture review or final gate.
 
 

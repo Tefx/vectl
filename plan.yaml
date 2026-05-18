@@ -101984,7 +101984,7 @@ phases:
       - [x] Run `git diff --check` against the remediation diff and record actual
       output.
 
-      - [ ] Confirm no evidence path requires nonexistent `tools/vectl/README.md`.'
+      - [x] Confirm no evidence path requires nonexistent `tools/vectl/README.md`.'
     verification: '- [ ] `./.venv/bin/python -m pytest tests/test_checklist.py -q`
       passes or any non-pass is unrelated and explicitly documented with file/line
       evidence.

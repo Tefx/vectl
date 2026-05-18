@@ -104503,7 +104503,7 @@ phases:
 
       Runnable-surface checklist:
 
-      - [ ] CLI entry point starts and accepts at least one legacy checklist operation.
+      - [x] CLI entry point starts and accepts at least one legacy checklist operation.
 
       - [ ] CLI entry point accepts at least one deterministic checklist operation
       or inventory command if exposed.

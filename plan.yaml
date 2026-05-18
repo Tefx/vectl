@@ -101046,7 +101046,7 @@ phases:
       \ Facade import proof is reviewed from the artifact file and proves `from vectl.core\
       \ import RecoverResult` succeeds.\n- [x] Behavioral proof register is reviewed\
       \ from the artifact file and contains all required control-plane closure fields.\n\
-      - [ ] Audit evidence emits PASS, PASS_WITH_DEBT, or FAIL plus `blockers` array\
+      - [x] Audit evidence emits PASS, PASS_WITH_DEBT, or FAIL plus `blockers` array\
       \ and `gate_open_allowed` boolean.\n- [ ] `gate_open_allowed` is false when\
       \ the durable artifact is missing, incomplete, or relies on managed plan summaries\
       \ alone."

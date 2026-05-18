@@ -104099,7 +104099,7 @@ phases:
 
       Test for:
 
-      - [ ] Happy path: inventory from `description` and `verification`, deterministic
+      - [x] Happy path: inventory from `description` and `verification`, deterministic
       single set-state, deterministic batch, legacy keyword toggle.
 
       - [ ] Edge cases: empty fields, stale revision, invalid selector-mode combinations,

@@ -102558,7 +102558,7 @@ phases:
       - No blockers remain for expected-red test authoring.'
 - id: det_check_tests
   name: 'Deterministic Checklist Handling: Expected-Red Test Definitions'
-  status: in_progress
+  status: done
   gate: Expected-red tests expose deterministic checklist gaps without product implementation
     changes.
   depends_on:
@@ -102943,7 +102943,7 @@ phases:
       own green closure.'
   - id: det_check_tests_gate
     name: Gate expected-red checklist tests
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether expected-red
       checklist tests expose the declared contract gaps without product implementation
       leakage.
@@ -103020,9 +103020,108 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-18T15:25:48.012745+00:00'
+    done_at: '2026-05-18T15:29:33.400364+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## refs Read Confirmation
+
+      - docs/RFC-deterministic-checklists.md — owner, revision/selector, and receipt
+      requirements confirmed.
+
+      - tests/test_checklist.py — deterministic core expected-red anchors confirmed;
+      legacy keyword compatibility still present.
+
+      - tests/test_cli.py — CLI deterministic expected-red anchors and legacy keyword
+      test confirmed.
+
+      - tests/test_mcp.py — MCP deterministic expected-red anchors and legacy keyword
+      test confirmed.
+
+      - tests/orchestration/unit/test_checklist_receipt_contract.py — receipt parser
+      expected-red anchor confirmed.
+
+
+      ## Expected-Red Gate Report
+
+      | Step ID | Test-only scope | Red maps to gap | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | det_check_tests_core_red | yes | yes | none |
+
+      | det_check_tests_surfaces_red | yes | yes | none |
+
+
+      ## Gate Decision Basis
+
+      - requirement_ref: `docs/RFC-deterministic-checklists.md` ownership/revision/selector/receipt
+      requirements.
+
+      - behavior_claim: expected-red tests expose core, CLI/MCP, and orchestration
+      receipt gaps without product implementation leakage.
+
+      - runtime_proof_expected: expected-red only; green proof owned by det_check_impl
+      verification.
+
+      - evidence_ref: commits `79fe240` and `5ec6168`; focused pytest expected-red
+      outputs.
+
+      - status: PROVEN.
+
+      - closure_path: det_check_impl must implement core inventory/mutation, CLI deterministic
+      surfaces, MCP deterministic fields, and receipt parser until anchors pass.
+
+      - gate_decision_basis: OPEN.
+
+
+      gate_open_allowed: true
+
+      verdict: PASS
+
+      blockers: []
+
+      orchestrator_action_hint: COMPLETE
+
+
+      ## Behavioral Proof Register
+
+      - expected-red failures map to declared deterministic checklist gaps: PROVEN.
+
+      - phase changed only tests/fixtures/helpers: PROVEN.
+
+      - legacy keyword compatibility tests remain present: PROVEN.
+
+      - implementation has explicit test anchors: PROVEN.
+
+
+      ## Verification
+
+      - Gate reviewer re-ran core expected-red command: 9 failed / 12 passed, all
+      expected-red from core_checklist stubs.
+
+      - Gate reviewer re-ran surface expected-red command: 8 failed / 26 passed /
+      390 deselected, all expected-red from missing deterministic CLI/MCP/receipt
+      surfaces.
+
+      - Files changed: none (read-only gate).
+
+      - Commit hash(es): none (read-only gate).
+
+
+      ## Checklist receipt
+
+      - All acceptance and verification checklist items were satisfied and toggled
+      complete.
+
+
+      ## Gaps/Notes
+
+      - No blockers remain; det_check_impl can proceed with explicit contract/test
+      anchors.'
 - id: det_check_impl
   name: 'Deterministic Checklist Handling: Implementation and Surface Wiring'
-  status: locked
+  status: pending
   gate: Implementation phase gates canonical core service, deterministic single/batch
     mutations, CLI/MCP surfaces, orchestrator receipts, wiring, liveness, UI/output
     audit, and spec conformance.

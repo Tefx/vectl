@@ -106529,7 +106529,7 @@ phases:
 
       ## Closure inputs
 
-      - [ ] `det_check_impl_blocker_integration_retest` — integration/runtime blocker
+      - [x] `det_check_impl_blocker_integration_retest` — integration/runtime blocker
       family.
 
       - [ ] `det_check_impl_blocker_spec_retest` — spec conformance blocker family.

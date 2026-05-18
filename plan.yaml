@@ -107892,7 +107892,7 @@ phases:
 
       Documentation checklist:
 
-      - [ ] Document legacy human keyword toggle path separately from deterministic
+      - [x] Document legacy human keyword toggle path separately from deterministic
       item_id/revision path.
 
       - [ ] Document supported first-version fields: `description` and `verification`

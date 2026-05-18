@@ -102610,7 +102610,7 @@ phases:
 
       - [x] Invalid selector-mode combinations are rejected deterministically.
 
-      - [ ] Marker-only preservation keeps item text, indentation, ordering, and surrounding
+      - [x] Marker-only preservation keeps item text, indentation, ordering, and surrounding
       Markdown unchanged.
 
       - [ ] Atomic batch mutation is all-or-nothing and returns per-selector diagnostics.

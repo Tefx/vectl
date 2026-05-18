@@ -106562,6 +106562,218 @@ phases:
     - det_check_impl_blocker_spec_retest
     - det_check_impl_blocker_wiring_retest
     agent: gate-reviewer
+  - id: det_check_impl_receipt_refresh_remediation
+    name: Repair stale receipt runtime refresh path
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      loop_family: deterministic_checklist_stale_receipt_refresh
+
+      loop_index: 2
+
+
+      Focused loop-2 remediation for the remaining deterministic checklist integration
+      blocker: stale worker receipts are parsed but no runtime-reachable orchestration
+      path proves inventory refresh before retry/application.
+
+
+      ## Scope
+
+      Touch only the orchestration-owned checklist receipt/evidence/completion path
+      needed to close stale receipt handling. Likely touch paths:
+
+      - `src/vectl/orchestration/evidence.py`
+
+      - `src/vectl/orchestration/dispatch_coordinator.py`
+
+      - `src/vectl/orchestration/core_adapter.py`
+
+      - focused orchestration checklist receipt tests under `tests/orchestration/`
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause to verify: parsed receipt revision staleness is not connected to
+      a runtime-reachable orchestration mutation/decision path that refreshes current
+      checklist inventory before retrying or before issuing a rejected-with-refresh
+      instruction.
+
+      - Symptom observed by `det_check_impl_blocker_integration_retest`: `parse_checklist_receipt`
+      accepts `revision: rev1`; `assess_freeform_evidence` reports `failed=False`;
+      no observed runtime path refreshed inventory or retried stale receipt application.
+
+      - why_previous_fix_failed: the prior batched remediation proved core stale rejection,
+      CLI JSON contract errors, and failed batch all-or-nothing behavior, but did
+      not provide runtime-reachable orchestration evidence that parsed stale receipts
+      cause refresh-before-retry or a governed rejected-with-refresh instruction path.
+
+      - Why this fix is not surface-level: completion requires a runtime path proof
+      through orchestration-owned receipt assessment/completion flow, not only parser/unit
+      acceptance.
+
+
+      ## Required behavior decision
+
+      Implement one of these two spec-governed closures and record which one was chosen:
+
+      1. Runtime refresh-before-retry/application path: a parsed worker receipt with
+      stale `revision` triggers refresh of current checklist inventory/revision and
+      then retries/applies through the orchestrator-owned deterministic mutation flow.
+
+      2. Explicit rejected-with-refresh instruction path: if actual mutation is intentionally
+      later-stage, stale receipt handling must be runtime-reachable and must mark
+      the proof appropriately while returning/recording refresh guidance for the orchestrator
+      to obtain current inventory before retry.
+
+
+      If choosing non-intersection instead of implementation, the step MUST cite `docs/RFC-deterministic-checklists.md`
+      and provide explicit gate non-intersection evidence explaining why stale receipt
+      refresh-before-retry does not intersect `det_check_impl_gate` or `det_check_finalization`.
+      Do not use `pre-existing` or `out-of-scope` as a disposition.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on receipt revision/current inventory state. Private
+      stub classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      ## Acceptance checklist
+
+      - [ ] Runtime-reachable orchestration path handles a parsed stale checklist
+      receipt, not only parser-level validation.
+
+      - [ ] Stale `revision` causes current checklist inventory/revision refresh before
+      retry/application, or a clearly tested rejected-with-refresh instruction path
+      with spec-backed non-intersection disposition.
+
+      - [ ] `assess_freeform_evidence` or the actual completion/evidence pipeline
+      marks stale receipt proof as failed/unproven unless refresh-before-retry or
+      rejected-with-refresh instruction evidence exists.
+
+      - [ ] Evidence includes `why_previous_fix_failed` and identifies the chosen
+      closure path.
+
+      - [ ] Focused tests cover the stale receipt path using a literal stale `revision:
+      rev1` fixture and a current inventory/revision fixture.
+
+      - [ ] No broad refactor, new public receipt schema, or unrelated deterministic
+      checklist behavior changes are introduced.'
+    verification: '- [ ] Focused stale receipt remediation is limited to orchestration-owned
+      receipt/evidence/completion handling and tests.
+
+      - [ ] Runtime path evidence proves refresh-before-retry/application or tested
+      rejected-with-refresh instruction, not parser-only acceptance.
+
+      - [ ] `assess_freeform_evidence` or completion/evidence pipeline no longer treats
+      stale receipt proof as satisfied without runtime refresh evidence.
+
+      - [ ] Tests include stale `revision: rev1` and current inventory/revision fixtures.
+
+      - [ ] Evidence records `why_previous_fix_failed` and chosen closure path.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - `docs/RFC-deterministic-checklists.md` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/orchestration/evidence.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/orchestration/dispatch_coordinator.py` — key passage or "NOT READ:
+      <reason>"
+
+      - `src/vectl/orchestration/core_adapter.py` — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Loop-2 Remediation Evidence
+
+
+      **why_previous_fix_failed**: <explain why batched remediation did not prove
+      runtime stale receipt refresh-before-retry>
+
+
+      **Closure path chosen**: runtime_refresh_before_retry | rejected_with_refresh_instruction
+      | spec_backed_non_intersection
+
+
+      **Runtime path exercised**:
+
+      ```
+
+      <receipt parsing/assessment/completion path from worker receipt to refresh/retry
+      or refresh instruction>
+
+      ```
+
+
+      **Commands/tests executed**:
+
+      ```
+
+      <paste exact focused commands>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste output, not summary>
+
+      ```
+
+
+      **Stale receipt fixture**:
+
+      ```
+
+      <include literal stale revision: rev1 fixture and current inventory/revision
+      fixture>
+
+      ```
+
+
+      **Pipeline marking proof**:
+
+      - `assess_freeform_evidence` or completion/evidence pipeline behavior before/after:
+      <describe>
+
+
+      **Non-intersection disposition if chosen**:
+
+      - requirement_ref: <RFC section>
+
+      - why current phase is not authorized to implement: <required if non-intersection>
+
+      - why it does not intersect remaining gates: <required if non-intersection>
+
+      - future owner if it later intersects: <required if non-intersection>
+
+
+      ## Checklist Receipt
+
+      - [ ] Runtime-reachable orchestration path handles parsed stale checklist receipt.
+
+      - [ ] Refresh-before-retry/application or rejected-with-refresh instruction
+      is proven.
+
+      - [ ] Parser-only acceptance no longer counts as stale receipt proof.
+
+      - [ ] why_previous_fix_failed recorded.
+
+      - [ ] Focused tests and output pasted.'
+    depends_on:
+    - det_check_impl_blocker_integration_retest
+    agent: python-senior
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

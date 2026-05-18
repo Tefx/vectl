@@ -102775,7 +102775,7 @@ phases:
 
       Expected-red coverage checklist:
 
-      - [ ] MCP schema remains backward compatible for legacy `keyword`/`add` calls
+      - [x] MCP schema remains backward compatible for legacy `keyword`/`add` calls
       and adds deterministic request/response fields without removing legacy fields.
 
       - [ ] CLI covers legacy human keyword toggle output and deterministic machine-readable

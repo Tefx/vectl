@@ -100147,7 +100147,7 @@ phases:
       - [x] Evidence states why any remaining warning is non-blocking under INVAR\
       \ policy and names a future owner if that status changes.\n- [x] Evidence is\
       \ current-mainline, not discarded-branch or stale partial-success proof.\n-\
-      \ [ ] The downstream regate step can decide OPEN/BLOCK without consulting unstated\
+      \ [x] The downstream regate step can decide OPEN/BLOCK without consulting unstated\
       \ context."
     verification: '- [ ] For B1, evidence contains a standalone artifact with pasted
       CLI help/surface snapshots, command executability matrix, JSON ANSI proof, facade

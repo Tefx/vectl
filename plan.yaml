@@ -103317,7 +103317,7 @@ phases:
       - None reported for this step.'
   - id: det_check_impl_single_mutation
     name: Complete deterministic single checklist mutation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -103397,6 +103397,8 @@ phases:
     depends_on:
     - det_check_impl_core_inventory
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T15:53:21.409281+00:00'
   - id: det_check_impl_batch_mutation
     name: Complete atomic checklist batch mutation
     status: pending

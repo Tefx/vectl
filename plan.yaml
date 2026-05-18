@@ -104793,7 +104793,7 @@ phases:
       - [x] Contract surface drift: CLI/MCP request/response fields are additive and
       legacy-compatible.
 
-      - [ ] Behavioral precedence claims are marked PROVEN only with runtime/test
+      - [x] Behavioral precedence claims are marked PROVEN only with runtime/test
       evidence; otherwise NEEDS_TEST with closure path.'
     verification: '- [ ] phase-check protecting `det_check_impl_gate`: produce a requirement-by-requirement
       conformance table for the deterministic checklist contract.

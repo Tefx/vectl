@@ -100589,7 +100589,7 @@ phases:
       \ final regate; this step supplies UI/UX auditor evidence for the regate to\
       \ consume.\n\n## Acceptance Checklist\n- [x] Audit is read-only and no product\
       \ code, tests, docs, or plan state are modified.\n- [x] Pasted help/surface\
-      \ snapshots are reviewed for representative CLI surfaces.\n- [ ] Command executability\
+      \ snapshots are reviewed for representative CLI surfaces.\n- [x] Command executability\
       \ matrix is reviewed for actual commands, expected result classes, exit statuses,\
       \ and PASS/FAIL values.\n- [ ] JSON ANSI check is reviewed and proves parseable\
       \ JSON with no ANSI escapes where applicable.\n- [ ] Facade import check is\

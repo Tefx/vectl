@@ -100767,7 +100767,7 @@ phases:
       were satisfied and toggled/updated before completion.'
   - id: invar_guard_remediation.persist-standalone-uiux-proof-artifact
     name: Persist standalone UI/UX proof artifact
-    status: pending
+    status: claimed
     description: "step_type: implementation\nstep_intent: blocker_fix\nexpected_result:\
       \ durable_artifact_created\nagent_source: project\nprovenance: regate finding\
       \ from `invar_guard_remediation.post-blocker-closure-regate`\ndisposition: blocking-now\n\
@@ -100899,6 +100899,8 @@ phases:
     depends_on:
     - invar_guard_remediation.close-post-gate-blockers-batched
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T13:58:24.148477+00:00'
   - id: invar_guard_remediation.uiux-audit-durable-artifact
     name: Audit durable UI/UX proof artifact
     status: pending

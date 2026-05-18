@@ -108375,7 +108375,7 @@ phases:
       - [x] `description` and `verification` are first-version fields; `evidence_template`
       remains explicitly deferred.
 
-      - [ ] Revision scope excludes unrelated metadata and includes canonicalized
+      - [x] Revision scope excludes unrelated metadata and includes canonicalized
       raw Markdown of both supported fields.
 
       - [ ] Batch atomicity and stale-revision semantics are architecture-safe under

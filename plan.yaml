@@ -99037,7 +99037,7 @@ phases:
       - [x] Capture exact AFTER `uvx invar-tools guard --all` excerpt showing weighted
       budget `<=15/15` or structured residual disposition with non-intersection proof.
 
-      - [ ] Confirm CrossHair/property skips caused by prior failures are no longer
+      - [x] Confirm CrossHair/property skips caused by prior failures are no longer
       blocking, or record the closure path if guard still skips them.
 
       - [ ] Report any unclosed residual with structured disposition: provenance,

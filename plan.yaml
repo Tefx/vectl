@@ -104497,7 +104497,7 @@ phases:
 
       Required checks:
 
-      - [ ] Export reachability: any new public checklist symbol has a real import/caller
+      - [x] Export reachability: any new public checklist symbol has a real import/caller
       outside its own module or is intentionally private.
 
       - [ ] CLI registration: deterministic checklist options/subcommands are registered

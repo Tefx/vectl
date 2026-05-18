@@ -108389,3 +108389,179 @@ phases:
     - det_check_full_plan_check
     - det_check_arch_review
     agent: gate-reviewer
+  - id: det_check_full_plan_remediation
+    name: Remediate full-plan verification blockers
+    status: pending
+    description: 'Batched remediation for the failed full-plan verification boundary
+      from `det_check_full_plan_check`.
+
+
+      work_type: technical_debt_remediation
+
+      step_type: implementation
+
+      agent_source: project
+
+      symbolic_testing: true
+
+      command_family_lock: `uv run pytest ...` and `uv run invar guard --all`
+
+
+      ## Scope: fix BOTH blocker families together
+
+      - [ ] Broad pytest collection blocker: `uv run pytest -q` exits during collection
+      because `tests/test_arch_demolition_wave0_characterization.py` imports `_get_next_steps_with_phase`
+      from `vectl.cli` and that symbol is no longer importable.
+
+      - [ ] Invar blocker: `uv run invar guard --all` fails `escape_hatch_budget`
+      with weighted budget `17/15`.
+
+      - [ ] Checklist-adjacent invar warnings are analyzed for gate intersection,
+      including `src/vectl/core_checklist.py` internal_import, `src/vectl/core/checklist_batch.py`
+      internal_import warnings, and `src/vectl/mcp_core_misc_tools.py` shell_pure_logic
+      for `_vectl_check_deterministic`.
+
+
+      ## Required remediation approach
+
+      - [ ] Restore or update the pytest collection path using the smallest authoritative
+      compatibility correction; do not make broad product changes merely to satisfy
+      the characterization test.
+
+      - [ ] Reduce or govern escape-hatch budget pressure through real architectural
+      cleanup, warning reduction, or documented architecture justification; do NOT
+      simply suppress findings, raise thresholds, or lower quality baselines without
+      explicit architectural justification tied to `INVAR.md`.
+
+      - [ ] For each checklist-adjacent warning, decide `blocking-now`, `blocking-later`,
+      or `non-blocking` based on gate intersection, not provenance.
+
+      - [ ] If any finding is claimed non-blocking, evidence proves non-intersection
+      with `det_check_arch_review` and `det_check_final_gate`.
+
+      - [ ] No unrelated refactors, feature work, API reshaping, CLI behavior changes,
+      or broad product rewrites are included.
+
+
+      ## Gate-intersection disposition requirements
+
+      - [ ] Evidence includes a table with columns: `finding`, `provenance`, `disposition`,
+      `intersects_det_check_arch_review`, `intersects_det_check_final_gate`, `owner_or_non_intersection_proof`.
+
+      - [ ] Any remaining broad pytest or invar failure has explicit remediation ownership
+      and is not dismissed as pre-existing or out-of-scope.
+
+      - [ ] If residual warning debt remains, evidence explains why it does not invalidate
+      the deterministic checklist architecture review or final gate.
+
+
+      ## Required commands before handoff
+
+      - [ ] Run `uv run pytest -q` and paste the collection/result summary.
+
+      - [ ] Run `uv run invar guard --all` and paste the summary.
+
+      - [ ] If remediation touches checklist, CLI, MCP, orchestration, or receipt
+      paths, also run `uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
+      -k ''checklist or deterministic or batch or revision'' -q` and `uv run pytest
+      tests/orchestration tests/repro -k ''checklist or receipt or prompt'' -q`.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION remediation step. Stub-only completion is NOT acceptable.
+      Each code deliverable MUST contain substantive logic that processes its inputs
+      and produces outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
+    verification: '- [ ] local-check protecting `det_check_arch_review` and `det_check_final_gate`:
+      broad pytest collection no longer fails on `_get_next_steps_with_phase` import.
+
+      - [ ] full-plan-check protection: `uv run pytest -q` is green or any residual
+      failure has explicit blocker disposition and owner.
+
+      - [ ] full-plan-check protection: `uv run invar guard --all` is green or any
+      residual failure has explicit blocker disposition and owner.
+
+      - [ ] Invar escape-hatch remediation is real reduction/governance, not threshold
+      lowering or suppression without architectural justification.
+
+      - [ ] Gate-intersection disposition table is included for all residual broad
+      pytest/invar findings.
+
+      - [ ] Focused checklist/orchestration commands are run when relevant to touched
+      paths and their outputs are included.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - tests/test_arch_demolition_wave0_characterization.py — key passage or "NOT
+      READ: <reason>"
+
+      - src/vectl/cli.py — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core/checklist_batch.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_misc_tools.py — key passage or "NOT READ: <reason>"
+
+
+      ## Remediation Evidence
+
+
+      **Root Cause vs Symptom**:
+
+      - Pytest root cause:
+
+      - Pytest symptom:
+
+      - Invar root cause:
+
+      - Invar symptom:
+
+      - Why this fix is not surface-level:
+
+
+      **Commands executed**:
+
+      ```text
+
+      uv run pytest -q
+
+      uv run invar guard --all
+
+      # focused commands if relevant
+
+      ```
+
+
+      **Actual outputs**:
+
+      ```text
+
+      <paste summaries and key failures/warnings>
+
+      ```
+
+
+      ## Gate-Intersection Disposition Table
+
+      | finding | provenance | disposition | intersects_det_check_arch_review | intersects_det_check_final_gate
+      | owner_or_non_intersection_proof |
+
+      | --- | --- | --- | --- | --- | --- |
+
+
+      ## Scope Guard
+
+      - Unrelated refactors avoided: YES/NO
+
+      - Thresholds/suppressions changed: NO, or justification with architectural authority
+
+      - Remaining blocker-class debt owner: <none or step id>'
+    depends_on:
+    - det_check_full_plan_check
+    agent: python-senior

@@ -101978,7 +101978,7 @@ phases:
 
       - [x] Remove trailing whitespace from the remediation diff.
 
-      - [ ] Run the targeted checklist, MCP checklist, and CLI check pytest commands
+      - [x] Run the targeted checklist, MCP checklist, and CLI check pytest commands
       and record actual outputs.
 
       - [ ] Run `git diff --check` against the remediation diff and record actual

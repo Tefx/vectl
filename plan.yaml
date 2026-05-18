@@ -104795,13 +104795,13 @@ phases:
 
       - [x] Behavioral precedence claims are marked PROVEN only with runtime/test
       evidence; otherwise NEEDS_TEST with closure path.'
-    verification: '- [ ] phase-check protecting `det_check_impl_gate`: produce a requirement-by-requirement
+    verification: '- [x] phase-check protecting `det_check_impl_gate`: produce a requirement-by-requirement
       conformance table for the deterministic checklist contract.
 
-      - [ ] Flag DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND items with explicit closure
+      - [x] Flag DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND items with explicit closure
       paths.
 
-      - [ ] Block gate if any blocker-class selector/revision/error/surface requirement
+      - [x] Block gate if any blocker-class selector/revision/error/surface requirement
       is not PROVEN or non-intersecting.'
     evidence_template: '## Spec Conformance Report
 

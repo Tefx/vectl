@@ -108630,7 +108630,7 @@ phases:
       were used by the worker.'
   - id: det_check_final_gate
     name: Final gate deterministic checklist handling
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether deterministic
       checklist handling is complete and safe to mark done.
 
@@ -108744,6 +108744,8 @@ phases:
     - det_check_full_plan_retest
     - det_check_arch_review
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-18T20:18:57.839995+00:00'
   - id: det_check_full_plan_remediation
     name: Remediate full-plan verification blockers
     status: done

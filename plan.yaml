@@ -106671,7 +106671,7 @@ phases:
     agent: gate-reviewer
   - id: det_check_impl_receipt_refresh_remediation
     name: Repair stale receipt runtime refresh path
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -106881,6 +106881,8 @@ phases:
     depends_on:
     - det_check_impl_blocker_integration_retest
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T17:32:30.745365+00:00'
   - id: det_check_impl_receipt_refresh_retest
     name: Retest stale receipt runtime refresh path
     status: pending

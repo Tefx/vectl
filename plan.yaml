@@ -104511,7 +104511,7 @@ phases:
       - [x] MCP checklist tool wrapper can be invoked through the registered tool
       function and returns expected structured output.
 
-      - [ ] At least one documented request/command reaches the real entrypoint path
+      - [x] At least one documented request/command reaches the real entrypoint path
       end-to-end.
 
       - [ ] Handler-only proof is not accepted.

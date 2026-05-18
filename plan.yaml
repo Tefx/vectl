@@ -108271,7 +108271,7 @@ phases:
 
       - [ ] FAIL: Architecture gaps block final gate.'
     depends_on:
-    - det_check_full_plan_check
+    - det_check_full_plan_retest
     agent: software-architect
   - id: det_check_final_gate
     name: Final gate deterministic checklist handling

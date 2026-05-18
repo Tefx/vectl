@@ -93402,7 +93402,7 @@ phases:
       - [x] Regression/dangling detection reports no missing command handlers or stale
       help/registration entries.
 
-      - [ ] `RecoverResult` and legacy `vectl.core` facade compatibility are proven
+      - [x] `RecoverResult` and legacy `vectl.core` facade compatibility are proven
       after residual remediation.
 
       - [ ] UI/UX audit decision is a parseable PASS / PASS_WITH_DEBT / FAIL handoff

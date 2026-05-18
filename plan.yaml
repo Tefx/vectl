@@ -101255,7 +101255,7 @@ phases:
       were satisfied and toggled/updated before completion.'
   - id: invar_guard_remediation.final-regate-durable-uiux-artifact
     name: Final regate after durable UI/UX artifact
-    status: pending
+    status: claimed
     description: "step_type: gate\nstep_intent: retest_green\nexpected_result: green\n\
       verification_scope: full-plan-check\nagent_source: default\nindependence_level:\
       \ L1\nsupersedes_failed_step: invar_guard_remediation.post-blocker-closure-regate\n\
@@ -101401,6 +101401,8 @@ phases:
     - invar_guard_remediation.persist-standalone-uiux-proof-artifact
     - invar_guard_remediation.uiux-audit-durable-artifact
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-18T14:14:59.784186+00:00'
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

@@ -108663,7 +108663,7 @@ phases:
 
       - [x] CLI/MCP liveness and UI/output audit evidence are present.
 
-      - [ ] No unresolved behavioral/runtime obligation is bypassed.'
+      - [x] No unresolved behavioral/runtime obligation is bypassed.'
     verification: '- [ ] full-plan-check gate: review doc sync, full-plan verification,
       and architecture review evidence.
 

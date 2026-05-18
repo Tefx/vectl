@@ -108091,7 +108091,7 @@ phases:
 
       - [x] Focused checklist tests pass green.
 
-      - [ ] CLI/MCP/orchestration focused tests pass green.
+      - [x] CLI/MCP/orchestration focused tests pass green.
 
       - [ ] Full relevant Python test suite or documented repo-appropriate subset
       passes.

@@ -102297,27 +102297,27 @@ phases:
       - [x] Missing `tools/vectl/README.md` is not treated as a blocker.
 
       - [x] Structured gate decision basis is present and supports OPEN or BLOCK explicitly.'
-    verification: '- [ ] `./.venv/bin/python -m pytest tests/test_checklist.py -q`
+    verification: '- [x] `./.venv/bin/python -m pytest tests/test_checklist.py -q`
       passes or any remaining failure has explicit non-intersection evidence.
 
-      - [ ] `./.venv/bin/python -m pytest tests/test_mcp.py -q -k checklist` passes
+      - [x] `./.venv/bin/python -m pytest tests/test_mcp.py -q -k checklist` passes
       or any remaining failure has explicit non-intersection evidence.
 
-      - [ ] `./.venv/bin/python -m pytest tests/test_cli.py -q -k check` passes or
+      - [x] `./.venv/bin/python -m pytest tests/test_cli.py -q -k check` passes or
       any remaining failure has explicit non-intersection evidence.
 
-      - [ ] `git diff --check` passes for the remediation diff.
+      - [x] `git diff --check` passes for the remediation diff.
 
-      - [ ] `update_checklist(plan, step_id, *, check=None, append=None) -> Plan`
+      - [x] `update_checklist(plan, step_id, *, check=None, append=None) -> Plan`
       remains the authoritative legacy-compatible public surface.
 
-      - [ ] Deterministic checklist contract details are adequate for expected-red
+      - [x] Deterministic checklist contract details are adequate for expected-red
       tests covering unsupported fields, mixed selector modes, error/retry payloads,
       and orchestrator receipt schema.
 
-      - [ ] No required evidence path depends on nonexistent `tools/vectl/README.md`.
+      - [x] No required evidence path depends on nonexistent `tools/vectl/README.md`.
 
-      - [ ] Gate decision basis is structured and explicitly OPEN or BLOCK.'
+      - [x] Gate decision basis is structured and explicitly OPEN or BLOCK.'
     evidence_template: '## Gate Review Report
 
 

@@ -103359,7 +103359,7 @@ phases:
       - [x] Legacy keyword toggle still toggles exactly one fuzzy match and preserves
       ambiguous/no-match errors.
 
-      - [ ] Marker-only preservation changes only the checkbox marker.
+      - [x] Marker-only preservation changes only the checkbox marker.
 
 
       ## Completion Criteria (stub exclusion)

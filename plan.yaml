@@ -108969,7 +108969,7 @@ phases:
 
       ## Required boundary commands
 
-      - [ ] Run `uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
+      - [x] Run `uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
       -k ''checklist or deterministic or batch or revision'' -q` and paste output.
 
       - [ ] Run `uv run pytest tests/orchestration tests/repro -k ''checklist or receipt

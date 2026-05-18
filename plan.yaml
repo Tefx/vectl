@@ -102296,7 +102296,7 @@ phases:
 
       - [x] Missing `tools/vectl/README.md` is not treated as a blocker.
 
-      - [ ] Structured gate decision basis is present and supports OPEN or BLOCK explicitly.'
+      - [x] Structured gate decision basis is present and supports OPEN or BLOCK explicitly.'
     verification: '- [ ] `./.venv/bin/python -m pytest tests/test_checklist.py -q`
       passes or any remaining failure has explicit non-intersection evidence.
 

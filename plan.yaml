@@ -108600,7 +108600,7 @@ phases:
       simply suppress findings, raise thresholds, or lower quality baselines without
       explicit architectural justification tied to `INVAR.md`.
 
-      - [ ] For each checklist-adjacent warning, decide `blocking-now`, `blocking-later`,
+      - [x] For each checklist-adjacent warning, decide `blocking-now`, `blocking-later`,
       or `non-blocking` based on gate intersection, not provenance.
 
       - [ ] If any finding is claimed non-blocking, evidence proves non-intersection

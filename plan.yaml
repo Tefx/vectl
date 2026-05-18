@@ -108591,7 +108591,7 @@ phases:
 
       ## Required remediation approach
 
-      - [ ] Restore or update the pytest collection path using the smallest authoritative
+      - [x] Restore or update the pytest collection path using the smallest authoritative
       compatibility correction; do not make broad product changes merely to satisfy
       the characterization test.
 

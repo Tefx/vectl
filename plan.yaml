@@ -102081,6 +102081,254 @@ phases:
     depends_on:
     - det_check_contract_gate
     agent: python-senior
+  - id: det_check_contract_retest_gate
+    name: Retest and gate deterministic checklist contract remediation
+    status: pending
+    description: 'Fresh adversarial retest/gate for deterministic checklist contract
+      remediation.
+
+
+      step_type: gate
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+      agent_source: default
+
+      Independence Level: L1 independent gate review. Agent MUST remain independent
+      from the fix step agent (`python-senior`).
+
+
+      As an INDEPENDENT REVIEWER, verify that the batched remediation from `det_check_contract_fix_gate_blockers`
+      closes the failed contract gate without widening scope into full deterministic
+      checklist implementation.
+
+
+      Required refs to use:
+
+      - docs/RFC-deterministic-checklists.md
+
+      - src/vectl/core_checklist.py
+
+      - src/vectl/core_plan_mutations.py
+
+      - tests/test_checklist.py
+
+      - tests/test_mcp.py
+
+      - tests/test_cli.py
+
+
+      Do NOT require `tools/vectl/README.md`; it is absent and should be treated as
+      an absent optional/non-blocking ref only if mentioned by prior guidance.
+
+
+      Adversarial checks:
+
+      1. Re-run targeted checklist/CLI/MCP commands from the failed gate and inspect
+      failures, not only summaries.
+
+      2. Verify `git diff --check` is clean for the remediation diff.
+
+      3. Verify there is no public-surface authority conflict: `update_checklist(plan,
+      step_id, *, check=None, append=None) -> Plan` remains compatible with existing
+      callers/tests.
+
+      4. Verify deterministic checklist contract additions remain contract-pure and
+      do not implement the full feature before expected-red tests.
+
+      5. Verify contract details are adequate for expected-red authors to cover unsupported-field
+      API paths, invalid mixed selector modes, error payload/retry guidance, and concrete
+      orchestrator receipt schema.
+
+      6. Verify evidence uses existing authoritative refs and does not block on nonexistent
+      `tools/vectl/README.md`.
+
+
+      ## Gate Decision Basis Required
+
+      Produce a structured decision basis mapping:
+
+      - requirement_ref
+
+      - behavior_claim
+
+      - runtime_proof_expected
+
+      - evidence_ref
+
+      - status
+
+      - closure_path
+
+      - gate_decision_basis
+
+
+      Any `NEEDS_TEST`, `UNPROVEN`, or `UNCERTAIN_BLOCKING` item must have explicit
+      remediation/retest ownership or explicit non-intersection evidence. Gate may
+      OPEN only when blocker-class items are PROVEN or explicitly non-intersecting.
+
+
+      ## Verification Checklist
+
+      - [ ] Targeted checklist, MCP checklist, and CLI check commands pass or non-pass
+      is proven unrelated/non-intersecting.
+
+      - [ ] `git diff --check` for remediation diff passes.
+
+      - [ ] No public-surface authority conflict remains for `update_checklist` legacy
+      signature/behavior.
+
+      - [ ] Contract details are sufficient for expected-red test authors.
+
+      - [ ] Contract purity is preserved; no full deterministic checklist implementation
+      was completed in the contract phase.
+
+      - [ ] Missing `tools/vectl/README.md` is not treated as a blocker.
+
+      - [ ] Structured gate decision basis is present and supports OPEN or BLOCK explicitly.'
+    verification: '- [ ] `./.venv/bin/python -m pytest tests/test_checklist.py -q`
+      passes or any remaining failure has explicit non-intersection evidence.
+
+      - [ ] `./.venv/bin/python -m pytest tests/test_mcp.py -q -k checklist` passes
+      or any remaining failure has explicit non-intersection evidence.
+
+      - [ ] `./.venv/bin/python -m pytest tests/test_cli.py -q -k check` passes or
+      any remaining failure has explicit non-intersection evidence.
+
+      - [ ] `git diff --check` passes for the remediation diff.
+
+      - [ ] `update_checklist(plan, step_id, *, check=None, append=None) -> Plan`
+      remains the authoritative legacy-compatible public surface.
+
+      - [ ] Deterministic checklist contract details are adequate for expected-red
+      tests covering unsupported fields, mixed selector modes, error/retry payloads,
+      and orchestrator receipt schema.
+
+      - [ ] No required evidence path depends on nonexistent `tools/vectl/README.md`.
+
+      - [ ] Gate decision basis is structured and explicitly OPEN or BLOCK.'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer (independent of `det_check_contract_fix_gate_blockers`)
+
+      **Phase**: det_check_contracts
+
+      **Retest target**: det_check_contract_fix_gate_blockers
+
+      **Timestamp**: <ISO 8601>
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - docs/RFC-deterministic-checklists.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_plan_mutations.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_checklist.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_mcp.py — key passage or "NOT READ: <reason>"
+
+      - tests/test_cli.py — key passage or "NOT READ: <reason>"
+
+
+      If prior guidance mentions `tools/vectl/README.md`, record: "NOT READ: path
+      absent; non-blocking because current remediation refs use existing authoritative
+      sources."
+
+
+      ### Targeted Command Evidence
+
+      ```text
+
+      ./.venv/bin/python -m pytest tests/test_checklist.py -q
+
+      <paste output>
+
+
+      ./.venv/bin/python -m pytest tests/test_mcp.py -q -k checklist
+
+      <paste output>
+
+
+      ./.venv/bin/python -m pytest tests/test_cli.py -q -k check
+
+      <paste output>
+
+
+      git diff --check
+
+      <paste output>
+
+      ```
+
+
+      ### Public Surface Authority Check
+
+      - Observed `update_checklist` signature:
+
+      - Legacy callers using `check=`/`append=` verified:
+
+      - Authority conflict remaining: YES/NO
+
+
+      ### Contract Readiness Check
+
+      - Unsupported-field API paths covered in contract wording/types: YES/NO
+
+      - Invalid mixed selector modes covered: YES/NO
+
+      - Error payload/retry guidance covered: YES/NO
+
+      - Concrete orchestrator receipt schema covered: YES/NO
+
+      - Full deterministic implementation avoided in contract phase: YES/NO
+
+
+      ### Structured Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1_PUBLIC_SURFACE_REGRESSION | Legacy `update_checklist` public surface preserved
+      | targeted checklist/MCP/CLI tests pass | <command refs> | PROVEN/NEEDS_TEST/UNPROVEN
+      | <none or remediation> | OPEN/BLOCK basis |
+
+      | B2_REQUIRED_REF_MISSING | Nonexistent ref not required as blocker | evidence
+      uses existing refs | refs confirmation | PROVEN/NEEDS_TEST/UNPROVEN | <none
+      or remediation> | OPEN/BLOCK basis |
+
+      | B3_DIFF_CHECK_FAILURE | Trailing whitespace removed | `git diff --check` clean
+      | command output | PROVEN/NEEDS_TEST/UNPROVEN | <none or remediation> | OPEN/BLOCK
+      basis |
+
+      | contract_detail_readiness | Expected-red authors have adequate contract detail
+      | adversarial contract review | source refs | PROVEN/NEEDS_TEST/UNPROVEN | <none
+      or remediation> | OPEN/BLOCK basis |
+
+
+      ### Gate Decision
+
+      - [ ] **OPEN**: Remediation passes; `det_check_tests` may proceed after phase
+      dependency unlocks.
+
+      - [ ] **BLOCKED**: Issues remain; list required follow-up remediation.
+
+
+      **Confidence**: high/medium/low'
+    depends_on:
+    - det_check_contract_fix_gate_blockers
+    agent: gate-reviewer
 - id: det_check_tests
   name: 'Deterministic Checklist Handling: Expected-Red Test Definitions'
   status: locked

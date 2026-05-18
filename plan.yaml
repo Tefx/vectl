@@ -101976,7 +101976,7 @@ phases:
       - [x] Refine contract wording/types for unsupported fields, mixed selector modes,
       error payload/retry guidance, and orchestrator receipt schema.
 
-      - [ ] Remove trailing whitespace from the remediation diff.
+      - [x] Remove trailing whitespace from the remediation diff.
 
       - [ ] Run the targeted checklist, MCP checklist, and CLI check pytest commands
       and record actual outputs.

@@ -108612,7 +108612,7 @@ phases:
 
       ## Gate-intersection disposition requirements
 
-      - [ ] Evidence includes a table with columns: `finding`, `provenance`, `disposition`,
+      - [x] Evidence includes a table with columns: `finding`, `provenance`, `disposition`,
       `intersects_det_check_arch_review`, `intersects_det_check_final_gate`, `owner_or_non_intersection_proof`.
 
       - [ ] Any remaining broad pytest or invar failure has explicit remediation ownership

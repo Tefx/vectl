@@ -101732,7 +101732,7 @@ phases:
       raise `NotImplementedError` as required for contract purity.'
   - id: det_check_contract_gate
     name: Gate deterministic checklist contract
-    status: claimed
+    status: skipped
     description: 'As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the deterministic
       checklist contract phase meets the quality bar for expected-red test authoring.
 
@@ -101819,6 +101819,7 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-18T14:33:24.945639+00:00'
+    skipped_reason: superseded
   - id: det_check_contract_fix_gate_blockers
     name: Fix contract gate blockers for deterministic checklist contract
     status: pending

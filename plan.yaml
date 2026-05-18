@@ -101295,7 +101295,7 @@ phases:
       \ is reviewed and current-mainline.\n- [x] Durable standalone UI/UX artifact\
       \ file is reviewed directly and contains all required subproofs rather than\
       \ plan-summary references.\n- [x] New durable-artifact `uiux-auditor` validation\
-      \ is reviewed and gates on the artifact file itself.\n- [ ] Core contract warning\
+      \ is reviewed and gates on the artifact file itself.\n- [x] Core contract warning\
       \ register is reviewed and every cited warning is fixed or dispositioned with\
       \ downstream non-intersection proof.\n- [ ] Gate decision basis includes structured\
       \ behavioral proof register fields for each blocker family.\n- [ ] OPEN decision\

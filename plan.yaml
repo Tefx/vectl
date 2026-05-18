@@ -108565,3 +108565,149 @@ phases:
     depends_on:
     - det_check_full_plan_check
     agent: python-senior
+  - id: det_check_full_plan_retest
+    name: Retest full-plan verification boundary
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier), rerun the failed
+      full-plan verification boundary after `det_check_full_plan_remediation`.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: full-plan-check
+
+      agent_source: project
+
+      Protects downstream `det_check_arch_review` and `det_check_final_gate`.
+
+
+      ## Required boundary commands
+
+      - [ ] Run `uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
+      -k ''checklist or deterministic or batch or revision'' -q` and paste output.
+
+      - [ ] Run `uv run pytest tests/orchestration tests/repro -k ''checklist or receipt
+      or prompt'' -q` and paste output.
+
+      - [ ] Run `uv run pytest -q` and paste output.
+
+      - [ ] Run `uv run invar guard --all` and paste output.
+
+
+      ## Broad failure disposition if anything remains
+
+      - [ ] Evidence includes a disposition table for every remaining failure/warning
+      that could intersect final review.
+
+      - [ ] Table columns are `command`, `finding`, `classification`, `provenance`,
+      `disposition`, `intersects_det_check_arch_review`, `intersects_det_check_final_gate`,
+      `closure_path`.
+
+      - [ ] `NEEDS_TEST`, `UNPROVEN`, or `UNCERTAIN_BLOCKING` items receive explicit
+      remediation/retest ownership and cannot be bypassed by final gate.
+
+      - [ ] Any non-blocking claim proves non-intersection with both downstream locked
+      steps.
+
+
+      A retest that discovers remaining blockers is successful as verification work,
+      but this step may only provide a green handoff to downstream gates when the
+      required boundary commands are green or each residual finding has explicit non-intersection
+      proof and owner.'
+    verification: '- [ ] full-plan-check protecting architecture review and final
+      gate: focused checklist command is green and output is pasted.
+
+      - [ ] full-plan-check protecting architecture review and final gate: orchestration
+      receipt/prompt command is green and output is pasted.
+
+      - [ ] full-plan-check protecting architecture review and final gate: `uv run
+      pytest -q` is green with no collection error.
+
+      - [ ] full-plan-check protecting architecture review and final gate: `uv run
+      invar guard --all` is green, including escape-hatch budget within policy.
+
+      - [ ] If any failure remains, broad failure disposition table proves blocker
+      ownership or non-intersection before downstream gate work proceeds.
+
+      - [ ] Expected result is green; no unresolved blocker-class broad pytest or
+      invar failure is passed downstream.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - tests/test_arch_demolition_wave0_characterization.py — key passage or "NOT
+      READ: <reason>"
+
+      - src/vectl/cli.py — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core_checklist.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core/checklist_batch.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/mcp_core_misc_tools.py — key passage or "NOT READ: <reason>"
+
+
+      ## Full-Plan Retest Report
+
+
+      **Tester**: integration-verifier (independent of remediation)
+
+      **Scope**: full-plan-check after det_check_full_plan_remediation
+
+      **Expected result**: green
+
+
+      ### Commands and actual outputs
+
+      ```text
+
+      uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py -k
+      ''checklist or deterministic or batch or revision'' -q
+
+      <paste output>
+
+
+      uv run pytest tests/orchestration tests/repro -k ''checklist or receipt or prompt''
+      -q
+
+      <paste output>
+
+
+      uv run pytest -q
+
+      <paste output>
+
+
+      uv run invar guard --all
+
+      <paste output>
+
+      ```
+
+
+      ## Broad Failure Disposition Table
+
+      | command | finding | classification | provenance | disposition | intersects_det_check_arch_review
+      | intersects_det_check_final_gate | closure_path |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ### Headline
+
+      - [ ] PASS: all required boundary commands are green.
+
+      - [ ] BLOCKED: residual blocker-class failure remains and has remediation ownership.
+
+      - [ ] PASS_WITH_DEBT: only explicit non-intersecting debt remains with owner
+      and proof.'
+    depends_on:
+    - det_check_full_plan_remediation
+    agent: integration-verifier

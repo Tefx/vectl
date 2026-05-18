@@ -108992,7 +108992,7 @@ phases:
       - [x] `NEEDS_TEST`, `UNPROVEN`, or `UNCERTAIN_BLOCKING` items receive explicit
       remediation/retest ownership and cannot be bypassed by final gate.
 
-      - [ ] Any non-blocking claim proves non-intersection with both downstream locked
+      - [x] Any non-blocking claim proves non-intersection with both downstream locked
       steps.
 
 

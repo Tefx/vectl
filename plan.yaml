@@ -90835,7 +90835,7 @@ phases:
       `cli-surface-preservation-uiux-audit`, and `invar_guard_remediation.escape-budget-full-guard-retest`
       are complete before this verifier runs.
 
-      - [ ] Authoritative `uvx invar-tools guard --all` output is pasted from current
+      - [x] Authoritative `uvx invar-tools guard --all` output is pasted from current
       mainline.
 
       - [ ] Doctest/CrossHair/property phases are not skipped due to prior failures

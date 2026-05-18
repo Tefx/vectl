@@ -101302,28 +101302,28 @@ phases:
       \ is denied if evidence relies on stale partial success, discarded branch state,\
       \ or managed plan summaries alone.\n- [x] Downstream deterministic-checklist\
       \ phases remain blocked unless this final regate opens."
-    verification: '- [ ] Fresh/cold `uvx invar-tools guard --all` was run or independently
+    verification: '- [x] Fresh/cold `uvx invar-tools guard --all` was run or independently
       verified on current mainline and output includes exit status, status/errors/warnings/infos,
       and escape budget.
 
-      - [ ] Durable standalone UI/UX artifact includes pasted help/surface snapshots,
+      - [x] Durable standalone UI/UX artifact includes pasted help/surface snapshots,
       command executability matrix, JSON ANSI proof, facade import proof, behavioral
       proof register, and uiux-auditor-compatible validation note.
 
-      - [ ] UI/UX proof was validated by `invar_guard_remediation.uiux-audit-durable-artifact`
+      - [x] UI/UX proof was validated by `invar_guard_remediation.uiux-audit-durable-artifact`
       against the durable artifact file, not prompt/plan evidence.
 
-      - [ ] Each cited Core contract warning is proven fixed with non-vacuous @pre/@post/doctest
+      - [x] Each cited Core contract warning is proven fixed with non-vacuous @pre/@post/doctest
       or has narrow non-blocking residual disposition under INVAR policy with downstream
       non-intersection proof.
 
-      - [ ] Gate decision basis records PROVEN/NON_BLOCKING/BLOCK for each blocker
+      - [x] Gate decision basis records PROVEN/NON_BLOCKING/BLOCK for each blocker
       family and does not open on stale partial-success evidence.
 
-      - [ ] The decision explicitly states whether `det_check_contracts` and later
+      - [x] The decision explicitly states whether `det_check_contracts` and later
       locked phases may proceed.
 
-      - [ ] OPEN is forbidden if any required proof exists only in managed plan summaries
+      - [x] OPEN is forbidden if any required proof exists only in managed plan summaries
       or prior prompt/evidence text.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

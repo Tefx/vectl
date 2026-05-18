@@ -105795,7 +105795,7 @@ phases:
       - [x] CLI deterministic batch with stale/invalid revision and `--json` exits
       non-zero while emitting parseable JSON error payload.
 
-      - [ ] Failed batch proves all-or-nothing/no-mutation with before/after inventory
+      - [x] Failed batch proves all-or-nothing/no-mutation with before/after inventory
       or plan-state evidence.
 
       - [ ] Stale receipt path proves refresh-before-retry through a runtime-reachable

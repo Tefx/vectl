@@ -100898,6 +100898,149 @@ phases:
     depends_on:
     - invar_guard_remediation.close-post-gate-blockers-batched
     agent: python-senior
+  - id: invar_guard_remediation.uiux-audit-durable-artifact
+    name: Audit durable UI/UX proof artifact
+    status: pending
+    description: "step_type: verification\nstep_intent: retest_green\nexpected_result:\
+      \ green\nverification_scope: phase-check\nagent_source: project\nindependence_level:\
+      \ L1\nrisk_tags:\n  - cli_uiux_surface_evidence\n  - terminal_output\n  - json_ansi_cleanliness\n\
+      \  - behavioral_proof_register\n  - durable_artifact_validation\n\nVerify-only\
+      \ `uiux-auditor` audit of the durable standalone artifact produced by `invar_guard_remediation.persist-standalone-uiux-proof-artifact`.\n\
+      \nThis step supersedes the prior prompt/evidence-only UI/UX audit path by requiring\
+      \ the auditor to inspect the repository artifact file itself. The auditor MUST\
+      \ NOT accept plan summaries, prior step evidence, or prompt-embedded artifacts\
+      \ as substitutes.\n\n## Required Audit Checks\n- Open and inspect the durable\
+      \ artifact file under `docs/invar_guard_remediation/` (preferred: `docs/invar_guard_remediation/uiux-proof-artifact.md`).\n\
+      - Confirm pasted help/surface snapshots exist for representative CLI surfaces\
+      \ and are readable enough to judge CLI/UIUX surface behavior.\n- Confirm command\
+      \ executability matrix exists with actual command, expected result class, exit\
+      \ status, PASS/FAIL, and evidence reference for each command.\n- Confirm JSON\
+      \ ANSI proof shows machine-readable JSON parses cleanly and has zero ANSI escape\
+      \ sequences where JSON output is expected.\n- Confirm facade import proof shows\
+      \ `from vectl.core import RecoverResult` succeeds in the same current-mainline\
+      \ environment.\n- Confirm behavioral proof register includes `requirement_ref`,\
+      \ `behavior_claim`, `runtime_proof_expected`, `evidence_ref`, `status`, `closure_path`,\
+      \ and `gate_decision_basis`.\n- Confirm audit output includes parseable PASS\
+      \ / PASS_WITH_DEBT / FAIL closure signal, `blockers` array, and `gate_open_allowed`\
+      \ boolean.\n\n## Non-Goals\n- Do not implement or fix CLI behavior.\n- Do not\
+      \ edit the artifact; report missing or insufficient evidence as blockers.\n\
+      - Do not replace the final regate; this step supplies durable-artifact UI/UX\
+      \ auditor evidence for the regate.\n\n## Acceptance Checklist\n- [ ] Audit is\
+      \ read-only and no product code, tests, docs, or plan state are modified.\n\
+      - [ ] Durable artifact file path is explicitly named and inspected directly.\n\
+      - [ ] Pasted help/surface snapshots are reviewed from the artifact file, not\
+      \ from plan summaries.\n- [ ] Command executability matrix is reviewed from\
+      \ the artifact file for actual commands, expected result classes, exit statuses,\
+      \ and PASS/FAIL values.\n- [ ] JSON ANSI proof is reviewed from the artifact\
+      \ file and proves parseable JSON with no ANSI escapes where applicable.\n- [\
+      \ ] Facade import proof is reviewed from the artifact file and proves `from\
+      \ vectl.core import RecoverResult` succeeds.\n- [ ] Behavioral proof register\
+      \ is reviewed from the artifact file and contains all required control-plane\
+      \ closure fields.\n- [ ] Audit evidence emits PASS, PASS_WITH_DEBT, or FAIL\
+      \ plus `blockers` array and `gate_open_allowed` boolean.\n- [ ] `gate_open_allowed`\
+      \ is false when the durable artifact is missing, incomplete, or relies on managed\
+      \ plan summaries alone."
+    verification: '- [ ] Verify-only audit made no product-code, test, documentation,
+      or plan-state changes.
+
+      - [ ] Durable artifact file under `docs/invar_guard_remediation/` was inspected
+      directly and not replaced by managed plan summaries.
+
+      - [ ] Pasted help/surface snapshots are present and sufficient for representative
+      CLI/UIUX command surfaces.
+
+      - [ ] Command executability matrix includes actual command, expected result
+      class, exit status, and PASS/FAIL for each audited command.
+
+      - [ ] JSON ANSI evidence proves JSON output is parseable and free of ANSI escapes
+      where machine-readable JSON is expected.
+
+      - [ ] Facade import evidence proves `from vectl.core import RecoverResult` succeeds
+      in the same current-mainline environment.
+
+      - [ ] Behavioral proof register contains requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis.
+
+      - [ ] Audit handoff contains parseable closure signal PASS, PASS_WITH_DEBT,
+      or FAIL, plus `blockers` array and `gate_open_allowed` boolean.
+
+      - [ ] `gate_open_allowed` is false when blockers are non-empty, the artifact
+      is missing, or any blocker-class behavioral obligation remains UNPROVEN, NEEDS_TEST,
+      or UNCERTAIN_BLOCKING without non-intersection proof.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/invar_guard_remediation/uiux-proof-artifact.md — key passage or "NOT
+      READ: <reason>"
+
+      - tools/vectl/README.md — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Durable Artifact UI/UX Audit Report
+
+
+      **Tester**: uiux-auditor
+
+      **Scope**: durable standalone UI/UX proof artifact
+
+      **Independence Level**: L1
+
+      **Artifact path inspected directly**: <path>
+
+
+      ### Read-Only Confirmation
+
+      - Product code modified: NO/YES
+
+      - Tests modified: NO/YES
+
+      - Docs modified: NO/YES (artifact edits forbidden here)
+
+      - Plan state modified: NO/YES
+
+
+      ### Artifact Completeness Table
+
+      | Required proof | Present in artifact? | Evidence reference | Verdict |
+
+      | --- | --- | --- | --- |
+
+      | Pasted help/surface snapshots | PASS/FAIL | <section> | <notes> |
+
+      | Command executability matrix | PASS/FAIL | <section> | <notes> |
+
+      | JSON ANSI proof | PASS/FAIL | <section> | <notes> |
+
+      | Facade import proof | PASS/FAIL | <section> | <notes> |
+
+      | Behavioral proof register | PASS/FAIL | <section> | <notes> |
+
+      | uiux-auditor validation note | PASS/FAIL | <section> | <notes> |
+
+
+      ### Managed Summary Rejection
+
+      State whether any required proof relied only on `plan.yaml`, prompt text, or
+      prior managed evidence. Such reliance is BLOCKING.
+
+
+      ### Closure Signals
+
+      - verdict: PASS | PASS_WITH_DEBT | FAIL
+
+      - blockers: []
+
+      - gate_open_allowed: true|false
+
+      - orchestrator_action_hint: COMPLETE | DO_NOT_COMPLETE'
+    depends_on:
+    - invar_guard_remediation.persist-standalone-uiux-proof-artifact
+    agent: uiux-auditor
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

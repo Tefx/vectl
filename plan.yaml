@@ -100813,7 +100813,7 @@ phases:
       - [x] Artifact includes pasted help/surface snapshots for the required CLI surfaces\
       \ or justified current equivalents.\n- [x] Artifact includes command executability\
       \ matrix with actual commands, expected result classes, exit statuses, PASS/FAIL\
-      \ values, and evidence references.\n- [ ] Artifact includes JSON parseability\
+      \ values, and evidence references.\n- [x] Artifact includes JSON parseability\
       \ and zero-ANSI proof with exact command and pasted output.\n- [ ] Artifact\
       \ includes facade import proof for `from vectl.core import RecoverResult` with\
       \ exact command and pasted output.\n- [ ] Artifact includes behavioral proof\

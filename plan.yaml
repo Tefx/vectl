@@ -106201,22 +106201,22 @@ phases:
 
       Evidence must use import traces, reference traces, contract inspection, and
       focused commands; assertions without traces are insufficient.'
-    verification: '- [ ] phase-check: wiring retest reruns the failed `det_check_impl_wiring_audit`
+    verification: '- [x] phase-check: wiring retest reruns the failed `det_check_impl_wiring_audit`
       blocker family after remediation.
 
-      - [ ] Receipt validation helper has a demonstrated runtime caller or intentional
+      - [x] Receipt validation helper has a demonstrated runtime caller or intentional
       private reachable entry point with tests.
 
-      - [ ] Public symbol/type alias dispositions are supported by references or documented
+      - [x] Public symbol/type alias dispositions are supported by references or documented
       private/type-only status.
 
-      - [ ] Core checklist batch contracts are non-vacuous and satisfy Invar Core
+      - [x] Core checklist batch contracts are non-vacuous and satisfy Invar Core
       expectations.
 
-      - [ ] Unsupported-field path is reachable or explicitly governed by RFC-backed
+      - [x] Unsupported-field path is reachable or explicitly governed by RFC-backed
       deferred disposition.
 
-      - [ ] Evidence includes concrete trace output, not only claims.'
+      - [x] Evidence includes concrete trace output, not only claims.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 

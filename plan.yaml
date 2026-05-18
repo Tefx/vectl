@@ -100821,21 +100821,21 @@ phases:
       \ uiux-auditor-compatible validation note and does not rely on plan summaries\
       \ alone.\n- [x] Evidence records the exact artifact path and confirms current-mainline\
       \ command provenance."
-    verification: '- [ ] Confirm `docs/invar_guard_remediation/uiux-proof-artifact.md`
+    verification: '- [x] Confirm `docs/invar_guard_remediation/uiux-proof-artifact.md`
       or an explicitly equivalent standalone artifact file exists outside managed
       plan summaries.
 
-      - [ ] Confirm the artifact contains pasted help/surface snapshots, command executability
+      - [x] Confirm the artifact contains pasted help/surface snapshots, command executability
       matrix, JSON ANSI proof, facade import proof, behavioral proof register, and
       uiux-auditor-compatible validation note.
 
-      - [ ] Confirm no acceptance item is satisfied by referring only to `plan.yaml`,
+      - [x] Confirm no acceptance item is satisfied by referring only to `plan.yaml`,
       prior prompt text, or managed plan/evidence summaries.
 
-      - [ ] Confirm exact current-mainline commands and outputs are included for JSON
+      - [x] Confirm exact current-mainline commands and outputs are included for JSON
       ANSI proof and facade import proof.
 
-      - [ ] Confirm remaining ambiguity, if any, is reported as a blocker rather than
+      - [x] Confirm remaining ambiguity, if any, is reported as a blocker rather than
       hidden in placeholders.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

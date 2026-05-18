@@ -106195,7 +106195,7 @@ phases:
       - [x] Core `@post` contracts in `src/vectl/core/checklist_batch.py` are non-vacuous
       and structurally meaningful.
 
-      - [ ] Unsupported-field deterministic inventory behavior is reachable or explicitly
+      - [x] Unsupported-field deterministic inventory behavior is reachable or explicitly
       deferred by RFC-backed disposition.
 
 

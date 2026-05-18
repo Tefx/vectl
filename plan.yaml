@@ -106762,7 +106762,7 @@ phases:
       marks stale receipt proof as failed/unproven unless refresh-before-retry or
       rejected-with-refresh instruction evidence exists.
 
-      - [ ] Evidence includes `why_previous_fix_failed` and identifies the chosen
+      - [x] Evidence includes `why_previous_fix_failed` and identifies the chosen
       closure path.
 
       - [ ] Focused tests cover the stale receipt path using a literal stale `revision:

@@ -101615,7 +101615,7 @@ phases:
       \ is documented as deferred.\n- [x] Contract defines snapshot-scoped `item_id`,\
       \ `field+index`, and `checklist_inventory_revision` semantics.\n- [x] Contract\
       \ defines revision scope as canonicalized raw Markdown of both supported fields\
-      \ only.\n- [ ] Contract includes selector-mode table for legacy keyword toggle,\
+      \ only.\n- [x] Contract includes selector-mode table for legacy keyword toggle,\
       \ deterministic single set-state, deterministic batch, and invalid combinations.\n\
       - [ ] Contract requires marker-only mutations and explicit all-or-nothing batch\
       \ semantics.\n- [ ] Contract defines structured errors with retry guidance for\

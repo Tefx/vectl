@@ -104781,7 +104781,7 @@ phases:
 
       Focus checklist:
 
-      - [ ] Naming and format semantics for item IDs, revisions, selector fields,
+      - [x] Naming and format semantics for item IDs, revisions, selector fields,
       and structured error codes are exact.
 
       - [ ] Boundary values for empty fields, unsupported fields, stale revision,

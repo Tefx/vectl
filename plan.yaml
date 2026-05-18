@@ -105905,7 +105905,7 @@ phases:
     claimed_at: '2026-05-18T17:16:53.545514+00:00'
   - id: det_check_impl_blocker_spec_retest
     name: Retest deterministic checklist spec conformance blockers
-    status: claimed
+    status: done
     description: 'Independent spec conformance retest for the batched deterministic
       checklist blocker remediation.
 
@@ -106047,6 +106047,117 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-05-18T17:17:00.521293+00:00'
+    done_at: '2026-05-18T17:24:05.980471+00:00'
+    evidence: 'status: SUCCESS
+
+      verdict: PASS
+
+      blockers: []
+
+      orchestrator_action_hint: COMPLETE
+
+      gate_open_allowed: true
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - `docs/RFC-deterministic-checklists.md` — read; supported fields limited to
+      description/verification; stale retry action is refresh_inventory; worker receipt
+      requires item_id, revision, checked.
+
+      - `src/vectl/core/checklist_batch.py` — read; `mutate_checklist_batch` compares
+      supplied revision to current revision and raises `StaleRevisionError` with no
+      `rev1` bypass.
+
+      - `src/vectl/cli_plan_checklist_commands.py` — read; CLI accepts `--revision`
+      and alias, parses batch requests, unsupported fields raise `unsupported_field`.
+
+      - `src/vectl/orchestration/evidence.py` — read; receipt parser requires item_id,
+      accepts RFC `revision`, accepts `checklist_inventory_revision` only as legacy
+      alias, requires boolean checked.
+
+      - `src/vectl/core_checklist.py` — read; retry guidance maps stale_revision to
+      refresh_inventory and unsupported fields to non-retryable unsupported.
+
+      - `src/vectl/orchestration/dispatch_policy.py` — read; prompt tells workers
+      to return item_id, revision, checked and avoid fuzzy mapping.
+
+      - `src/vectl/orchestration/prompt_materialization.py` — read; artifact contract
+      lists required fields item_id, revision, checked and marks aliases legacy.
+
+      - `tools/vectl/README.md` — NOT READ: absent.
+
+
+      ## Spec Conformance Retest Report
+
+      Requirements covered: stale revision invariant, RFC-minimal receipt schema/naming,
+      unsupported-field behavior, retry guidance.
+
+
+      ## Evidence Table Summary
+
+      - R1 stale revision invariant: CONFORMS; literal `rev1` rejected without mutation,
+      targeted tests passed.
+
+      - R2 RFC receipt schema: CONFORMS; minimal `{item_id, revision, checked}` receipt
+      parses exactly.
+
+      - R3 revision field naming: CONFORMS; `checklist_inventory_revision` is alias
+      only, not required replacement.
+
+      - R4 unsupported fields: CONFORMS; inventory excludes unsupported fields, mutation/CLI
+      unsupported selector returns `unsupported_field`.
+
+      - R5 retry guidance: CONFORMS; stale revision maps to `refresh_inventory`.
+
+
+      ## Behavioral Proof Ledger
+
+      - Literal `rev1` stale no mutation: PROVEN.
+
+      - RFC minimal receipt parses with `revision`: PROVEN.
+
+      - Missing receipt revision rejected: PROVEN.
+
+      - Unsupported mutation field returns `unsupported_field`: PROVEN.
+
+      - Inventory does not parse unsupported fields: PROVEN via static and tests.
+
+      - Stale retry action is refresh inventory: PROVEN.
+
+
+      ## Blocking Assessment
+
+      No blocker remains in the requested failure family. Targeted command in isolated
+      worktree: `.venv/bin/python -m pytest tests/test_checklist.py tests/orchestration/unit/test_checklist_receipt_contract.py
+      tests/test_cli.py::TestDeterministicCheckCLI::test_json_stale_revision_exits_nonzero_with_parseable_error
+      tests/test_cli.py::TestDeterministicCheckCLI::test_json_batch_unsupported_field_exits_nonzero
+      tests/test_mcp.py::TestDeterministicCheckMCP::test_mcp_stale_revision_rejected_without_mutation`
+      => 33 passed in 0.67s.
+
+
+      ## Checklist Receipt
+
+      - [x] RFC stale revision invariant maps to implementation behavior without a
+      production `rev1` bypass.
+
+      - [x] RFC worker receipt schema with `item_id`, `revision`, `checked` is accepted
+      exactly; additive fields are optional and backward-compatible, not required
+      replacements.
+
+      - [x] `checklist_inventory_revision` naming is not required where RFC says `revision`,
+      unless RFC is explicitly updated with alias/disposition and compatibility tests.
+
+      - [x] Unsupported-field inventory path is implemented/verified or the RFC records
+      explicit deferred disposition with non-intersection proof.
+
+      - [x] Retry guidance for stale revisions maps to refresh inventory / refresh-before-retry
+      behavior.
+
+
+      ## Gaps/Notes
+
+      - none'
   - id: det_check_impl_blocker_wiring_retest
     name: Retest deterministic checklist wiring and contract blockers
     status: claimed

@@ -104787,7 +104787,7 @@ phases:
       - [x] Boundary values for empty fields, unsupported fields, stale revision,
       and invalid selectors match contract.
 
-      - [ ] Omission drift: every MUST in `docs/RFC-deterministic-checklists.md` has
+      - [x] Omission drift: every MUST in `docs/RFC-deterministic-checklists.md` has
       corresponding implementation or explicit deferred disposition.
 
       - [ ] Contract surface drift: CLI/MCP request/response fields are additive and

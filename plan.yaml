@@ -107909,7 +107909,7 @@ phases:
       mutation, workers return item_id/revision receipts, no natural-language fuzzy
       mapping.
 
-      - [ ] README/CLI/MCP docs examples match actual behavior and parseable output.
+      - [x] README/CLI/MCP docs examples match actual behavior and parseable output.
 
 
       Do not modify product code in this documentation step.'

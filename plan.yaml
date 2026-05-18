@@ -106671,7 +106671,7 @@ phases:
     agent: gate-reviewer
   - id: det_check_impl_receipt_refresh_remediation
     name: Repair stale receipt runtime refresh path
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -106883,6 +106883,82 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-18T17:32:30.745365+00:00'
+    done_at: '2026-05-18T17:45:06.634543+00:00'
+    evidence: 'Commit hash(es): f5a1ae3ecc779f0767f7b0c3dc68b18ae44502b4
+
+
+      Files changed:
+
+      - src/vectl/orch_app.py
+
+      - src/vectl/orchestration/evidence.py
+
+      - tests/orchestration/unit/test_checklist_receipt_contract.py
+
+      - tests/orchestration/unit/test_orch_app.py
+
+
+      Spec link: det_check_impl_receipt_refresh_remediation step contract; deterministic
+      checklist stale receipt loop family.
+
+
+      Chosen closure path:
+
+      - Explicit rejected-with-refresh instruction path with runtime-reachable inventory
+      refresh before rejection.
+
+      - `OrchestrationApp.route_terminal_execution` now loads current step data through
+      `load_step_data_for_dispatch(step_id)`, passes the current checklist inventory
+      revision into `assess_freeform_evidence`, and stale worker receipt revisions
+      now produce failure/review routing with `checklist_receipt_retry_action=refresh_inventory`
+      and the current checklist inventory revision recorded in artifact refs.
+
+
+      why_previous_fix_failed:
+
+      - Prior remediation proved parser/core stale rejection and CLI batch behavior,
+      but did not prove a runtime-reachable orchestration path from terminal execution/freeform
+      evidence to refreshed current checklist inventory and governed retry/rejection
+      guidance.
+
+
+      Verification:
+
+      - `uv run pytest tests/orchestration/unit/test_checklist_receipt_contract.py
+      -q` → 8 passed.
+
+      - `uv run pytest tests/orchestration/unit/test_orch_app.py -k stale_receipt
+      -q` → 1 passed, 76 deselected.
+
+      - `uv run pytest tests/orchestration tests/repro -k "checklist or receipt or
+      prompt" -q` → 102 passed, 1625 deselected.
+
+      - `uv run invar guard --changed` → status passed; 0 errors, 0 warnings, 2 informational
+      findings limited to pre-existing untracked `test_mod.py` / `test_mod_2.py` helper
+      exports.
+
+
+      Checklist validation:
+
+      - Runtime path test uses stale literal `revision: rev1` and refreshed/current
+      `rev-current` inventory fixture.
+
+      - Stale receipt path blocks completion (`completed == []`) and emits refresh/retry
+      artifact refs.
+
+      - Matching refreshed inventory revision is accepted by freeform evidence assessment.
+
+      - All step description and verification checklist items were marked complete
+      after mainline verification.
+
+
+      Gaps/Notes:
+
+      - No broad refactor, no new public receipt schema, and no unrelated deterministic
+      checklist behavior changes were observed in the merged diff.
+
+      - Main worktree already had untracked `.codex/`, `test_mod.py`, and `test_mod_2.py`;
+      these were not part of the step branch or merge.'
   - id: det_check_impl_receipt_refresh_retest
     name: Retest stale receipt runtime refresh path
     status: pending

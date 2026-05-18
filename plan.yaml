@@ -106558,7 +106558,7 @@ phases:
 
       - [x] B7 public aliases are used or explicitly governed as type-only/private.
 
-      - [ ] B8 unsupported-field inventory behavior is implemented/verified or RFC-deferred
+      - [x] B8 unsupported-field inventory behavior is implemented/verified or RFC-deferred
       with non-intersection evidence.
 
       - [ ] Non-blocking liveness debt has a valid non-intersection disposition if

@@ -93399,7 +93399,7 @@ phases:
       - [x] JSON/machine-readable outputs touched by remediation are parseable and
       ANSI-free, or evidence states no JSON path was touched with rationale.
 
-      - [ ] Regression/dangling detection reports no missing command handlers or stale
+      - [x] Regression/dangling detection reports no missing command handlers or stale
       help/registration entries.
 
       - [ ] `RecoverResult` and legacy `vectl.core` facade compatibility are proven

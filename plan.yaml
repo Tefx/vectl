@@ -101294,7 +101294,7 @@ phases:
       \n## Acceptance Checklist\n- [x] Fresh/cold `uvx invar-tools guard --all` evidence\
       \ is reviewed and current-mainline.\n- [x] Durable standalone UI/UX artifact\
       \ file is reviewed directly and contains all required subproofs rather than\
-      \ plan-summary references.\n- [ ] New durable-artifact `uiux-auditor` validation\
+      \ plan-summary references.\n- [x] New durable-artifact `uiux-auditor` validation\
       \ is reviewed and gates on the artifact file itself.\n- [ ] Core contract warning\
       \ register is reviewed and every cited warning is fixed or dispositioned with\
       \ downstream non-intersection proof.\n- [ ] Gate decision basis includes structured\

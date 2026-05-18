@@ -101050,31 +101050,31 @@ phases:
       \ and `gate_open_allowed` boolean.\n- [x] `gate_open_allowed` is false when\
       \ the durable artifact is missing, incomplete, or relies on managed plan summaries\
       \ alone."
-    verification: '- [ ] Verify-only audit made no product-code, test, documentation,
+    verification: '- [x] Verify-only audit made no product-code, test, documentation,
       or plan-state changes.
 
-      - [ ] Durable artifact file under `docs/invar_guard_remediation/` was inspected
+      - [x] Durable artifact file under `docs/invar_guard_remediation/` was inspected
       directly and not replaced by managed plan summaries.
 
-      - [ ] Pasted help/surface snapshots are present and sufficient for representative
+      - [x] Pasted help/surface snapshots are present and sufficient for representative
       CLI/UIUX command surfaces.
 
-      - [ ] Command executability matrix includes actual command, expected result
+      - [x] Command executability matrix includes actual command, expected result
       class, exit status, and PASS/FAIL for each audited command.
 
-      - [ ] JSON ANSI evidence proves JSON output is parseable and free of ANSI escapes
+      - [x] JSON ANSI evidence proves JSON output is parseable and free of ANSI escapes
       where machine-readable JSON is expected.
 
-      - [ ] Facade import evidence proves `from vectl.core import RecoverResult` succeeds
+      - [x] Facade import evidence proves `from vectl.core import RecoverResult` succeeds
       in the same current-mainline environment.
 
-      - [ ] Behavioral proof register contains requirement_ref, behavior_claim, runtime_proof_expected,
+      - [x] Behavioral proof register contains requirement_ref, behavior_claim, runtime_proof_expected,
       evidence_ref, status, closure_path, and gate_decision_basis.
 
-      - [ ] Audit handoff contains parseable closure signal PASS, PASS_WITH_DEBT,
+      - [x] Audit handoff contains parseable closure signal PASS, PASS_WITH_DEBT,
       or FAIL, plus `blockers` array and `gate_open_allowed` boolean.
 
-      - [ ] `gate_open_allowed` is false when blockers are non-empty, the artifact
+      - [x] `gate_open_allowed` is false when blockers are non-empty, the artifact
       is missing, or any blocker-class behavioral obligation remains UNPROVEN, NEEDS_TEST,
       or UNCERTAIN_BLOCKING without non-intersection proof.'
     evidence_template: '## refs Read Confirmation (MANDATORY)

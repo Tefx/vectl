@@ -95845,7 +95845,7 @@ phases:
 
       - [x] The authoritative full-guard command output is pasted verbatim.
 
-      - [ ] No stale evidence from branch worktrees is used as mainline proof.
+      - [x] No stale evidence from branch worktrees is used as mainline proof.
 
       - [ ] Each residual finding is mapped to PROVEN closure, BLOCKING owner, or
       explicit non-intersection disposition.

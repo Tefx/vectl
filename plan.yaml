@@ -103918,7 +103918,7 @@ phases:
       - [x] Prompt materialization can include checklist inventory item IDs, fields,
       indexes, states, and revision.
 
-      - [ ] Worker receipt format records `step_id`, `field`, `item_id`, `checklist_inventory_revision`,
+      - [x] Worker receipt format records `step_id`, `field`, `item_id`, `checklist_inventory_revision`,
       and desired final state.
 
       - [ ] Orchestrator-owned mutation boundary is explicit; worker receipts do not

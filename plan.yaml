@@ -101967,7 +101967,7 @@ phases:
 
       ## Verification Checklist
 
-      - [ ] Restore `update_checklist(plan, step_id, *, check=None, append=None) ->
+      - [x] Restore `update_checklist(plan, step_id, *, check=None, append=None) ->
       Plan` compatibility for existing callers.
 
       - [ ] Keep deterministic checklist contract artifacts acceptance-only; do not

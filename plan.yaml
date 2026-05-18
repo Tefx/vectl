@@ -108975,7 +108975,7 @@ phases:
       - [x] Run `uv run pytest tests/orchestration tests/repro -k ''checklist or receipt
       or prompt'' -q` and paste output.
 
-      - [ ] Run `uv run pytest -q` and paste output.
+      - [x] Run `uv run pytest -q` and paste output.
 
       - [ ] Run `uv run invar guard --all` and paste output.
 

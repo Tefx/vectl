@@ -101973,7 +101973,7 @@ phases:
       - [x] Keep deterministic checklist contract artifacts acceptance-only; do not
       implement full deterministic checklist behavior.
 
-      - [ ] Refine contract wording/types for unsupported fields, mixed selector modes,
+      - [x] Refine contract wording/types for unsupported fields, mixed selector modes,
       error payload/retry guidance, and orchestrator receipt schema.
 
       - [ ] Remove trailing whitespace from the remediation diff.

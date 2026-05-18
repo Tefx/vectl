@@ -105332,7 +105332,7 @@ phases:
       behavior and stale receipt refresh-before-retry, or record an explicit non-intersection
       disposition if truly outside this phase gate.
 
-      - [ ] B5 receipt validation dead path: wire `parse_checklist_receipt` / `ChecklistReceiptValidationError`
+      - [x] B5 receipt validation dead path: wire `parse_checklist_receipt` / `ChecklistReceiptValidationError`
       into actual orchestration evidence processing, prompt materialization, or completion
       pipeline; otherwise make the reachable entry point intentionally private and
       tested.

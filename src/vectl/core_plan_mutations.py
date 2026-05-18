@@ -41,6 +41,26 @@ def claim_step(
     )
 
 
+def update_checklist(
+    plan: Plan,
+    step_id: str,
+    *,
+    keyword: str | None = None,
+    add: str | None = None,
+    # Future deterministic fields:
+    # requests: list[MutationRequest] | None = None,
+    # revision: str | None = None,
+) -> tuple[Plan, str]:
+    """Compatibility adapter for checklist mutation.
+    
+    Delegates to pure core checklist service for deterministic updates,
+    falling back to legacy behavior for keyword toggle and add.
+    
+    Authority: docs/RFC-deterministic-checklists.md
+    """
+    raise NotImplementedError("Contract stub only")
+
+
 def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None) -> Plan:
     from vectl import lifecycle as _lifecycle
 

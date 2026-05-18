@@ -100764,6 +100764,140 @@ phases:
 
       All description acceptance checklist items and verification checklist items
       were satisfied and toggled/updated before completion.'
+  - id: invar_guard_remediation.persist-standalone-uiux-proof-artifact
+    name: Persist standalone UI/UX proof artifact
+    status: pending
+    description: "step_type: implementation\nstep_intent: blocker_fix\nexpected_result:\
+      \ durable_artifact_created\nagent_source: project\nprovenance: regate finding\
+      \ from `invar_guard_remediation.post-blocker-closure-regate`\ndisposition: blocking-now\n\
+      risk_tags:\n  - cli_uiux_surface_evidence\n  - terminal_output\n  - json_ansi_cleanliness\n\
+      \  - behavioral_proof_register\n  - managed_plan_summary_rejection\n\nCreate\
+      \ ONE durable standalone repository artifact under `docs/invar_guard_remediation/`\
+      \ (preferred path: `docs/invar_guard_remediation/uiux-proof-artifact.md`) containing\
+      \ the complete UI/UX proof package required by the failed regate.\n\nThis is\
+      \ the single implementation/fix ownership step for the artifact-persistence\
+      \ blocker. Do not modify product code unless artifact generation commands reveal\
+      \ that command evidence cannot be obtained without a real blocker fix; in that\
+      \ case stop and report the blocker instead of widening scope.\n\n## Required\
+      \ artifact contents\nThe standalone artifact MUST include pasted, current-mainline\
+      \ evidence for:\n- Pasted help/surface snapshots for representative CLI surfaces\
+      \ including `vectl --help`, `vectl recover --help`, `vectl orch --help`, `vectl\
+      \ orch recover --help`, and `vectl orch drive-recover --help` or a justified\
+      \ current equivalent.\n- Command executability matrix with actual command, expected\
+      \ result class, exit status, PASS/FAIL, and evidence reference for each command.\n\
+      - JSON ANSI proof showing machine-readable JSON command output parses successfully\
+      \ and contains zero ANSI escape sequences; include the exact command and pasted\
+      \ parse/check output.\n- Facade import proof showing `from vectl.core import\
+      \ RecoverResult` succeeds in the same current-mainline environment; include\
+      \ exact command and pasted output.\n- Behavioral proof register with `requirement_ref`,\
+      \ `behavior_claim`, `runtime_proof_expected`, `evidence_ref`, `status`, `closure_path`,\
+      \ and `gate_decision_basis` for every blocker-class obligation.\n- uiux-auditor-compatible\
+      \ validation note explaining how a `uiux-auditor` can make a PASS/PASS_WITH_DEBT/FAIL\
+      \ decision from the artifact alone.\n- Fresh guard context: cite that the latest\
+      \ fresh `uvx invar-tools guard --all` passed with exit 0, `status: passed`,\
+      \ `summary.errors: 0`, warnings/infos counts, and escape budget when available;\
+      \ paste current command evidence if rerun.\n\n## Hard guardrails\n- Managed\
+      \ plan summaries, prompt text, or previous step evidence alone are NOT acceptable\
+      \ as the artifact.\n- The durable artifact must be a repository file outside\
+      \ `plan.yaml`, `.git/vectl/`, and managed plan summaries.\n- Artifact evidence\
+      \ must be pasted or directly linked to committed repository artifacts; do not\
+      \ rely on ephemeral dispatch context.\n- Preserve single implementation ownership:\
+      \ this step creates/persists the artifact; downstream UI/UX and gate steps are\
+      \ verification only.\n\n## Completion Criteria (stub exclusion)\nThis is an\
+      \ IMPLEMENTATION step. Stub-only completion is NOT acceptable. The artifact\
+      \ must contain substantive current command evidence and structured proof fields;\
+      \ placeholders such as `TODO`, `see plan`, or `from prior evidence` do not satisfy\
+      \ completion.\n\n## Acceptance Checklist\n- [ ] A standalone artifact file exists\
+      \ under `docs/invar_guard_remediation/` and is not a managed plan summary.\n\
+      - [ ] Artifact includes pasted help/surface snapshots for the required CLI surfaces\
+      \ or justified current equivalents.\n- [ ] Artifact includes command executability\
+      \ matrix with actual commands, expected result classes, exit statuses, PASS/FAIL\
+      \ values, and evidence references.\n- [ ] Artifact includes JSON parseability\
+      \ and zero-ANSI proof with exact command and pasted output.\n- [ ] Artifact\
+      \ includes facade import proof for `from vectl.core import RecoverResult` with\
+      \ exact command and pasted output.\n- [ ] Artifact includes behavioral proof\
+      \ register with all required control-plane closure fields.\n- [ ] Artifact includes\
+      \ uiux-auditor-compatible validation note and does not rely on plan summaries\
+      \ alone.\n- [ ] Evidence records the exact artifact path and confirms current-mainline\
+      \ command provenance."
+    verification: '- [ ] Confirm `docs/invar_guard_remediation/uiux-proof-artifact.md`
+      or an explicitly equivalent standalone artifact file exists outside managed
+      plan summaries.
+
+      - [ ] Confirm the artifact contains pasted help/surface snapshots, command executability
+      matrix, JSON ANSI proof, facade import proof, behavioral proof register, and
+      uiux-auditor-compatible validation note.
+
+      - [ ] Confirm no acceptance item is satisfied by referring only to `plan.yaml`,
+      prior prompt text, or managed plan/evidence summaries.
+
+      - [ ] Confirm exact current-mainline commands and outputs are included for JSON
+      ANSI proof and facade import proof.
+
+      - [ ] Confirm remaining ambiguity, if any, is reported as a blocker rather than
+      hidden in placeholders.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - docs/invar_guard_remediation/uiux-proof-artifact.md — key passage or "NOT
+      READ: <reason>"
+
+      - tools/vectl/README.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Durable UI/UX Proof Artifact Evidence
+
+
+      **Artifact path**: <docs/invar_guard_remediation/uiux-proof-artifact.md or equivalent>
+
+      **Created/updated**: <yes/no>
+
+      **Managed-plan-summary reliance**: <none / explain blocker>
+
+
+      ### Required Sections Present
+
+      - [ ] Pasted help/surface snapshots
+
+      - [ ] Command executability matrix
+
+      - [ ] JSON ANSI proof
+
+      - [ ] Facade import proof
+
+      - [ ] Behavioral proof register
+
+      - [ ] uiux-auditor-compatible validation note
+
+      - [ ] Current guard context
+
+
+      ### Command Evidence
+
+      Paste exact commands and outputs used for:
+
+      ```text
+
+      <help/surface commands, JSON ANSI check, facade import check, guard context
+      if rerun>
+
+      ```
+
+
+      ### Blocker Disclosure
+
+      If any required artifact section is missing, list it here and mark the step
+      incomplete rather than relying on plan summaries.'
+    depends_on:
+    - invar_guard_remediation.close-post-gate-blockers-batched
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

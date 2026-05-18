@@ -105321,6 +105321,148 @@ phases:
     depends_on:
     - det_check_impl_blocker_remediation
     agent: integration-verifier
+  - id: det_check_impl_blocker_spec_retest
+    name: Retest deterministic checklist spec conformance blockers
+    status: pending
+    description: 'Independent spec conformance retest for the batched deterministic
+      checklist blocker remediation.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check protecting `det_check_impl_gate` and `det_check_finalization`.
+
+      agent_source: default
+
+      Independence Level: L1; this retest is independent of `python-senior` remediation.
+
+
+      Retest the spec conformance failure family originally reported by `det_check_impl_spec_conformance`,
+      including RFC stale revision behavior, receipt schema/naming, unsupported-field
+      behavior/disposition, and deterministic error/retry guidance.
+
+
+      ## Required spec conformance focus
+
+      - [ ] RFC stale revision invariant maps to implementation behavior without a
+      production `rev1` bypass.
+
+      - [ ] RFC worker receipt schema with `item_id`, `revision`, `checked` is accepted
+      exactly; additive fields are optional and backward-compatible, not required
+      replacements.
+
+      - [ ] `checklist_inventory_revision` naming is not required where RFC says `revision`,
+      unless RFC is explicitly updated with alias/disposition and compatibility tests.
+
+      - [ ] Unsupported-field inventory path is implemented/verified or the RFC records
+      explicit deferred disposition with non-intersection proof.
+
+      - [ ] Retry guidance for stale revisions maps to refresh inventory / refresh-before-retry
+      behavior.
+
+
+      ## Requirements register required
+
+      Evidence MUST include a spec requirements register and a 7-verdict table: CONFORMS,
+      DIVERGES, PARTIAL, NEEDS_TEST, NOT_FOUND, AMBIGUOUS_SPEC, SPEC_POSSIBLY_STALE.'
+    verification: '- [ ] phase-check: spec retest reruns the failed `det_check_impl_spec_conformance`
+      blocker family after remediation.
+
+      - [ ] Requirements register covers stale revision, receipt schema/naming, unsupported-field
+      behavior, and retry guidance.
+
+      - [ ] Every blocker-class DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND item has remediation
+      ownership or explicit non-intersection evidence.
+
+      - [ ] RFC-minimal receipt fixture `{item_id, revision, checked}` is covered
+      without convenience fields.
+
+      - [ ] Spec-code table cites spec sections and implementation file locations
+      for each relevant requirement.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - `docs/RFC-deterministic-checklists.md` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/core/checklist_batch.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/cli_plan_checklist_commands.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/orchestration/evidence.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/core_checklist.py` — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Spec Conformance Retest Report
+
+
+      **Tester**: spec-verifier (independent of remediation)
+
+      **Phase**: det_check_impl
+
+      **Spec source**: `docs/RFC-deterministic-checklists.md`
+
+
+      ## Requirements Register
+
+      | R# | Spec Section | Requirement | Level | Checkable? |
+
+      | --- | --- | --- | --- | --- |
+
+
+      ## Evidence Table
+
+      | R# | Spec Section | Requirement | Implementation | Verdict | Notes |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      Verdicts: CONFORMS | DIVERGES | PARTIAL | NEEDS_TEST | NOT_FOUND | AMBIGUOUS_SPEC
+      | SPEC_POSSIBLY_STALE
+
+
+      ## Spec-Fixture Conformance
+
+      - Minimal receipt fixture without convenience fields: <test/evidence ref>
+
+      - Exact documented field names verified: <evidence ref>
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Coverage Summary
+
+      - Total requirements: N
+
+      - CONFORMS: N | DIVERGES: N | PARTIAL: N
+
+      - NEEDS_TEST: N | NOT_FOUND: N | AMBIGUOUS_SPEC: N | SPEC_POSSIBLY_STALE: N
+
+      - Unchecked sections: <list>
+
+
+      ## Headline
+
+      - [ ] PASS: no blocker-class spec divergence remains.
+
+      - [ ] FAIL: blocker-class divergence remains.'
+    depends_on:
+    - det_check_impl_blocker_remediation
+    agent: spec-verifier
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

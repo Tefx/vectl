@@ -104884,6 +104884,302 @@ phases:
     - det_check_impl_liveness_probe
     - det_check_impl_spec_conformance
     agent: gate-reviewer
+  - id: det_check_impl_blocker_remediation
+    name: Batch remediate deterministic checklist blocker family
+    status: pending
+    description: 'Batched remediation for ALL concurrent deterministic checklist verification
+      failures.
+
+
+      step_type: implementation
+
+      agent_source: default
+
+      risk_profile: semantic-risk override; persistence/state revision semantics,
+      CLI status contract, orchestration receipt validation, public contract conformance,
+      Core-zone contracts, and wiring reachability.
+
+
+      This is ONE comprehensive fix step. Do not split into one-off fixes. Address
+      every blocker/should-fix listed here before claiming completion.
+
+
+      ## refs and authoritative inputs
+
+      - `docs/RFC-deterministic-checklists.md` — authoritative deterministic checklist
+      contract. Key obligations: stale revisions must fail; worker receipts are keyed
+      by `item_id`, `revision`, `checked`; retry guidance requires refresh on stale
+      revisions.
+
+      - Failed report evidence from `det_check_impl_integration_proof`, `det_check_impl_spec_conformance`,
+      and `det_check_impl_wiring_audit` — blocker register to close.
+
+
+      ## Scope and likely touch paths
+
+      - `src/vectl/core/checklist_batch.py` — stale revision invariant, batch atomicity,
+      non-vacuous Core contracts.
+
+      - `src/vectl/cli_plan_checklist_commands.py` — deterministic JSON batch error
+      exit status and parseable error payload.
+
+      - `src/vectl/orchestration/evidence.py` — receipt parser/validator schema and
+      validation errors.
+
+      - `src/vectl/orchestration/prompt_materialization.py` and/or actual evidence/completion
+      pipeline files — make receipt validation reachable at runtime.
+
+      - `src/vectl/core_checklist.py` — public type alias disposition/use for `ChecklistErrorCode`
+      and `ChecklistSelector`.
+
+      - Focused tests under existing checklist/orchestration/CLI test modules; update
+      protected fixtures that currently encode unsafe literal `rev1` behavior.
+
+
+      ## Known pitfalls from this phase
+
+      - `test_error`: literal `rev1` was accepted as a protected-test compatibility
+      fixture even though the RFC defines revision as the current snapshot hash. DO
+      NOT preserve an unsafe production `rev1` bypass.
+
+      - `contract_gap`: batch diagnostics required per-selector fields not present
+      in the original aggregate dataclass. Keep diagnostics explicit while preserving
+      batch all-or-nothing behavior.
+
+      - CLI JSON errors must be both parseable and process-failing for deterministic
+      contract errors; do not hide `ok:false` behind exit code 0.
+
+      - Receipt schema alignment must prefer the RFC worker schema (`item_id`, `revision`,
+      `checked`). Additive fields may be accepted, but the RFC fields must not be
+      replaced by `checklist_inventory_revision` or extra required fields.
+
+
+      ## Blockers to close in this single batch
+
+      - [ ] B1 stale revision bypass: remove production acceptance of literal stale
+      revision `rev1`; update tests/fixtures to use actual inventory revision or isolate
+      compatibility in non-production helpers only.
+
+      - [ ] B2 CLI deterministic JSON false-green: stale/invalid deterministic batch
+      errors return non-zero command status while preserving a parseable JSON error
+      payload and legacy compatibility.
+
+      - [ ] B3 receipt schema/naming divergence: align implementation/prompt/parser
+      to accept RFC entries with exactly required `item_id`, `revision`, `checked`;
+      allow additive aliases only with explicit backward-compatible tests.
+
+      - [ ] B4 runtime proof path: add focused proof for failed-batch all-or-nothing/no-mutation
+      behavior and stale receipt refresh-before-retry, or record an explicit non-intersection
+      disposition if truly outside this phase gate.
+
+      - [ ] B5 receipt validation dead path: wire `parse_checklist_receipt` / `ChecklistReceiptValidationError`
+      into actual orchestration evidence processing, prompt materialization, or completion
+      pipeline; otherwise make the reachable entry point intentionally private and
+      tested.
+
+      - [ ] B6 vacuous Core contracts: replace `@post(lambda result: result is not
+      None)` in `src/vectl/core/checklist_batch.py` helpers with meaningful result-structure
+      properties or refactor helpers out of Core if they are not Core logic.
+
+      - [ ] B7 orphan public symbols/type aliases: classify `ChecklistErrorCode` and
+      `ChecklistSelector` as intentionally type-only/private or add real runtime/public
+      usage; avoid dead public API surface.
+
+      - [ ] B8 unsupported-field inventory path: implement/verify unsupported-field
+      behavior for deterministic inventory selectors or update the RFC with explicit
+      deferred disposition and non-intersection proof.
+
+      - [ ] Non-blocking debt disposition: classify external temporary plan mutation
+      git autosave stderr as non-blocking only if it does not intersect remaining
+      gates.
+
+
+      ## Hardened acceptance requirements
+
+      - [ ] Revision semantics: current revision is authoritative; stale literal or
+      previous snapshot revisions must fail consistently in core, CLI, MCP, and orchestration
+      paths.
+
+      - [ ] State semantics: deterministic batch mutation remains all-or-nothing;
+      failed batches leave marker state unchanged and provide per-selector diagnostics.
+
+      - [ ] Receipt semantics: worker receipt refresh/retry consumes or rejects receipts
+      through a runtime-reachable validation path, not a dead helper.
+
+      - [ ] Compatibility guardrail: legacy keyword toggle compatibility remains supported,
+      but deterministic item_id/revision paths must not inherit fuzzy or magic-fixture
+      behavior.
+
+      - [ ] Contract guardrail: Core-zone `@pre`/`@post` contracts are non-vacuous,
+      reference meaningful structures, and have doctest/test coverage where required
+      by project Invar rules.
+
+      - [ ] Public surface guardrail: no orphan public symbol remains without explicit
+      type-only/private disposition or real use.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Any remaining production `rev1` stale-revision bypass.
+
+      2. JSON payload with `ok:false` paired with command exit status 0 for deterministic
+      contract failures.
+
+      3. Receipt parser accepted only through tests but not reachable from orchestration
+      runtime/evidence flow.
+
+      4. RFC receipt schema replaced by non-RFC required fields or renamed `checklist_inventory_revision`
+      without compatibility proof.
+
+      5. Vacuous Core contracts or unsupported-field behavior left as unexplained
+      debt.
+
+      6. Broad verifier failures dismissed as pre-existing/out-of-scope without non-intersection
+      evidence.'
+    verification: '- [ ] All B1-B8 blocker families are addressed in one batch, with
+      explicit evidence for each blocker.
+
+      - [ ] Focused tests prove stale revision rejection uses actual inventory revisions
+      and no production `rev1` bypass remains.
+
+      - [ ] CLI JSON deterministic batch errors preserve parseable JSON and return
+      non-zero status for contract errors.
+
+      - [ ] Receipt validation accepts RFC-minimal `{item_id, revision, checked}`
+      entries and is reachable from runtime orchestration evidence/completion flow.
+
+      - [ ] Batch failure all-or-nothing/no-mutation and stale receipt refresh-before-retry
+      have focused runtime proof or explicit non-intersection disposition.
+
+      - [ ] Core contracts in `src/vectl/core/checklist_batch.py` are non-vacuous
+      and satisfy project Invar expectations.
+
+      - [ ] Public aliases and unsupported-field behavior have either real reachable
+      use/behavior or explicit RFC-backed disposition.
+
+      - [ ] Evidence includes sibling searches for all blocker patterns and explains
+      root cause versus symptom.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - `docs/RFC-deterministic-checklists.md` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/core/checklist_batch.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/cli_plan_checklist_commands.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/orchestration/evidence.py` — key passage or "NOT READ: <reason>"
+
+      - `src/vectl/orchestration/prompt_materialization.py` — key passage or "NOT
+      READ: <reason>"
+
+      - `src/vectl/core_checklist.py` — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Batched Remediation Evidence
+
+
+      ### Root Cause vs Symptom
+
+      - Root cause(s): <semantic seams fixed>
+
+      - Symptom(s): <failed report blockers>
+
+      - Why this is not a surface-only patch: <explanation>
+
+
+      ### Blocker Closure Matrix
+
+      | Blocker | Files changed | Tests/proofs added or updated | Runtime path affected
+      | Status |
+
+      | --- | --- | --- | --- | --- |
+
+      | B1 stale revision bypass | | | | PASS/FAIL |
+
+      | B2 CLI JSON false-green | | | | PASS/FAIL |
+
+      | B3 receipt schema divergence | | | | PASS/FAIL |
+
+      | B4 runtime proof/refresh path | | | | PASS/FAIL |
+
+      | B5 receipt validation dead path | | | | PASS/FAIL |
+
+      | B6 vacuous Core contracts | | | | PASS/FAIL |
+
+      | B7 orphan public symbols | | | | PASS/FAIL |
+
+      | B8 unsupported-field inventory path | | | | PASS/FAIL |
+
+
+      ### Sibling Search Evidence
+
+      ```text
+
+      <commands/searches used to find rev1 bypasses, ok:false exit handling, checklist_inventory_revision
+      naming, receipt parser callers, vacuous @post contracts, orphan public symbols>
+
+      ```
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | RFC stale revision | stale revision rejects and does not mutate | focused
+      core + CLI runtime tests | | PROVEN/NEEDS_TEST/UNPROVEN | | |
+
+      | RFC receipt schema | `{item_id, revision, checked}` accepted and validated
+      | parser + runtime caller proof | | PROVEN/NEEDS_TEST/UNPROVEN | | |
+
+      | Batch atomicity | failed batch leaves state unchanged | before/after inventory
+      proof | | PROVEN/NEEDS_TEST/UNPROVEN | | |
+
+      | Stale receipt retry | stale receipt refreshes before retry | orchestration
+      flow proof | | PROVEN/NEEDS_TEST/UNPROVEN | | |
+
+
+      ### Commands Executed
+
+      ```text
+
+      <paste exact focused commands and outputs; do not summarize only>
+
+      ```
+
+
+      ### Non-blocking Debt Disposition
+
+      - External temporary plan mutation git autosave stderr: blocking-now/blocking-later/non-blocking
+      with non-intersection rationale.
+
+
+      ### Headline
+
+      - [ ] PASS: all blocker families closed with behavioral/runtime proof.
+
+      - [ ] FAIL: one or more blocker families remain open.'
+    depends_on:
+    - det_check_impl_integration_proof
+    - det_check_impl_spec_conformance
+    - det_check_impl_wiring_audit
+    agent: python-senior
 - id: det_check_finalization
   name: 'Deterministic Checklist Handling: Documentation and Final Review'
   status: locked

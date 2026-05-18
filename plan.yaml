@@ -101970,7 +101970,7 @@ phases:
       - [x] Restore `update_checklist(plan, step_id, *, check=None, append=None) ->
       Plan` compatibility for existing callers.
 
-      - [ ] Keep deterministic checklist contract artifacts acceptance-only; do not
+      - [x] Keep deterministic checklist contract artifacts acceptance-only; do not
       implement full deterministic checklist behavior.
 
       - [ ] Refine contract wording/types for unsupported fields, mixed selector modes,

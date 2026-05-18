@@ -106570,19 +106570,19 @@ phases:
       Evidence MUST include the structured behavioral proof register and final OPEN/BLOCK
       recommendation. The recommendation may be OPEN only if every blocker-class obligation
       is PROVEN or has explicit non-intersection evidence.'
-    verification: '- [ ] phase-check: all remediation family retests are complete
+    verification: '- [x] phase-check: all remediation family retests are complete
       and independently evidenced.
 
-      - [ ] B1-B8 closure matrix shows PROVEN or explicit non-intersection for every
+      - [x] B1-B8 closure matrix shows PROVEN or explicit non-intersection for every
       blocker-class obligation.
 
-      - [ ] Behavioral proof register includes `requirement_ref`, `behavior_claim`,
+      - [x] Behavioral proof register includes `requirement_ref`, `behavior_claim`,
       `runtime_proof_expected`, `evidence_ref`, `status`, `closure_path`, and `gate_decision_basis`.
 
-      - [ ] No unresolved NEEDS_TEST, UNPROVEN, or UNCERTAIN_BLOCKING item is allowed
+      - [x] No unresolved NEEDS_TEST, UNPROVEN, or UNCERTAIN_BLOCKING item is allowed
       to pass without a remediation owner.
 
-      - [ ] Final recommendation is OPEN only if integration, spec conformance, and
+      - [x] Final recommendation is OPEN only if integration, spec conformance, and
       wiring/contract retests are all PASS or PASS_WITH_NON_INTERSECTING_DEBT.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

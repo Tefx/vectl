@@ -101618,7 +101618,7 @@ phases:
       \ only.\n- [x] Contract includes selector-mode table for legacy keyword toggle,\
       \ deterministic single set-state, deterministic batch, and invalid combinations.\n\
       - [x] Contract requires marker-only mutations and explicit all-or-nothing batch\
-      \ semantics.\n- [ ] Contract defines structured errors with retry guidance for\
+      \ semantics.\n- [x] Contract defines structured errors with retry guidance for\
       \ stale revision, invalid selector/mode, unsupported field, and ambiguous/no\
       \ legacy match.\n- [ ] Contract defines orchestrator-owned mutation and worker\
       \ receipts keyed by item_id/revision with no natural-language fuzzy mapping.\n\

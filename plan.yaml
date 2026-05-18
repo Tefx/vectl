@@ -103352,7 +103352,7 @@ phases:
 
       - [x] `item_id` selector resolves only within the submitted inventory snapshot.
 
-      - [ ] `field+index` selector rejects unsupported fields and out-of-range indexes.
+      - [x] `field+index` selector rejects unsupported fields and out-of-range indexes.
 
       - [ ] Target-state mutation is idempotent when the marker already matches.
 

@@ -108102,20 +108102,20 @@ phases:
       - [x] Any broad verifier failure receives explicit remediation ownership or
       explicit non-intersection evidence; do not dismiss as pre-existing/out-of-scope
       without gate-intersection analysis.'
-    verification: '- [ ] full-plan-check protecting final review: run `pytest tests/test_checklist.py
+    verification: '- [x] full-plan-check protecting final review: run `pytest tests/test_checklist.py
       tests/test_cli.py tests/test_mcp.py -k ''checklist or deterministic or batch
       or revision'' -q` and report output.
 
-      - [ ] Run `pytest tests/orchestration tests/repro -k ''checklist or receipt
+      - [x] Run `pytest tests/orchestration tests/repro -k ''checklist or receipt
       or prompt'' -q` if orchestration receipt tests exist and report output.
 
-      - [ ] Run the repo-appropriate broad test command (for example `pytest -q`)
+      - [x] Run the repo-appropriate broad test command (for example `pytest -q`)
       or explicitly justify a narrower command.
 
-      - [ ] Run `invar guard` or the repository-authoritative invar guard command
+      - [x] Run `invar guard` or the repository-authoritative invar guard command
       after core/shell changes and report output.
 
-      - [ ] Provide remediation ownership for any blocker-class broad failure that
+      - [x] Provide remediation ownership for any blocker-class broad failure that
       intersects final gate.'
     evidence_template: '## Verification Report
 

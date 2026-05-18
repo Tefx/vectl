@@ -103677,7 +103677,7 @@ phases:
       - [x] CLI deterministic inventory/mutation path emits machine-readable revision/item
       data where applicable.
 
-      - [ ] MCP legacy call remains schema-compatible.
+      - [x] MCP legacy call remains schema-compatible.
 
       - [ ] MCP deterministic single and batch paths return structured result/errors.
 

@@ -108640,22 +108640,22 @@ phases:
       Each code deliverable MUST contain substantive logic that processes its inputs
       and produces outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
       `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
-    verification: '- [ ] local-check protecting `det_check_arch_review` and `det_check_final_gate`:
+    verification: '- [x] local-check protecting `det_check_arch_review` and `det_check_final_gate`:
       broad pytest collection no longer fails on `_get_next_steps_with_phase` import.
 
-      - [ ] full-plan-check protection: `uv run pytest -q` is green or any residual
+      - [x] full-plan-check protection: `uv run pytest -q` is green or any residual
       failure has explicit blocker disposition and owner.
 
-      - [ ] full-plan-check protection: `uv run invar guard --all` is green or any
+      - [x] full-plan-check protection: `uv run invar guard --all` is green or any
       residual failure has explicit blocker disposition and owner.
 
-      - [ ] Invar escape-hatch remediation is real reduction/governance, not threshold
+      - [x] Invar escape-hatch remediation is real reduction/governance, not threshold
       lowering or suppression without architectural justification.
 
-      - [ ] Gate-intersection disposition table is included for all residual broad
+      - [x] Gate-intersection disposition table is included for all residual broad
       pytest/invar findings.
 
-      - [ ] Focused checklist/orchestration commands are run when relevant to touched
+      - [x] Focused checklist/orchestration commands are run when relevant to touched
       paths and their outputs are included.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

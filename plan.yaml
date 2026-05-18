@@ -95806,7 +95806,7 @@ phases:
       \ step."
   - id: invar_guard_remediation.escape-budget-full-guard-retest
     name: Retest escape-budget closure with full guard
-    status: claimed
+    status: done
     description: 'VERIFICATION / full-plan-check. Independently retest the shared
       escape-hatch budget remediation family after authority decision, contract setup,
       focused residual slices, and final residual disposition retest complete.
@@ -95928,6 +95928,84 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-18T12:51:40.012734+00:00'
+    done_at: '2026-05-18T13:00:55.490911+00:00'
+    evidence: "## refs Read Confirmation\n- INVAR.md — Verifier read Core/Shell/escape-hatch\
+      \ constraints; guard and reasoned hatches are required.\n- AGENTS.md — Verifier\
+      \ read managed-state and evidence rules; repo-wide readiness requires explicit\
+      \ repo-wide command.\n\n## Full Guard Retest\nCommit hash(es): none (verify-only,\
+      \ no changes).\nFiles changed: none.\nSpec link: step_id `invar_guard_remediation.escape-budget-full-guard-retest`.\n\
+      \n### Semantic Fields\nstep_intent: retest_green\nexpected_result: green\nobserved_result:\
+      \ green\nfailure_alignment: none\nverdict: PASS\nblockers: []\ngate_open_allowed:\
+      \ true\norchestrator_action_hint: COMPLETE\nproduct_implementation_files_modified:\
+      \ false\n\n### Command\n```text\nuvx invar-tools guard --all\nexit code: 0\n\
+      ```\n\n### Current-Mainline Output Excerpt\n```json\n{\n  \"status\": \"passed\"\
+      ,\n  \"static\": {\"passed\": true, \"errors\": 0, \"warnings\": 57, \"infos\"\
+      : 7},\n  \"summary\": {\"files_checked\": 143, \"errors\": 0, \"warnings\":\
+      \ 57, \"infos\": 7},\n  \"escape_hatches\": {\n    \"count\": 6,\n    \"by_rule\"\
+      : {\"shell_complexity\": 1, \"entry_point_too_thick\": 2, \"dead_param\": 1,\
+      \ \"file_size\": 2},\n    \"details\": [\n      {\"file\": \"docs/archive/consumer_boundary_conformance_verify.py\"\
+      , \"line\": 231, \"rule\": \"shell_complexity\", \"reason\": \"archived conformance\
+      \ verifier is a linear shell script\"},\n      {\"file\": \"src/vectl/plan_path.py\"\
+      , \"line\": 182, \"rule\": \"entry_point_too_thick\", \"reason\": \"git-common-dir\
+      \ fallback must remain a single public resolver\"},\n      {\"file\": \"src/vectl/cli_orchestration_inspect_commands.py\"\
+      , \"line\": 277, \"rule\": \"dead_param\", \"reason\": \"drive_id is retained\
+      \ as a public Typer positional compatibility placeholder for drive-scoped case\
+      \ responses.\"},\n      {\"file\": \"src/vectl/orch_app.py\", \"line\": 1, \"\
+      rule\": \"file_size\", \"reason\": \"orchestration app is the documented composition\
+      \ root and public CLI routing facade; splitting requires a compatibility migration\
+      \ outside this scoped guard remediation.\"},\n      {\"file\": \"src/vectl/core_plan_mutations.py\"\
+      , \"line\": 1, \"rule\": \"file_size\", \"reason\": \"Plan mutation compatibility\
+      \ module keeps lifecycle, clipboard, agents-md, and recovery APIs co-located\
+      \ for existing CLI/MCP imports while step add/edit internals migrate behind\
+      \ stable re-exports.\"},\n      {\"file\": \"src/vectl/migration.py\", \"line\"\
+      : 64, \"rule\": \"entry_point_too_thick\", \"reason\": \"legacy split-state\
+      \ path fallback must remain public\"}\n    ],\n    \"gating\": {\"status\":\
+      \ \"warning\", \"budget\": {\"used\": 14, \"limit\": 15}, \"non_suppressible\"\
+      : [], \"combination\": []}\n  },\n  \"verification_level\": \"STANDARD\",\n\
+      \  \"doctest\": {\"passed\": true, \"output\": \"\"},\n  \"crosshair\": {\"\
+      status\": \"skipped\", \"reason\": \"no core files found\"},\n  \"property_tests\"\
+      : {\"status\": \"skipped\", \"reason\": \"no core files\"}\n}\n```\nLong `static.findings`\
+      \ list was omitted for length by verifier, but gate-relevant status was included\
+      \ exactly: `static.errors=0`, `static.passed=true`, `summary.errors=0`, command\
+      \ exited 0. Orchestrator also re-ran mainline `uvx invar-tools guard --all`\
+      \ and got exit 0, `status: passed`, `summary.errors=0`, weighted budget `14/15`,\
+      \ doctest passed.\n\n### Residual Disposition Register\n| requirement_ref |\
+      \ behavior_claim | runtime_proof_expected | evidence_ref | status | closure_path\
+      \ | gate_decision_basis |\n|---|---|---|---|---|---|---|\n| full_guard | Authoritative\
+      \ full guard green | command exits 0 with `status: passed` | current-mainline\
+      \ output | PROVEN | Exact command green | Gate open: no guard errors |\n| warning_error_status\
+      \ | No warning/error status blocks gate | static errors 0; warnings advisory\
+      \ | `static.errors=0`, `warnings=57`, exit 0 | PROVEN | Full guard closure |\
+      \ Warnings/infos non-blocking because guard passed |\n| escape_hatch_budget\
+      \ | Escape-hatch budget within policy | budget used <= limit | used 14, limit\
+      \ 15 | PROVEN | Non-blocking budget warning | Under weighted budget; no non-suppressible/combination\
+      \ blockers |\n| config/projection | Contract risks do not block full guard |\
+      \ guard scans current tree | 143 files checked, 0 errors | PROVEN | Full guard\
+      \ closure | Advisory warnings only |\n| path/recovery | Fallback risks do not\
+      \ block full guard | guard static + hatches | `plan_path.py`, `migration.py`,\
+      \ 0 errors | PROVEN | Full guard closure | Reasoned/budgeted hatches |\n| event/control\
+      \ | Public/model-visible risks do not block full guard | guard over event/control\
+      \ modules | current tree, 0 errors | PROVEN | Full guard closure | Advisory\
+      \ warnings only |\n| prompt/materialization | Prompt risks do not block full\
+      \ guard | guard over prompt contracts/materialization | current tree, 0 errors\
+      \ | PROVEN | Full guard closure | Advisory warnings only |\n| inspection/drive_queries\
+      \ | Inspect/drive risks do not block final gate | guard over inspect/drive modules\
+      \ | `cli_orchestration_inspect_commands.py` hatch, 0 errors | PROVEN | Full\
+      \ guard closure | Public Typer compatibility hatch budgeted |\n| orch_app/driver\
+      \ | App/driver risks do not block full guard | guard static + hatches | `orch_app.py`\
+      \ hatch, 0 errors | PROVEN | Full guard closure | File-size hatch reasoned/budgeted\
+      \ |\n| recovery_fallback | Recovery fallback risks non-blocking | guard over\
+      \ recovery fallback | current tree, 0 errors | PROVEN | Full guard closure |\
+      \ Advisory warnings only |\n| doctest | Doctests pass | doctest phase passed\
+      \ | `doctest.passed=true` | PROVEN | Full guard closure | No doctest blocker\
+      \ |\n| crosshair_property | Symbolic/property skips explained | skip reason\
+      \ not prior failure | no core files found | PROVEN | Explicit non-intersection\
+      \ | No failing core checks hidden |\n\n### Stale Evidence Check\nVerifier re-ran\
+      \ exact command in assigned isolated worktree, not discarded commit `68fcddb6486745572905c5f16248e0c64aa23e37`,\
+      \ cleaned worktrees, or prior branch retests. `git status --short` after rerun\
+      \ was empty.\n\n### Gaps/Notes\nNone. No product implementation files were modified.\
+      \ Full guard is green; remaining warning-level hatches are under budget and\
+      \ reasoned."
   - id: invar_guard_remediation.investigate-prompt-materialization-shell-result-root-cause
     name: Investigate prompt_materialization shell_result root cause
     status: done

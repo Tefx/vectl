@@ -105404,28 +105404,28 @@ phases:
 
       6. Broad verifier failures dismissed as pre-existing/out-of-scope without non-intersection
       evidence.'
-    verification: '- [ ] All B1-B8 blocker families are addressed in one batch, with
+    verification: '- [x] All B1-B8 blocker families are addressed in one batch, with
       explicit evidence for each blocker.
 
-      - [ ] Focused tests prove stale revision rejection uses actual inventory revisions
+      - [x] Focused tests prove stale revision rejection uses actual inventory revisions
       and no production `rev1` bypass remains.
 
-      - [ ] CLI JSON deterministic batch errors preserve parseable JSON and return
+      - [x] CLI JSON deterministic batch errors preserve parseable JSON and return
       non-zero status for contract errors.
 
-      - [ ] Receipt validation accepts RFC-minimal `{item_id, revision, checked}`
+      - [x] Receipt validation accepts RFC-minimal `{item_id, revision, checked}`
       entries and is reachable from runtime orchestration evidence/completion flow.
 
-      - [ ] Batch failure all-or-nothing/no-mutation and stale receipt refresh-before-retry
+      - [x] Batch failure all-or-nothing/no-mutation and stale receipt refresh-before-retry
       have focused runtime proof or explicit non-intersection disposition.
 
-      - [ ] Core contracts in `src/vectl/core/checklist_batch.py` are non-vacuous
+      - [x] Core contracts in `src/vectl/core/checklist_batch.py` are non-vacuous
       and satisfy project Invar expectations.
 
-      - [ ] Public aliases and unsupported-field behavior have either real reachable
+      - [x] Public aliases and unsupported-field behavior have either real reachable
       use/behavior or explicit RFC-backed disposition.
 
-      - [ ] Evidence includes sibling searches for all blocker patterns and explains
+      - [x] Evidence includes sibling searches for all blocker patterns and explains
       root cause versus symptom.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

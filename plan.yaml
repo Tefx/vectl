@@ -102294,7 +102294,7 @@ phases:
       - [x] Contract purity is preserved; no full deterministic checklist implementation
       was completed in the contract phase.
 
-      - [ ] Missing `tools/vectl/README.md` is not treated as a blocker.
+      - [x] Missing `tools/vectl/README.md` is not treated as a blocker.
 
       - [ ] Structured gate decision basis is present and supports OPEN or BLOCK explicitly.'
     verification: '- [ ] `./.venv/bin/python -m pytest tests/test_checklist.py -q`

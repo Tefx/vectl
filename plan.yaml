@@ -104514,7 +104514,7 @@ phases:
       - [x] At least one documented request/command reaches the real entrypoint path
       end-to-end.
 
-      - [ ] Handler-only proof is not accepted.
+      - [x] Handler-only proof is not accepted.
 
 
       Independence Level: L2 for runnable CLI/MCP seams.'

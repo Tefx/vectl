@@ -108076,7 +108076,7 @@ phases:
       Gaps/Notes: None.'
   - id: det_check_full_plan_check
     name: Run checklist full-plan verification
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (integration-verifier), run the repo-appropriate
       full-plan verification boundary after deterministic checklist implementation
       and docs.
@@ -108187,6 +108187,173 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-18T18:24:14.906246+00:00'
+    done_at: '2026-05-18T18:37:42.301437+00:00'
+    evidence: 'status: FAIL_REPORT_ACCEPTED
+
+      verdict: FAIL
+
+      observed_result: red
+
+      gate_open_allowed: false
+
+      orchestrator_action_hint: DO_NOT_COMPLETE
+
+      blockers:
+
+      - broad_pytest_collection_error_missing_cli_private_export
+
+      - invar_escape_hatch_budget_exceeded
+
+
+      ## Report disposition
+
+      This full-plan verification is complete as a failure-finding artifact. Focused
+      checklist and orchestration receipt/prompt suites passed, but the broad repo
+      boundary failed and now has explicit remediation ownership:
+
+      - `det_check_full_plan_remediation`
+
+      - `det_check_full_plan_retest`
+
+      Downstream `det_check_arch_review` and `det_check_final_gate` were rewired behind
+      the retest path, so finalization cannot bypass these blockers.
+
+
+      ## refs Read Confirmation
+
+      - `docs/RFC-deterministic-checklists.md` — core_checklist is authoritative;
+      deterministic receipts use item_id + revision; workers must not mutate checklists
+      directly or fuzzy-map natural language.
+
+      - `INVAR.md` — core code requires @pre/@post plus doctest; shell handles I/O;
+      guard must run after changes.
+
+      - `tests/test_checklist.py` — legacy toggle, deterministic inventory, stale
+      revision rejection, idempotent mutation, marker-only preservation, atomic batch,
+      unsupported field errors.
+
+      - `tests/test_cli.py` — checklist fixtures and CLI routing/checklist behavior.
+
+      - `tests/test_mcp.py` — MCP tool wrapper and checklist mutation/routing through
+      temp plan files.
+
+      - `tests/orchestration/unit/test_checklist_receipt_contract.py` — receipt parser
+      requires item_id/revision, rejects stale receipt revisions, and prompt rendering
+      injects deterministic inventory.
+
+      - `tests/orchestration/unit/test_orch_app.py` — orchestration app route tests
+      for receipt/prompt seams.
+
+      - `tools/vectl/README.md` — NOT READ: missing.
+
+
+      ## Test Execution
+
+      Focused checklist command:
+
+      - `uv run pytest tests/test_checklist.py tests/test_cli.py tests/test_mcp.py
+      -k ''checklist or deterministic or batch or revision'' -q` → 40 passed, 411
+      deselected.
+
+
+      Orchestration receipt/prompt command:
+
+      - `uv run pytest tests/orchestration tests/repro -k ''checklist or receipt or
+      prompt'' -q` → 102 passed, 1625 deselected.
+
+
+      Broad pytest command:
+
+      - `uv run pytest -q` → exit 2 during collection.
+
+      - Error: `ImportError: cannot import name ''_get_next_steps_with_phase'' from
+      ''vectl.cli''` while collecting `tests/test_arch_demolition_wave0_characterization.py`.
+
+
+      Invar command:
+
+      - `uv run invar guard --all` → exit 1.
+
+      - Summary: files_checked=147, errors=1, warnings=67, infos=4.
+
+      - Blocking error: `escape_hatch_budget — Escape hatch weighted budget: 17/15`.
+
+      - Checklist-adjacent warnings included `src/vectl/core_checklist.py`, `src/vectl/core/checklist_batch.py`,
+      and `src/vectl/mcp_core_misc_tools.py`.
+
+
+      ## Broad Failure Disposition
+
+      | Finding | Source command | Classification | Gate intersection reasoning |
+      Owner |
+
+      | --- | --- | --- | --- | --- |
+
+      | ImportError `_get_next_steps_with_phase` from `vectl.cli` during broad pytest
+      collection | `uv run pytest -q` | blocking_dependency | Broad suite cannot collect,
+      so final review is not protected by repo-wide regression boundary. | `det_check_full_plan_remediation`
+      |
+
+      | Invar `escape_hatch_budget` 17/15 plus checklist-adjacent warnings | `uv run
+      invar guard --all` | blocking_dependency | Required invar boundary failed; non-intersection
+      cannot be proven because warnings include deterministic checklist adjacent files.
+      | `det_check_full_plan_remediation` |
+
+
+      ## Checklist and final gate coverage
+
+      - Focused checklist tests pass green: yes.
+
+      - CLI/MCP/orchestration focused tests pass green: yes.
+
+      - Broad repo-appropriate Python command executed: yes, failed; remediation owner
+      created.
+
+      - Invar guard executed: yes, failed; remediation owner created.
+
+      - Product implementation files modified by verifier: false.
+
+
+      ## Behavioral Proof Register
+
+      - deterministic checklist focused tests: PROVEN.
+
+      - CLI/MCP/orchestration receipt and prompt focused tests: PROVEN.
+
+      - full broad Python suite readiness: UNPROVEN, owned by `det_check_full_plan_remediation`
+      and `det_check_full_plan_retest`.
+
+      - invar guard readiness: UNPROVEN, owned by `det_check_full_plan_remediation`
+      and `det_check_full_plan_retest`.
+
+
+      checklist_receipt:
+
+      - item_id: description:0:focused_checklist; checked: true
+
+      - item_id: description:1:cli_mcp_orch; checked: true
+
+      - item_id: description:2:broad_suite; checked: true
+
+      - item_id: description:3:invar; checked: true
+
+      - item_id: description:4:broad_disposition; checked: true
+
+      - item_id: verification:0:focused_command; checked: true
+
+      - item_id: verification:1:orchestration_command; checked: true
+
+      - item_id: verification:2:broad_command; checked: true
+
+      - item_id: verification:3:invar_command; checked: true
+
+      - item_id: verification:4:failure_ownership; checked: true
+
+
+      Gaps/Notes:
+
+      - This step does not authorize final gate opening. It records the failed broad
+      boundary and remediation ownership only.'
   - id: det_check_arch_review
     name: Review checklist architecture and authority
     status: pending

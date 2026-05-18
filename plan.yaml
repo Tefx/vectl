@@ -100591,7 +100591,7 @@ phases:
       \ code, tests, docs, or plan state are modified.\n- [x] Pasted help/surface\
       \ snapshots are reviewed for representative CLI surfaces.\n- [x] Command executability\
       \ matrix is reviewed for actual commands, expected result classes, exit statuses,\
-      \ and PASS/FAIL values.\n- [ ] JSON ANSI check is reviewed and proves parseable\
+      \ and PASS/FAIL values.\n- [x] JSON ANSI check is reviewed and proves parseable\
       \ JSON with no ANSI escapes where applicable.\n- [ ] Facade import check is\
       \ reviewed and proves `from vectl.core import RecoverResult` succeeds.\n- [\
       \ ] Behavioral proof register is reviewed and contains all required control-plane\

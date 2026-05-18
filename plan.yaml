@@ -101622,7 +101622,7 @@ phases:
       \ stale revision, invalid selector/mode, unsupported field, and ambiguous/no\
       \ legacy match.\n- [x] Contract defines orchestrator-owned mutation and worker\
       \ receipts keyed by item_id/revision with no natural-language fuzzy mapping.\n\
-      - [ ] Contract artifacts contain no completed business logic beyond stubs, signatures,\
+      - [x] Contract artifacts contain no completed business logic beyond stubs, signatures,\
       \ docstrings, and type definitions."
     verification: '- [ ] Confirm `docs/RFC-deterministic-checklists.md` or equivalent
       contract artifact pins every required selector/revision/error/orchestrator rule

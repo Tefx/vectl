@@ -108583,7 +108583,7 @@ phases:
       - [x] Invar blocker: `uv run invar guard --all` fails `escape_hatch_budget`
       with weighted budget `17/15`.
 
-      - [ ] Checklist-adjacent invar warnings are analyzed for gate intersection,
+      - [x] Checklist-adjacent invar warnings are analyzed for gate intersection,
       including `src/vectl/core_checklist.py` internal_import, `src/vectl/core/checklist_batch.py`
       internal_import warnings, and `src/vectl/mcp_core_misc_tools.py` shell_pure_logic
       for `_vectl_check_deterministic`.

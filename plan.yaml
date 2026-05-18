@@ -108558,7 +108558,7 @@ phases:
     agent: gate-reviewer
   - id: det_check_full_plan_remediation
     name: Remediate full-plan verification blockers
-    status: pending
+    status: claimed
     description: 'Batched remediation for the failed full-plan verification boundary
       from `det_check_full_plan_check`.
 
@@ -108732,6 +108732,8 @@ phases:
     depends_on:
     - det_check_full_plan_check
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-18T18:38:33.207508+00:00'
   - id: det_check_full_plan_retest
     name: Retest full-plan verification boundary
     status: pending

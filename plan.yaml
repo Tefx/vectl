@@ -103164,7 +103164,7 @@ phases:
 
       - [x] Missing/empty fields produce empty inventories and stable revision behavior.
 
-      - [ ] `evidence_template` is explicitly unsupported/deferred for first version.
+      - [x] `evidence_template` is explicitly unsupported/deferred for first version.
 
       - [ ] No module-level mutable registry/cache is introduced for inventory state.
 

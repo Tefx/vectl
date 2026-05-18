@@ -108595,7 +108595,7 @@ phases:
       compatibility correction; do not make broad product changes merely to satisfy
       the characterization test.
 
-      - [ ] Reduce or govern escape-hatch budget pressure through real architectural
+      - [x] Reduce or govern escape-hatch budget pressure through real architectural
       cleanup, warning reduction, or documented architecture justification; do NOT
       simply suppress findings, raise thresholds, or lower quality baselines without
       explicit architectural justification tied to `INVAR.md`.

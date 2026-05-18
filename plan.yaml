@@ -100138,7 +100138,7 @@ phases:
       \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION/remediation step. Stub-only\
       \ completion is NOT acceptable. Each code deliverable MUST contain substantive\
       \ logic or semantic contracts that process their real inputs and produce meaningful\
-      \ assertions or outputs.\n\n## Acceptance Checklist\n- [ ] Standalone UI/UX\
+      \ assertions or outputs.\n\n## Acceptance Checklist\n- [x] Standalone UI/UX\
       \ proof artifact is pasted in evidence and does not rely on plan summaries alone.\n\
       - [ ] UI/UX artifact includes help/surface snapshots, command executability\
       \ matrix, JSON ANSI check, facade import check, and behavioral proof register.\n\

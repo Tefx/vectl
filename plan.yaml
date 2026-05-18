@@ -106548,7 +106548,7 @@ phases:
       - [x] B3 RFC receipt schema alignment is closed for minimal `{item_id, revision,
       checked}` receipts.
 
-      - [ ] B4 failed batch all-or-nothing and stale receipt refresh-before-retry
+      - [x] B4 failed batch all-or-nothing and stale receipt refresh-before-retry
       have runtime proof or blocking closure ownership.
 
       - [ ] B5 receipt validation has a runtime-reachable path or explicit private

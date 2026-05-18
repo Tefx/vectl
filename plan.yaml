@@ -105337,7 +105337,7 @@ phases:
       pipeline; otherwise make the reachable entry point intentionally private and
       tested.
 
-      - [ ] B6 vacuous Core contracts: replace `@post(lambda result: result is not
+      - [x] B6 vacuous Core contracts: replace `@post(lambda result: result is not
       None)` in `src/vectl/core/checklist_batch.py` helpers with meaningful result-structure
       properties or refactor helpers out of Core if they are not Core logic.
 

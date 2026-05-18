@@ -105798,7 +105798,7 @@ phases:
       - [x] Failed batch proves all-or-nothing/no-mutation with before/after inventory
       or plan-state evidence.
 
-      - [ ] Stale receipt path proves refresh-before-retry through a runtime-reachable
+      - [x] Stale receipt path proves refresh-before-retry through a runtime-reachable
       orchestration path.
 
 

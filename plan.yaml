@@ -100149,21 +100149,21 @@ phases:
       \ current-mainline, not discarded-branch or stale partial-success proof.\n-\
       \ [x] The downstream regate step can decide OPEN/BLOCK without consulting unstated\
       \ context."
-    verification: '- [ ] For B1, evidence contains a standalone artifact with pasted
+    verification: '- [x] For B1, evidence contains a standalone artifact with pasted
       CLI help/surface snapshots, command executability matrix, JSON ANSI proof, facade
       import proof, and behavioral proof register.
 
-      - [ ] For B1, the standalone artifact has a parseable PASS/PASS_WITH_DEBT/FAIL
+      - [x] For B1, the standalone artifact has a parseable PASS/PASS_WITH_DEBT/FAIL
       handoff and explicitly applies uiux-auditor-compatible criteria.
 
-      - [ ] For B2, each cited Core warning is mapped to FIXED_WITH_SEMANTIC_CONTRACT
+      - [x] For B2, each cited Core warning is mapped to FIXED_WITH_SEMANTIC_CONTRACT
       or NON_BLOCKING_DISPOSITION, with file/line evidence.
 
-      - [ ] For B2, any changed Core function has non-vacuous @pre, @post, and at
+      - [x] For B2, any changed Core function has non-vacuous @pre, @post, and at
       least one doctest or an explicit INVAR-policy exception with downstream non-intersection
       proof.
 
-      - [ ] Fresh/cold command evidence is prepared for the regate, including `uvx
+      - [x] Fresh/cold command evidence is prepared for the regate, including `uvx
       invar-tools guard --all` expectations and no reliance on stale partial-success
       evidence.'
     evidence_template: '## refs Read Confirmation (MANDATORY)

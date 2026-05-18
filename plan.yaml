@@ -100073,6 +100073,205 @@ phases:
       collected; unauthorized product source excludes and pytest product ignores were
       removed before commit. CrossHair/property skips are no longer due to prior failures;
       guard reports `no core files found` and exits 0.'
+  - id: invar_guard_remediation.close-post-gate-blockers-batched
+    name: Close post-gate blockers in one batched path
+    status: pending
+    description: "step_type: implementation\nwork_type: proof_closure\nagent_source:\
+      \ default\nverification_scope: phase-check\nrisk_tags:\n  - symbolic_testing\n\
+      \  - core_contract_semantics\n  - cli_uiux_surface_evidence\n  - stale_gate_evidence\n\
+      \nBatched remediation for the semantic FAIL/BLOCK returned by `invar_guard_remediation.gate`.\
+      \ This step owns BOTH blocker families below and must not split them into unplanned\
+      \ sibling fixes.\n\n## Blockers to Fix or Disposition\n\n### B1: Standalone\
+      \ UI/UX audit artifact missing after final residual remediation\nThe prior completed\
+      \ audit step `cli-surface-preservation-uiux-audit` is useful provenance, but\
+      \ the failed gate rejected plan summaries and requires a standalone artifact/proof\
+      \ outside managed plan state. Produce or reconstruct a standalone evidence artifact\
+      \ in this step evidence containing all required proof, pasted directly rather\
+      \ than summarized:\n- pasted CLI help/surface snapshots for representative touched\
+      \ command groups\n- command executability matrix with actual command, expected\
+      \ result class, exit status, and PASS/FAIL\n- JSON ANSI check proving parseable\
+      \ machine-readable JSON and no ANSI escapes where applicable\n- facade import\
+      \ check proving `from vectl.core import RecoverResult` succeeds in the same\
+      \ environment\n- behavioral proof register with requirement_ref, behavior_claim,\
+      \ runtime_proof_expected, evidence_ref, status, closure_path, and gate_decision_basis\n\
+      - parseable PASS / PASS_WITH_DEBT / FAIL handoff using uiux-auditor-compatible\
+      \ criteria\n\nUI/UX auditor requirement inside this single batched path:\n-\
+      \ Apply the `uiux-auditor` native multimodal/terminal evidence standard to the\
+      \ standalone artifact.\n- If the orchestrator supports same-path consults, obtain\
+      \ a uiux-auditor validation note without creating another plan step.\n- If no\
+      \ consult is available, the python-senior executor must still produce a uiux-auditor-compatible\
+      \ artifact and explicitly state that the retest/regate must independently validate\
+      \ it.\n\n### B2: Non-vacuous Core contract criterion not proven\nResolve or\
+      \ explicitly disposition the current guard-warning conflict with the gate requirement\
+      \ that new/changed `**/core/**` functions have non-vacuous @pre, @post, and\
+      \ doctest. Prefer real semantic contract fixes where feasible. Target warnings:\n\
+      - `src/vectl/core/orchestration/event_schema.py:37` — `redundant_type_contract`\n\
+      - `src/vectl/core/orchestration/runner_payloads.py:85` — `redundant_type_contract`\n\
+      - `src/vectl/core/orchestration/runner_payloads.py:103` — `partial_contract`\n\
+      - `src/vectl/core/orchestration/runner_payloads.py:169` — `redundant_type_contract`\n\
+      - `src/vectl/core/orchestration/config_defaults.py:115` — `semantic_tautology`\n\
+      - `src/vectl/core/orchestration/config_defaults.py:126` — `semantic_tautology`\n\
+      \nRequired contract outcome for each warning:\n- Fix the contract so it is semantic\
+      \ and non-vacuous, with a meaningful @pre/@post and at least one doctest when\
+      \ the function is in Core scope; OR\n- Produce a narrow residual disposition\
+      \ proving why the warning is non-blocking under INVAR policy, why the current\
+      \ step is not authorized to fix it, why it does not intersect `det_check_*`\
+      \ downstream gates, and which future step would own it if that changes.\n\n\
+      ## Root Cause vs Symptom\n- Root cause: The previous gate had green full-guard\
+      \ process output but lacked standalone behavioral/UI evidence and lacked non-vacuous\
+      \ contract proof for warning-class Core findings.\n- Symptom: `uvx invar-tools\
+      \ guard --all` exited zero with warnings, while explicit phase gate criteria\
+      \ remained unproven.\n- Why previous fix failed: Previous completion evidence\
+      \ treated plan-managed summaries and warning tolerance as sufficient; the gate\
+      \ required artifact-level proof and contract-quality disposition.\n- Why this\
+      \ fix is not surface-level: It closes the actual evidence/proof gap by producing\
+      \ standalone UI/UX artifacts and either strengthening Core contracts or recording\
+      \ explicit non-intersection dispositions.\n\n## Scope and Guardrails\n- Touch\
+      \ only the cited Core contract files and any minimal test/doc artifact required\
+      \ to prove contract semantics; do not alter unrelated CLI behavior to make the\
+      \ audit pass.\n- Do not rely on discarded branch commit `68fcddb6486745572905c5f16248e0c64aa23e37`\
+      \ or cleaned worktree state as mainline proof.\n- Do not dismiss findings as\
+      \ pre-existing/out-of-scope; every finding must be categorized as PROVEN fixed,\
+      \ explicit non-blocking with non-intersection proof, or still blocking.\n- Keep\
+      \ evidence current-mainline and fresh/cold where commands are rerun.\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION/remediation step. Stub-only\
+      \ completion is NOT acceptable. Each code deliverable MUST contain substantive\
+      \ logic or semantic contracts that process their real inputs and produce meaningful\
+      \ assertions or outputs.\n\n## Acceptance Checklist\n- [ ] Standalone UI/UX\
+      \ proof artifact is pasted in evidence and does not rely on plan summaries alone.\n\
+      - [ ] UI/UX artifact includes help/surface snapshots, command executability\
+      \ matrix, JSON ANSI check, facade import check, and behavioral proof register.\n\
+      - [ ] Each cited Core warning is either fixed with non-vacuous semantic contract/doctest\
+      \ evidence or dispositioned narrowly with downstream non-intersection proof.\n\
+      - [ ] Evidence states why any remaining warning is non-blocking under INVAR\
+      \ policy and names a future owner if that status changes.\n- [ ] Evidence is\
+      \ current-mainline, not discarded-branch or stale partial-success proof.\n-\
+      \ [ ] The downstream regate step can decide OPEN/BLOCK without consulting unstated\
+      \ context."
+    verification: '- [ ] For B1, evidence contains a standalone artifact with pasted
+      CLI help/surface snapshots, command executability matrix, JSON ANSI proof, facade
+      import proof, and behavioral proof register.
+
+      - [ ] For B1, the standalone artifact has a parseable PASS/PASS_WITH_DEBT/FAIL
+      handoff and explicitly applies uiux-auditor-compatible criteria.
+
+      - [ ] For B2, each cited Core warning is mapped to FIXED_WITH_SEMANTIC_CONTRACT
+      or NON_BLOCKING_DISPOSITION, with file/line evidence.
+
+      - [ ] For B2, any changed Core function has non-vacuous @pre, @post, and at
+      least one doctest or an explicit INVAR-policy exception with downstream non-intersection
+      proof.
+
+      - [ ] Fresh/cold command evidence is prepared for the regate, including `uvx
+      invar-tools guard --all` expectations and no reliance on stale partial-success
+      evidence.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core/orchestration/event_schema.py — key passage or "NOT READ: <reason>"
+
+      - src/vectl/core/orchestration/runner_payloads.py — key passage or "NOT READ:
+      <reason>"
+
+      - src/vectl/core/orchestration/config_defaults.py — key passage or "NOT READ:
+      <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Batched Remediation Evidence
+
+
+      ### Blocker Ownership Summary
+
+      - B1 standalone UI/UX artifact: FIXED | STILL_BLOCKING
+
+      - B2 Core contract proof: FIXED | NON_BLOCKING_DISPOSITION | STILL_BLOCKING
+
+
+      ### Standalone UI/UX Proof Artifact (MANDATORY)
+
+      Paste the full standalone artifact here. It MUST include:
+
+      - Pasted help/surface snapshots
+
+      - Command executability matrix
+
+      - JSON ANSI check output
+
+      - Facade import check output
+
+      - Behavioral proof register
+
+      - uiux-auditor-compatible decision: PASS | PASS_WITH_DEBT | FAIL
+
+
+      ### Core Contract Warning Register
+
+      | Warning | File:Line | Action | Evidence Ref | Remaining Status | Downstream
+      Intersection |
+
+      |---|---|---|---|---|---|
+
+      | redundant_type_contract | event_schema.py:37 | FIXED/NON_BLOCKING | <details>
+      | <status> | <det_check impact> |
+
+      | redundant_type_contract | runner_payloads.py:85 | FIXED/NON_BLOCKING | <details>
+      | <status> | <det_check impact> |
+
+      | partial_contract | runner_payloads.py:103 | FIXED/NON_BLOCKING | <details>
+      | <status> | <det_check impact> |
+
+      | redundant_type_contract | runner_payloads.py:169 | FIXED/NON_BLOCKING | <details>
+      | <status> | <det_check impact> |
+
+      | semantic_tautology | config_defaults.py:115 | FIXED/NON_BLOCKING | <details>
+      | <status> | <det_check impact> |
+
+      | semantic_tautology | config_defaults.py:126 | FIXED/NON_BLOCKING | <details>
+      | <status> | <det_check impact> |
+
+
+      ### Commands / Proof Prepared for Regate
+
+      ```
+
+      <commands executed or prepared, including uvx invar-tools guard --all if run
+      here>
+
+      ```
+
+
+      ### Residual Disposition, If Any
+
+      For every remaining finding:
+
+      - why current step is not authorized to fix it:
+
+      - why it does not intersect remaining required gates:
+
+      - future owner if this changes:
+
+
+      ### Headline
+
+      - [ ] READY_FOR_REGATE: Both blocker families have proof or explicit blocking
+      status.
+
+      - [ ] STILL_BLOCKED: Regate should remain blocked; unresolved items are listed
+      above.'
+    depends_on:
+    - cli-surface-preservation-uiux-audit
+    - invar_guard_remediation.verify-full-guard
+    - invar_guard_remediation.fix-full-guard-weighted-budget-residuals
+    agent: python-senior
 - id: det_check_contracts
   name: 'Deterministic Checklist Handling: Contract Lock'
   status: locked

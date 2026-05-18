@@ -108356,7 +108356,7 @@ phases:
       boundary and remediation ownership only.'
   - id: det_check_arch_review
     name: Review checklist architecture and authority
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT ARCHITECT (software-architect), review deterministic
       checklist architecture after implementation and full-plan verification.
 
@@ -108442,6 +108442,192 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-05-18T20:13:01.722871+00:00'
+    done_at: '2026-05-18T20:18:41.002899+00:00'
+    evidence: '## [Review] Deterministic Checklist Architecture Review
+
+
+      headline: PASS
+
+      proof_gap_status: NONE
+
+      blocking_status: CLOSED
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+      product_implementation_files_modified: no
+
+      Commit hash(es): none — review-only step; no files changed.
+
+
+      ## refs Read Confirmation
+
+
+      - `tools/vectl/README.md` — NOT READ: file absent at required path; direct read
+      failed and glob returned no files.
+
+      - `docs/RFC-deterministic-checklists.md` — Read. Key insight: `core_checklist.py`
+      is the single authoritative owner for parsing/mutation; supported fields are
+      exactly `description` and `verification`; `evidence_template` is deferred; stale
+      receipt retry action is `refresh_inventory`.
+
+      - `src/vectl/core_checklist.py` — Read. Key insight: public checklist types,
+      selectors, structured errors, inventory, and mutation facade live here; `mutate_checklist`
+      delegates batch mechanics to `vectl.core.checklist_batch`.
+
+      - `src/vectl/core_plan_mutations.py` — Read. Key insight: plan mutation facade
+      re-exports deterministic checklist types/functions while preserving legacy `update_checklist`
+      as keyword/append compatibility only.
+
+      - `src/vectl/cli_plan.py` — Read. Key insight: public CLI facade imports checklist
+      command surfaces from `cli_plan_checklist_commands`, keeping top-level module
+      as compatibility facade.
+
+      - `src/vectl/mcp_core_tools.py` — Read. Key insight: public MCP facade imports
+      `vectl_check` from `mcp_core_misc_tools`.
+
+      - `src/vectl/orchestration/dispatch_policy.py` — Read. Key insight: prompt rendering
+      injects deterministic checklist inventory and explicitly tells workers not to
+      mutate plan or do fuzzy mapping.
+
+      - `src/vectl/orchestration/prompt_materialization.py` — Read. Key insight: prompt
+      artifacts include `checklist_receipt_contract` requiring `item_id`, `revision`,
+      and `checked`, with mutation boundary `worker_receipts_do_not_mutate_plan_state`.
+
+
+      Additional files reviewed: `src/vectl/core_checklist_inventory.py`, `src/vectl/core/checklist_batch.py`,
+      `src/vectl/cli_plan_checklist_commands.py`, `src/vectl/mcp_core_misc_tools.py`,
+      `src/vectl/orchestration/core_adapter.py`, `src/vectl/orchestration/step_data.py`,
+      `src/vectl/orchestration/contract_dispatch.py`, `src/vectl/orchestration/evidence.py`,
+      `src/vectl/orch_app.py`, `src/vectl/io.py`, and selected checklist-related tests.
+      `CONSTITUTION.md` absent.
+
+
+      ## Architecture Review
+
+
+      - Source of truth verdict: PASS. Canonical checklist source of truth is centralized
+      in core: `core_checklist.py` defines selectors, item DTOs, error payloads, receipt
+      DTOs, `get_inventory`, and `mutate_checklist`; `core_checklist_inventory.py`
+      owns revision material, canonical line endings, inventory parsing, item IDs,
+      and marker-only mutation; `core/checklist_batch.py` owns all-or-nothing mutation,
+      stale revision checks, request mode validation, resolution, duplicate/conflicting
+      selector rejection, and final marker application.
+
+      - Consumer-boundary conformance verdict: PASS. CLI delegates deterministic mutation
+      through `mutate_checklist.__wrapped__` and inventory through `get_inventory.__wrapped__`
+      in `cli_plan_checklist_commands.py`. MCP delegates deterministic behavior through
+      `_vectl_check_deterministic`, reusing CLI request-shape adapters and ultimately
+      calling the same core mutation/inventory surfaces. MCP-to-CLI helper reuse is
+      acceptable because source-of-truth facts remain in core.
+
+      - Concurrent/stale revision safety verdict: PASS. `mutate_checklist_batch` computes
+      current inventory revision before resolving selectors; mismatched provided revision
+      raises `StaleRevisionError` before mutation; failed resolution and duplicate/conflicting
+      selector diagnostics are raised before `_apply_resolved`; tests assert stale
+      revision and failed mixed batch leave checklist Markdown unchanged. CLI and
+      MCP `_save_plan` pass `expected_hash`; `io.save_plan` serializes writes with
+      a plan-file lock and CAS. `assess_freeform_evidence` receives current checklist
+      inventory revision; stale worker receipt revisions produce `retry action=refresh_inventory`;
+      `orch_app.py` converts stale receipt failure into a resolution case and annotates
+      artifact refs with `checklist_receipt_stale_revision`.
+
+      - Orchestrator mutation authority verdict: PASS. `dispatch_policy.py` prompt
+      text says orchestrator owns mutation, workers must not call checklist mutation
+      tools, and receipts must use exact item IDs. `prompt_materialization.py` records
+      the same contract. `orchestration/evidence.py` parses receipts into DTOs without
+      mutating plan state or using fuzzy matching.
+
+
+      ## Behavioral Proof Register
+
+
+      | Reviewed artifact | Claim | Evidence | Verdict |
+
+      | --- | --- | --- | --- |
+
+      | RFC | Core owns parser/mutation | RFC states `core_checklist.py` is single
+      authoritative owner and consumers must delegate | PASS |
+
+      | RFC | Supported fields are only `description` and `verification` | RFC defers
+      `evidence_template`; core inventory revision material uses only description/verification
+      | PASS |
+
+      | `core_checklist_inventory.py` | Revision excludes unrelated metadata | `revision_material`
+      includes only canonicalized `step.description` and `step.verification`; doctest
+      asserts evidence is absent | PASS |
+
+      | `core_checklist_inventory.py` | Marker-only mutation | `set_item_marker` rewrites
+      only checklist marker group and preserves text/surrounding content | PASS |
+
+      | `core/checklist_batch.py` | Batch atomicity | stale/mode/resolution/duplicate
+      checks happen before `_apply_resolved`; tests assert failed batch leaves Markdown
+      unchanged | PASS |
+
+      | `cli_plan_checklist_commands.py` | CLI delegates source-of-truth facts | CLI
+      calls `get_inventory` / `mutate_checklist`; only adapts flags/JSON into request
+      objects | PASS |
+
+      | `mcp_core_misc_tools.py` | MCP delegates deterministic surface | MCP inventory
+      calls `get_inventory`; mutation path delegates via shared deterministic mutation
+      adapter to core | PASS |
+
+      | `dispatch_policy.py` | Workers receive exact receipt contract | Prompt includes
+      revision, exact `item_id`, and “Do not perform natural-language fuzzy matching”
+      | PASS |
+
+      | `prompt_materialization.py` | Prompt artifact records mutation boundary |
+      Artifact contains `mutation_boundary: worker_receipts_do_not_mutate_plan_state`
+      and required fields | PASS |
+
+      | `orchestration/evidence.py` | Receipt validation rejects fuzzy/incomplete
+      receipts | Parser requires `item_id`, revision alias, and boolean checked; no
+      natural-language selector field is accepted | PASS |
+
+      | `orch_app.py` | Stale worker receipt blocks completion path | Current inventory
+      revision is loaded before evidence assessment; stale receipt creates a resolution
+      case | PASS |
+
+      | `io.py` | Concurrent writes are CAS-protected | `save_plan` locks the plan
+      file and raises `CASConflictError` on expected-hash mismatch | PASS |
+
+
+      ## Blockers / Should-Fix / Suggestions
+
+
+      Blockers: none.
+
+      Should-Fix: none blocking final gate.
+
+      Suggestions:
+
+      - Consider moving shared CLI/MCP request-shape parsing helpers out of `cli_plan_checklist_commands.py`
+      into a neutral adapter module if this surface grows. Current architecture is
+      acceptable because Markdown parsing, revision, and mutation source-of-truth
+      remain in core.
+
+      - Keep tests around worker receipt parsing/stale detection close to orchestration
+      code; this is the highest-risk concurrency seam.
+
+
+      ## Checklist receipt
+
+      All description and verification checklist items were satisfied and toggled
+      by the orchestrator from the worker''s receipt.
+
+
+      ## Closure
+
+
+      Delivered: source-of-truth review PASS; consumer-boundary review PASS; concurrent/stale
+      revision safety review PASS; orchestrator mutation authority review PASS; blocker
+      assessment none. No product code/docs modified. No vectl plan tools or CLI commands
+      were used by the worker.'
   - id: det_check_final_gate
     name: Final gate deterministic checklist handling
     status: pending

@@ -110408,6 +110408,213 @@ phases:
     advisor.
   depends_on:
   - orch_removal_runtime_surface
+  steps:
+  - id: orch_removal_test_retirement
+    name: Retire orchestration-only tests and repro/live-smoke probes
+    status: pending
+    description: "step_type: implementation\nTARGET STATE: tests that exist only to\
+      \ validate the deleted built-in orchestration runtime are removed, while decide/model/io/MCP\
+      \ non-orchestration tests remain.\n\nRequirement-to-Evidence Matrix:\n| requirement_id\
+      \ | source_ref + key passage | target_state | evidence_class | required_probe_or_artifact\
+      \ | status |\n| ORCH-TESTS-DELETED | user-request:2026-06-17 — delete tests/orchestration,\
+      \ runtime context vertical slice, orch repro probes, and orch live smoke tests\
+      \ | Orchestration-only tests are absent and collection no longer imports deleted\
+      \ modules | runtime_probe | Delete-target probe + pytest collect-only | OWNED\
+      \ |\n| RESIDUAL-IMPORT-TESTS | discovery evidence — residual tests import `vectl.orchestration`\
+      \ contracts/runtime | Residual orchestration-only parser/resume tests are deleted\
+      \ or rewritten only if they do not test preserved decide behavior | runtime_probe\
+      \ | grep/import absence under tests | OWNED |\n| DECIDE-TESTS-PRESERVED | user-request:2026-06-17\
+      \ — preserve tests/test_decide.py and tests/test_decide_state_isolation.py |\
+      \ Decide tests remain present and runnable | runtime_probe | targeted decide\
+      \ pytest | OWNED |\n\nNon-goals: do not delete `tests/test_decide.py`, `tests/test_decide_state_isolation.py`,\
+      \ `tests/test_io.py`, `tests/test_models.py`, or `tests/test_mcp.py`.\n\n##\
+      \ Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable; replacing deleted orchestration tests with vacuous\
+      \ skip/xfail shells is rejected unless a specific non-orchestration obligation\
+      \ is preserved.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"tests/orchestration/**\"\
+      \n  - \"tests/test_runtime_context_vertical_slice.py\"\n  - \"tests/repro/orch_liveness_probe.py\"\
+      \n  - \"tests/repro/liveness_drive.py\"\n  - \"tests/repro/test_orch_*.py\"\n\
+      \  - \"tests/live_smoke/test_vectl_orchestrator_e2e_live.py\"\n  - \"tests/live_smoke/test_drive_autonomy_live.py\"\
+      \n  - \"tests/live_smoke/test_opencode_long_runtime_live.py\"\n  - \"tests/live_smoke/test_resolver_live.py\"\
+      \n  - \"tests/test_codex_parser_behavior.py\"\n  - \"tests/test_gemini_parser_behavior.py\"\
+      \n  - \"tests/test_codex_resume_behavior.py\"\nblocked_paths:\n  - \"tests/test_decide.py\"\
+      \n  - \"tests/test_decide_state_isolation.py\"\n  - \"tests/test_io.py\"\n \
+      \ - \"tests/test_models.py\"\n  - \"tests/test_mcp.py\"\nrequired_claims:\n\
+      \  - orchestration_tests_retired\n  - test_collection_no_deleted_runtime_imports\n\
+      \  - decide_tests_preserved\nrequired_checks:\n  - id: orch_test_deletion_probe\n\
+      \    command: [\"uv\", \"run\", \"python\", \"-c\", \"from pathlib import Path;\
+      \ targets=[Path('tests/orchestration'),Path('tests/test_runtime_context_vertical_slice.py'),Path('tests/repro/orch_liveness_probe.py'),Path('tests/repro/liveness_drive.py'),Path('tests/live_smoke/test_vectl_orchestrator_e2e_live.py'),Path('tests/live_smoke/test_drive_autonomy_live.py'),Path('tests/live_smoke/test_opencode_long_runtime_live.py'),Path('tests/live_smoke/test_resolver_live.py')];\
+      \ targets += list(Path('tests/repro').glob('test_orch_*.py')) if Path('tests/repro').exists()\
+      \ else []; still=[str(p) for p in targets if p.exists()]; assert not still,\
+      \ still; print('orchestration test targets absent')\"]\n    covers_claims:\n\
+      \      - orchestration_tests_retired\n  - id: test_import_absence_probe\n  \
+      \  command: [\"uv\", \"run\", \"python\", \"-c\", \"from pathlib import Path;\
+      \ terms=['vectl.orchestration','core.orchestration','orch_app','cli_orchestration'];\
+      \ hits=[]; [hits.append(f'{p}:{t}') for p in Path('tests').rglob('*.py') for\
+      \ t in terms if t in p.read_text(errors='ignore')]; assert not hits, hits; print('tests\
+      \ have no deleted runtime imports')\"]\n    covers_claims:\n      - test_collection_no_deleted_runtime_imports\n\
+      \  - id: decide_tests_still_present\n    command: [\"uv\", \"run\", \"pytest\"\
+      , \"tests/test_decide.py\", \"tests/test_decide_state_isolation.py\", \"-q\"\
+      ]\n    covers_claims:\n      - decide_tests_preserved\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    refs:
+    - user-request:2026-06-17#test-deletion-targets
+    - tests/orchestration/
+    - tests/test_runtime_context_vertical_slice.py
+    - tests/repro/
+    - tests/live_smoke/
+    - tests/test_codex_parser_behavior.py
+    - tests/test_gemini_parser_behavior.py
+    - tests/test_codex_resume_behavior.py
+    agent: architectural-demolitionist
+  - id: orch_removal_doc_cleanup
+    name: Delete orchestration docs and remove README orch guidance
+    status: pending
+    description: "step_type: implementation\nTARGET STATE: orchestration documentation\
+      \ is deleted rather than archived, README/README_zh no longer advertise `vectl\
+      \ orch`, and docs retain only caller-owned vectl_decide guidance where applicable.\n\
+      \nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
+      \ | target_state | evidence_class | required_probe_or_artifact | status |\n\
+      | ORCH-DOCS-DELETED | user-request:2026-06-17 — delete docs/ORCHESTRATION-*.md,\
+      \ RFC/ADR/ORCH orchestration docs, RFC-role-profile-overrides | Orchestration\
+      \ docs are absent, including existing archived copies if they preserve forbidden\
+      \ runtime references | source_static | Docs deletion probe | OWNED |\n| README-ORCH-REMOVED\
+      \ | README.md current sections mention `vectl orch recover`; user requires built-in\
+      \ orch removal | READMEs no longer instruct users to run `vectl orch` | source_static\
+      \ | README grep probe | OWNED |\n\nNon-goals: do not archive deleted orchestration\
+      \ docs; do not remove docs/RFC-vectl-decide-advisor-refresh.md.\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable; replacing deleted docs with placeholder files that still\
+      \ reference orchestration is rejected.\n\n<intent_closure_contract>\nallowed_paths:\n\
+      \  - \"README.md\"\n  - \"README_zh.md\"\n  - \"docs/ORCHESTRATION-*.md\"\n\
+      \  - \"docs/RFC-orch-drive.md\"\n  - \"docs/RFC-opencode-orchestration-runner.md\"\
+      \n  - \"docs/ADR-orchestration-*.md\"\n  - \"docs/ORCH-*.md\"\n  - \"docs/RFC-role-profile-overrides.md\"\
+      \n  - \"docs/archive/**\"\nblocked_paths:\n  - \"docs/RFC-vectl-decide-advisor-refresh.md\"\
+      \nrequired_claims:\n  - orchestration_docs_deleted_not_archived\n  - readme_orch_guidance_removed\n\
+      required_checks:\n  - id: docs_deletion_probe\n    command: [\"uv\", \"run\"\
+      , \"python\", \"-c\", \"from pathlib import Path; patterns=['ORCHESTRATION-*.md','RFC-orch-drive.md','RFC-opencode-orchestration-runner.md','ADR-orchestration-*.md','ORCH-*.md','RFC-role-profile-overrides.md'];\
+      \ still=[]; [still.append(str(p)) for pat in patterns for p in Path('docs').glob(pat)];\
+      \ assert not still, still; print('orchestration docs absent')\"]\n    covers_claims:\n\
+      \      - orchestration_docs_deleted_not_archived\n  - id: readme_no_orch_probe\n\
+      \    command: [\"uv\", \"run\", \"python\", \"-c\", \"from pathlib import Path;\
+      \ files=[Path('README.md'),Path('README_zh.md')]; terms=['vectl orch','orchestration-plane\
+      \ runtime','orchestration runtime']; hits=[f'{p}:{t}' for p in files if p.exists()\
+      \ for t in terms if t in p.read_text(errors='ignore')]; assert not hits, hits;\
+      \ print('README orch guidance absent')\"]\n    covers_claims:\n      - readme_orch_guidance_removed\n\
+      </intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    refs:
+    - user-request:2026-06-17#doc-deletion-targets
+    - README.md
+    - README_zh.md
+    - docs/ORCHESTRATION-PLANE-ARCHITECTURE.md
+    - docs/RFC-orch-drive.md
+    - docs/RFC-opencode-orchestration-runner.md
+    - docs/RFC-role-profile-overrides.md
+    agent: doc-reviewer
+  - id: orch_removal_decide_wording_preserve
+    name: Reword preserved vectl_decide surfaces as caller-owned automation advisor
+    status: pending
+    description: "step_type: implementation\nTARGET STATE: vectl_decide remains a\
+      \ supported core automation/dispatch advisor with caller-owned state language.\
+      \ Preserved decide docs/code must not describe it as a built-in orchestrator/orchestration\
+      \ advisor.\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref\
+      \ + key passage | target_state | evidence_class | required_probe_or_artifact\
+      \ | status |\n| DECIDE-SUPPORTED | user-request:2026-06-17 — keep vectl_decide;\
+      \ preserve decide files/tests/RFC | Decide files/tests/RFC remain present and\
+      \ runnable | runtime_probe | Decide pytest + path-presence probe | OWNED |\n\
+      | DECIDE-WORDING | user-request:2026-06-17 — plan wording cleanup from “orchestrator/orchestration\
+      \ advisor” to “core automation advisor/dispatch advisor/caller-owned” | Preserved\
+      \ decide surfaces use caller-owned automation/dispatch advisor wording | source_static\
+      \ | Forbidden decide wording grep | OWNED |\n\nNon-goals: do not remove `vectl_decide`;\
+      \ do not resurrect built-in `vectl orch`; do not rewrite the decide API for\
+      \ this cleanup.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"docs/RFC-vectl-decide-advisor-refresh.md\"\
+      \n  - \"src/vectl/mcp_server.py\"\n  - \"src/vectl/model_outputs.py\"\n  - \"\
+      README.md\"\n  - \"README_zh.md\"\nblocked_paths:\n  - \"src/vectl/decide.py\"\
+      \n  - \"src/vectl/decision_state.py\"\n  - \"tests/test_decide.py\"\n  - \"\
+      tests/test_decide_state_isolation.py\"\nrequired_claims:\n  - decide_advisor_wording_caller_owned\n\
+      \  - decide_api_and_tests_preserved\n  - no_built_in_orch_wording_in_decide_surfaces\n\
+      required_checks:\n  - id: decide_wording_probe\n    command: [\"uv\", \"run\"\
+      , \"python\", \"-c\", \"from pathlib import Path; files=[Path('docs/RFC-vectl-decide-advisor-refresh.md'),Path('src/vectl/mcp_server.py'),Path('src/vectl/model_outputs.py'),Path('README.md'),Path('README_zh.md')];\
+      \ forbidden=['deterministic orchestration advisor','orchestration advisor','orchestrator\
+      \ advisor','external orchestrator agents','orchestrator-visible execution'];\
+      \ hits=[f'{p}:{term}' for p in files if p.exists() for term in forbidden if\
+      \ term in p.read_text(errors='ignore')]; assert not hits, hits; print('decide\
+      \ wording is caller-owned automation/dispatch advisor')\"]\n    covers_claims:\n\
+      \      - decide_advisor_wording_caller_owned\n      - no_built_in_orch_wording_in_decide_surfaces\n\
+      \  - id: decide_preservation_tests\n    command: [\"uv\", \"run\", \"pytest\"\
+      , \"tests/test_decide.py\", \"tests/test_decide_state_isolation.py\", \"-q\"\
+      ]\n    covers_claims:\n      - decide_api_and_tests_preserved\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    refs:
+    - user-request:2026-06-17#decide-wording-cleanup
+    - docs/RFC-vectl-decide-advisor-refresh.md
+    - src/vectl/mcp_server.py
+    - src/vectl/model_outputs.py
+    - README.md
+    - README_zh.md
+    - tests/test_decide.py
+    - tests/test_decide_state_isolation.py
+    depends_on:
+    - orch_removal_doc_cleanup
+    agent: doc-reviewer
+  - id: orch_removal_tests_docs_probe
+    name: Verify tests/docs cleanup and decide wording
+    status: pending
+    description: 'step_type: verification
+
+      phase-check protecting tests/docs cleanup. Verify real pytest collection, decide
+      targeted tests, and static absence of deleted runtime references in tests/docs/readmes.
+
+
+      This is a truth-finding step: finding blockers succeeds as discovery but blocks
+      the phase until owner remediation closes them.'
+    verification: 'Run and paste raw stdout/stderr for: (1) `uv run pytest --collect-only
+      -q`; (2) `uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py
+      -q`; (3) a product/docs/tests grep probe for deleted runtime references and
+      forbidden decide wording. Static grep is acceptable only for source/text absence;
+      behavioral decide support must be proven by pytest.'
+    refs:
+    - user-request:2026-06-17#tests-docs-verification
+    - README.md
+    - README_zh.md
+    - docs/RFC-vectl-decide-advisor-refresh.md
+    - tests/test_decide.py
+    - tests/test_decide_state_isolation.py
+    depends_on:
+    - orch_removal_test_retirement
+    - orch_removal_decide_wording_preserve
+    agent: integration-verifier
+  - id: orch_removal_tests_docs_gate
+    name: Gate tests/docs cleanup
+    status: pending
+    description: 'step_type: gate
+
+      phase-check gate. Blocks finalization unless docs/tests deletion, README/RFC
+      wording, and decide preservation are evidenced.
+
+
+      review_depth: STANDARD
+
+      cross_cutting_focus:
+
+      - no archive of orchestration docs remains as a hidden source of forbidden runtime
+      claims
+
+      - decide docs say core automation advisor / dispatch advisor / caller-owned,
+      not built-in orchestration advisor
+
+      - no test collection imports deleted runtime modules'
+    verification: Gate OPEN only if tests/docs probe is PASS and every blocker has
+      a pending owner or deterministic closure evidence.
+    refs:
+    - user-request:2026-06-17#tests-docs-gate
+    depends_on:
+    - orch_removal_test_retirement
+    - orch_removal_doc_cleanup
+    - orch_removal_decide_wording_preserve
+    - orch_removal_tests_docs_probe
+    agent: gate-reviewer
 - id: orch_removal_finalization
   name: 'Orchestrator Removal: Closure and Full Regression'
   status: locked

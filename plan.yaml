@@ -112538,9 +112538,9 @@ phases:
       \ record.\n        2. Product code modifications hidden inside evidence hygiene.\n\
       \        3. Exception policy used for convenience rather than audit integrity.\n\
       \        4. Passing the check because row IDs or ownership words appear only\
-      \ in static descriptions.\n\n        <intent_closure_contract>\nallowed_paths:\n\
-      \  - \"plan.yaml\"\nblocked_paths:\n  - \"src/**\"\n  - \"tests/**\"\n  - \"\
-      docs/**\"\nrequired_claims:\n  - remaining_guard_errors_have_row_local_owner_or_exception\n\
+      \ in static descriptions.\n\n<intent_closure_contract>\nallowed_paths:\n  -\
+      \ \"plan.yaml\"\nblocked_paths:\n  - \"src/**\"\n  - \"tests/**\"\n  - \"docs/**\"\
+      \nrequired_claims:\n  - remaining_guard_errors_have_row_local_owner_or_exception\n\
       \  - current_core_failures_not_hidden\n  - product_code_fixes_deferred_to_explicit_owner_steps\n\
       \  - static_target_lists_do_not_satisfy_ownership\n  - robust_validation_parsing_used\n\
       required_checks:\n  - id: remaining_initial_or_drift_rows_owned_exceptioned_or_absent\n\

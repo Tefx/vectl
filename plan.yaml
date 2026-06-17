@@ -110689,7 +110689,8 @@ phases:
       \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
       \ |\n        from pathlib import Path\n        suffixes = {'.md', '.yaml', '.yml',\
       \ '.json', '.py', '.txt'}\n        terms = ['vectl orch', 'vectl.orchestration',\
-      \ 'core.orchestration', 'orch_app', 'cli_orchestration', 'src/vectl/orchestration',\
+      \ 'vectl.shell.orchestration', 'shell.orchestration', 'from vectl.shell import\
+      \ orchestration', 'core.orchestration', 'orch_app', 'cli_orchestration', 'src/vectl/orchestration',\
       \ 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration', 'src/vectl/orch_app.py',\
       \ 'src/vectl/cli_orchestration', 'python -m vectl.driver', 'src.vectl.driver',\
       \ 'from vectl.driver', 'judge_agent_prompt.md', '.vectl/workspaces', '.vectl/worktrees',\
@@ -110705,7 +110706,8 @@ phases:
       \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
       \ |\n        from pathlib import Path\n        files = [Path('docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md'),\
       \ Path('docs/full-suite-failure-inventory-2026-04-10.md'), Path('docs/repo_regression_failure_dispositions.yaml')]\n\
-      \        terms = ['vectl orch', 'vectl.orchestration', 'core.orchestration',\
+      \        terms = ['vectl orch', 'vectl.orchestration', 'vectl.shell.orchestration',\
+      \ 'shell.orchestration', 'from vectl.shell import orchestration', 'core.orchestration',\
       \ 'orch_app', 'cli_orchestration', 'src/vectl/orchestration', 'src/vectl/core/orchestration',\
       \ 'src/vectl/shell/orchestration', 'src/vectl/orch_app.py', 'src/vectl/cli_orchestration',\
       \ 'python -m vectl.driver', 'src.vectl.driver', 'from vectl.driver', 'judge_agent_prompt.md',\

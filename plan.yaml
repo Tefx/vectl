@@ -111009,8 +111009,9 @@ phases:
     description: 'step_type: gate
 
       phase-check gate. Blocks finalization unless docs/tests deletion, README/RFC
-      wording, archive-disposition evidence, active test/fixture retirement, and decide
-      preservation are evidenced.
+      wording, archive-disposition evidence, active test/fixture retirement, active
+      `tests/conftest.py` orchestration config cleanup, preserved decide path presence,
+      and decide preservation are evidenced.
 
 
       review_depth: STANDARD
@@ -111022,22 +111023,33 @@ phases:
 
       - active orchestration tests/fixtures such as `tests/test_orch_cli_surface.py`,
       `tests/test_cli.py` orch sections, `tests/repro/test_repair_continuity_black_box.py`,
-      and `tests/fixtures/orchestration/**` are deleted or re-scoped away from deleted
-      runtime behavior
+      `tests/repro/test_orch_*.py`, live-smoke orch tests, and `tests/fixtures/orchestration/**`
+      are deleted or re-scoped away from deleted runtime behavior
+
+      - `tests/conftest.py` remains present and no longer contains the active `orchestration`
+      config block/token residue
+
+      - deleted isolation doc references, especially `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`,
+      are absent
 
       - decide docs/source say core automation advisor / dispatch advisor / caller-owned,
       not built-in orchestration advisor
+
+      - preserved decide source/tests/RFC paths, especially `docs/RFC-vectl-decide-advisor-refresh.md`,
+      are present and included in wording proof
 
       - live MCP decide surfaces are included in wording proof
 
       - no test collection imports deleted runtime modules
 
 
-      Gate rejects sampled evidence, top-level-only docs probes, or omission of archived
-      artifacts.'
+      Gate rejects sampled evidence, top-level-only docs probes, missing preserved
+      decide/RFC files, missing conftest cleanup, or omission of archived artifacts.'
     verification: Gate OPEN only if tests/docs probe is PASS, recursive docs/archive
-      and tests/fixtures probes are clean, decide preservation tests pass, and every
-      blocker has a pending owner or deterministic closure evidence.
+      and tests/fixtures probes are clean, exact `tests/conftest.py` active-config
+      cleanup probe passes, preserved decide source/tests/RFC path-presence probe
+      passes, decide preservation tests pass, and every blocker has a pending owner
+      or deterministic closure evidence.
     refs:
     - user-request:2026-06-17#tests-docs-gate
     - docs/archive/orch_workflow_validation.yaml
@@ -111046,6 +111058,7 @@ phases:
     - tests/test_cli.py#TestDriveCLI
     - tests/repro/test_repair_continuity_black_box.py
     - tests/fixtures/orchestration/replay_events.json
+    - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md
     depends_on:
     - orch_removal_test_retirement
     - orch_removal_doc_cleanup

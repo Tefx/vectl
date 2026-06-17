@@ -112789,8 +112789,9 @@ phases:
     name: Independent audit of evidence-guard closure/disposition
     status: pending
     description: 'CONFORMANCE ARTIFACT: independently audit that the evidence_guard_remediation
-      stream closed or dispositioned all 43 initial completed-evidence guard rows
-      without hiding historical failure evidence.
+      stream closed, dispositioned, exceptioned, or assigned concrete owners for all
+      43 initial completed-evidence guard rows plus every drift/current completed-evidence
+      guard offender reported at audit time, without hiding historical failure evidence.
 
 
       Verification scope: full-plan-check protecting `egr_final_validate_gate` and
@@ -112810,14 +112811,23 @@ phases:
       `egr_dispose_scoped_pass_global_fail_rows`, `egr_close_repo_regression_post_review_rows`,
       and `egr_generate_current_core_owner_path`.
 
-      - Produce a 43-row decision artifact with: offending_step_id, original_phase,
-      group, status, owner, lifecycle/disposition/tracked evidence, gate_intersection/non-intersection
-      evidence, closed_by_step, validator_status, and audit verdict.
+      - Produce a decision artifact covering all 43 initial rows plus every drift/current
+      completed-evidence guard offender reported at audit time. Each row must include:
+      offending_step_id, original_phase, group, status, owner, lifecycle_or_disposition,
+      gate_intersection, closed_by_step, validator_status, audit_verdict, and for
+      current blockers a concrete owner step/phase plus verification/retest/required-command
+      ownership.
 
       - For any row still reported by `vectl validate`, confirm the exact row has
       row-local `exception_policy` or `current_blocker_owner` evidence. `closed_by`
       or ordinary `non-blocking_disposition` alone does not satisfy a still-reported
       row. Global keywords or static target lists do not count.
+
+      - For any still-reported non-exception row using `current_blocker_owner`, confirm
+      at least one `current_blocker_owner` value is not `egr_generate_current_core_owner_path`,
+      and the row text names the concrete pending/later owner step or phase plus verification/retest/required-command
+      responsibility. D-local `closed_by_step` is writer proof only and is not owner
+      sufficiency.
 
       - Confirm non-blocking dispositions use validator-recognized wording: `non-blocking`
       or `not blocking`, explicit owner, lifecycle/disposition/tracked language, and
@@ -112834,11 +112844,14 @@ phases:
       - Confirm historical failure evidence still exists and was not rewritten away.
 
 
-      The audit may PASS only if each initial row is PROVEN closed/dispositioned/owned
-      by row-local evidence, or if an explicit exception policy is present and justified
-      by audit-integrity constraints.'
+      The audit may PASS only if every initial row and every drift/current offender
+      at audit time is PROVEN closed/dispositioned/owned by row-local evidence, has
+      an audited row-local current_blocker_owner path with owner/lifecycle/gate-intersection/verification
+      ownership, or has an explicit exception policy justified by audit-integrity
+      constraints.'
     verification: full-plan-check. The audit must provide raw command output and a
-      43-row decision artifact before the final gate can open.
+      decision artifact covering the 43 initial rows plus every drift/current completed-evidence
+      guard offender reported at audit time before the final gate can open.
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       If no refs were provided, state: "No refs for this step."
@@ -112861,7 +112874,7 @@ phases:
 
       ```
 
-      <paste stdout/stderr>
+      <paste stdout/stderr and exit code>
 
       ```
 
@@ -112873,9 +112886,10 @@ phases:
 
       |---|---|---|---|---|---|
 
-      | EGR-001 | user request: 43 completed-evidence guard rows require closure/disposition
-      | all initial rows classified | runtime_probe | `uv run vectl validate` raw
-      output + inventory table | PROVEN/UNPROVEN |
+      | EGR-001 | user request: 43 completed-evidence guard rows plus drift/current
+      offenders require closure/disposition/owner | all initial rows and audit-time
+      drift/current rows classified | runtime_probe | `uv run vectl validate` raw
+      output + drift-adjusted closure register | PROVEN/UNPROVEN |
 
       | EGR-002 | user request: do not falsify or erase historical failure evidence
       | historical FAIL facts retained | artifact_review | targeted `vectl show` receipts
@@ -112888,21 +112902,48 @@ phases:
       | EGR-004 | user request: no product code fixes | only plan-state mutations
       | source_static | changed-path summary | PROVEN/UNPROVEN |
 
-      | EGR-005 | user request: final validate 0 or explicit exception policy | validation
-      closure or exception | runtime_probe | `uv run vectl validate` plus exception-policy
-      rows if any | PROVEN/UNPROVEN |
+      | EGR-005 | user request: final validate 0 OR audited row-local exception_policy/current_blocker_owner
+      | validation closure, exception policy, or concrete current-owner path | runtime_probe
+      | `uv run vectl validate` plus row-local exception/current-owner rows if any
+      remain | PROVEN/UNPROVEN |
 
 
-      ## 43-Row Closure Register
+      ## Initial-43 Plus Drift/Current Closure Register
 
-      | offending_step_id | original_signal | closure_evidence_ref | disposition |
-      current_owner_if_any | audit_status |
-
-      |---|---|---|---|---|---|
+      For each of the 43 initial rows and every drift/current completed-evidence guard
+      offender reported at audit time, provide one machine-checkable row:
 
 
-      Allowed audit_status values: PROVEN_CLOSED | PROVEN_NON_BLOCKING | OWNED_BLOCKER
+      | offending_step_id | original_phase | group | status | owner | lifecycle_or_disposition
+      | gate_intersection | closed_by_step | validator_status | audit_verdict | current_owner_step_or_phase
+      | verification_retest_required_command_ownership |
+
+      |---|---|---|---|---|---|---|---|---|---|---|---|
+
+
+      Allowed `status` values: closed_by_validator_absence | closed_by_green_same_phase
+      | non-blocking_disposition | current_blocker_owner | exception_policy | reclassified_to_d_current_core_failure.
+
+      Allowed `validator_status` values: absent | still_reported | not_checked.
+
+      Allowed `audit_verdict` values: PROVEN_CLOSED | PROVEN_NON_BLOCKING | OWNED_CURRENT_BLOCKER
       | EXCEPTION_POLICY | UNPROVEN.
+
+
+      Rules for machine-checkability:
+
+      - `offending_step_id` must be the exact row id; static target lists or global
+      keywords do not count.
+
+      - Still-reported rows must have `exception_policy` or `current_blocker_owner`;
+      `closed_by`, `closed_by_step`, or `non-blocking_disposition` alone is insufficient.
+
+      - Still-reported non-exception rows using `current_blocker_owner` must name
+      a concrete owner step/phase other than `egr_generate_current_core_owner_path`
+      and must include verification, retest, or required-command ownership.
+
+      - `closed_by_step: egr_generate_current_core_owner_path` is writer proof only,
+      never sufficient owner closure by itself.
 
 
       ## Guardrails

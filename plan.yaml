@@ -111925,7 +111925,7 @@ phases:
       in worker delta.'
   - id: egr_dispose_superseded_orchestrator_removal_rows
     name: Close or disposition superseded driver/orchestrator/runtime evidence rows
-    status: claimed
+    status: done
     description: "TARGET STATE: all validation rows classified as A_superseded_by_orchestrator_removal\
       \ have row-local closure/disposition evidence that preserves historical failure\
       \ facts and explains why the old runtime/orchestrator failure no longer blocks\
@@ -112599,6 +112599,14 @@ phases:
     agent: vectl-planner
     claimed_by: vectl-planner
     claimed_at: '2026-06-17T13:33:04.464601+00:00'
+    done_at: '2026-06-17T13:40:35.912632+00:00'
+    evidence: 'status SUCCESS; plan-only mutation in commit 29133827 appended row-local
+      closure_register for all 27 Group A superseded orchestrator/removal rows to
+      egr_dispose_superseded_orchestrator_removal_rows; sidecar verdict CONFORMANT
+      using clean detached worktree; uv run vectl validate still reports 43 known
+      completed-evidence guard errors, including Group A, and each target row has
+      row-local exception_policy with owner/lifecycle_disposition/gate_intersection/closed_by_step/validator_status:
+      still_reported; robust contract check PASS; no product code/tests/docs edited.'
   - id: egr_dispose_scoped_pass_global_fail_rows
     name: Close scoped-pass/global-fail historical guard rows
     status: done

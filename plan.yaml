@@ -111910,3 +111910,48 @@ phases:
     depends_on:
     - egr_inventory_classify_43_errors
     agent: vectl-planner
+  - id: egr_dispose_scoped_pass_global_fail_rows
+    name: Close scoped-pass/global-fail historical guard rows
+    status: pending
+    description: "TARGET STATE: rows where the historical evidence indicates a bounded\
+      \ scoped objective passed while unrelated global debt failed are closed with\
+      \ explicit gate-intersection disposition instead of broad product cleanup.\n\
+      \nGroup B initial target rows from the starting validation output:\n- claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix\n\
+      - claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest\n- step-id-resolver-hardening.retest-gate-blockers\n\
+      - arch-demolition-wave-1.dem-002-extract-shared-next-step-helper\n- arch-demolition-wave-6.dem-017-collapse-duplicate-step-id-leaf-wrappers-without-breaking-outputs\n\
+      \nRequired disposition semantics for each row:\n- Use `vectl show`/`vectl search`\
+      \ evidence to identify the local scoped objective, the failing global check,\
+      \ and any later closure evidence already present.\n- Add or append a non-destructive\
+      \ disposition receipt using vectl mutation tools only. The receipt must state\
+      \ whether the global failure intersected any remaining required gate at the\
+      \ time and whether later owner phases handled it.\n- Do not perform repo-wide\
+      \ cleanup in this step. If a row actually represents a still-relevant current\
+      \ failure, reclassify it to D_current_core_failure and create owner coverage\
+      \ in `egr_generate_current_core_owner_path`.\n\n## Gate Preview (what the gate\
+      \ WILL reject)\n1. Treating \"global failure unrelated\" as a disposition without\
+      \ citing owner/lifecycle or non-intersection.\n2. Broad code/test cleanup in\
+      \ a plan-evidence hygiene step.\n3. A closure receipt that lacks targeted `vectl\
+      \ show`/validate evidence for the offending step.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \"plan.yaml\"\nblocked_paths:\n  - \"src/**\"\n  - \"tests/**\"\
+      \n  - \"docs/**\"\nrequired_claims:\n  - group_b_rows_closed_or_dispositioned\n\
+      \  - scoped_pass_vs_global_fail_classified\n  - gate_intersection_disposition_recorded\n\
+      \  - no_broad_code_cleanup_performed\nrequired_checks:\n  - id: group_b_absent_from_completed_evidence_guard_errors\n\
+      \    command:\n      - \"uv\"\n      - \"run\"\n      - \"python\"\n      -\
+      \ \"-c\"\n      - |\n        import subprocess, sys\n        ids = [\n     \
+      \       'claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix',\n\
+      \            'claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest',\n\
+      \            'step-id-resolver-hardening.retest-gate-blockers',\n          \
+      \  'arch-demolition-wave-1.dem-002-extract-shared-next-step-helper',\n     \
+      \       'arch-demolition-wave-6.dem-017-collapse-duplicate-step-id-leaf-wrappers-without-breaking-outputs',\n\
+      \        ]\n        p = subprocess.run(['uv', 'run', 'vectl', 'validate'], text=True,\
+      \ capture_output=True)\n        out = p.stdout + p.stderr\n        print(out)\n\
+      \        offenders = [i for i in ids if f\"ERROR: Completed evidence guard:\
+      \ step '{i}'\" in out]\n        if offenders:\n            print('Group B rows\
+      \ still reported by completed-evidence guard:', offenders)\n            sys.exit(1)\n\
+      \    covers_claims:\n      - group_b_rows_closed_or_dispositioned\n      - scoped_pass_vs_global_fail_classified\n\
+      \      - gate_intersection_disposition_recorded\n      - no_broad_code_cleanup_performed\n\
+      </intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    depends_on:
+    - egr_inventory_classify_43_errors
+    agent: vectl-planner

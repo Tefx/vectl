@@ -111875,13 +111875,14 @@ phases:
       \ filename matches for those three files and `tests/test_cli.py: test_orch_`\
       \ content hit.\n- `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest\
       \ tests/live_smoke --collect-only -q` collected 36 tests from the live_smoke\
-      \ dispatch files.\n\ntarget_kill_list:\n  - `tests/live_smoke/test_codex_dispatch_live.py`\
-      \ active real-runner dispatch/orchestration runtime test surface\n  - `tests/live_smoke/test_opencode_dispatch_live.py`\
-      \ active real-runner dispatch/orchestration runtime test surface\n  - `tests/live_smoke/helpers.py`\
+      \ dispatch files.\n\ntarget_kill_list:\n  - \"tests/live_smoke/test_codex_dispatch_live.py\
+      \ active real-runner dispatch/orchestration runtime test surface\"\n  - \"tests/live_smoke/test_opencode_dispatch_live.py\
+      \ active real-runner dispatch/orchestration runtime test surface\"\n  - \"tests/live_smoke/helpers.py\
       \ driver live-smoke policy / live dispatch helper semantics, unless narrowly\
       \ retained with proof it no longer supports deleted orchestration/operator-runtime\
-      \ behavior\n  - `tests/test_cli.py` stale `test_orch_` residue only if needed\
-      \ to close the active probe hit\n\nremoval_warrant:\n  source_refs:\n    - `orch_removal_tests_docs_gate#B1-active-live-smoke-dispatch-runtime-tests-remain`\
+      \ behavior\"\n  - \"tests/test_cli.py stale test_orch_ residue only if needed\
+      \ to close the active probe hit\"\n\nremoval_warrant:\n  source_refs:\n    -\
+      \ `orch_removal_tests_docs_gate#B1-active-live-smoke-dispatch-runtime-tests-remain`\
       \ — gate requires active orchestration/runtime tests and live-smoke orch tests\
       \ to be deleted or re-scoped away from deleted runtime behavior.\n    - `orch_removal_test_retirement`\
       \ — target state already retired orchestration-only live-smoke probes and preserved\
@@ -111899,35 +111900,100 @@ phases:
       \ pytest collects dispatch files and headers assert real codex/opencode subprocess\
       \ dispatch integration | Forbidden dispatch runtime tests are deleted or explicitly\
       \ re-scoped so collection no longer includes deleted orchestration/operator-runtime\
-      \ behavior | runtime_probe | active live-smoke/orchestration retirement probe\
-      \ + `pytest tests/live_smoke --collect-only -q` | OWNED |\n| B1-HELPER-POLICY-RESCOPED\
-      \ | Gate B1 — `tests/live_smoke/helpers.py` references driver live-smoke policy/live\
-      \ dispatch markers | Helper is absent or contains no driver live-smoke policy,\
-      \ live dispatch, deleted runtime, or real runner orchestration markers | static_probe\
-      \ | active helper marker probe | OWNED |\n| B1-CLI-STALE-TEST-ORCH-CLOSED |\
-      \ Gate B1 — active probe hit `tests/test_cli.py: test_orch_` | Any retained\
-      \ `test_orch_` content is removed or rewritten as explicit negative removal\
-      \ coverage that does not advertise/execute deleted orchestration runtime | static_or_targeted_probe\
-      \ | active probe over `tests/test_cli.py`; `tests/test_cli.py::TestDriveCLI`\
-      \ if touched | OWNED |\n| DECIDE-MCP-PRESERVED | Prior gate evidence passed\
-      \ — decide/MCP targeted tests 217 passed | Remediation does not regress preserved\
-      \ decide/MCP behavior | runtime_probe | `pytest tests/test_mcp.py tests/test_decide.py\
-      \ tests/test_decide_state_isolation.py -q` in retest step | PRESERVE |\n\n<intent_closure_contract>\n\
-      allowed_paths:\n  - `tests/live_smoke/helpers.py`\n  - `tests/live_smoke/test_codex_dispatch_live.py`\n\
-      \  - `tests/live_smoke/test_opencode_dispatch_live.py`\n  - `tests/test_cli.py`\
-      \ # only if needed to remove/re-scope stale `test_orch_` content hit\nblocked_paths:\n\
-      \  - `src/**`\n  - `docs/**`\n  - `README.md`\n  - `README_zh.md`\n  - `tests/test_decide.py`\n\
-      \  - `tests/test_decide_state_isolation.py`\n  - `tests/test_mcp.py`\n  - `tests/test_io.py`\n\
-      \  - `tests/test_models.py`\nrequired_claims:\n  - B1-active-live-smoke-dispatch-runtime-tests-remain\
-      \ closed\n  - active live-smoke dispatch tests deleted or non-blockingly re-scoped\
-      \ away from deleted orchestration/operator-runtime behavior\n  - live-smoke\
-      \ helper no longer encodes driver live-smoke policy/live dispatch markers for\
-      \ deleted runtime behavior\n  - `tests/test_cli.py` stale `test_orch_` hit closed\
-      \ if still present\n  - no product runtime code or documentation changed\n \
-      \ - decide/MCP preservation delegated to retest and remains green\nrequired_checks:\n\
-      \  - active_live_smoke_orch_retirement_probe\n  - live_smoke_collect_only_no_forbidden_dispatch_runtime_tests\n\
-      \  - targeted_decide_mcp_preservation_tests\n</intent_closure_contract>\n\n\
-      <side_effect_budget>\nAllowed: delete or narrowly rewrite active test/helper\
+      \ behavior | runtime_probe | `active_live_smoke_orch_retirement_probe` + `live_smoke_collect_only_no_forbidden_dispatch_runtime_tests`\
+      \ | OWNED |\n| B1-HELPER-POLICY-RESCOPED | Gate B1 — `tests/live_smoke/helpers.py`\
+      \ references driver live-smoke policy/live dispatch markers | Helper is absent\
+      \ or contains no driver live-smoke policy, live dispatch, deleted runtime, or\
+      \ real runner orchestration markers | static_probe | `active_live_smoke_orch_retirement_probe`\
+      \ | OWNED |\n| B1-CLI-STALE-TEST-ORCH-CLOSED | Gate B1 — active probe hit `tests/test_cli.py:\
+      \ test_orch_` | Any retained `test_orch_` content is removed or rewritten as\
+      \ explicit negative removal coverage that does not advertise/execute deleted\
+      \ orchestration runtime | static_or_targeted_probe | `active_live_smoke_orch_retirement_probe`;\
+      \ `tests/test_cli.py::TestDriveCLI` if touched | OWNED |\n| B1-NO-PRODUCT-DOCS-RUNTIME-CHANGES\
+      \ | Repair scope — B1 fix may only touch B1 test retirement surfaces | No product\
+      \ runtime, docs, README, preserved decide/MCP tests, models, or IO tests changed\
+      \ | git_scope_probe | `no_product_docs_runtime_changes_outside_allowed_paths`\
+      \ | OWNED |\n| DECIDE-MCP-PRESERVED | Prior gate evidence passed — decide/MCP\
+      \ targeted tests 217 passed | Remediation does not regress preserved decide/MCP\
+      \ behavior | runtime_probe | `targeted_decide_mcp_preservation_tests` | PRESERVE\
+      \ |\n\n<intent_closure_contract>\nallowed_paths:\n  - \"tests/live_smoke/helpers.py\"\
+      \n  - \"tests/live_smoke/test_codex_dispatch_live.py\"\n  - \"tests/live_smoke/test_opencode_dispatch_live.py\"\
+      \n  - \"tests/test_cli.py\"\nallowed_path_notes:\n  \"tests/test_cli.py\": \"\
+      Only stale test_orch_ residue may be removed or re-scoped as explicit negative\
+      \ removal coverage for B1. Do not perform unrelated CLI rewrites.\"\nblocked_paths:\n\
+      \  - \"src/**\"\n  - \"docs/**\"\n  - \"README.md\"\n  - \"README_zh.md\"\n\
+      \  - \"tests/test_decide.py\"\n  - \"tests/test_decide_state_isolation.py\"\n\
+      \  - \"tests/test_mcp.py\"\n  - \"tests/test_io.py\"\n  - \"tests/test_models.py\"\
+      \nrequired_claims:\n  - \"B1-LIVE-SMOKE-DISPATCH-TESTS-RETIRED\"\n  - \"B1-HELPER-POLICY-RESCOPED\"\
+      \n  - \"B1-CLI-STALE-TEST-ORCH-CLOSED\"\n  - \"B1-NO-PRODUCT-DOCS-RUNTIME-CHANGES\"\
+      \n  - \"DECIDE-MCP-PRESERVED\"\nrequired_checks:\n  - id: \"active_live_smoke_orch_retirement_probe\"\
+      \n    command:\n      - \"env\"\n      - \"-u\"\n      - \"VIRTUAL_ENV\"\n \
+      \     - \"UV_PROJECT_ENVIRONMENT=.venv\"\n      - \"uv\"\n      - \"run\"\n\
+      \      - \"python\"\n      - \"-c\"\n      - |\n        from pathlib import\
+      \ Path\n        forbidden_paths = [\n            Path('tests/live_smoke/test_codex_dispatch_live.py'),\n\
+      \            Path('tests/live_smoke/test_opencode_dispatch_live.py'),\n    \
+      \    ]\n        markers = [\n            'driver live-smoke policy',\n     \
+      \       'driver.yaml codex runner contract',\n            'driver.yaml opencode\
+      \ runner contract',\n            'dispatch integration',\n            'real\
+      \ codex subprocess',\n            'real opencode subprocess',\n            'live\
+      \ dispatch',\n            'orchestration/operator-runtime',\n            'real-dispatch',\n\
+      \        ]\n        scan_paths = [Path('tests/live_smoke/helpers.py'), Path('tests/test_cli.py')]\n\
+      \        live_root = Path('tests/live_smoke')\n        if live_root.exists():\n\
+      \            scan_paths.extend(sorted(live_root.glob('**/*.py')))\n        scan_paths.extend(forbidden_paths)\n\
+      \        seen = set()\n        hits = []\n        for path in scan_paths:\n\
+      \            key = path.as_posix()\n            if key in seen:\n          \
+      \      continue\n            seen.add(key)\n            if path in forbidden_paths\
+      \ and path.exists():\n                hits.append(f'{key}:active forbidden live-smoke\
+      \ dispatch test file remains')\n            if not path.exists():\n        \
+      \        continue\n            text = path.read_text(encoding='utf-8', errors='ignore')\n\
+      \            lower = text.lower()\n            for marker in markers:\n    \
+      \            if marker.lower() in lower:\n                    hits.append(f'{key}:marker:{marker}')\n\
+      \            if key == 'tests/test_cli.py' and 'test_orch_' in text and 'B1_NEGATIVE_ORCH_REMOVAL_COVERAGE'\
+      \ not in text:\n                hits.append(f'{key}:marker:test_orch_ without\
+      \ B1_NEGATIVE_ORCH_REMOVAL_COVERAGE re-scope marker')\n        fixture_root\
+      \ = Path('tests/fixtures/orchestration')\n        if fixture_root.exists():\n\
+      \            hits.append('tests/fixtures/orchestration:active orchestration\
+      \ fixture root remains')\n        if hits:\n            print('B1_ACTIVE_LIVE_SMOKE_DISPATCH_RUNTIME_TESTS_REMAIN')\n\
+      \            print('\\n'.join(hits))\n            raise SystemExit(1)\n    \
+      \    print('B1 active live-smoke/orchestration retirement probe passed')\n \
+      \   covers_claims:\n      - \"B1-LIVE-SMOKE-DISPATCH-TESTS-RETIRED\"\n     \
+      \ - \"B1-HELPER-POLICY-RESCOPED\"\n      - \"B1-CLI-STALE-TEST-ORCH-CLOSED\"\
+      \n  - id: \"live_smoke_collect_only_no_forbidden_dispatch_runtime_tests\"\n\
+      \    command:\n      - \"bash\"\n      - \"-lc\"\n      - |\n        if [ !\
+      \ -d \"tests/live_smoke\" ]; then\n          echo \"tests/live_smoke absent;\
+      \ no forbidden live-smoke dispatch tests collected\"\n          exit 0\n   \
+      \     fi\n        set +e\n        out=$(env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv\
+      \ uv run pytest tests/live_smoke --collect-only -q 2>&1)\n        status=$?\n\
+      \        set -e\n        printf '%s\\n' \"$out\"\n        if [ \"$status\" -eq\
+      \ 5 ]; then\n          echo \"no live_smoke tests collected; non-blocking for\
+      \ deleted dispatch-runtime tests\"\n          exit 0\n        fi\n        if\
+      \ [ \"$status\" -ne 0 ]; then\n          exit \"$status\"\n        fi\n    \
+      \    if printf '%s\\n' \"$out\" | grep -E 'test_(codex|opencode)_dispatch_live[.]py|driver[.]yaml\
+      \ (codex|opencode) runner contract|real (codex|opencode) subprocess|dispatch\
+      \ integration'; then\n          echo \"forbidden live-smoke dispatch/runtime\
+      \ tests collected\"\n          exit 1\n        fi\n        echo \"live-smoke\
+      \ collect-only contains no forbidden dispatch/runtime tests\"\n    covers_claims:\n\
+      \      - \"B1-LIVE-SMOKE-DISPATCH-TESTS-RETIRED\"\n  - id: \"no_product_docs_runtime_changes_outside_allowed_paths\"\
+      \n    command:\n      - \"bash\"\n      - \"-lc\"\n      - |\n        allowed='^tests/(live_smoke/helpers[.]py|live_smoke/test_codex_dispatch_live[.]py|live_smoke/test_opencode_dispatch_live[.]py|test_cli[.]py)$'\n\
+      \        tracked=$(git diff --name-only --diff-filter=ACMRTUXBD HEAD --)\n \
+      \       untracked=$(git ls-files --others --exclude-standard)\n        all=$(printf\
+      \ '%s\\n%s\\n' \"$tracked\" \"$untracked\" | sed '/^$/d' | sort -u)\n      \
+      \  bad=$(printf '%s\\n' \"$all\" | grep -vE \"$allowed\" || true)\n        if\
+      \ [ -n \"$bad\" ]; then\n          echo \"unexpected changed paths outside B1\
+      \ allowed set\"\n          printf '%s\\n' \"$bad\"\n          exit 1\n     \
+      \   fi\n        blocked=$(git diff --name-only HEAD -- src docs README.md README_zh.md\
+      \ tests/test_decide.py tests/test_decide_state_isolation.py tests/test_mcp.py\
+      \ tests/test_io.py tests/test_models.py)\n        if [ -n \"$blocked\" ]; then\n\
+      \          echo \"blocked product/docs/preserved-test paths changed\"\n    \
+      \      printf '%s\\n' \"$blocked\"\n          exit 1\n        fi\n        echo\
+      \ \"changed paths are confined to B1 allowed test-retirement targets\"\n   \
+      \ covers_claims:\n      - \"B1-NO-PRODUCT-DOCS-RUNTIME-CHANGES\"\n  - id: \"\
+      targeted_decide_mcp_preservation_tests\"\n    command:\n      - \"env\"\n  \
+      \    - \"-u\"\n      - \"VIRTUAL_ENV\"\n      - \"UV_PROJECT_ENVIRONMENT=.venv\"\
+      \n      - \"uv\"\n      - \"run\"\n      - \"pytest\"\n      - \"tests/test_mcp.py\"\
+      \n      - \"tests/test_decide.py\"\n      - \"tests/test_decide_state_isolation.py\"\
+      \n      - \"-q\"\n    covers_claims:\n      - \"DECIDE-MCP-PRESERVED\"\n</intent_closure_contract>\n\
+      \n<side_effect_budget>\nAllowed: delete or narrowly rewrite active test/helper\
       \ files listed under allowed_paths to remove deleted dispatch/operator-runtime\
       \ assertions.\nForbidden: product runtime edits under `src/**`, docs/README\
       \ edits, new runtime abstractions, new skip/xfail shells that hide the deleted\
@@ -111940,22 +112006,30 @@ phases:
       \ inventory remediation.\n</risk_probes>\n\n## Completion Criteria (stub exclusion)\n\
       This is an IMPLEMENTATION demolition step. Stub-only completion is NOT acceptable;\
       \ replacing live-smoke dispatch tests with vacuous skip/xfail shells is rejected.\
-      \ No new abstraction may replace the deleted runtime tests."
+      \ No new abstraction may replace the deleted runtime tests.\n"
     verification: '- B1 owner evidence lists exact changed paths and confirms they
-      are within the intent_closure_contract allowed paths.
+      are within the intent_closure_contract allowed_paths.
 
-      - Active live-smoke/orchestration retirement probe exits 0.
+      - Run required_check `active_live_smoke_orch_retirement_probe`; it must exit
+      0 and paste raw stdout/stderr.
 
-      - `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/live_smoke
-      --collect-only -q` no longer collects forbidden dispatch/runtime tests or includes
-      explicit documented non-blocking re-scope proof.
+      - Run required_check `live_smoke_collect_only_no_forbidden_dispatch_runtime_tests`;
+      it must exit 0 and either show no forbidden dispatch/runtime tests collected
+      or document the non-blocking no-tests/absent-directory disposition built into
+      the command.
 
-      - No product runtime code or docs were changed.
+      - Run required_check `no_product_docs_runtime_changes_outside_allowed_paths`;
+      it must exit 0 and show no changes outside the B1 allowed test-retirement targets.
+
+      - Run required_check `targeted_decide_mcp_preservation_tests`; it must exit
+      0.
 
       - Removed symbols/files have no live callers/importers for deleted orchestration/operator-runtime
       behavior.
 
-      - No new abstraction, skip shell, or xfail shell replaces the deleted tests.'
+      - No new abstraction, skip shell, or xfail shell replaces the deleted tests.
+
+      '
     evidence_template: '## B1 Fix Evidence
 
 

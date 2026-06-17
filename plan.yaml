@@ -111251,7 +111251,7 @@ phases:
       reported.'
   - id: orch_removal_tests_docs_probe
     name: Verify tests/docs cleanup and decide wording
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       phase-check protecting tests/docs cleanup. Verify real pytest collection, preserved
@@ -111314,6 +111314,8 @@ phases:
     - orch_removal_test_retirement
     - orch_removal_decide_wording_preserve
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-17T15:33:18.467185+00:00'
   - id: orch_removal_tests_docs_gate
     name: Gate tests/docs cleanup
     status: pending

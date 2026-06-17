@@ -111118,7 +111118,7 @@ phases:
       of final delta except exact orchestration artifact.'
   - id: orch_removal_decide_wording_preserve
     name: Reword preserved vectl_decide surfaces as caller-owned automation advisor
-    status: pending
+    status: claimed
     description: "step_type: implementation\nTARGET STATE: vectl_decide remains a\
       \ supported core automation/dispatch advisor with caller-owned state language.\
       \ Preserved decide docs/code/tests/MCP tool-list surfaces must not describe\
@@ -111236,6 +111236,8 @@ phases:
     depends_on:
     - orch_removal_doc_cleanup
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-06-17T15:25:15.540746+00:00'
   - id: orch_removal_tests_docs_probe
     name: Verify tests/docs cleanup and decide wording
     status: pending

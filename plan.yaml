@@ -110562,7 +110562,7 @@ phases:
       -q: 83 passed.'
   - id: orch_removal_runtime_phase_probe
     name: Verify runtime surface removal and decide preservation
-    status: claimed
+    status: done
     description: "step_type: verification\nphase-check protecting the runtime-surface\
       \ phase and downstream docs/tests cleanup. As an independent tester, run real\
       \ import/CLI/test probes against the modified worktree. Unit tests with mocks\
@@ -110637,6 +110637,21 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-17T13:52:52.175804+00:00'
+    done_at: '2026-06-17T14:46:29.349391+00:00'
+    evidence: 'status SUCCESS; verdict PASS; blockers []; gate_open_allowed true.
+      Evidence artifact .agent/evidence/orch_removal_runtime_phase_probe.md committed
+      in 5d05bb4 after worker branch commit 53292ac1. Sidecar verdict CONFORMANT after
+      contract repair; changed path agent/evidence/orch_removal_runtime_phase_probe.md;
+      check evidence_artifact_marker_probe passed covering runtime_probe_evidence_artifact_written,
+      raw_pytest_probe_passed, installed_cli_help_has_no_orch, decide_runtime_support_preserved,
+      deleted_runtime_references_absent, behavioral_gate_passed, no_product_plan_or_test_mutations.
+      Mainline verification passed: uv run pytest tests/test_models.py tests/test_io.py
+      tests/test_mcp.py tests/test_decide.py tests/test_decide_state_isolation.py
+      -q -> 300 passed; uvx --refresh --from . vectl --help -> exit 0 and no orch
+      command; Python import probe for vectl.cli/vectl.decide/vectl.decision_state/vectl.model_outputs
+      -> imports ok; source absence probe under src/vectl forbidding orchestration
+      references -> absence ok. Behavioral proof register in artifact marks runtime-surface-removal,
+      source-absence, decide-preserved, regression-suite PROVEN.'
   - id: orch_removal_runtime_gate
     name: Gate runtime and CLI surface removal
     status: pending

@@ -110555,6 +110555,8 @@ phases:
     - tests/test_codex_resume_behavior.py
     - tests/repro/vertical_slice_probe.py
     - tests/test_gemini_resume_behavior.py
+    - tests/fixtures/helpers/continuity_capability_safety.py
+    - tests/fixtures/helpers/continuity_hygiene.py
     agent: architectural-demolitionist
   - id: orch_removal_doc_cleanup
     name: Delete orchestration docs and remove README orch guidance

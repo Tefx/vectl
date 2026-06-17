@@ -3933,8 +3933,8 @@ class TestDriveCLI:
         assert result.exit_code != 0
         assert "No such command 'drive'" in result.output
 
-    def test_orch_command_is_not_registered(self):
-        """Negative removal assertion: the removed ``orch`` command stays absent."""
+    def test_removed_orchestrator_command_is_not_registered(self):
+        """B1_NEGATIVE_ORCH_REMOVAL_COVERAGE: removed ``orch`` command stays absent."""
         result = runner.invoke(app, ["orch", "--help"])
         assert result.exit_code != 0
         assert "No such command 'orch'" in result.output

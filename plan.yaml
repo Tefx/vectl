@@ -110448,7 +110448,7 @@ phases:
     agent: architectural-demolitionist
   - id: orch_removal_isolation_schema_delete
     name: Remove Step.isolation and IsolationMode from core schema and IO
-    status: pending
+    status: claimed
     description: "step_type: implementation\nTARGET STATE: `Step` no longer has an\
       \ `isolation` field, `IsolationMode` no longer exists, IO no longer serializes/deserializes\
       \ isolation residue, lowercase IO/model compatibility residue such as `field_name\
@@ -110528,6 +110528,8 @@ phases:
     - tests/test_models.py
     - tests/test_runtime_context_vertical_slice.py
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-06-17T13:33:20.507142+00:00'
   - id: orch_removal_runtime_phase_probe
     name: Verify runtime surface removal and decide preservation
     status: pending

@@ -112402,7 +112402,7 @@ phases:
       through vectl tools only.'
   - id: egr_triage_repo_regression_post_review_current_state
     name: Triage repo-regression, invar, post-review, and deterministic-check rows
-    status: claimed
+    status: done
     description: "PROOF ARTIFACT: determine whether repo-regression/full-suite/invar/post-review/deterministic-check\
       \ guard rows are already current-green evidence hygiene issues, non-blocking\
       \ legacy debt with owner/lifecycle, or still-current blocker-class failures.\n\
@@ -112543,6 +112543,16 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-17T13:15:30.577048+00:00'
+    done_at: '2026-06-17T13:31:12.874908+00:00'
+    evidence: 'status SUCCESS for triage; evidence artifact .agent/evidence/egr_triage_repo_regression_post_review_current_state.md
+      merged to main in commit a4063d2; worker commit 096b4eade/ea466f9d after main
+      sync; sidecar verdict CONFORMANT; mainline verification: artifact exists and
+      records uv run vectl validate, targeted vectl show receipts, uv run pytest red
+      with 3 failures, uv run invar guard --all green, Group C triage statuses current_blocker_owner_required=2
+      current_green_closure=8 non_blocking_legacy_debt_with_owner=1; HEAD changed
+      only .agent/evidence/egr_triage_repo_regression_post_review_current_state.md;
+      red pytest is expected triage evidence, not completion gate failure for this
+      proof step.'
   - id: egr_close_repo_regression_post_review_rows
     name: Apply closure/disposition for repo-regression and post-review rows
     status: pending

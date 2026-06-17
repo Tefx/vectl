@@ -110271,13 +110271,13 @@ phases:
       \ targets absent')\"]\n    covers_claims:\n      - runtime_source_deleted\n\
       \  - id: production_import_absence_probe\n    command: [\"uv\", \"run\", \"\
       python\", \"-c\", \"from pathlib import Path; terms=['vectl.orchestration','core.orchestration','orch_app','cli_orchestration'];\
-      \ hits=[]; \nfor root in [Path('src/vectl')]:\n    for p in root.rglob('*.py'):\n\
-      \        s=p.read_text(errors='ignore')\n        for t in terms:\n         \
-      \   if t in s: hits.append(f'{p}:{t}')\nassert not hits, hits; print('no production\
-      \ orchestration imports')\"]\n    covers_claims:\n      - production_orchestration_imports_removed\n\
-      \  - id: decide_targeted_tests\n    command: [\"uv\", \"run\", \"pytest\", \"\
-      tests/test_decide.py\", \"tests/test_decide_state_isolation.py\", \"tests/test_mcp.py\"\
-      , \"-q\"]\n    covers_claims:\n      - decide_surface_preserved\n</intent_closure_contract>"
+      \ files=list(Path('src/vectl').rglob('*.py')); hits=[f'{p}:{t}' for p in files\
+      \ for t in terms if t in p.read_text(errors='ignore')]; assert not hits, hits;\
+      \ print('no production orchestration imports')\"]\n    covers_claims:\n    \
+      \  - production_orchestration_imports_removed\n  - id: decide_targeted_tests\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_decide.py\", \"tests/test_decide_state_isolation.py\"\
+      , \"tests/test_mcp.py\", \"-q\"]\n    covers_claims:\n      - decide_surface_preserved\n\
+      </intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     refs:
     - user-request:2026-06-17#source-deletion-targets

@@ -110048,3 +110048,10 @@ phases:
     advisor.
   depends_on:
   - orch_removal_runtime_surface
+- id: orch_removal_finalization
+  name: 'Orchestrator Removal: Closure and Full Regression'
+  status: locked
+  gate: Final gate requires forbidden-term grep closure, full pytest, packaged CLI
+    help, invar guard full scan, and independent release-blocking review.
+  depends_on:
+  - orch_removal_tests_docs

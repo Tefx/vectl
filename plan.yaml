@@ -114196,7 +114196,7 @@ phases:
     claimed_at: '2026-06-17T14:55:59.240903+00:00'
   - id: egr_fix_init_gitattributes_clirunner_compat
     name: Fix CliRunner isolated filesystem compatibility for init gitattributes tests
-    status: claimed
+    status: done
     description: "[REQUIRES_SKILL: ponytail-coder]\nTARGET STATE: `tests/test_init_gitattributes.py`\
       \ no longer calls a `CliRunner.isolated_filesystem` member that is absent in\
       \ the installed Typer/Click test runner. The test still exercises the real `vectl\
@@ -114272,6 +114272,17 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-06-17T15:08:35.354583+00:00'
+    done_at: '2026-06-17T15:24:46.205883+00:00'
+    evidence: 'status SUCCESS; worker test compatibility edit committed manually as
+      75b532b8 and merged to main as f09f75b. Sidecar verdict CONFORMANT after validate
+      classifier contract repair; changed only tests/test_init_gitattributes.py. Fix
+      replaces runner.isolated_filesystem usage with pytest tmp_path + monkeypatch.chdir
+      while preserving real Typer CLI invocations and .gitattributes creation/idempotency/preserve
+      assertions. Mainline verification: uv run pytest tests/test_init_gitattributes.py
+      -q -> 3 passed; uv run pytest -q -> 1246 passed, 23 skipped; uv run vectl validate
+      classifier -> raw validate still exits 1 with known 43 completed-evidence guard
+      rows and 0 warnings, classifier PASS known 43 only; no src/docs/plan changes
+      by implementation branch.'
   - id: egr_retest_init_gitattributes_clirunner_compat
     name: Retest init gitattributes compatibility and final validation commands
     status: pending

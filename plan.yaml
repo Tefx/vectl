@@ -112144,9 +112144,16 @@ phases:
     wrapped-output parser and returns 0 errors, OR every remaining completed-evidence
     guard row has an audited exception_policy/current_blocker_owner record with owner,
     lifecycle/disposition/tracked language, and gate-intersection/non-intersection
-    reasoning. Product code/test/doc fixes remain out of scope for this stream, historical
-    failure evidence must not be erased, and `orch_removal_*` may be referenced only
-    as disposition context.
+    reasoning. Product code/test/doc fixes remain out of scope for this stream except
+    the specifically named completed test-only current-blocker remediation `egr_fix_init_gitattributes_clirunner_compat`
+    / `egr_retest_init_gitattributes_clirunner_compat` changing `tests/test_init_gitattributes.py`,
+    which may be accepted only if `egr_audit_test_only_exception_disposition` is complete
+    with PASS disposition proving current-blocker ownership, changed-path narrowness,
+    non-product-runtime behavior, command receipts, and no historical-failure erasure.
+    Ordinary product code/test/doc changes remain blocking unless separately audited
+    and dispositioned. Historical failure evidence must not be erased, `orch_removal_*`
+    may be referenced only as disposition context, and nonexistent `tools/vectl/README.md`
+    must not be required as a mandatory ref for this phase gate.
   depends_on:
   - det_check_finalization
   steps:

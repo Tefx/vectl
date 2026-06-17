@@ -110509,19 +110509,20 @@ phases:
       \ or narrowly rewritten to assert removal, while decide/model/io/MCP non-orchestration\
       \ tests remain. Legacy driver/worktree helper fixtures that import removed driver\
       \ modules or hard-code orchestration worktree paths are retired with the same\
-      \ cleanup. Test and fixture probes must cover both legacy worktree roots: `.vectl/workspaces`\
-      \ and `.vectl/worktrees`.\n\nRequirement-to-Evidence Matrix:\n| requirement_id\
-      \ | source_ref + key passage | target_state | evidence_class | required_probe_or_artifact\
-      \ | status |\n| ORCH-TESTS-DELETED | user-request:2026-06-17 — delete tests/orchestration,\
-      \ runtime context vertical slice, orch repro probes, and orch live smoke tests\
-      \ | Orchestration-only tests are absent and collection no longer imports deleted\
-      \ modules | runtime_probe | Delete-target probe + pytest collect-only | OWNED\
-      \ |\n| ACTIVE-ORCH-CLI-TESTS-RETIRED | reviewer evidence — tests/test_orch_cli_surface.py\
-      \ and tests/test_cli.py TestDriveCLI still exercise `vectl orch` | Active root\
-      \ CLI tests no longer require or advertise the removed `orch` surface | runtime_probe\
-      \ | Recursive test/fixture forbidden-reference probe | OWNED |\n| ORCH-REPRO-FIXTURES-RETIRED\
-      \ | reviewer evidence — tests/repro/test_repair_continuity_black_box.py and\
-      \ tests/fixtures/orchestration/replay_events.json preserve orch recovery/runtime\
+      \ cleanup. Active shared test config in `tests/conftest.py` no longer carries\
+      \ an `orchestration` config block. Test and fixture probes must cover both legacy\
+      \ worktree roots: `.vectl/workspaces` and `.vectl/worktrees`.\n\nRequirement-to-Evidence\
+      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| ORCH-TESTS-DELETED | user-request:2026-06-17\
+      \ — delete tests/orchestration, runtime context vertical slice, orch repro probes,\
+      \ and orch live smoke tests | Orchestration-only tests are absent and collection\
+      \ no longer imports deleted modules | runtime_probe | Delete-target probe +\
+      \ pytest collect-only | OWNED |\n| ACTIVE-ORCH-CLI-TESTS-RETIRED | reviewer\
+      \ evidence — tests/test_orch_cli_surface.py and tests/test_cli.py TestDriveCLI\
+      \ still exercise `vectl orch` | Active root CLI tests no longer require or advertise\
+      \ the removed `orch` surface | runtime_probe | Recursive test/fixture forbidden-reference\
+      \ probe | OWNED |\n| ORCH-REPRO-FIXTURES-RETIRED | reviewer evidence — tests/repro/test_repair_continuity_black_box.py\
+      \ and tests/fixtures/orchestration/replay_events.json preserve orch recovery/runtime\
       \ fixtures | Orchestration-only repro and fixture data are deleted or rewritten\
       \ away from the deleted runtime | runtime_probe | Deletion/path/content probe\
       \ over tests and fixtures | OWNED |\n| ACTIVE-RESIDUAL-TESTS-REWRITTEN | reviewer\
@@ -110529,8 +110530,13 @@ phases:
       \ contain deleted orch/orchestration references but were not previously authorized\
       \ | Those active residual tests are explicit deletion/rewrite targets and contain\
       \ no deleted-runtime identifiers if retained | runtime_probe | Explicit residual\
-      \ active-test rewrite probe | OWNED |\n| LEGACY-DRIVER-WORKTREE-HELPERS-RETIRED\
-      \ | reviewer evidence — tests/fixtures/helpers/continuity_capability_safety.py:9-17/:131-136/:143-149\
+      \ active-test rewrite probe | OWNED |\n| ACTIVE-CONFTEST-ORCH-CONFIG-REMOVED\
+      \ | reviewer evidence — tests/conftest.py:90-93 contains an active `orchestration`\
+      \ config block but was not previously in scope | Shared test config remains\
+      \ present but contains no active orchestration config block or lowercase `orchestration`\
+      \ residue | runtime_probe | Exact `tests/conftest.py` path-presence and forbidden-token\
+      \ probe | OWNED |\n| LEGACY-DRIVER-WORKTREE-HELPERS-RETIRED | reviewer evidence\
+      \ — tests/fixtures/helpers/continuity_capability_safety.py:9-17/:131-136/:143-149\
       \ and tests/fixtures/helpers/continuity_hygiene.py:16-20 import src.vectl.driver,\
       \ mention runner/orchestration config, and hard-code .vectl/worktrees; worktree\
       \ policy also covers `.vectl/workspaces` | Legacy driver/worktree helper fixture\
@@ -110545,31 +110551,33 @@ phases:
       \ tests/test_decide.py and tests/test_decide_state_isolation.py | Decide tests\
       \ remain present and runnable | runtime_probe | targeted decide pytest | OWNED\
       \ |\n\nNon-goals: do not delete `tests/test_decide.py`, `tests/test_decide_state_isolation.py`,\
-      \ `tests/test_io.py`, `tests/test_models.py`, or `tests/test_mcp.py`. For `tests/test_cli.py`,\
-      \ `tests/repro/vertical_slice_probe.py`, and `tests/test_gemini_resume_behavior.py`,\
-      \ touch only orchestration/drive surface residue and preserve unrelated coverage.\
-      \ The helper fixtures `tests/fixtures/helpers/continuity_capability_safety.py`\
+      \ `tests/test_io.py`, `tests/test_models.py`, `tests/test_mcp.py`, or `tests/conftest.py`.\
+      \ For `tests/test_cli.py`, `tests/repro/vertical_slice_probe.py`, `tests/test_gemini_resume_behavior.py`,\
+      \ and `tests/conftest.py`, touch only orchestration/drive surface residue and\
+      \ preserve unrelated coverage. The helper fixtures `tests/fixtures/helpers/continuity_capability_safety.py`\
       \ and `tests/fixtures/helpers/continuity_hygiene.py` are in-scope deletion targets\
       \ because their remaining imports/path literals depend on removed driver/worktree\
       \ runtime.\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
       \ step. Stub-only completion is NOT acceptable; replacing deleted orchestration\
-      \ tests with vacuous skip/xfail shells is rejected unless a specific non-orchestration\
-      \ obligation is preserved.\n\n<intent_closure_contract>\nallowed_paths:\n  -\
-      \ 'tests/orchestration/**'\n  - 'tests/fixtures/orchestration/**'\n  - 'tests/fixtures/helpers/continuity_capability_safety.py'\n\
+      \ tests with vacuous skip/xfail shells or hiding active config residue behind\
+      \ comments is rejected unless a specific non-orchestration obligation is preserved.\n\
+      \n<intent_closure_contract>\nallowed_paths:\n  - 'tests/orchestration/**'\n\
+      \  - 'tests/fixtures/orchestration/**'\n  - 'tests/fixtures/helpers/continuity_capability_safety.py'\n\
       \  - 'tests/fixtures/helpers/continuity_hygiene.py'\n  - 'tests/test_runtime_context_vertical_slice.py'\n\
       \  - 'tests/test_runtime_lifecycle.py'\n  - 'tests/test_extended_runner_protocol.py'\n\
-      \  - 'tests/test_orch_cli_surface.py'\n  - 'tests/test_cli.py'\n  - 'tests/repro/test_repair_continuity_black_box.py'\n\
-      \  - 'tests/repro/orch_liveness_probe.py'\n  - 'tests/repro/liveness_drive.py'\n\
-      \  - 'tests/repro/vertical_slice_probe.py'\n  - 'tests/repro/test_orch_*.py'\n\
-      \  - 'tests/live_smoke/test_vectl_orchestrator_e2e_live.py'\n  - 'tests/live_smoke/test_drive_autonomy_live.py'\n\
-      \  - 'tests/live_smoke/test_opencode_long_runtime_live.py'\n  - 'tests/live_smoke/test_resolver_live.py'\n\
-      \  - 'tests/test_codex_parser_behavior.py'\n  - 'tests/test_gemini_parser_behavior.py'\n\
-      \  - 'tests/test_codex_resume_behavior.py'\n  - 'tests/test_gemini_resume_behavior.py'\n\
-      blocked_paths:\n  - 'tests/test_decide.py'\n  - 'tests/test_decide_state_isolation.py'\n\
-      \  - 'tests/test_io.py'\n  - 'tests/test_models.py'\n  - 'tests/test_mcp.py'\n\
-      required_claims:\n  - orchestration_tests_retired\n  - active_orch_cli_tests_retired\n\
-      \  - orchestration_fixtures_retired\n  - active_residual_tests_rewritten\n \
-      \ - legacy_driver_worktree_fixture_helpers_retired\n  - test_legacy_workspaces_and_worktrees_references_removed\n\
+      \  - 'tests/test_orch_cli_surface.py'\n  - 'tests/test_cli.py'\n  - 'tests/conftest.py'\n\
+      \  - 'tests/repro/test_repair_continuity_black_box.py'\n  - 'tests/repro/orch_liveness_probe.py'\n\
+      \  - 'tests/repro/liveness_drive.py'\n  - 'tests/repro/vertical_slice_probe.py'\n\
+      \  - 'tests/repro/test_orch_*.py'\n  - 'tests/live_smoke/test_vectl_orchestrator_e2e_live.py'\n\
+      \  - 'tests/live_smoke/test_drive_autonomy_live.py'\n  - 'tests/live_smoke/test_opencode_long_runtime_live.py'\n\
+      \  - 'tests/live_smoke/test_resolver_live.py'\n  - 'tests/test_codex_parser_behavior.py'\n\
+      \  - 'tests/test_gemini_parser_behavior.py'\n  - 'tests/test_codex_resume_behavior.py'\n\
+      \  - 'tests/test_gemini_resume_behavior.py'\nblocked_paths:\n  - 'tests/test_decide.py'\n\
+      \  - 'tests/test_decide_state_isolation.py'\n  - 'tests/test_io.py'\n  - 'tests/test_models.py'\n\
+      \  - 'tests/test_mcp.py'\nrequired_claims:\n  - orchestration_tests_retired\n\
+      \  - active_orch_cli_tests_retired\n  - orchestration_fixtures_retired\n  -\
+      \ active_residual_tests_rewritten\n  - active_conftest_orchestration_config_removed\n\
+      \  - legacy_driver_worktree_fixture_helpers_retired\n  - test_legacy_workspaces_and_worktrees_references_removed\n\
       \  - test_collection_no_deleted_runtime_imports\n  - decide_tests_preserved\n\
       required_checks:\n  - id: orch_test_deletion_probe\n    command:\n      - uv\n\
       \      - run\n      - python\n      - -c\n      - |\n        from pathlib import\
@@ -110603,9 +110611,19 @@ phases:
       \ not hits, hits\n        print('explicit active residual tests are rewritten\
       \ or absent, including legacy worktree roots')\n    covers_claims:\n      -\
       \ active_residual_tests_rewritten\n      - test_legacy_workspaces_and_worktrees_references_removed\n\
-      \      - test_collection_no_deleted_runtime_imports\n  - id: legacy_driver_helper_absence_probe\n\
+      \      - test_collection_no_deleted_runtime_imports\n  - id: conftest_orchestration_config_absence_probe\n\
       \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
-      \ |\n        from pathlib import Path\n        helpers = [Path('tests/fixtures/helpers/continuity_capability_safety.py'),\
+      \ |\n        from pathlib import Path\n        p = Path('tests/conftest.py')\n\
+      \        assert p.exists(), 'tests/conftest.py missing; remove only the orchestration\
+      \ block, not shared test config wholesale'\n        text = p.read_text(errors='ignore').lower()\n\
+      \        terms = ['orchestration', 'vectl orch', 'orch_app', 'cli_orchestration',\
+      \ 'runner/orchestration']\n        hits = [f'{p}:{term}' for term in terms if\
+      \ term in text]\n        assert not hits, hits\n        print('tests/conftest.py\
+      \ has no active orchestration config residue')\n    covers_claims:\n      -\
+      \ active_conftest_orchestration_config_removed\n      - test_collection_no_deleted_runtime_imports\n\
+      \  - id: legacy_driver_helper_absence_probe\n    command:\n      - uv\n    \
+      \  - run\n      - python\n      - -c\n      - |\n        from pathlib import\
+      \ Path\n        helpers = [Path('tests/fixtures/helpers/continuity_capability_safety.py'),\
       \ Path('tests/fixtures/helpers/continuity_hygiene.py')]\n        still = [str(p)\
       \ for p in helpers if p.exists()]\n        assert not still, still\n       \
       \ print('legacy driver/worktree helper fixtures are absent')\n    covers_claims:\n\
@@ -110655,6 +110673,7 @@ phases:
     - tests/test_gemini_resume_behavior.py
     - tests/fixtures/helpers/continuity_capability_safety.py
     - tests/fixtures/helpers/continuity_hygiene.py
+    - tests/conftest.py
     agent: architectural-demolitionist
   - id: orch_removal_doc_cleanup
     name: Delete orchestration docs and remove README orch guidance

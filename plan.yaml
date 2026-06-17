@@ -110467,8 +110467,9 @@ phases:
       \ or narrowly rewritten to assert removal, while decide/model/io/MCP non-orchestration\
       \ tests remain. Legacy driver/worktree helper fixtures that import removed driver\
       \ modules or hard-code orchestration worktree paths are retired with the same\
-      \ cleanup.\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref\
-      \ + key passage | target_state | evidence_class | required_probe_or_artifact\
+      \ cleanup. Test and fixture probes must cover both legacy worktree roots: `.vectl/workspaces`\
+      \ and `.vectl/worktrees`.\n\nRequirement-to-Evidence Matrix:\n| requirement_id\
+      \ | source_ref + key passage | target_state | evidence_class | required_probe_or_artifact\
       \ | status |\n| ORCH-TESTS-DELETED | user-request:2026-06-17 — delete tests/orchestration,\
       \ runtime context vertical slice, orch repro probes, and orch live smoke tests\
       \ | Orchestration-only tests are absent and collection no longer imports deleted\
@@ -110489,11 +110490,13 @@ phases:
       \ active-test rewrite probe | OWNED |\n| LEGACY-DRIVER-WORKTREE-HELPERS-RETIRED\
       \ | reviewer evidence — tests/fixtures/helpers/continuity_capability_safety.py:9-17/:131-136/:143-149\
       \ and tests/fixtures/helpers/continuity_hygiene.py:16-20 import src.vectl.driver,\
-      \ mention runner/orchestration config, and hard-code .vectl/worktrees | Legacy\
-      \ driver/worktree helper fixture files are absent; they are not classified as\
-      \ preserved non-targets | runtime_probe | Explicit helper file absence + content\
-      \ probe | OWNED |\n| RESIDUAL-IMPORT-TESTS | discovery evidence — residual tests\
-      \ import `vectl.orchestration` contracts/runtime | Residual orchestration-only\
+      \ mention runner/orchestration config, and hard-code .vectl/worktrees; worktree\
+      \ policy also covers `.vectl/workspaces` | Legacy driver/worktree helper fixture\
+      \ files are absent; they are not classified as preserved non-targets; no retained\
+      \ test/fixture content may hard-code either `.vectl/workspaces` or `.vectl/worktrees`\
+      \ | runtime_probe | Explicit helper file absence + content probe including both\
+      \ worktree roots | OWNED |\n| RESIDUAL-IMPORT-TESTS | discovery evidence — residual\
+      \ tests import `vectl.orchestration` contracts/runtime | Residual orchestration-only\
       \ parser/resume/lifecycle tests are deleted or rewritten only if they do not\
       \ test preserved decide behavior | runtime_probe | grep/import absence under\
       \ tests | OWNED |\n| DECIDE-TESTS-PRESERVED | user-request:2026-06-17 — preserve\
@@ -110524,11 +110527,12 @@ phases:
       \  - 'tests/test_io.py'\n  - 'tests/test_models.py'\n  - 'tests/test_mcp.py'\n\
       required_claims:\n  - orchestration_tests_retired\n  - active_orch_cli_tests_retired\n\
       \  - orchestration_fixtures_retired\n  - active_residual_tests_rewritten\n \
-      \ - legacy_driver_worktree_fixture_helpers_retired\n  - test_collection_no_deleted_runtime_imports\n\
-      \  - decide_tests_preserved\nrequired_checks:\n  - id: orch_test_deletion_probe\n\
-      \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
-      \ |\n        from pathlib import Path\n        targets = [\n            Path('tests/orchestration'),\n\
-      \            Path('tests/fixtures/orchestration'),\n            Path('tests/fixtures/helpers/continuity_capability_safety.py'),\n\
+      \ - legacy_driver_worktree_fixture_helpers_retired\n  - test_legacy_workspaces_and_worktrees_references_removed\n\
+      \  - test_collection_no_deleted_runtime_imports\n  - decide_tests_preserved\n\
+      required_checks:\n  - id: orch_test_deletion_probe\n    command:\n      - uv\n\
+      \      - run\n      - python\n      - -c\n      - |\n        from pathlib import\
+      \ Path\n        targets = [\n            Path('tests/orchestration'),\n    \
+      \        Path('tests/fixtures/orchestration'),\n            Path('tests/fixtures/helpers/continuity_capability_safety.py'),\n\
       \            Path('tests/fixtures/helpers/continuity_hygiene.py'),\n       \
       \     Path('tests/test_runtime_context_vertical_slice.py'),\n            Path('tests/test_runtime_lifecycle.py'),\n\
       \            Path('tests/test_extended_runner_protocol.py'),\n            Path('tests/test_orch_cli_surface.py'),\n\
@@ -110550,11 +110554,12 @@ phases:
       \ 'core.orchestration', 'orch_app', 'cli_orchestration', 'vectl orch', 'src/vectl/orchestration',\
       \ 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration', 'tests/orchestration',\
       \ 'tests/fixtures/orchestration', 'python -m vectl.driver', 'src.vectl.driver',\
-      \ 'from vectl.driver', '.vectl/worktrees', 'runner/orchestration']\n       \
-      \ hits = [f'{p}:{term}' for p in files if p.exists() for term in terms if term\
-      \ in p.read_text(errors='ignore')]\n        assert not hits, hits\n        print('explicit\
-      \ active residual tests are rewritten or absent')\n    covers_claims:\n    \
-      \  - active_residual_tests_rewritten\n      - test_collection_no_deleted_runtime_imports\n\
+      \ 'from vectl.driver', '.vectl/workspaces', '.vectl/worktrees', 'runner/orchestration']\n\
+      \        hits = [f'{p}:{term}' for p in files if p.exists() for term in terms\
+      \ if term in p.read_text(errors='ignore')]\n        assert not hits, hits\n\
+      \        print('explicit active residual tests are rewritten or absent, including\
+      \ legacy worktree roots')\n    covers_claims:\n      - active_residual_tests_rewritten\n\
+      \      - test_legacy_workspaces_and_worktrees_references_removed\n      - test_collection_no_deleted_runtime_imports\n\
       \  - id: legacy_driver_helper_absence_probe\n    command:\n      - uv\n    \
       \  - run\n      - python\n      - -c\n      - |\n        from pathlib import\
       \ Path\n        helpers = [Path('tests/fixtures/helpers/continuity_capability_safety.py'),\
@@ -110566,19 +110571,20 @@ phases:
       \ |\n        from pathlib import Path\n        terms = ['vectl.orchestration',\
       \ 'core.orchestration', 'orch_app', 'cli_orchestration', 'vectl orch', 'src/vectl/orchestration',\
       \ 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration', 'python -m\
-      \ vectl.driver', 'src.vectl.driver', 'from vectl.driver', '.vectl/worktrees',\
-      \ 'runner/orchestration']\n        suffixes = {'.py', '.json', '.yaml', '.yml'}\n\
-      \        files = [p for p in Path('tests').rglob('*') if p.is_file() and p.suffix\
-      \ in suffixes]\n        hits = [f'{p}:{t}' for p in files for t in terms if\
-      \ t in p.read_text(errors='ignore')]\n        path_terms = ['tests/orchestration',\
-      \ 'tests/fixtures/orchestration', 'tests/fixtures/helpers/continuity_capability_safety.py',\
+      \ vectl.driver', 'src.vectl.driver', 'from vectl.driver', '.vectl/workspaces',\
+      \ '.vectl/worktrees', 'runner/orchestration']\n        suffixes = {'.py', '.json',\
+      \ '.yaml', '.yml'}\n        files = [p for p in Path('tests').rglob('*') if\
+      \ p.is_file() and p.suffix in suffixes]\n        hits = [f'{p}:{t}' for p in\
+      \ files for t in terms if t in p.read_text(errors='ignore')]\n        path_terms\
+      \ = ['tests/orchestration', 'tests/fixtures/orchestration', 'tests/fixtures/helpers/continuity_capability_safety.py',\
       \ 'tests/fixtures/helpers/continuity_hygiene.py']\n        hits += [f'{p}:PATH:{t}'\
       \ for p in files for t in path_terms if t in str(p)]\n        hits += [f'{p}:CONTENT_PATH:{t}'\
       \ for p in files for t in path_terms if t in p.read_text(errors='ignore')]\n\
       \        assert not hits, hits\n        print('tests and fixtures have no deleted\
-      \ runtime references')\n    covers_claims:\n      - active_orch_cli_tests_retired\n\
-      \      - orchestration_fixtures_retired\n      - active_residual_tests_rewritten\n\
-      \      - legacy_driver_worktree_fixture_helpers_retired\n      - test_collection_no_deleted_runtime_imports\n\
+      \ runtime references or legacy worktree roots')\n    covers_claims:\n      -\
+      \ active_orch_cli_tests_retired\n      - orchestration_fixtures_retired\n  \
+      \    - active_residual_tests_rewritten\n      - legacy_driver_worktree_fixture_helpers_retired\n\
+      \      - test_legacy_workspaces_and_worktrees_references_removed\n      - test_collection_no_deleted_runtime_imports\n\
       \  - id: pytest_collect_after_retirement\n    command:\n      - uv\n      -\
       \ run\n      - pytest\n      - --collect-only\n      - -q\n    covers_claims:\n\
       \      - test_collection_no_deleted_runtime_imports\n  - id: decide_tests_still_present\n\

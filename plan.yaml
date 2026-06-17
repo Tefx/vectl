@@ -111456,6 +111456,83 @@ phases:
       MCP decide parity probe printed `README_zh MCP decide parity verified`; README_zh
       now says 15 MCP tools and includes vectl_decide; README.md and RFC source passages
       verified by probe. No source/tests/RFC/README.md changes.'
+  - id: orch_removal_mcp_tool_inventory_doc_truth
+    name: Align MCP tool inventory wording with runtime
+    status: pending
+    description: "step_type: implementation\nagent_source: project\n\nTARGET STATE:\n\
+      README.md, README_zh.md, and active MCP source docstrings/comments state the\
+      \ runtime MCP tool inventory truthfully. The runtime probe authority is `vectl.mcp_server.mcp.list_tools()`:\
+      \ current count is 20 and `vectl_decide` is included. Update documentation/source\
+      \ comments to match runtime inventory and remove stale 15-tool wording and stale\
+      \ `Tool 16: vectl_decide` numbering.\n\nNON-GOALS:\n- Do not remove or reduce\
+      \ runtime MCP tools in this remediation unless a separate authoritative decision\
+      \ explicitly requires runtime reduction. This step assumes documentation/comment\
+      \ correction is intended.\n- Do not change MCP tool behavior, public signatures,\
+      \ command semantics, or tests. Source edits are limited to comments/docstrings/instructions\
+      \ that describe the inventory.\n- Do not resurrect deleted orchestration runtime\
+      \ wording or modify archived/deleted orchestration docs.\n\nRequirement-to-Evidence\
+      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| MCP-RUNTIME-COUNT | gate finding\
+      \ B1_MCP_TOOL_COUNT_RUNTIME_DOC_MISMATCH: `vectl.mcp_server.mcp.list_tools()`\
+      \ returns 20 and includes `vectl_decide` | Runtime inventory is captured from\
+      \ the true MCP server and used as the documentation authority | runtime_probe\
+      \ | `runtime_mcp_inventory_count_list` raw stdout/stderr | OWNED |\n| README-COUNT-PARITY\
+      \ | README.md / README_zh.md currently claim 15 MCP tools while runtime exposes\
+      \ 20 | Both READMEs state the same runtime-backed 20-tool count and include\
+      \ `vectl_decide` | artifact_review | `readme_mcp_inventory_parity_probe` raw\
+      \ stdout/stderr | OWNED |\n| SOURCE-COMMENT-COUNT | `src/vectl/mcp_server.py`\
+      \ and related MCP module docstrings/comments claim 15; `src/vectl/mcp_project_tools.py`\
+      \ has stale `Tool 16: vectl_decide` | Active MCP source comments/docstrings\
+      \ are inventory-truthful and contain no stale 15-tool wording or stale decide\
+      \ numbering | source_static | `stale_mcp_tool_count_wording_probe` raw stdout/stderr\
+      \ | OWNED |\n| MCP-DECIDE-PRESERVED | Existing preserved decide/MCP tests protect\
+      \ `vectl_decide` behavior | Documentation/comment update does not break MCP/decide\
+      \ behavior | runtime_probe | `decide_mcp_targeted_tests` raw stdout/stderr |\
+      \ OWNED |\n\n<intent_closure_contract>\nallowed_paths:\n  - \"README.md\"\n\
+      \  - \"README_zh.md\"\n  - \"src/vectl/mcp_*.py\"\nblocked_paths:\n  - \"src/vectl/decide.py\"\
+      \n  - \"src/vectl/decision_state.py\"\n  - \"src/vectl/model_outputs.py\"\n\
+      \  - \"tests/**\"\n  - \"docs/archive/**\"\n  - \"docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md\"\
+      \nrequired_claims:\n  - runtime_inventory_count_established\n  - readmes_match_runtime_inventory\n\
+      \  - mcp_source_comments_match_runtime_inventory\n  - stale_15_tool_wording_removed\n\
+      \  - stale_decide_numbering_removed\n  - decide_mcp_behavior_preserved\nrequired_checks:\n\
+      \  - id: runtime_mcp_inventory_count_list\n    command: [\"uv\", \"run\", \"\
+      python\", \"-c\", \"import asyncio\\nfrom vectl.mcp_server import mcp\\nasync\
+      \ def main():\\n    tools = await mcp.list_tools()\\n    names = sorted(getattr(t,\
+      \ 'name', str(t)) for t in tools)\\n    print('runtime_mcp_tool_count=', len(names),\
+      \ sep='')\\n    print('runtime_mcp_tools=')\\n    print('\\\\n'.join(names))\\\
+      n    assert len(names) == 20, names\\n    assert 'vectl_decide' in names, names\\\
+      nasyncio.run(main())\"]\n    covers_claims:\n      - runtime_inventory_count_established\n\
+      \  - id: readme_mcp_inventory_parity_probe\n    command: [\"uv\", \"run\", \"\
+      python\", \"-c\", \"from pathlib import Path\\nen = Path('README.md').read_text(encoding='utf-8')\\\
+      nzh = Path('README_zh.md').read_text(encoding='utf-8')\\nerrors = []\\nif '15\
+      \ MCP tools' in en or '15 个工具' in zh or '15 tools' in en:\\n    errors.append('stale\
+      \ 15-tool README wording remains')\\nif '20 MCP tools' not in en:\\n    errors.append('README.md\
+      \ does not state 20 MCP tools')\\nif '20 个工具' not in zh:\\n    errors.append('README_zh.md\
+      \ does not state 20 tools')\\nif '`vectl_decide`' not in en or '`vectl_decide`'\
+      \ not in zh:\\n    errors.append('vectl_decide missing from README MCP sentence')\\\
+      nif errors:\\n    raise SystemExit('\\\\n'.join(errors))\\nprint('README MCP\
+      \ inventory parity verified: 20 tools including vectl_decide')\"]\n    covers_claims:\n\
+      \      - readmes_match_runtime_inventory\n      - stale_15_tool_wording_removed\n\
+      \  - id: stale_mcp_tool_count_wording_probe\n    command: [\"uv\", \"run\",\
+      \ \"python\", \"-c\", \"from pathlib import Path\\npaths = [Path('README.md'),\
+      \ Path('README_zh.md')] + sorted(Path('src/vectl').glob('mcp_*.py')) + [Path('src/vectl/mcp_server.py')]\\\
+      npatterns = ['15 MCP tools', '15 tools', '15 public MCP tools', '15 个工具', 'Tool\
+      \ 16: vectl_decide']\\nhits = []\\nfor p in paths:\\n    if not p.exists():\\\
+      n        hits.append(f'{p}:missing')\\n        continue\\n    text = p.read_text(encoding='utf-8',\
+      \ errors='ignore')\\n    for pattern in patterns:\\n        if pattern in text:\\\
+      n            hits.append(f'{p}:{pattern}')\\nif hits:\\n    raise SystemExit('stale\
+      \ MCP inventory wording remains:\\\\n' + '\\\\n'.join(hits))\\nprint('no stale\
+      \ 15-tool wording or Tool 16 decide numbering remains in active README/MCP source\
+      \ surfaces')\"]\n    covers_claims:\n      - mcp_source_comments_match_runtime_inventory\n\
+      \      - stale_15_tool_wording_removed\n      - stale_decide_numbering_removed\n\
+      \  - id: decide_mcp_targeted_tests\n    command: [\"uv\", \"run\", \"pytest\"\
+      , \"tests/test_mcp.py\", \"tests/test_decide.py\", \"tests/test_decide_state_isolation.py\"\
+      , \"-q\"]\n    covers_claims:\n      - decide_mcp_behavior_preserved\n     \
+      \ - runtime_inventory_count_established\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    depends_on:
+    - orch_removal_readme_zh_decide_parity
+    agent: doc-reviewer
 - id: orch_removal_finalization
   name: 'Orchestrator Removal: Closure and Full Regression'
   status: locked

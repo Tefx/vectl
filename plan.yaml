@@ -110703,7 +110703,8 @@ phases:
     description: 'step_type: gate
 
       phase-check gate. Blocks finalization unless docs/tests deletion, README/RFC
-      wording, and decide preservation are evidenced.
+      wording, archive-disposition evidence, active test/fixture retirement, and decide
+      preservation are evidenced.
 
 
       review_depth: STANDARD
@@ -110711,16 +110712,34 @@ phases:
       cross_cutting_focus:
 
       - no archive of orchestration docs remains as a hidden source of forbidden runtime
-      claims
+      claims, including `.yaml/.yml/.json/.py/.txt` artifacts under docs/archive
 
-      - decide docs say core automation advisor / dispatch advisor / caller-owned,
+      - active orchestration tests/fixtures such as `tests/test_orch_cli_surface.py`,
+      `tests/test_cli.py` orch sections, `tests/repro/test_repair_continuity_black_box.py`,
+      and `tests/fixtures/orchestration/**` are deleted or re-scoped away from deleted
+      runtime behavior
+
+      - decide docs/source say core automation advisor / dispatch advisor / caller-owned,
       not built-in orchestration advisor
 
-      - no test collection imports deleted runtime modules'
-    verification: Gate OPEN only if tests/docs probe is PASS and every blocker has
-      a pending owner or deterministic closure evidence.
+      - live MCP decide surfaces are included in wording proof
+
+      - no test collection imports deleted runtime modules
+
+
+      Gate rejects sampled evidence, top-level-only docs probes, or omission of archived
+      artifacts.'
+    verification: Gate OPEN only if tests/docs probe is PASS, recursive docs/archive
+      and tests/fixtures probes are clean, decide preservation tests pass, and every
+      blocker has a pending owner or deterministic closure evidence.
     refs:
     - user-request:2026-06-17#tests-docs-gate
+    - docs/archive/orch_workflow_validation.yaml
+    - docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml
+    - tests/test_orch_cli_surface.py
+    - tests/test_cli.py#TestDriveCLI
+    - tests/repro/test_repair_continuity_black_box.py
+    - tests/fixtures/orchestration/replay_events.json
     depends_on:
     - orch_removal_test_retirement
     - orch_removal_doc_cleanup

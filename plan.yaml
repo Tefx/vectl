@@ -110554,27 +110554,29 @@ phases:
       \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
       \ |\n        from pathlib import Path\n        files = [Path('tests/repro/vertical_slice_probe.py'),\
       \ Path('tests/test_gemini_resume_behavior.py')]\n        terms = ['vectl.orchestration',\
-      \ 'core.orchestration', 'orch_app', 'cli_orchestration', 'vectl orch', 'src/vectl/orchestration',\
-      \ 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration', 'tests/orchestration',\
-      \ 'tests/fixtures/orchestration', 'python -m vectl.driver', 'src.vectl.driver',\
-      \ 'from vectl.driver', '.vectl/workspaces', '.vectl/worktrees', 'runner/orchestration']\n\
-      \        hits = [f'{p}:{term}' for p in files if p.exists() for term in terms\
-      \ if term in p.read_text(errors='ignore')]\n        assert not hits, hits\n\
-      \        print('explicit active residual tests are rewritten or absent, including\
-      \ legacy worktree roots')\n    covers_claims:\n      - active_residual_tests_rewritten\n\
-      \      - test_legacy_workspaces_and_worktrees_references_removed\n      - test_collection_no_deleted_runtime_imports\n\
-      \  - id: legacy_driver_helper_absence_probe\n    command:\n      - uv\n    \
-      \  - run\n      - python\n      - -c\n      - |\n        from pathlib import\
-      \ Path\n        helpers = [Path('tests/fixtures/helpers/continuity_capability_safety.py'),\
+      \ 'vectl.shell.orchestration', 'shell.orchestration', 'from vectl.shell import\
+      \ orchestration', 'core.orchestration', 'orch_app', 'cli_orchestration', 'vectl\
+      \ orch', 'src/vectl/orchestration', 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration',\
+      \ 'tests/orchestration', 'tests/fixtures/orchestration', 'python -m vectl.driver',\
+      \ 'src.vectl.driver', 'from vectl.driver', '.vectl/workspaces', '.vectl/worktrees',\
+      \ 'runner/orchestration']\n        hits = [f'{p}:{term}' for p in files if p.exists()\
+      \ for term in terms if term in p.read_text(errors='ignore')]\n        assert\
+      \ not hits, hits\n        print('explicit active residual tests are rewritten\
+      \ or absent, including legacy worktree roots')\n    covers_claims:\n      -\
+      \ active_residual_tests_rewritten\n      - test_legacy_workspaces_and_worktrees_references_removed\n\
+      \      - test_collection_no_deleted_runtime_imports\n  - id: legacy_driver_helper_absence_probe\n\
+      \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
+      \ |\n        from pathlib import Path\n        helpers = [Path('tests/fixtures/helpers/continuity_capability_safety.py'),\
       \ Path('tests/fixtures/helpers/continuity_hygiene.py')]\n        still = [str(p)\
       \ for p in helpers if p.exists()]\n        assert not still, still\n       \
       \ print('legacy driver/worktree helper fixtures are absent')\n    covers_claims:\n\
       \      - legacy_driver_worktree_fixture_helpers_retired\n  - id: test_import_absence_probe\n\
       \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
       \ |\n        from pathlib import Path\n        terms = ['vectl.orchestration',\
-      \ 'core.orchestration', 'orch_app', 'cli_orchestration', 'vectl orch', 'src/vectl/orchestration',\
-      \ 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration', 'python -m\
-      \ vectl.driver', 'src.vectl.driver', 'from vectl.driver', '.vectl/workspaces',\
+      \ 'vectl.shell.orchestration', 'shell.orchestration', 'from vectl.shell import\
+      \ orchestration', 'core.orchestration', 'orch_app', 'cli_orchestration', 'vectl\
+      \ orch', 'src/vectl/orchestration', 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration',\
+      \ 'python -m vectl.driver', 'src.vectl.driver', 'from vectl.driver', '.vectl/workspaces',\
       \ '.vectl/worktrees', 'runner/orchestration']\n        suffixes = {'.py', '.json',\
       \ '.yaml', '.yml'}\n        files = [p for p in Path('tests').rglob('*') if\
       \ p.is_file() and p.suffix in suffixes]\n        hits = [f'{p}:{t}' for p in\

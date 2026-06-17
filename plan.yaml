@@ -110195,13 +110195,19 @@ phases:
     status: pending
     description: "step_type: implementation\nTARGET STATE: the packaged CLI imports\
       \ successfully, `vectl --help` no longer exposes `orch` or orchestration subcommands,\
-      \ `cli_plan_common.py` no longer imports or wires deleted orch runtime helpers,\
-      \ and non-orchestration CLI/MCP surfaces remain reachable.\n\nRequirement-to-Evidence\
-      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
-      \ | required_probe_or_artifact | status |\n| CLI-ORCH-REMOVED | user-request:2026-06-17\
-      \ — current CLI imports fine but still exposes `orch`; remove built-in `vectl\
-      \ orch` | `vectl --help` has no orch command or orchestration help text | runtime_probe\
-      \ | Packaged CLI help probe with stdout | OWNED |\n| CLI-PLAN-COMMON-ORCH-WIRING-REMOVED\
+      \ `vectl orch --help` is not invokable as a hidden/stub command, `cli_plan_common.py`\
+      \ no longer imports or wires deleted orch runtime helpers, and non-orchestration\
+      \ CLI/MCP surfaces remain reachable.\n\nRequirement-to-Evidence Matrix:\n| requirement_id\
+      \ | source_ref + key passage | target_state | evidence_class | required_probe_or_artifact\
+      \ | status |\n| CLI-ORCH-REMOVED | user-request:2026-06-17 — current CLI imports\
+      \ fine but still exposes `orch`; remove built-in `vectl orch` | `vectl --help`\
+      \ has no orch command or orchestration help text | runtime_probe | Packaged\
+      \ CLI help probe with stdout | OWNED |\n| CLI-ORCH-HIDDEN-STUB-REJECTED | review-fix-iteration-6\
+      \ — prove `vectl orch` itself is not still invokable as a hidden/stub command,\
+      \ not merely absent from top-level help | `uvx --refresh --from . vectl orch\
+      \ --help` returns non-zero with a no-such/unknown-command response and no `vectl\
+      \ orch` command help | runtime_probe | Negative packaged CLI subcommand probe\
+      \ with stdout/stderr/exit code | OWNED |\n| CLI-PLAN-COMMON-ORCH-WIRING-REMOVED\
       \ | reviewer evidence — src/vectl/cli_plan_common.py:93-94 and 421-437 contain\
       \ deleted-runtime imports/`orch_app` wiring | `cli_plan_common.py` contains\
       \ no imports, references, or factories for deleted orch runtime modules | source_static\
@@ -110216,8 +110222,8 @@ phases:
       allowed_paths:\n  - \"src/vectl/cli.py\"\n  - \"src/vectl/cli_plan_common.py\"\
       \n  - \"tests/test_mcp.py\"\nblocked_paths:\n  - \"src/vectl/decide.py\"\n \
       \ - \"src/vectl/decision_state.py\"\n  - \"src/vectl/model_outputs.py\"\nrequired_claims:\n\
-      \  - cli_orch_surface_removed\n  - cli_plan_common_orch_wiring_removed\n  -\
-      \ cli_imports_without_orchestration_runtime\n  - decide_surface_preserved\n\
+      \  - cli_orch_surface_removed\n  - cli_orch_hidden_stub_rejected\n  - cli_plan_common_orch_wiring_removed\n\
+      \  - cli_imports_without_orchestration_runtime\n  - decide_surface_preserved\n\
       required_checks:\n  - id: cli_import_probe\n    command: [\"uv\", \"run\", \"\
       python\", \"-c\", \"import vectl.cli; import vectl.decide; import vectl.decision_state;\
       \ import vectl.model_outputs; print('cli+decide imports ok')\"]\n    covers_claims:\n\
@@ -110238,8 +110244,22 @@ phases:
       \ assert cp.returncode == 0; bad=[t for t in ['vectl orch',' orch ','Orchestration','orchestration\
       \ runtime'] if t in cp.stdout]; assert not bad, bad\"]\n    covers_claims:\n\
       \      - cli_orch_surface_removed\n      - cli_imports_without_orchestration_runtime\n\
-      \  - id: mcp_surface_smoke\n    command: [\"uv\", \"run\", \"pytest\", \"tests/test_mcp.py\"\
-      , \"-q\"]\n    covers_claims:\n      - decide_surface_preserved\n</intent_closure_contract>\n"
+      \  - id: cli_orch_negative_hidden_stub_probe\n    command:\n      - \"uv\"\n\
+      \      - \"run\"\n      - \"python\"\n      - \"-c\"\n      - |\n        import\
+      \ subprocess, sys\n        cmd = ['uvx', '--refresh', '--from', '.', 'vectl',\
+      \ 'orch', '--help']\n        cp = subprocess.run(cmd, text=True, capture_output=True)\n\
+      \        print('$ ' + ' '.join(cmd))\n        print(cp.stdout)\n        print(cp.stderr,\
+      \ file=sys.stderr)\n        print(f'exit={cp.returncode}')\n        combined\
+      \ = (cp.stdout + cp.stderr).lower()\n        assert cp.returncode != 0, 'hidden/stub\
+      \ `vectl orch --help` still exits zero'\n        assert ('no such command' in\
+      \ combined or 'unknown command' in combined or 'does not exist' in combined),\
+      \ combined\n        assert 'usage: vectl orch' not in combined, combined\n \
+      \       assert 'orchestration operator commands' not in combined, combined\n\
+      \        print('negative packaged CLI probe confirms vectl orch is not invokable')\n\
+      \    covers_claims:\n      - cli_orch_surface_removed\n      - cli_orch_hidden_stub_rejected\n\
+      \      - cli_imports_without_orchestration_runtime\n  - id: mcp_surface_smoke\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_mcp.py\", \"-q\"]\n\
+      \    covers_claims:\n      - decide_surface_preserved\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     refs:
     - user-request:2026-06-17#remove-built-in-vectl-orch

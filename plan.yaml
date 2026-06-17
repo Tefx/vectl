@@ -110670,6 +110670,9 @@ phases:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - docs/full-suite-failure-inventory-2026-04-10.md
     - docs/repo_regression_failure_dispositions.yaml
+    - docs/archive/consumer_boundary_conformance_report.yaml
+    - docs/archive/independent_verification_report.md
+    - docs/archive/legacy-proof/independent_architecture_retest_report.md
     agent: doc-reviewer
   - id: orch_removal_decide_wording_preserve
     name: Reword preserved vectl_decide surfaces as caller-owned automation advisor

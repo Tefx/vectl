@@ -111714,9 +111714,14 @@ phases:
   name: Evidence Guard Remediation
   status: pending
   gate: Gate opens only when all 43 initial completed-evidence guard rows have deterministic
-    closure/disposition evidence, `uv run vectl validate` returns 0 errors or a reviewed
-    explicit exception policy exists for any row that cannot be remediated without
-    violating audit integrity, and no product-code fixes were performed by this stream.
+    row-local closure_register evidence tied to each exact offending_step_id; `uv
+    run vectl validate` is parsed with a machine-readable/unwrapped source or robust
+    wrapped-output parser and returns 0 errors, OR every remaining completed-evidence
+    guard row has an audited exception_policy/current_blocker_owner record with owner,
+    lifecycle/disposition/tracked language, and gate-intersection/non-intersection
+    reasoning. Product code/test/doc fixes remain out of scope for this stream, historical
+    failure evidence must not be erased, and `orch_removal_*` may be referenced only
+    as disposition context.
   depends_on:
   - det_check_finalization
   steps:

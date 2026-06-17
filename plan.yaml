@@ -110444,18 +110444,20 @@ phases:
     description: "step_type: implementation\nTARGET STATE: tests and fixtures that\
       \ exist only to validate the deleted built-in orchestration runtime are removed\
       \ or narrowly rewritten to assert removal, while decide/model/io/MCP non-orchestration\
-      \ tests remain.\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref\
+      \ tests remain. Legacy driver/worktree helper fixtures that import removed driver\
+      \ modules or hard-code orchestration worktree paths are retired with the same\
+      \ cleanup.\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref\
       \ + key passage | target_state | evidence_class | required_probe_or_artifact\
       \ | status |\n| ORCH-TESTS-DELETED | user-request:2026-06-17 — delete tests/orchestration,\
       \ runtime context vertical slice, orch repro probes, and orch live smoke tests\
       \ | Orchestration-only tests are absent and collection no longer imports deleted\
       \ modules | runtime_probe | Delete-target probe + pytest collect-only | OWNED\
       \ |\n| ACTIVE-ORCH-CLI-TESTS-RETIRED | reviewer evidence — tests/test_orch_cli_surface.py\
-      \ and tests/test_cli.py `TestDriveCLI` still exercise `vectl orch` | Active\
-      \ root CLI tests no longer require or advertise the removed `orch` surface |\
-      \ runtime_probe | Recursive test/fixture forbidden-reference probe | OWNED |\n\
-      | ORCH-REPRO-FIXTURES-RETIRED | reviewer evidence — tests/repro/test_repair_continuity_black_box.py\
-      \ and tests/fixtures/orchestration/replay_events.json preserve orch recovery/runtime\
+      \ and tests/test_cli.py TestDriveCLI still exercise `vectl orch` | Active root\
+      \ CLI tests no longer require or advertise the removed `orch` surface | runtime_probe\
+      \ | Recursive test/fixture forbidden-reference probe | OWNED |\n| ORCH-REPRO-FIXTURES-RETIRED\
+      \ | reviewer evidence — tests/repro/test_repair_continuity_black_box.py and\
+      \ tests/fixtures/orchestration/replay_events.json preserve orch recovery/runtime\
       \ fixtures | Orchestration-only repro and fixture data are deleted or rewritten\
       \ away from the deleted runtime | runtime_probe | Deletion/path/content probe\
       \ over tests and fixtures | OWNED |\n| ACTIVE-RESIDUAL-TESTS-REWRITTEN | reviewer\
@@ -110463,80 +110465,105 @@ phases:
       \ contain deleted orch/orchestration references but were not previously authorized\
       \ | Those active residual tests are explicit deletion/rewrite targets and contain\
       \ no deleted-runtime identifiers if retained | runtime_probe | Explicit residual\
-      \ active-test rewrite probe | OWNED |\n| RESIDUAL-IMPORT-TESTS | discovery evidence\
-      \ — residual tests import `vectl.orchestration` contracts/runtime | Residual\
-      \ orchestration-only parser/resume/lifecycle tests are deleted or rewritten\
-      \ only if they do not test preserved decide behavior | runtime_probe | grep/import\
-      \ absence under tests | OWNED |\n| DECIDE-TESTS-PRESERVED | user-request:2026-06-17\
-      \ — preserve tests/test_decide.py and tests/test_decide_state_isolation.py |\
-      \ Decide tests remain present and runnable | runtime_probe | targeted decide\
-      \ pytest | OWNED |\n\nNon-goals: do not delete `tests/test_decide.py`, `tests/test_decide_state_isolation.py`,\
+      \ active-test rewrite probe | OWNED |\n| LEGACY-DRIVER-WORKTREE-HELPERS-RETIRED\
+      \ | reviewer evidence — tests/fixtures/helpers/continuity_capability_safety.py:9-17/:131-136/:143-149\
+      \ and tests/fixtures/helpers/continuity_hygiene.py:16-20 import src.vectl.driver,\
+      \ mention runner/orchestration config, and hard-code .vectl/worktrees | Legacy\
+      \ driver/worktree helper fixture files are absent; they are not classified as\
+      \ preserved non-targets | runtime_probe | Explicit helper file absence + content\
+      \ probe | OWNED |\n| RESIDUAL-IMPORT-TESTS | discovery evidence — residual tests\
+      \ import `vectl.orchestration` contracts/runtime | Residual orchestration-only\
+      \ parser/resume/lifecycle tests are deleted or rewritten only if they do not\
+      \ test preserved decide behavior | runtime_probe | grep/import absence under\
+      \ tests | OWNED |\n| DECIDE-TESTS-PRESERVED | user-request:2026-06-17 — preserve\
+      \ tests/test_decide.py and tests/test_decide_state_isolation.py | Decide tests\
+      \ remain present and runnable | runtime_probe | targeted decide pytest | OWNED\
+      \ |\n\nNon-goals: do not delete `tests/test_decide.py`, `tests/test_decide_state_isolation.py`,\
       \ `tests/test_io.py`, `tests/test_models.py`, or `tests/test_mcp.py`. For `tests/test_cli.py`,\
       \ `tests/repro/vertical_slice_probe.py`, and `tests/test_gemini_resume_behavior.py`,\
-      \ touch only orchestration/drive surface residue and preserve unrelated coverage.\n\
-      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
-      \ completion is NOT acceptable; replacing deleted orchestration tests with vacuous\
-      \ skip/xfail shells is rejected unless a specific non-orchestration obligation\
-      \ is preserved.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"tests/orchestration/**\"\
-      \n  - \"tests/fixtures/orchestration/**\"\n  - \"tests/test_runtime_context_vertical_slice.py\"\
-      \n  - \"tests/test_runtime_lifecycle.py\"\n  - \"tests/test_extended_runner_protocol.py\"\
-      \n  - \"tests/test_orch_cli_surface.py\"\n  - \"tests/test_cli.py\"\n  - \"\
-      tests/repro/test_repair_continuity_black_box.py\"\n  - \"tests/repro/orch_liveness_probe.py\"\
-      \n  - \"tests/repro/liveness_drive.py\"\n  - \"tests/repro/vertical_slice_probe.py\"\
-      \n  - \"tests/repro/test_orch_*.py\"\n  - \"tests/live_smoke/test_vectl_orchestrator_e2e_live.py\"\
-      \n  - \"tests/live_smoke/test_drive_autonomy_live.py\"\n  - \"tests/live_smoke/test_opencode_long_runtime_live.py\"\
-      \n  - \"tests/live_smoke/test_resolver_live.py\"\n  - \"tests/test_codex_parser_behavior.py\"\
-      \n  - \"tests/test_gemini_parser_behavior.py\"\n  - \"tests/test_codex_resume_behavior.py\"\
-      \n  - \"tests/test_gemini_resume_behavior.py\"\nblocked_paths:\n  - \"tests/test_decide.py\"\
-      \n  - \"tests/test_decide_state_isolation.py\"\n  - \"tests/test_io.py\"\n \
-      \ - \"tests/test_models.py\"\n  - \"tests/test_mcp.py\"\nrequired_claims:\n\
-      \  - orchestration_tests_retired\n  - active_orch_cli_tests_retired\n  - orchestration_fixtures_retired\n\
-      \  - active_residual_tests_rewritten\n  - test_collection_no_deleted_runtime_imports\n\
+      \ touch only orchestration/drive surface residue and preserve unrelated coverage.\
+      \ The helper fixtures `tests/fixtures/helpers/continuity_capability_safety.py`\
+      \ and `tests/fixtures/helpers/continuity_hygiene.py` are in-scope deletion targets\
+      \ because their remaining imports/path literals depend on removed driver/worktree\
+      \ runtime.\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable; replacing deleted orchestration\
+      \ tests with vacuous skip/xfail shells is rejected unless a specific non-orchestration\
+      \ obligation is preserved.\n\n<intent_closure_contract>\nallowed_paths:\n  -\
+      \ 'tests/orchestration/**'\n  - 'tests/fixtures/orchestration/**'\n  - 'tests/fixtures/helpers/continuity_capability_safety.py'\n\
+      \  - 'tests/fixtures/helpers/continuity_hygiene.py'\n  - 'tests/test_runtime_context_vertical_slice.py'\n\
+      \  - 'tests/test_runtime_lifecycle.py'\n  - 'tests/test_extended_runner_protocol.py'\n\
+      \  - 'tests/test_orch_cli_surface.py'\n  - 'tests/test_cli.py'\n  - 'tests/repro/test_repair_continuity_black_box.py'\n\
+      \  - 'tests/repro/orch_liveness_probe.py'\n  - 'tests/repro/liveness_drive.py'\n\
+      \  - 'tests/repro/vertical_slice_probe.py'\n  - 'tests/repro/test_orch_*.py'\n\
+      \  - 'tests/live_smoke/test_vectl_orchestrator_e2e_live.py'\n  - 'tests/live_smoke/test_drive_autonomy_live.py'\n\
+      \  - 'tests/live_smoke/test_opencode_long_runtime_live.py'\n  - 'tests/live_smoke/test_resolver_live.py'\n\
+      \  - 'tests/test_codex_parser_behavior.py'\n  - 'tests/test_gemini_parser_behavior.py'\n\
+      \  - 'tests/test_codex_resume_behavior.py'\n  - 'tests/test_gemini_resume_behavior.py'\n\
+      blocked_paths:\n  - 'tests/test_decide.py'\n  - 'tests/test_decide_state_isolation.py'\n\
+      \  - 'tests/test_io.py'\n  - 'tests/test_models.py'\n  - 'tests/test_mcp.py'\n\
+      required_claims:\n  - orchestration_tests_retired\n  - active_orch_cli_tests_retired\n\
+      \  - orchestration_fixtures_retired\n  - active_residual_tests_rewritten\n \
+      \ - legacy_driver_worktree_fixture_helpers_retired\n  - test_collection_no_deleted_runtime_imports\n\
       \  - decide_tests_preserved\nrequired_checks:\n  - id: orch_test_deletion_probe\n\
-      \    command:\n      - \"uv\"\n      - \"run\"\n      - \"python\"\n      -\
-      \ \"-c\"\n      - |\n        from pathlib import Path\n        targets = [\n\
-      \            Path('tests/orchestration'),\n            Path('tests/fixtures/orchestration'),\n\
-      \            Path('tests/test_runtime_context_vertical_slice.py'),\n       \
-      \     Path('tests/test_runtime_lifecycle.py'),\n            Path('tests/test_extended_runner_protocol.py'),\n\
-      \            Path('tests/test_orch_cli_surface.py'),\n            Path('tests/repro/test_repair_continuity_black_box.py'),\n\
-      \            Path('tests/repro/orch_liveness_probe.py'),\n            Path('tests/repro/liveness_drive.py'),\n\
+      \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
+      \ |\n        from pathlib import Path\n        targets = [\n            Path('tests/orchestration'),\n\
+      \            Path('tests/fixtures/orchestration'),\n            Path('tests/fixtures/helpers/continuity_capability_safety.py'),\n\
+      \            Path('tests/fixtures/helpers/continuity_hygiene.py'),\n       \
+      \     Path('tests/test_runtime_context_vertical_slice.py'),\n            Path('tests/test_runtime_lifecycle.py'),\n\
+      \            Path('tests/test_extended_runner_protocol.py'),\n            Path('tests/test_orch_cli_surface.py'),\n\
+      \            Path('tests/repro/test_repair_continuity_black_box.py'),\n    \
+      \        Path('tests/repro/orch_liveness_probe.py'),\n            Path('tests/repro/liveness_drive.py'),\n\
       \            Path('tests/live_smoke/test_vectl_orchestrator_e2e_live.py'),\n\
       \            Path('tests/live_smoke/test_drive_autonomy_live.py'),\n       \
       \     Path('tests/live_smoke/test_opencode_long_runtime_live.py'),\n       \
       \     Path('tests/live_smoke/test_resolver_live.py'),\n        ]\n        targets\
       \ += list(Path('tests/repro').glob('test_orch_*.py')) if Path('tests/repro').exists()\
       \ else []\n        still = [str(p) for p in targets if p.exists()]\n       \
-      \ assert not still, still\n        print('orchestration test and fixture delete\
-      \ targets absent')\n    covers_claims:\n      - orchestration_tests_retired\n\
-      \      - orchestration_fixtures_retired\n  - id: active_residual_test_rewrite_probe\n\
-      \    command:\n      - \"uv\"\n      - \"run\"\n      - \"python\"\n      -\
-      \ \"-c\"\n      - |\n        from pathlib import Path\n        files = [Path('tests/repro/vertical_slice_probe.py'),\
+      \ assert not still, still\n        print('orchestration tests, fixtures, and\
+      \ legacy driver/worktree helper delete targets absent')\n    covers_claims:\n\
+      \      - orchestration_tests_retired\n      - orchestration_fixtures_retired\n\
+      \      - legacy_driver_worktree_fixture_helpers_retired\n  - id: active_residual_test_rewrite_probe\n\
+      \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
+      \ |\n        from pathlib import Path\n        files = [Path('tests/repro/vertical_slice_probe.py'),\
       \ Path('tests/test_gemini_resume_behavior.py')]\n        terms = ['vectl.orchestration',\
       \ 'core.orchestration', 'orch_app', 'cli_orchestration', 'vectl orch', 'src/vectl/orchestration',\
       \ 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration', 'tests/orchestration',\
-      \ 'tests/fixtures/orchestration']\n        hits = [f'{p}:{term}' for p in files\
-      \ if p.exists() for term in terms if term in p.read_text(errors='ignore')]\n\
-      \        assert not hits, hits\n        print('explicit active residual tests\
-      \ are rewritten or absent')\n    covers_claims:\n      - active_residual_tests_rewritten\n\
-      \      - test_collection_no_deleted_runtime_imports\n  - id: test_import_absence_probe\n\
-      \    command:\n      - \"uv\"\n      - \"run\"\n      - \"python\"\n      -\
-      \ \"-c\"\n      - |\n        from pathlib import Path\n        terms = ['vectl.orchestration',\
+      \ 'tests/fixtures/orchestration', 'python -m vectl.driver', 'src.vectl.driver',\
+      \ 'from vectl.driver', '.vectl/worktrees', 'runner/orchestration']\n       \
+      \ hits = [f'{p}:{term}' for p in files if p.exists() for term in terms if term\
+      \ in p.read_text(errors='ignore')]\n        assert not hits, hits\n        print('explicit\
+      \ active residual tests are rewritten or absent')\n    covers_claims:\n    \
+      \  - active_residual_tests_rewritten\n      - test_collection_no_deleted_runtime_imports\n\
+      \  - id: legacy_driver_helper_absence_probe\n    command:\n      - uv\n    \
+      \  - run\n      - python\n      - -c\n      - |\n        from pathlib import\
+      \ Path\n        helpers = [Path('tests/fixtures/helpers/continuity_capability_safety.py'),\
+      \ Path('tests/fixtures/helpers/continuity_hygiene.py')]\n        still = [str(p)\
+      \ for p in helpers if p.exists()]\n        assert not still, still\n       \
+      \ print('legacy driver/worktree helper fixtures are absent')\n    covers_claims:\n\
+      \      - legacy_driver_worktree_fixture_helpers_retired\n  - id: test_import_absence_probe\n\
+      \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
+      \ |\n        from pathlib import Path\n        terms = ['vectl.orchestration',\
       \ 'core.orchestration', 'orch_app', 'cli_orchestration', 'vectl orch', 'src/vectl/orchestration',\
-      \ 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration']\n       \
-      \ suffixes = {'.py', '.json', '.yaml', '.yml'}\n        files = [p for p in\
-      \ Path('tests').rglob('*') if p.is_file() and p.suffix in suffixes]\n      \
-      \  hits = [f'{p}:{t}' for p in files for t in terms if t in p.read_text(errors='ignore')]\n\
-      \        path_terms = ['tests/orchestration', 'tests/fixtures/orchestration']\n\
-      \        hits += [f'{p}:PATH:{t}' for p in files for t in path_terms if t in\
-      \ str(p)]\n        assert not hits, hits\n        print('tests and fixtures\
-      \ have no deleted runtime references')\n    covers_claims:\n      - active_orch_cli_tests_retired\n\
+      \ 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration', 'python -m\
+      \ vectl.driver', 'src.vectl.driver', 'from vectl.driver', '.vectl/worktrees',\
+      \ 'runner/orchestration']\n        suffixes = {'.py', '.json', '.yaml', '.yml'}\n\
+      \        files = [p for p in Path('tests').rglob('*') if p.is_file() and p.suffix\
+      \ in suffixes]\n        hits = [f'{p}:{t}' for p in files for t in terms if\
+      \ t in p.read_text(errors='ignore')]\n        path_terms = ['tests/orchestration',\
+      \ 'tests/fixtures/orchestration', 'tests/fixtures/helpers/continuity_capability_safety.py',\
+      \ 'tests/fixtures/helpers/continuity_hygiene.py']\n        hits += [f'{p}:PATH:{t}'\
+      \ for p in files for t in path_terms if t in str(p)]\n        hits += [f'{p}:CONTENT_PATH:{t}'\
+      \ for p in files for t in path_terms if t in p.read_text(errors='ignore')]\n\
+      \        assert not hits, hits\n        print('tests and fixtures have no deleted\
+      \ runtime references')\n    covers_claims:\n      - active_orch_cli_tests_retired\n\
       \      - orchestration_fixtures_retired\n      - active_residual_tests_rewritten\n\
-      \      - test_collection_no_deleted_runtime_imports\n  - id: pytest_collect_after_retirement\n\
-      \    command: [\"uv\", \"run\", \"pytest\", \"--collect-only\", \"-q\"]\n  \
-      \  covers_claims:\n      - test_collection_no_deleted_runtime_imports\n  - id:\
-      \ decide_tests_still_present\n    command: [\"uv\", \"run\", \"pytest\", \"\
-      tests/test_decide.py\", \"tests/test_decide_state_isolation.py\", \"-q\"]\n\
-      \    covers_claims:\n      - decide_tests_preserved\n</intent_closure_contract>\n"
+      \      - legacy_driver_worktree_fixture_helpers_retired\n      - test_collection_no_deleted_runtime_imports\n\
+      \  - id: pytest_collect_after_retirement\n    command:\n      - uv\n      -\
+      \ run\n      - pytest\n      - --collect-only\n      - -q\n    covers_claims:\n\
+      \      - test_collection_no_deleted_runtime_imports\n  - id: decide_tests_still_present\n\
+      \    command:\n      - uv\n      - run\n      - pytest\n      - tests/test_decide.py\n\
+      \      - tests/test_decide_state_isolation.py\n      - -q\n    covers_claims:\n\
+      \      - decide_tests_preserved\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     refs:
     - user-request:2026-06-17#test-deletion-targets

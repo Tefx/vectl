@@ -112088,3 +112088,61 @@ phases:
     depends_on:
     - egr_inventory_classify_43_errors
     agent: integration-verifier
+  - id: egr_close_repo_regression_post_review_rows
+    name: Apply closure/disposition for repo-regression and post-review rows
+    status: pending
+    description: "TARGET STATE: all Group C rows identified by `egr_triage_repo_regression_post_review_current_state`\
+      \ have durable closure/disposition evidence. This step mutates plan state only\
+      \ through vectl tools and must not implement code fixes.\n\nGroup C initial\
+      \ target rows:\n- repo_regression_full_suite_gate.run-full-pytest-regression-gate\n\
+      - repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics\n\
+      - repo_regression_triage.capture-full-suite-failure-inventory\n- repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces\n\
+      - repo_regression_contract_alignment.audit-other-tight-locks-in-failing-scope\n\
+      - post_review_remediation.implement-completed-step-failure-evidence-guard\n\
+      - post_review_remediation.reverify-completed-step-failure-evidence-guard\n-\
+      \ post_review_remediation.gate\n- post_review_remediation.backfill-missing-gate-evidence\n\
+      - invar_guard_remediation.final-regate-durable-uiux-artifact\n- det_check_tests_gate\n\
+      \nRequired closure rules:\n- For current_green_closure rows: add same-phase\
+      \ green/OPEN/gate_open_allowed=true closure evidence citing the exact current\
+      \ command output from the triage step.\n- For non_blocking_legacy_debt_with_owner\
+      \ rows: record owner/lifecycle and why the old failure does not intersect remaining\
+      \ gates.\n- For current_blocker_owner_required rows: do not mark closed; create\
+      \ explicit pending owner steps in this `evidence_guard_remediation` stream or\
+      \ a clearly named follow-up phase, then leave the blocker visible until owner/retest\
+      \ evidence exists.\n- For needs_exception_policy rows: create an exception-policy\
+      \ record only if remediation would require falsifying/erasing historical evidence;\
+      \ it must name the row, reason, owner, and lifecycle.\n\n## Gate Preview (what\
+      \ the gate WILL reject)\n1. A closure record that says \"pytest passed\" without\
+      \ raw command evidence from the triage step.\n2. Marking still-failing current\
+      \ code as non-blocking without owner/lifecycle and gate-intersection reasoning.\n\
+      3. Product code/test/doc changes in this plan-evidence hygiene step.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \"plan.yaml\"\nblocked_paths:\n  - \"src/**\"\n  - \"tests/**\"\
+      \n  - \"docs/**\"\nrequired_claims:\n  - group_c_rows_closed_or_owned\n  - current_code_probe_evidence_preserved\n\
+      \  - exception_policy_used_only_when_audit_safe\n  - no_product_code_fixes_performed\n\
+      required_checks:\n  - id: group_c_absent_or_owned_from_completed_evidence_guard_errors\n\
+      \    command:\n      - \"uv\"\n      - \"run\"\n      - \"python\"\n      -\
+      \ \"-c\"\n      - |\n        import subprocess, sys\n        ids = [\n     \
+      \       'repo_regression_full_suite_gate.run-full-pytest-regression-gate',\n\
+      \            'repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics',\n\
+      \            'repo_regression_triage.capture-full-suite-failure-inventory',\n\
+      \            'repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces',\n\
+      \            'repo_regression_contract_alignment.audit-other-tight-locks-in-failing-scope',\n\
+      \            'post_review_remediation.implement-completed-step-failure-evidence-guard',\n\
+      \            'post_review_remediation.reverify-completed-step-failure-evidence-guard',\n\
+      \            'post_review_remediation.gate',\n            'post_review_remediation.backfill-missing-gate-evidence',\n\
+      \            'invar_guard_remediation.final-regate-durable-uiux-artifact',\n\
+      \            'det_check_tests_gate',\n        ]\n        p = subprocess.run(['uv',\
+      \ 'run', 'vectl', 'validate'], text=True, capture_output=True)\n        out\
+      \ = p.stdout + p.stderr\n        print(out)\n        offenders = [i for i in\
+      \ ids if f\"ERROR: Completed evidence guard: step '{i}'\" in out]\n        if\
+      \ offenders:\n            print('Group C rows still reported by completed-evidence\
+      \ guard:', offenders)\n            sys.exit(1)\n    covers_claims:\n      -\
+      \ group_c_rows_closed_or_owned\n      - current_code_probe_evidence_preserved\n\
+      \      - exception_policy_used_only_when_audit_safe\n      - no_product_code_fixes_performed\n\
+      </intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    depends_on:
+    - egr_triage_repo_regression_post_review_current_state
+    - egr_dispose_superseded_orchestrator_removal_rows
+    - egr_dispose_scoped_pass_global_fail_rows
+    agent: vectl-planner

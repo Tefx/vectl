@@ -113009,7 +113009,7 @@ phases:
     claimed_at: '2026-06-17T19:04:01.619190+00:00'
   - id: orch_removal_full_regression_check
     name: Run full regression, packaged help, and invar guard
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       full-plan-check final regression. This step is the hard runtime/static gate
@@ -113046,6 +113046,129 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-17T19:04:07.542314+00:00'
+    done_at: '2026-06-17T19:11:37.692797+00:00'
+    evidence: 'verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+
+      Refs read confirmation:
+
+      - user-request:2026-06-17#final-regression-gate: NOT READ; non-file anchor supplied
+      by orchestrator.
+
+      - pyproject.toml: READ by worker.
+
+      - INVAR.md: READ by worker.
+
+      - tools/vectl/README.md: ABSENT/NOT READ; stale guidance only/non-authoritative.
+
+      - MCP:vectl_vectl_validate#pre-existing-completed-evidence-guard-errors: NOT
+      READ; runtime/tool anchor, not a file. Historical completed-evidence guard debt
+      is not claimed resolved.
+
+
+      Sidecar gate:
+
+      ```
+
+      command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_full_regression_check --worktree .vectl/worktrees/orch_removal_full_regression_check
+      --base 287dfac464a90ca610bf95dd83d5eb57e5655bb1 --out .vectl/worktrees/orch_removal_full_regression_check/.agent/gate/verdict.json
+
+      exit_code: 0
+
+      status: NOT_APPLICABLE
+
+      reason: NO_INTENT_CLOSURE_CONTRACT
+
+      changed_paths: []
+
+      ```
+
+
+      Raw command receipts (worker):
+
+      - `uv run pytest`: exit_code 0; stdout excerpt `1218 passed, 15 skipped in 23.16s`;
+      stderr only VIRTUAL_ENV mismatch warning.
+
+      - `uvx --refresh --from . vectl --help`: exit_code 0; stdout includes `Usage:
+      vectl [OPTIONS] COMMAND [ARGS]...` and `Agentic Implementation Plan Manager.`;
+      stderr shows build/install logs.
+
+      - `uvx invar-tools guard --all`: exit_code 0; JSON status passed; errors 0;
+      warnings 14; stderr empty.
+
+      - Full raw worker artifact: /tmp/larva-agent-artifacts/orch_removal_full_regression_check_report.md
+      sha256 77ba3c2a030df2330be6d91187f3c8328741ca97e4b6007b91a93e66d08d87e9 bytes
+      132665.
+
+
+      Mainline final-state verification:
+
+      ```
+
+      command: env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest
+
+      exit_code: 0
+
+      stdout: 1218 passed, 15 skipped in 18.48s
+
+      stderr: empty
+
+
+      command: uvx --refresh --from . vectl --help
+
+      exit_code: 0
+
+      stdout: packaged CLI help with Usage: vectl [OPTIONS] COMMAND [ARGS]... and
+      command list
+
+      stderr: empty
+
+
+      command: uvx invar-tools guard --all
+
+      exit_code: 0
+
+      stdout: JSON status passed; errors 0; warnings 14; infos 2; files_checked 58;
+      doctest passed; crosshair/property skipped no core files
+
+      stderr: empty
+
+      ```
+
+
+      Failure disposition:
+
+      - No required command failed; no blocker-class remediation owner required.
+
+      - Invar warnings/infos are non-blocking because guard exited 0 with 0 errors.
+
+      - Pytest skips are non-blocking for this gate because full regression completed
+      with 1218 passed and 15 skipped.
+
+      - Historical `vectl validate` completed-evidence guard debt was not evaluated
+      and is not claimed resolved.
+
+
+      Orchestrator-removal attribution:
+
+      - No regression observed in full pytest, packaged CLI help, or invar full scan.
+
+      - No failure attributable to orchestrator-removal changes or pre-existing unrelated
+      validation debt.
+
+
+      Worktree/mutations:
+
+      - Verify-only clean worktree; no product/code/doc mutations; no commit created.
+
+      '
   - id: orch_removal_deep_review
     name: Independent deep review of orchestrator removal closure
     status: pending

@@ -114232,35 +114232,38 @@ phases:
       \ - init_gitattributes_behavior_preserved\n  - id: full_pytest_regression\n\
       \    command: [\"uv\", \"run\", \"pytest\", \"-q\"]\n    covers_claims:\n  \
       \    - init_gitattributes_behavior_preserved\n      - full_gate_required_commands_owned\n\
-      \  - id: vectl_validate_guard\n    command: [\"uv\", \"run\", \"python\", \"\
-      -c\", \"import re, subprocess, sys\\nproc = subprocess.run(['uv', 'run', 'vectl',\
-      \ 'validate'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)\\\
-      ntext = (proc.stdout or '') + ('\\\\n' if proc.stdout and proc.stderr else '')\
-      \ + (proc.stderr or '')\\nprint(text, end='' if text.endswith('\\\\n') else\
-      \ '\\\\n')\\nif proc.returncode == 0:\\n    print('vectl_validate_guard: PASS\
-      \ validate exited 0')\\n    raise SystemExit(0)\\nif proc.returncode != 1:\\\
-      n    print(f'vectl_validate_guard: FAIL unexpected validate exit {proc.returncode}',\
-      \ file=sys.stderr)\\n    raise SystemExit(1)\\nflat = ' '.join(text.split())\\\
-      nsummary = re.search(r'(\\\\d+)\\\\s+error\\\\(s\\\\),\\\\s+(\\\\d+)\\\\s+warning\\\
-      \\(s\\\\)', flat)\\nif not summary:\\n    print('vectl_validate_guard: FAIL\
-      \ parser could not extract validate summary', file=sys.stderr)\\n    raise SystemExit(1)\\\
-      nsummary_errors = int(summary.group(1))\\nerrors = re.findall(r'ERROR:\\\\s+(.*?)(?=\\\
-      \\s+ERROR:|\\\\s+\\\\d+\\\\s+error\\\\(s\\\\),|\\\\Z)', flat)\\nif len(errors)\
-      \ != summary_errors:\\n    print(f'vectl_validate_guard: FAIL parsed {len(errors)}\
-      \ ERROR rows but summary reported {summary_errors}', file=sys.stderr)\\n   \
-      \ raise SystemExit(1)\\nbad = [e[:160] for e in errors if not e.startswith('Completed\
-      \ evidence guard:')]\\nif bad:\\n    print('vectl_validate_guard: FAIL unexpected\
-      \ non-completed-evidence validation errors: ' + repr(bad), file=sys.stderr)\\\
-      n    raise SystemExit(1)\\nrows = re.findall(r\"Completed evidence guard:\\\\\
-      s+step\\\\s+'([^']+)'\\\\s+in phase\\\\s+'([^']+)'\", flat)\\nif len(rows) !=\
-      \ 43:\\n    print(f'vectl_validate_guard: FAIL expected 43 extractable completed-evidence\
-      \ guard rows, parsed {len(rows)}', file=sys.stderr)\\n    raise SystemExit(1)\\\
-      nif summary_errors != 43:\\n    print(f'vectl_validate_guard: FAIL expected\
-      \ validate exit 1 with exactly 43 completed-evidence guard errors, got {summary_errors}',\
-      \ file=sys.stderr)\\n    raise SystemExit(1)\\nprint('vectl_validate_guard:\
-      \ PASS accepted validate exit 1 with exactly 43 completed-evidence guard rows\
-      \ and no additional validation errors')\"]\n    covers_claims:\n      - full_gate_required_commands_owned\n\
-      </intent_closure_contract>"
+      \  - id: vectl_validate_guard\n    command:\n      - uv\n      - run\n     \
+      \ - python\n      - -c\n      - |\n        import re, subprocess, sys\n\n  \
+      \      proc = subprocess.run([\"uv\", \"run\", \"vectl\", \"validate\"], stdout=subprocess.PIPE,\
+      \ stderr=subprocess.PIPE, text=True)\n        text = (proc.stdout or \"\") +\
+      \ (\"\\n\" if proc.stdout and proc.stderr else \"\") + (proc.stderr or \"\"\
+      )\n        print(text, end=\"\" if text.endswith(\"\\n\") else \"\\n\")\n\n\
+      \        if proc.returncode == 0:\n            print(\"vectl_validate_guard:\
+      \ PASS validate exited 0\")\n            raise SystemExit(0)\n\n        if proc.returncode\
+      \ != 1:\n            print(f\"vectl_validate_guard: FAIL unexpected validate\
+      \ exit {proc.returncode}\", file=sys.stderr)\n            raise SystemExit(1)\n\
+      \n        flat = \" \".join(text.split())\n        summary = re.search(r\"(\\\
+      d+)\\s+error\\(s\\),\\s+(\\d+)\\s+warning\\(s\\)\", flat)\n        if not summary:\n\
+      \            print(\"vectl_validate_guard: FAIL parser could not extract validate\
+      \ summary\", file=sys.stderr)\n            raise SystemExit(1)\n\n        summary_errors\
+      \ = int(summary.group(1))\n        errors = re.findall(r\"ERROR:\\s+(.*?)(?=\\\
+      s+ERROR:|\\s+\\d+\\s+error\\(s\\),|\\Z)\", flat)\n        if len(errors) !=\
+      \ summary_errors:\n            print(f\"vectl_validate_guard: FAIL parsed {len(errors)}\
+      \ ERROR rows but summary reported {summary_errors}\", file=sys.stderr)\n   \
+      \         raise SystemExit(1)\n\n        bad = [e[:160] for e in errors if not\
+      \ e.startswith(\"Completed evidence guard:\")]\n        if bad:\n          \
+      \  print(\"vectl_validate_guard: FAIL unexpected non-completed-evidence validation\
+      \ errors: \" + repr(bad), file=sys.stderr)\n            raise SystemExit(1)\n\
+      \n        rows = re.findall(r\"Completed evidence guard:\\s+step\\s+'([^']+)'\\\
+      s+in phase\\s+'([^']+)'\", flat)\n        if len(rows) != 43:\n            print(f\"\
+      vectl_validate_guard: FAIL expected 43 extractable completed-evidence guard\
+      \ rows, parsed {len(rows)}\", file=sys.stderr)\n            raise SystemExit(1)\n\
+      \n        if summary_errors != 43:\n            print(f\"vectl_validate_guard:\
+      \ FAIL expected validate exit 1 with exactly 43 completed-evidence guard errors,\
+      \ got {summary_errors}\", file=sys.stderr)\n            raise SystemExit(1)\n\
+      \n        print(\"vectl_validate_guard: PASS accepted validate exit 1 with exactly\
+      \ 43 completed-evidence guard rows and no additional validation errors\")\n\
+      \    covers_claims:\n      - full_gate_required_commands_owned\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     refs:
     - tests/test_init_gitattributes.py

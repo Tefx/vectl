@@ -110027,7 +110027,7 @@ phases:
       - product_implementation_files_modified: no.'
 - id: orchestrator-removal-foundation-and-safety-policy
   name: 'Orchestrator Removal: Foundation and Safety Policy'
-  status: pending
+  status: in_progress
   gate: Foundation gate requires a deletion/preservation matrix, explicit safe worktree
     cleanup policy, and no product-code mutations yet.
   depends_on:
@@ -110035,7 +110035,7 @@ phases:
   steps:
   - id: orch_removal_scope_matrix
     name: Build orchestrator-removal scope and preservation matrix
-    status: pending
+    status: claimed
     description: 'step_type: investigation
 
       PROOF ARTIFACT: deletion/preservation matrix for removing built-in orchestration
@@ -110116,6 +110116,8 @@ phases:
     - docs/RFC-vectl-decide-advisor-refresh.md
     - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md
     agent: architectural-demolitionist
+    claimed_by: architectural-demolitionist
+    claimed_at: '2026-06-17T12:54:21.759306+00:00'
   - id: orch_removal_worktree_policy
     name: Define safe worktree and artifact cleanup policy
     status: pending

@@ -110036,75 +110036,84 @@ phases:
   - id: orch_removal_scope_matrix
     name: Build orchestrator-removal scope and preservation matrix
     status: claimed
-    description: 'step_type: investigation
-
-      PROOF ARTIFACT: deletion/preservation matrix for removing built-in orchestration
-      while preserving vectl_decide. This step is read-only for product/repo files.
-
-
-      Requirement-to-Evidence Matrix:
-
-      | requirement_id | source_ref + key passage | target_state | evidence_class
-      | required_probe_or_artifact | status |
-
-      | ORCH-REMOVE-SCOPE | user-request:2026-06-17 — remove built-in `vectl orch`
-      and orchestration runtime/control/drive/resolver/runner/worktree features |
-      All orchestration-owned source/docs/tests are assigned to delete or cleanup
-      owners | artifact_review | Matrix listing every deletion target and every preserved
-      file | OWNED |
-
-      | DECIDE-PRESERVE | user-request:2026-06-17 — keep `vectl_decide` as core automation/dispatch
-      advisor; preserve decide.py, decision_state.py, model_outputs.py, decide tests,
-      RFC | Decide surfaces remain supported and explicitly caller-owned; required
-      preserved paths are protected by path-presence probes that fail on missing files
-      | artifact_review | Preservation list with expected tests, wording replacements,
-      and exact required path-presence checks | OWNED |
-
-      | ISOLATION-REMOVE | user-request:2026-06-17 — delete Step.isolation and IsolationMode
-      as orchestration execution schema residue | Core model and IO no longer expose
-      isolation schema, lowercase IO isolation residue, or deleted isolation-doc references
-      | artifact_review | Affected-file map for models.py, io.py, tests/test_io.py,
-      tests/test_models.py, and docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md |
-      OWNED |
-
-      | FINAL-GREP | user-request:2026-06-17 — final grep closure covers forbidden
-      terms | Closure gate has scoped grep/probe command that excludes plan history
-      but covers product/docs/tests and exact deletion-target paths | artifact_review
-      | Exact grep scope, exact absence list, preserved-path presence list, and allowed
-      exception policy | OWNED |
-
-
-      Required outputs:
-
-      - deletion_targets_confirmed: source dirs/files, tests, repro/live smoke, docs;
-      include residual orchestration-dependent tests discovered by grep even if not
-      in the initial deletion list.
-
-      - exact_test_deletion_targets_confirmed: `tests/test_runtime_context_vertical_slice.py`,
-      `tests/test_runtime_lifecycle.py`, `tests/test_extended_runner_protocol.py`,
-      `tests/test_orch_cli_surface.py`, `tests/repro/test_repair_continuity_black_box.py`,
-      `tests/repro/test_orch_*.py`, `tests/repro/orch_liveness_probe.py`, `tests/repro/liveness_drive.py`,
-      and orch live-smoke tests.
-
-      - exact_doc_deletion_targets_confirmed: `docs/ORCHESTRATION-*.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`,
-      `docs/RFC-orch-drive.md`, `docs/RFC-opencode-orchestration-runner.md`, `docs/ADR-orchestration-*.md`,
-      `docs/ORCH-*.md`, `docs/RFC-role-profile-overrides.md`, archive proof artifacts,
-      and `docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md`.
-
-      - active_cleanup_targets_confirmed: `tests/conftest.py` remains present but
-      its active `orchestration` config block/token residue is removed.
-
-      - preservation_targets_confirmed: `src/vectl/decide.py`, `src/vectl/decision_state.py`,
-      `src/vectl/model_outputs.py`, `tests/test_decide.py`, `tests/test_decide_state_isolation.py`,
-      `tests/test_mcp.py`, and `docs/RFC-vectl-decide-advisor-refresh.md` must remain
-      present; downstream wording/final probes must fail on missing paths.
-
-      - non_goals: do not remove vectl_decide; do not edit plan.yaml directly; do
-      not manually delete registered .vectl worktrees.
-
-      - dependency map for downstream phases.'
-    verification: Scope artifact names all deletion/preservation owners and final
-      grep scope; no product-code mutation evidence is allowed.
+    description: "step_type: investigation\nPROOF ARTIFACT: deletion/preservation\
+      \ matrix for removing built-in orchestration while preserving vectl_decide.\
+      \ This step is read-only for product/repo files.\n\nRequirement-to-Evidence\
+      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| ORCH-REMOVE-SCOPE | user-request:2026-06-17\
+      \ — remove built-in `vectl orch` and orchestration runtime/control/drive/resolver/runner/worktree\
+      \ features | All orchestration-owned source/docs/tests are assigned to delete\
+      \ or cleanup owners | artifact_review | Matrix listing every deletion target\
+      \ and every preserved file | OWNED |\n| DECIDE-PRESERVE | user-request:2026-06-17\
+      \ — keep `vectl_decide` as core automation/dispatch advisor; preserve decide.py,\
+      \ decision_state.py, model_outputs.py, decide tests, RFC | Decide surfaces remain\
+      \ supported and explicitly caller-owned; required preserved paths are protected\
+      \ by path-presence probes that fail on missing files | artifact_review | Preservation\
+      \ list with expected tests, wording replacements, and exact required path-presence\
+      \ checks | OWNED |\n| ISOLATION-REMOVE | user-request:2026-06-17 — delete Step.isolation\
+      \ and IsolationMode as orchestration execution schema residue | Core model and\
+      \ IO no longer expose isolation schema, lowercase IO isolation residue, or deleted\
+      \ isolation-doc references | artifact_review | Affected-file map for models.py,\
+      \ io.py, tests/test_io.py, tests/test_models.py, and docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md\
+      \ | OWNED |\n| FINAL-GREP | user-request:2026-06-17 — final grep closure covers\
+      \ forbidden terms | Closure gate has scoped grep/probe command that excludes\
+      \ plan history but covers product/docs/tests and exact deletion-target paths\
+      \ | artifact_review | Exact grep scope, exact absence list, preserved-path presence\
+      \ list, and allowed exception policy | OWNED |\n\nRequired outputs:\n- deletion_targets_confirmed:\
+      \ source dirs/files, tests, repro/live smoke, docs; include residual orchestration-dependent\
+      \ tests discovered by grep even if not in the initial deletion list.\n- exact_test_deletion_targets_confirmed:\
+      \ `tests/test_runtime_context_vertical_slice.py`, `tests/test_runtime_lifecycle.py`,\
+      \ `tests/test_extended_runner_protocol.py`, `tests/test_orch_cli_surface.py`,\
+      \ `tests/repro/test_repair_continuity_black_box.py`, `tests/repro/test_orch_*.py`,\
+      \ `tests/repro/orch_liveness_probe.py`, `tests/repro/liveness_drive.py`, and\
+      \ orch live-smoke tests.\n- exact_doc_deletion_targets_confirmed: `docs/ORCHESTRATION-*.md`,\
+      \ `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`, `docs/RFC-orch-drive.md`,\
+      \ `docs/RFC-opencode-orchestration-runner.md`, `docs/ADR-orchestration-*.md`,\
+      \ `docs/ORCH-*.md`, `docs/RFC-role-profile-overrides.md`, archive proof artifacts,\
+      \ and `docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md`.\n\
+      - active_cleanup_targets_confirmed: `tests/conftest.py` remains present but\
+      \ its active `orchestration` config block/token residue is removed.\n- preservation_targets_confirmed:\
+      \ `src/vectl/decide.py`, `src/vectl/decision_state.py`, `src/vectl/model_outputs.py`,\
+      \ `tests/test_decide.py`, `tests/test_decide_state_isolation.py`, `tests/test_mcp.py`,\
+      \ and `docs/RFC-vectl-decide-advisor-refresh.md` must remain present; downstream\
+      \ wording/final probes must fail on missing paths.\n- non_goals: do not remove\
+      \ vectl_decide; do not edit plan.yaml directly; do not manually delete registered\
+      \ .vectl worktrees.\n- dependency map for downstream phases.\n\nside_effect_budget:\n\
+      - Allowed repo mutation: exactly one proof artifact at `.agent/evidence/orch_removal_scope_matrix.md`\
+      \ (or sidecar-normalized `agent/evidence/orch_removal_scope_matrix.md`).\n-\
+      \ Forbidden repo mutations: product/source/test/doc/config edits, direct `plan.yaml`\
+      \ edits, and any evidence artifact path other than the exact step artifact above.\n\
+      \n<intent_closure_contract>\nallowed_paths:\n  - \".agent/evidence/orch_removal_scope_matrix.md\"\
+      \n  - \"agent/evidence/orch_removal_scope_matrix.md\"\nblocked_paths:\n  - \"\
+      src/**\"\n  - \"tests/**\"\n  - \"docs/**\"\n  - \"plan.yaml\"\n  - \"pyproject.toml\"\
+      \n  - \"uv.lock\"\nrequired_claims:\n  - refs_confirmed\n  - deletion_targets_classified\n\
+      \  - preservation_targets_classified\n  - final_grep_scope_defined\n  - dependency_map_recorded\n\
+      \  - no_product_or_plan_mutations\n  - evidence_artifact_exists\nrequired_checks:\n\
+      \  - id: evidence_artifact_content\n    command: [\"python\", \"-c\", \"from\
+      \ pathlib import Path\\npaths=[Path('.agent/evidence/orch_removal_scope_matrix.md'),\
+      \ Path('agent/evidence/orch_removal_scope_matrix.md')]\\np=next((p for p in\
+      \ paths if p.exists()), None)\\nassert p is not None, 'missing evidence artifact\
+      \ for orch_removal_scope_matrix'\\ntext=p.read_text(encoding='utf-8')\\nrequired=['ORCH-REMOVE-SCOPE','DECIDE-PRESERVE','ISOLATION-REMOVE','FINAL-GREP','deletion_targets_confirmed','preservation_targets_confirmed','dependency\
+      \ map']\\nmissing=[s for s in required if s not in text]\\nassert not missing,\
+      \ 'missing required scope-matrix markers: '+repr(missing)\\nprint(f'OK evidence\
+      \ artifact {p} contains scope/preservation matrix markers')\"]\n    covers_claims:\n\
+      \      - refs_confirmed\n      - deletion_targets_classified\n      - preservation_targets_classified\n\
+      \      - final_grep_scope_defined\n      - dependency_map_recorded\n      -\
+      \ evidence_artifact_exists\n  - id: changed_path_allowlist\n    command: [\"\
+      python\", \"-c\", \"from pathlib import Path\\nimport subprocess\\nallowed={'.agent/evidence/orch_removal_scope_matrix.md','agent/evidence/orch_removal_scope_matrix.md'}\\\
+      nchanged=set()\\nfor cmd in (['git','diff','--name-only'], ['git','diff','--cached','--name-only'],\
+      \ ['git','diff-tree','--no-commit-id','--name-only','-r','HEAD']):\\n    try:\\\
+      n        out=subprocess.run(cmd, check=False, text=True, stdout=subprocess.PIPE,\
+      \ stderr=subprocess.DEVNULL).stdout\\n    except Exception:\\n        out=''\\\
+      n    changed.update(line.strip() for line in out.splitlines() if line.strip())\\\
+      nbad=sorted(p for p in changed if p not in allowed)\\nassert not bad, 'unexpected\
+      \ product/source/test/doc/plan changes in current sidecar diff context: '+repr(bad)\\\
+      nprint('OK changed path allowlist: '+(repr(sorted(changed)) if changed else\
+      \ 'no local diff paths visible; sidecar allowed_paths remains authoritative'))\"\
+      ]\n    covers_claims:\n      - no_product_or_plan_mutations\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and the contract-owned checks. Scope
+      artifact must name all deletion/preservation owners and final grep scope; no
+      product-code mutation evidence is allowed.
     refs:
     - user-request:2026-06-17#remove-built-in-orchestrator-runtime
     - src/vectl/decide.py

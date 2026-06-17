@@ -110705,7 +110705,7 @@ phases:
       owned by pending orch_removal_decide_wording_preserve; not final repo readiness.'
 - id: orch_removal_tests_docs
   name: 'Orchestrator Removal: Tests, Docs, and Decide Wording'
-  status: in_progress
+  status: done
   gate: Tests/docs gate requires orchestration-only tests and docs retired, README/RFC
     wording updated, and vectl_decide documented as supported caller-owned automation
     advisor.
@@ -112262,7 +112262,7 @@ phases:
       '
   - id: orch_removal_live_smoke_dispatch_b1_retest
     name: Retest B1 live-smoke dispatch retirement and gate reopening proof
-    status: claimed
+    status: done
     description: "step_type: verification\nstep_intent: retest_green\nexpected_result:\
       \ green\nagent_source: default\nphase-check / regate companion for the blocker\
       \ found by `orch_removal_tests_docs_gate`: `B1-active-live-smoke-dispatch-runtime-tests-remain`.\
@@ -112358,9 +112358,166 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-17T18:55:46.214332+00:00'
+    done_at: '2026-06-17T19:02:35.077208+00:00'
+    evidence: '## B1 Retest / Regate Evidence
+
+
+      ### refs Read Confirmation
+
+      - `tools/vectl/README.md` — NOT READ: absent/non-authoritative.
+
+      - `CONSTITUTION.md` — absent.
+
+      - Relevant files/absence: `tests/live_smoke/helpers.py`, `tests/live_smoke/test_codex_dispatch_live.py`,
+      `tests/live_smoke/test_opencode_dispatch_live.py`, and `tests/fixtures/orchestration`
+      absent; `tests/test_cli.py` has no unresolved `test_orch_` grep hits and `TestDriveCLI`
+      contains negative assertions for removed `drive`/`orch` surfaces.
+
+
+      ### Requirement-to-Evidence Matrix
+
+      | requirement_id | status | evidence_ref |
+
+      | --- | --- | --- |
+
+      | B1-LIVE-SMOKE-DISPATCH-TESTS-RETIRED | PROVEN | worker command 1 active probe
+      exit 0; worker command 2 collect-only collected 0 items with absent/no-tests
+      disposition; mainline command 1 exit 0 and command 2 exit 5 with 0 collected
+      items/no forbidden dispatch tests |
+
+      | B1-HELPER-POLICY-RESCOPED | PROVEN | worker/mainline command 1 active probe
+      exit 0; helper absent and no driver live-smoke policy/live dispatch markers
+      remain |
+
+      | B1-CLI-STALE-TEST-ORCH-CLOSED | PROVEN | worker/mainline command 1 active
+      probe exit 0; worker/mainline TestDriveCLI exit 0 with 4 passed |
+
+      | DECIDE-MCP-PRESERVED | PROVEN | worker targeted decide/MCP tests exit 0 with
+      217 passed; mainline targeted decide/MCP tests exit 0 with 217 passed |
+
+
+      ### Sidecar Gate
+
+      ```
+
+      command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_live_smoke_dispatch_b1_retest --worktree .vectl/worktrees/orch_removal_live_smoke_dispatch_b1_retest
+      --base 61b5011b52dbeb7bee34972c1a4ed3a05543cb85 --out .vectl/worktrees/orch_removal_live_smoke_dispatch_b1_retest/.agent/gate/verdict.json
+
+      exit_code: 0
+
+      status: NOT_APPLICABLE
+
+      reason: NO_INTENT_CLOSURE_CONTRACT
+
+      changed_paths: []
+
+      ```
+
+
+      ### Raw Commands and Outputs
+
+      command_1: active live-smoke/orchestration retirement probe
+
+      worker exit_code: 0
+
+      worker stdout: B1 active live-smoke/orchestration retirement probe passed
+
+      worker stderr: empty
+
+      mainline exit_code: 0
+
+      mainline stdout: B1 active live-smoke/orchestration retirement probe passed
+
+      mainline stderr: empty
+
+
+      command_2: `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/live_smoke
+      --collect-only -q`
+
+      worker exit_code: 4 with NON_BLOCKING_ABSENT_PATH disposition; stdout: collected
+      0 items / no tests collected; stderr: ERROR file or directory not found: tests/live_smoke
+
+      mainline exit_code: 5 with NON_BLOCKING_NO_TESTS disposition; stdout: collected
+      0 items / no tests collected; stderr: empty
+
+      collection_disposition: NON_BLOCKING because the live_smoke directory has no
+      active forbidden dispatch/runtime tests and command_1 independently proves forbidden
+      files, helper markers, and orchestration fixtures are absent.
+
+
+      command_3: `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/test_mcp.py
+      tests/test_decide.py tests/test_decide_state_isolation.py -q`
+
+      worker exit_code: 0; stdout: 217 passed in 4.07s; stderr: empty
+
+      mainline exit_code: 0; stdout: 217 passed in 4.13s; stderr: empty
+
+
+      command_4: `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/test_cli.py::TestDriveCLI
+      -q`
+
+      worker exit_code: 0; stdout: 4 passed in 0.18s; stderr: empty
+
+      mainline exit_code: 0; stdout: 4 passed in 0.19s; stderr: empty
+
+
+      ### Behavioral Proof Register
+
+      | proof_item | source | result | uncertainty | blocking_status |
+
+      | --- | --- | --- | --- | --- |
+
+      | Forbidden codex/opencode live dispatch tests retired | command_1 + command_2
+      | PROVEN | no-tests/absent path is non-blocking because command_1 proves files/markers/fixtures
+      absent | CLOSED |
+
+      | Helper live dispatch policy markers absent | command_1 | PROVEN | none | CLOSED
+      |
+
+      | Stale `test_orch_` CLI marker removed/re-scoped | command_1 + command_4 |
+      PROVEN | none | CLOSED |
+
+      | Decide/MCP preservation suite remains green | command_3 | PROVEN | none |
+      CLOSED |
+
+      | CLI removal tests remain green | command_4 | PROVEN | none | CLOSED |
+
+
+      ### Gate Decision
+
+      - step_intent: retest_green
+
+      - expected_result: green
+
+      - observed_result: green for B1 closure; live_smoke collection has non-blocking
+      no-tests/absent-path disposition with no forbidden tests collected and command_1
+      proving retirement.
+
+      - failure_alignment: none; `B1_ACTIVE_LIVE_SMOKE_DISPATCH_RUNTIME_TESTS_REMAIN`
+      was not emitted.
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - gate_open_allowed: true
+
+      - orchestrator_action_hint: COMPLETE
+
+      - B1 closure statement: `B1-active-live-smoke-dispatch-runtime-tests-remain`
+      is closed by absence of forbidden dispatch runtime tests, absence of helper/runtime
+      markers, and passing targeted preservation suites.
+
+      - Were any product implementation files modified? no; verify-only worktree remained
+      clean.
+
+      - Commit hash(es): none (verify-only, no mutations)
+
+      '
 - id: orch_removal_finalization
   name: 'Orchestrator Removal: Closure and Full Regression'
-  status: locked
+  status: pending
   gate: Final gate requires forbidden-term grep closure, full pytest, packaged CLI
     help, invar guard full scan, and independent release-blocking review.
   depends_on:

@@ -112669,7 +112669,7 @@ phases:
       '
   - id: orch_removal_wiring_audit
     name: Audit wiring after orchestration source deletion
-    status: claimed
+    status: done
     description: 'step_type: audit
 
       full-plan-check wiring audit. Verify every remaining public surface routes to
@@ -112694,6 +112694,144 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-06-17T19:04:15.106194+00:00'
+    done_at: '2026-06-17T19:15:14.896068+00:00'
+    evidence: 'verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+
+      Refs Read Confirmation:
+
+      - user-request:2026-06-17#preserve-decide-and-remove-orch: NOT READ; non-file
+      anchor not available in worktree filesystem.
+
+      - src/vectl/cli.py: READ.
+
+      - src/vectl/mcp_server.py: READ.
+
+      - src/vectl/mcp_core_misc_tools.py: READ.
+
+      - src/vectl/model_outputs.py: READ.
+
+      - pyproject.toml: READ.
+
+      - tools/vectl/README.md: ABSENT / non-authoritative stale guidance only.
+
+
+      Sidecar gate:
+
+      command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_wiring_audit --worktree .vectl/worktrees/orch_removal_wiring_audit
+      --base 287dfac464a90ca610bf95dd83d5eb57e5655bb1 --out .vectl/worktrees/orch_removal_wiring_audit/.agent/gate/verdict.json
+
+      exit_code: 0
+
+      status: NOT_APPLICABLE
+
+      reason: NO_INTENT_CLOSURE_CONTRACT
+
+      changed_paths: []
+
+
+      Worker proof summary:
+
+      - Python imports: imported vectl.cli, vectl.mcp_server, vectl.mcp_core_misc_tools,
+      vectl.model_outputs with forbidden_loaded empty.
+
+      - CLI app: Typer registry had 46 commands, no orch/orchestration command, version
+      output vectl 0.7.0.
+
+      - MCP server: mcp.list_tools returned 20 tools, vectl_decide present, no orch/orchestration
+      tools.
+
+      - MCP decide runtime path: wrapped vectl_decide call with max_parallelism=0
+      returned structured decision and did not load forbidden modules.
+
+      - Package metadata: pyproject project script maps vectl to vectl.cli:app; no
+      deleted orchestration refs.
+
+      - AST import scan: 97 Python files under src and tests scanned; forbidden_import_hits
+      empty.
+
+      - Required exact discovery grep: no source hits for vectl.orchestration, vectl.shell.orchestration,
+      core.orchestration, orch_app, cli_orchestration, from vectl.driver, src.vectl.driver,
+      python -m vectl.driver, judge_agent_prompt.md, or runner/orchestration.
+
+
+      Mainline targeted verification:
+
+      - import_probe: exit_code 0; loaded vectl.cli/mcp_server/mcp_core_misc_tools/model_outputs;
+      forbidden_loaded empty.
+
+      - mcp_inventory: exit_code 0; tool_count 20; has_vectl_decide true; orch_like_tools
+      empty.
+
+      - cli_introspection: exit_code 0; command_count 46; orch_like_commands empty;
+      version_exit_code 0; version_output vectl 0.7.0.
+
+      - package_metadata: exit_code 0; project_scripts vectl -> vectl.cli:app; forbidden_string_hits
+      empty.
+
+      - exact_discovery over source Python and pyproject: exit_code 1 with empty stdout/stderr,
+      meaning no matches.
+
+
+      Supplemental disposition for proof gap row:
+
+      - row: exhaustive execution of every mutating CLI/MCP command
+
+      - status: EXCLUDED
+
+      - reasoning: excluded because this is a verify-only public-surface wiring audit;
+      required proof is import, CLI/MCP introspection/runtime-safe probe, package
+      metadata, and residual-reference discovery. Exhaustively executing mutating
+      CLI/MCP commands would not prove deleted orchestration-source absence and would
+      violate the no-mutation audit boundary. Final readiness is covered by controlled
+      regression/gate commands, not mutating-command execution in this audit.
+
+      - gate_intersection: false
+
+      - blockers: []
+
+
+      W13/W1-W12 protocol checklist: W13 PASS, W1 PASS, W2 N/A, W3 PASS for safe load/version
+      scope, W4 PASS, W5 N/A, W6 PASS, W7 WARN benign comments/merge-driver/negative
+      tests only, W8 PASS, W8b PASS, W9 PASS, W10 PASS, W11 PASS, W12 PASS.
+
+
+      Defect/Blocker Ledger:
+
+      - Blockers: none.
+
+      - WARN only: fallback broad grep finds benign shell_orchestration comments,
+      valid merge_driver references, and negative tests asserting removed orch command
+      absence; none are live deleted-module wiring.
+
+
+      behavioral_proof_register:
+
+      - import_surfaces_without_deleted_modules: PROVEN
+
+      - mcp_inventory_has_vectl_decide_and_no_orch_tool: PROVEN
+
+      - cli_app_loads_without_orch_command: PROVEN
+
+      - package_metadata_has_no_deleted_orchestration_refs: PROVEN
+
+      - tests_have_no_forbidden_deleted_imports: PROVEN
+
+      - exhaustive execution of every mutating CLI/MCP command: EXCLUDED with non-intersection
+      proof above
+
+
+      Artifacts Modified: none. Verify-only clean worktree; no product/code/doc/test
+      mutations; commit_hash: none.
+
+      '
   - id: orch_removal_final_grep_closure
     name: Final forbidden-term grep closure
     status: claimed

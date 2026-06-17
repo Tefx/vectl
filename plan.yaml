@@ -111231,8 +111231,9 @@ phases:
       full-plan-check final grep closure. This step proves product source, tests,
       docs including archived yaml/yml/json artifacts, READMEs, and packaging metadata
       no longer contain deleted runtime identifiers, deleted path fragments, stale
-      driver package metadata, helper fixture worktree residue, lowercase IO isolation
-      residue, deleted isolation-doc references, or forbidden decide wording. Scope
+      driver package metadata, helper fixture worktree residue, lowercase IO/model
+      isolation residue including comments/docstrings, deleted isolation-doc references,
+      retained positive root CLI `orch` tests, or forbidden decide wording. Scope
       intentionally excludes plan.yaml/plan history and .git/.venv/.vectl artifacts
       so the plan itself and orchestrator-owned runtime workspaces do not make the
       probe self-failing. Content probes still forbid legacy path literals `.vectl/workspaces`
@@ -111250,10 +111251,20 @@ phases:
       `shell.orchestration`, `from vectl.shell import orchestration`, `core.orchestration`,
       `orch_app`, `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`.
 
-      Forbidden lowercase IO isolation residue terms checked specifically against
+      Forbidden lowercase IO/model isolation residue checked specifically against
       `src/vectl/models.py` and `src/vectl/io.py`: `field_name == "isolation"`, `field_name
       == ''isolation''`, `field_name != "isolation"`, `field_name != ''isolation''`,
-      `"isolation"`, and `''isolation''`.
+      `"isolation"`, `''isolation''`, and any lowercase word-boundary `isolation`
+      occurrence including comments/docstrings. The word-boundary allowlist is intentionally
+      empty unless a legitimate non-Step-isolation exception is explicitly added to
+      the probe with rationale.
+
+      Forbidden active root CLI positive coverage: `tests/test_cli.py#TestDriveCLI`
+      may not contain positive coverage for the removed root `orch` command, including
+      `runner.invoke(app, ["orch", ...])` with `exit_code == 0`, help/advisory output
+      assertions, advertising/pointing strings, or any `orch` mention not paired with
+      an explicit negative removal assertion such as `No such command`, `removed`,
+      `unsupported`, or non-zero exit status.
 
       Forbidden deleted path fragments checked against BOTH file paths and file contents:
       `src/vectl/orchestration`, `src/vectl/core/orchestration`, `src/vectl/shell/orchestration`,
@@ -111310,13 +111321,13 @@ phases:
       by exact phrase in the probe; any other hit is blocker-class unless explicitly
       proven to be in an excluded non-product artifact.'
     verification: "Run the exact Python grep closure below and paste raw stdout/stderr/exit\
-      \ code:\n\n```\nuv run python - <<'PY'\nfrom pathlib import Path\nimport tomllib\n\
-      \nroots = [Path('src'), Path('tests'), Path('docs'), Path('README.md'), Path('README_zh.md'),\
-      \ Path('pyproject.toml')]\nsuffixes = {'.py', '.md', '.toml', '.txt', '.yaml',\
-      \ '.yml', '.json'}\nfiles = []\nfor root in roots:\n    if not root.exists():\n\
-      \        continue\n    if root.is_file():\n        files.append(root)\n    else:\n\
-      \        files.extend(p for p in root.rglob('*') if p.is_file() and p.suffix\
-      \ in suffixes)\n\nrequired_preserved = [\n    Path('src/vectl/decide.py'),\n\
+      \ code:\n\n```\nuv run python - <<'PY'\nfrom pathlib import Path\nimport ast\n\
+      import re\nimport tomllib\n\nroots = [Path('src'), Path('tests'), Path('docs'),\
+      \ Path('README.md'), Path('README_zh.md'), Path('pyproject.toml')]\nsuffixes\
+      \ = {'.py', '.md', '.toml', '.txt', '.yaml', '.yml', '.json'}\nfiles = []\n\
+      for root in roots:\n    if not root.exists():\n        continue\n    if root.is_file():\n\
+      \        files.append(root)\n    else:\n        files.extend(p for p in root.rglob('*')\
+      \ if p.is_file() and p.suffix in suffixes)\n\nrequired_preserved = [\n    Path('src/vectl/decide.py'),\n\
       \    Path('src/vectl/decision_state.py'),\n    Path('src/vectl/model_outputs.py'),\n\
       \    Path('tests/test_decide.py'),\n    Path('tests/test_decide_state_isolation.py'),\n\
       \    Path('tests/test_mcp.py'),\n    Path('docs/RFC-vectl-decide-advisor-refresh.md'),\n\
@@ -111395,18 +111406,51 @@ phases:
       \    for term in ['orchestration', 'vectl orch', 'orch_app', 'cli_orchestration',\
       \ 'runner/orchestration']:\n        if term in conftest_text:\n            hits.append(f'{conftest}:CONFTEST_ACTIVE_CONFIG:{term}')\n\
       else:\n    hits.append('MISSING_REQUIRED_TEST_CONFIG:tests/conftest.py')\n\n\
-      for p in files:\n    text = p.read_text(errors='ignore')\n    hits.extend(f'{p}:{term}'\
+      \ntest_cli = Path('tests/test_cli.py')\nif not test_cli.exists():\n    hits.append('MISSING_ROOT_CLI_TESTS:tests/test_cli.py')\n\
+      else:\n    source = test_cli.read_text(errors='ignore')\n    try:\n        tree\
+      \ = ast.parse(source)\n    except SyntaxError as exc:\n        hits.append(f'{test_cli}:AST_PARSE_FAILED:{exc}')\n\
+      \    else:\n        classes = [node for node in ast.walk(tree) if isinstance(node,\
+      \ ast.ClassDef) and node.name == 'TestDriveCLI']\n        if not classes:\n\
+      \            hits.append(f'MISSING_TESTDRIVECLI_CLASS:{test_cli}#TestDriveCLI')\n\
+      \        else:\n            negative_regexes = [\n                r'exit_code\\\
+      s*!=\\s*0',\n                r'exit_code\\s*==\\s*(1|2)',\n                r'exit_code\\\
+      s*>\\s*0',\n                r'no such command',\n                r'remov(ed|al)',\n\
+      \                r'unsupported',\n                r'not\\s+support',\n     \
+      \           r'does not exist',\n                r'not\\s+in\\s+result\\.output',\n\
+      \            ]\n            advertising_terms = ['supported public surface',\
+      \ 'points users to orch', 'advertis', 'listed in help', 'shows orch command']\n\
+      \            for node in classes[0].body:\n                if not isinstance(node,\
+      \ (ast.FunctionDef, ast.AsyncFunctionDef)):\n                    continue\n\
+      \                segment = ast.get_source_segment(source, node) or ''\n    \
+      \            lower = segment.lower()\n                if 'orch' not in lower:\n\
+      \                    continue\n                if re.search(r'assert\\s+[^\\\
+      n]*exit_code\\s*==\\s*0', segment) or re.search(r'assert\\s+0\\s*==\\s*[^\\\
+      n]*exit_code', segment):\n                    hits.append(f'{test_cli}#TestDriveCLI.{node.name}:POSITIVE_ORCH_EXIT_CODE_ZERO')\n\
+      \                for line_no, line in enumerate(segment.splitlines(), start=getattr(node,\
+      \ 'lineno', 1)):\n                    line_lower = line.lower()\n          \
+      \          if 'orch' not in line_lower:\n                        continue\n\
+      \                    if any(term in line_lower for term in advertising_terms):\n\
+      \                        hits.append(f'{test_cli}:{line_no}:ORCH_ADVERTISING:{line.strip()}')\n\
+      \                    if 'result.output' in line_lower and ' in ' in line_lower\
+      \ and not any(re.search(rx, line_lower) for rx in negative_regexes):\n     \
+      \                   hits.append(f'{test_cli}:{line_no}:ORCH_OUTPUT_ASSERTION_NOT_NEGATIVE:{line.strip()}')\n\
+      \                if not any(re.search(rx, lower) for rx in negative_regexes):\n\
+      \                    hits.append(f'{test_cli}#TestDriveCLI.{node.name}:ORCH_MENTION_WITHOUT_NEGATIVE_REMOVAL_ASSERTION')\n\
+      \nfor p in files:\n    text = p.read_text(errors='ignore')\n    hits.extend(f'{p}:{term}'\
       \ for term in general if term in text)\n    hits.extend(f'{p}:PATH:{term}' for\
       \ term in path_fragments if term in str(p))\n    hits.extend(f'{p}:CONTENT_PATH:{term}'\
       \ for term in path_fragments if term in text)\n    hits.extend(f'{p}:LEGACY_DRIVER:{term}'\
-      \ for term in legacy_driver_terms if term in text)\n\nfor p in [Path('src/vectl/models.py'),\
-      \ Path('src/vectl/io.py')]:\n    if p.exists():\n        text = p.read_text(errors='ignore')\n\
-      \        hits.extend(f'{p}:LOWERCASE_IO_ISOLATION:{term}' for term in io_lowercase_isolation_terms\
-      \ if term in text)\n\nfor p in decide_policy_files:\n    if not p.exists():\n\
-      \        hits.append(f'MISSING_DECIDE_POLICY_FILE:{p}')\n        continue\n\
-      \    text = p.read_text(errors='ignore')\n    lower_text = text.lower()\n  \
-      \  hits.extend(f'{p}:DECIDE:{term}' for term in decide_exact_forbidden if term\
-      \ in lower_text)\n    for lineno, line in enumerate(lower_text.splitlines(),\
+      \ for term in legacy_driver_terms if term in text)\n\nio_word_boundary_allowlist\
+      \ = {}\nfor p in [Path('src/vectl/models.py'), Path('src/vectl/io.py')]:\n \
+      \   if p.exists():\n        text = p.read_text(errors='ignore')\n        hits.extend(f'{p}:LOWERCASE_IO_ISOLATION:{term}'\
+      \ for term in io_lowercase_isolation_terms if term in text)\n        allowed_lines\
+      \ = set(io_word_boundary_allowlist.get(str(p), []))\n        for line_no, line\
+      \ in enumerate(text.splitlines(), start=1):\n            if re.search(r'\\bisolation\\\
+      b', line) and line_no not in allowed_lines:\n                hits.append(f'{p}:{line_no}:LOWERCASE_WORD_BOUNDARY_ISOLATION:{line.strip()}')\n\
+      \nfor p in decide_policy_files:\n    if not p.exists():\n        hits.append(f'MISSING_DECIDE_POLICY_FILE:{p}')\n\
+      \        continue\n    text = p.read_text(errors='ignore')\n    lower_text =\
+      \ text.lower()\n    hits.extend(f'{p}:DECIDE:{term}' for term in decide_exact_forbidden\
+      \ if term in lower_text)\n    for lineno, line in enumerate(lower_text.splitlines(),\
       \ start=1):\n        if 'orchestrat' not in line:\n            continue\n  \
       \      allowed = any(fragment in line for fragment in decide_allowlist.get(p,\
       \ []))\n        if not allowed:\n            hits.append(f'{p}:{lineno}:DECIDE_UNALLOWLISTED_ORCHESTRAT:{line.strip()}')\n\
@@ -111417,8 +111461,9 @@ phases:
       \ entries in package_data.items():\n        for entry in entries:\n        \
       \    if entry == 'judge_agent_prompt.md':\n                hits.append(f'pyproject.toml:PACKAGE_DATA:{package}:judge_agent_prompt.md')\n\
       \nassert not hits, hits\nprint('forbidden-term and exact-deletion closure clean,\
-      \ preserved decide targets present including RFC, conftest orchestration config\
-      \ absent, IO isolation residue absent, and both legacy worktree roots absent')\n\
+      \ preserved decide targets present including RFC, TestDriveCLI positive orch\
+      \ coverage absent, conftest orchestration config absent, IO/model lowercase\
+      \ word-boundary isolation residue absent, and both legacy worktree roots absent')\n\
       PY\n```"
     evidence_template: '## Final Grep Closure Evidence
 

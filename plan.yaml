@@ -113062,7 +113062,7 @@ phases:
       proof step.'
   - id: egr_close_repo_regression_post_review_rows
     name: Apply closure/disposition for repo-regression and post-review rows
-    status: claimed
+    status: done
     description: "TARGET STATE: all Group C rows identified by `egr_triage_repo_regression_post_review_current_state`\
       \ have durable row-local closure, owner, or exception-policy evidence. This\
       \ step mutates plan state only through vectl tools and must not implement code\
@@ -113429,6 +113429,15 @@ phases:
     agent: vectl-planner
     claimed_by: vectl-planner
     claimed_at: '2026-06-17T13:42:38.425853+00:00'
+    done_at: '2026-06-17T13:50:52.550111+00:00'
+    evidence: 'status SUCCESS; plan-only mutation in commit 49229a42 appended row-local
+      closure_register for all 11 Group C rows; sidecar verdict CONFORMANT using clean
+      detached worktree; uv run vectl validate still reports the known 43 completed-evidence
+      guard errors and all 11 Group C rows, with row-local current_blocker_owner or
+      exception_policy records. Robust parser check PASS: 11/11 closure entries, status_counts
+      current_blocker_owner=2 exception_policy=9; triage evidence from .agent/evidence/egr_triage_repo_regression_post_review_current_state.md
+      preserved current pytest red state and invar green state; no product code/tests/docs
+      edited.'
   - id: egr_generate_current_core_owner_path
     name: Generate owner path for any still-current core guard failures
     status: pending

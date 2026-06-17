@@ -110121,53 +110121,64 @@ phases:
   - id: orch_removal_worktree_policy
     name: Define safe worktree and artifact cleanup policy
     status: claimed
-    description: 'step_type: investigation
-
-      PROOF ARTIFACT: safe cleanup policy for `.vectl/workspaces` and `.vectl/worktrees`
-      artifacts. This step exists to prevent destructive cleanup while registered
-      git worktrees exist.
-
-
-      Requirement-to-Evidence Matrix:
-
-      | requirement_id | source_ref + key passage | target_state | evidence_class
-      | required_probe_or_artifact | status |
-
-      | WT-SAFE-1 | user-request:2026-06-17 — `.vectl/workspaces` / `.vectl/worktrees`
-      contain registered git worktrees; cleanup must use `git worktree remove/prune`,
-      not `rm -rf` | Cleanup policy forbids direct deletion of registered worktree
-      dirs | runtime_probe | Raw `git worktree list --porcelain` output and policy
-      disposition | OWNED |
-
-      | WT-SAFE-2 | AGENTS.md — do not edit plan.yaml directly; evidence requirements
-      apply | Runtime artifacts are cleaned only through safe commands and recorded
-      evidence | artifact_review | Policy states allowed and forbidden side effects
-      | OWNED |
-
-
-      side_effect_budget:
-
-      - Allowed: `git worktree list --porcelain`, inspection of `.vectl/workspaces`
-      and `.vectl/worktrees`, and (only if a stale registered worktree is intentionally
-      removed) `git worktree remove <registered-path>` followed by `git worktree prune`.
-
-      - Forbidden: `rm -rf .vectl/workspaces`, `rm -rf .vectl/worktrees`, or deleting
-      any registered worktree path outside `git worktree remove`.
-
-      - Forbidden: editing `plan.yaml` directly.
-
-
-      risk_probes:
-
-      - Confirm whether each `.vectl/workspaces/*` or `.vectl/worktrees/*` path is
-      registered in `git worktree list --porcelain`.
-
-      - If any cleanup is deferred, record the exact path and why direct deletion
-      is unsafe.
-
-      - If a path is unregistered, record why it is safe or why cleanup is still deferred.'
-    verification: Provide raw stdout/logs of the worktree probe and a policy disposition.
-      Unit tests or mocked worktree state are insufficient.
+    description: "step_type: investigation\nPROOF ARTIFACT: safe cleanup policy for\
+      \ `.vectl/workspaces` and `.vectl/worktrees` artifacts. This step exists to\
+      \ prevent destructive cleanup while registered git worktrees exist.\n\nRequirement-to-Evidence\
+      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| WT-SAFE-1 | user-request:2026-06-17\
+      \ — `.vectl/workspaces` / `.vectl/worktrees` contain registered git worktrees;\
+      \ cleanup must use `git worktree remove/prune`, not `rm -rf` | Cleanup policy\
+      \ forbids direct deletion of registered worktree dirs | runtime_probe | Raw\
+      \ `git worktree list --porcelain` output and policy disposition | OWNED |\n\
+      | WT-SAFE-2 | AGENTS.md — do not edit plan.yaml directly; evidence requirements\
+      \ apply | Runtime artifacts are cleaned only through safe commands and recorded\
+      \ evidence | artifact_review | Policy states allowed and forbidden side effects\
+      \ | OWNED |\n\nside_effect_budget:\n- Allowed repo mutation: exactly one proof\
+      \ artifact at `.agent/evidence/orch_removal_worktree_policy.md` (or sidecar-normalized\
+      \ `agent/evidence/orch_removal_worktree_policy.md`).\n- Allowed runtime inspection:\
+      \ `git worktree list --porcelain`, inspection of `.vectl/workspaces` and `.vectl/worktrees`,\
+      \ and (only if a stale registered worktree is intentionally removed) `git worktree\
+      \ remove <registered-path>` followed by `git worktree prune`.\n- Forbidden repo\
+      \ mutations: product/source/test/doc/config edits, direct `plan.yaml` edits,\
+      \ and any evidence artifact path other than the exact step artifact above.\n\
+      - Forbidden destructive cleanup: `rm -rf .vectl/workspaces`, `rm -rf .vectl/worktrees`,\
+      \ or deleting any registered worktree path outside `git worktree remove`.\n\n\
+      risk_probes:\n- Confirm whether each `.vectl/workspaces/*` or `.vectl/worktrees/*`\
+      \ path is registered in `git worktree list --porcelain`.\n- If any cleanup is\
+      \ deferred, record the exact path and why direct deletion is unsafe.\n- If a\
+      \ path is unregistered, record why it is safe or why cleanup is still deferred.\n\
+      \n<intent_closure_contract>\nallowed_paths:\n  - \".agent/evidence/orch_removal_worktree_policy.md\"\
+      \n  - \"agent/evidence/orch_removal_worktree_policy.md\"\nblocked_paths:\n \
+      \ - \"src/**\"\n  - \"tests/**\"\n  - \"docs/**\"\n  - \"plan.yaml\"\n  - \"\
+      pyproject.toml\"\n  - \"uv.lock\"\nrequired_claims:\n  - refs_confirmed\n  -\
+      \ raw_worktree_probe_output_recorded\n  - cleanup_policy_disposition_complete\n\
+      \  - no_product_or_plan_mutations\n  - evidence_artifact_exists\nrequired_checks:\n\
+      \  - id: evidence_artifact_content\n    command: [\"python\", \"-c\", \"from\
+      \ pathlib import Path\\npaths=[Path('.agent/evidence/orch_removal_worktree_policy.md'),\
+      \ Path('agent/evidence/orch_removal_worktree_policy.md')]\\np=next((p for p\
+      \ in paths if p.exists()), None)\\nassert p is not None, 'missing evidence artifact\
+      \ for orch_removal_worktree_policy'\\ntext=p.read_text(encoding='utf-8')\\nrequired=['git\
+      \ worktree list --porcelain','git worktree remove','git worktree prune','rm\
+      \ -rf','WT-SAFE-1','WT-SAFE-2']\\nmissing=[s for s in required if s not in text]\\\
+      nassert not missing, 'missing required evidence markers: '+repr(missing)\\nprint(f'OK\
+      \ evidence artifact {p} contains worktree policy proof markers')\"]\n    covers_claims:\n\
+      \      - refs_confirmed\n      - raw_worktree_probe_output_recorded\n      -\
+      \ cleanup_policy_disposition_complete\n      - evidence_artifact_exists\n  -\
+      \ id: changed_path_allowlist\n    command: [\"python\", \"-c\", \"from pathlib\
+      \ import Path\\nimport subprocess\\nallowed={'.agent/evidence/orch_removal_worktree_policy.md','agent/evidence/orch_removal_worktree_policy.md'}\\\
+      nchanged=set()\\nfor cmd in (['git','diff','--name-only'], ['git','diff','--cached','--name-only'],\
+      \ ['git','diff-tree','--no-commit-id','--name-only','-r','HEAD']):\\n    try:\\\
+      n        out=subprocess.run(cmd, check=False, text=True, stdout=subprocess.PIPE,\
+      \ stderr=subprocess.DEVNULL).stdout\\n    except Exception:\\n        out=''\\\
+      n    changed.update(line.strip() for line in out.splitlines() if line.strip())\\\
+      nbad=sorted(p for p in changed if p not in allowed)\\nassert not bad, 'unexpected\
+      \ product/source/test/doc/plan changes in current sidecar diff context: '+repr(bad)\\\
+      nprint('OK changed path allowlist: '+(repr(sorted(changed)) if changed else\
+      \ 'no local diff paths visible; sidecar allowed_paths remains authoritative'))\"\
+      ]\n    covers_claims:\n      - no_product_or_plan_mutations\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and the contract-owned checks. Provide
+      raw stdout/logs of the worktree probe and a policy disposition. Unit tests or
+      mocked worktree state are insufficient.
     refs:
     - user-request:2026-06-17#safe-worktree-cleanup
     - .vectl/

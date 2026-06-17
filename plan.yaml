@@ -110654,7 +110654,7 @@ phases:
       source-absence, decide-preserved, regression-suite PROVEN.'
   - id: orch_removal_runtime_gate
     name: Gate runtime and CLI surface removal
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       phase-check gate. Blocks docs/tests cleanup unless implementation evidence proves
@@ -110682,6 +110682,8 @@ phases:
     - orch_removal_isolation_schema_delete
     - orch_removal_runtime_phase_probe
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-17T14:47:04.750898+00:00'
 - id: orch_removal_tests_docs
   name: 'Orchestrator Removal: Tests, Docs, and Decide Wording'
   status: locked

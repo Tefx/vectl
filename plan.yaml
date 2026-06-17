@@ -111333,7 +111333,7 @@ phases:
       before gate.'
   - id: orch_removal_tests_docs_gate
     name: Gate tests/docs cleanup
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       phase-check gate. Blocks finalization unless docs/tests deletion, README/RFC
@@ -111415,6 +111415,120 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-17T18:20:38.249089+00:00'
+    done_at: '2026-06-17T18:38:01.785280+00:00'
+    evidence: "## Gate Report: orch_removal_tests_docs_gate\n\nHeadline: FAIL\nBlocking\
+      \ Status: BLOCKED\nProof-Gap Status: PROOF GAP PRESENT for active orchestration/live-smoke\
+      \ test retirement\nVerdict: FAIL\nGate Decision: BLOCKED\ngate_open_allowed:\
+      \ false\norchestrator_action_hint: DO_NOT_COMPLETE\n\n### Sidecar Gate\n```\n\
+      command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml\
+      \ --step orch_removal_tests_docs_gate --worktree .vectl/worktrees/orch_removal_tests_docs_gate\
+      \ --base 7825e47f3855f4ec9e9fe9c72b15b2022bb34b1d --out .vectl/worktrees/orch_removal_tests_docs_gate/.agent/gate/verdict.json\n\
+      exit_code: 0\nstatus: NOT_APPLICABLE\nreason: NO_INTENT_CLOSURE_CONTRACT\nchanged_paths:\
+      \ []\n```\n\n### refs Read Confirmation\n- user-request:2026-06-17#tests-docs-gate\
+      \ — NOT READ: not a filesystem path/anchor available in worktree; dispatched\
+      \ step text used as authority.\n- docs/archive/orch_workflow_validation.yaml\
+      \ — NOT READ/ABSENT: file absent.\n- docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml\
+      \ — NOT READ/ABSENT: file absent.\n- tests/test_orch_cli_surface.py — NOT READ/ABSENT:\
+      \ file absent.\n- tests/test_cli.py#TestDriveCLI — READ: `TestDriveCLI` contains\
+      \ negative assertions that removed `drive` and `orch` commands are not registered\
+      \ and root help omits removed runtime command.\n- tests/repro/test_repair_continuity_black_box.py\
+      \ — NOT READ/ABSENT: file absent.\n- tests/fixtures/orchestration/replay_events.json\
+      \ — NOT READ/ABSENT: file absent.\n- docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md\
+      \ — NOT READ/ABSENT: file absent.\n- README.md — READ: states `vectl exposes\
+      \ 20 MCP tools` and includes `vectl_decide`.\n- README_zh.md — READ: states\
+      \ `20 个工具`, includes `vectl_decide`, and says it supports caller-owned automation\
+      \ advisor use.\n- docs/RFC-vectl-decide-advisor-refresh.md — READ: defines `vectl_decide`\
+      \ as deterministic automation/dispatch advisor for caller-owned agents, not\
+      \ built-in execution runtime authority.\n- src/vectl/mcp_server.py / mcp_core_common.py\
+      \ / mcp_project_tools.py / mcp_render_tools.py / mcp_core_misc_tools.py — READ:\
+      \ active MCP source docstrings/comments identify 20-tool MCP inventory including\
+      \ `vectl_decide`; `mcp_core_misc_tools.py` describes `vectl_decide` as caller-owned\
+      \ automation advisor.\n- tools/vectl/README.md — NOT READ/ABSENT/NON-AUTHORITATIVE:\
+      \ file absent.\n\n### Requirement-to-Evidence Decision Basis\n| requirement_id\
+      \ | status | evidence_ref | blocking_reason_if_not_proven |\n| --- | --- | ---\
+      \ | --- |\n| phase_probe_pass | PROVEN | plan inspection: `orch_removal_tests_docs_probe`\
+      \ done; evidence says verdict PASS and gate_open_allowed true | |\n| readme_zh_parity_done\
+      \ | PROVEN | plan inspection: `orch_removal_readme_zh_decide_parity` done |\
+      \ |\n| mcp_inventory_doc_truth_done | PROVEN | plan inspection: `orch_removal_mcp_tool_inventory_doc_truth`\
+      \ done; includes runtime/readme/stale/test receipts | |\n| archive_artifacts_absent\
+      \ | PROVEN | docs/archive probe exit 0; docs/archive absent | |\n| active_orch_tests_retired\
+      \ | BLOCKED | active tests/fixtures probe exit 1; `tests/live_smoke/helpers.py`,\
+      \ `tests/live_smoke/test_codex_dispatch_live.py`, `tests/live_smoke/test_opencode_dispatch_live.py`;\
+      \ live_smoke collect-only shows 36 active tests | Active live-smoke dispatch/runtime\
+      \ tests remain and are not evidenced as re-scoped away from deleted runtime\
+      \ behavior. |\n| conftest_cleanup | PROVEN | tests/conftest.py cleanup probe\
+      \ exit 0; zero orchestration/orch/driver/live_runner/config hits | |\n| isolation_doc_absent\
+      \ | PROVEN | isolation doc/reference probe exit 0 | |\n| decide_wording_preserved\
+      \ | PROVEN | preserved decide wording probe exit 0 | |\n| preserved_decide_paths_present\
+      \ | PROVEN | preserved decide path probe exit 0 | |\n| live_mcp_decide_surface\
+      \ | PROVEN | live MCP inventory probe exit 0; runtime_mcp_tool_count=20; list\
+      \ includes vectl_decide | |\n| stale_mcp_inventory_closed | PROVEN | stale MCP\
+      \ wording probe exit 0; stale_hits=0 | |\n| decide_tests_pass | PROVEN | `uv\
+      \ run pytest tests/test_mcp.py tests/test_decide.py tests/test_decide_state_isolation.py\
+      \ -q` exit 0; 217 passed | |\n| blockers_owned_or_closed | PROVEN_WITH_CURRENT_BLOCKER_OWNER\
+      \ | Planner created `orch_removal_live_smoke_dispatch_b1_fix` and `orch_removal_live_smoke_dispatch_b1_retest`\
+      \ in same phase to own and close B1 | B1 remains blocking until these owner\
+      \ steps pass. |\n\n### Raw Verification Receipts\n- Plan prerequisite inspection:\
+      \ exit_code=0; required prior steps found done with relevant evidence.\n- Recursive\
+      \ docs/archive orchestration artifact probe: exit_code=0; docs/archive absent;\
+      \ matches=0.\n- Active orchestration tests/fixtures probe: exit_code=1; filename_matches=3:\
+      \ `tests/live_smoke/helpers.py`, `tests/live_smoke/test_codex_dispatch_live.py`,\
+      \ `tests/live_smoke/test_opencode_dispatch_live.py`; content hit `tests/test_cli.py:\
+      \ test_orch_`; blocking_matches were the live_smoke files.\n- Live-smoke collect-only:\
+      \ `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/live_smoke\
+      \ --collect-only -q`; exit_code=0; collected 36 tests from `tests/live_smoke/test_codex_dispatch_live.py`\
+      \ and `tests/live_smoke/test_opencode_dispatch_live.py`.\n- tests/conftest.py\
+      \ cleanup probe: exit_code=0; blocking_orchestration_tokens=0.\n- Isolation\
+      \ doc absence/reference probe: exit_code=0; isolation_doc_exists=False; isolation_doc_reference_hits=0.\n\
+      - README MCP inventory parity probe: exit_code=0; README.md states 20 MCP tools,\
+      \ README_zh.md states 20 tools, both include `vectl_decide`.\n- Preserved decide\
+      \ path-presence and wording proof: exit_code=0; RFC/source/tests/readmes/MCP\
+      \ decide wording present and no built-in orchestration advisor wording.\n- Live\
+      \ MCP inventory probe: exit_code=0; runtime_mcp_tool_count=20; contains_vectl_decide=True.\n\
+      - Source comment MCP inventory truth probe: exit_code=0; active MCP modules\
+      \ have 20 inventory and vectl_decide wording.\n- Stale MCP inventory wording\
+      \ probe: exit_code=0; stale_hits=0.\n- Decide preservation tests: `uv run pytest\
+      \ tests/test_mcp.py tests/test_decide.py tests/test_decide_state_isolation.py\
+      \ -q`; exit_code=0; 217 passed.\n- Test collection import smoke: `uv run pytest\
+      \ --collect-only -q`; exit_code=0; 1269 tests collected.\n- Gate worktree mutation\
+      \ check: exit_code=0; git status clean; no product/code/doc mutations by this\
+      \ gate.\n\n### Blocker Ledger\n- id: B1-active-live-smoke-dispatch-runtime-tests-remain\n\
+      \  severity: blocker\n  evidence: `tests/live_smoke/helpers.py`, `tests/live_smoke/test_codex_dispatch_live.py`,\
+      \ `tests/live_smoke/test_opencode_dispatch_live.py`; active tests/fixtures probe\
+      \ exit 1; `pytest tests/live_smoke --collect-only -q` collected 36 tests.\n\
+      \  gate_intersection: true; this directly intersects the phase gate requirement\
+      \ that active orchestration/runtime tests and live-smoke orch tests be deleted\
+      \ or re-scoped away from deleted runtime behavior.\n  current_blocker_owner:\
+      \ `orch_removal_live_smoke_dispatch_b1_fix` (same phase)\n  current_blocker_retest_owner:\
+      \ `orch_removal_live_smoke_dispatch_b1_retest` (same phase)\n  lifecycle: tracked,\
+      \ blocking until fix/retest prove closure\n  disposition: current_blocker_owner\n\
+      \  required_commands: active tests/fixtures probe exits 0; `pytest tests/live_smoke\
+      \ --collect-only -q` no longer collects forbidden dispatch/runtime tests or\
+      \ documents non-blocking re-scope; targeted decide/MCP preservation tests remain\
+      \ green.\n\n### Behavioral Proof Register\n| proof_item | source | result |\
+      \ uncertainty | blocking_status |\n| --- | --- | --- | --- | --- |\n| plan prerequisite\
+      \ steps done | plan.yaml read-only parse | PASS | none | CLOSED |\n| docs/archive\
+      \ removed | recursive docs/archive probe | PASS | none | CLOSED |\n| deleted\
+      \ named tests/fixtures removed | active tests/fixtures probe | PARTIAL PASS\
+      \ | live_smoke dispatch tests still active | OPEN/BLOCKING, owned by `orch_removal_live_smoke_dispatch_b1_fix`\
+      \ + `orch_removal_live_smoke_dispatch_b1_retest` |\n| conftest orchestration\
+      \ config cleaned | tests/conftest.py probe | PASS | none | CLOSED |\n| isolation\
+      \ doc absent | isolation doc/reference probe | PASS | none | CLOSED |\n| decide\
+      \ RFC/source wording preserved | path/wording probe | PASS | none | CLOSED |\n\
+      | MCP runtime inventory | live FastMCP list_tools probe | PASS: 20 tools incl.\
+      \ vectl_decide | none | CLOSED |\n| stale inventory wording removed | stale\
+      \ wording probe | PASS | none | CLOSED |\n| decide behavior preserved | targeted\
+      \ pytest | PASS: 217 passed | none | CLOSED |\n| no product mutations by gate\
+      \ | git status | PASS: clean | none | CLOSED |\n\n### Gate Decision\n- step_intent:\
+      \ phase_gate\n- expected_result: green\n- observed_result: red due to active\
+      \ live-smoke dispatch runtime tests remaining\n- failure_alignment: aligned\
+      \ with gate requirement to reject active runtime/orchestration test residue\n\
+      - verdict: FAIL\n- blockers: [B1-active-live-smoke-dispatch-runtime-tests-remain]\n\
+      - gate_open_allowed: false\n- orchestrator_action_hint: DO_NOT_COMPLETE_UNTIL_OWNER_STEPS_PASS;\
+      \ reporting/finding step completed only after planner created same-phase owner\
+      \ steps.\n- fix_steps_created: [`orch_removal_live_smoke_dispatch_b1_fix`, `orch_removal_live_smoke_dispatch_b1_retest`]\n\
+      - Were any product implementation files modified? no\n- Commit hash(es): none\
+      \ (verify-only, no mutations)\n"
   - id: orch_removal_readme_zh_decide_parity
     name: Update README_zh MCP decide parity
     status: done

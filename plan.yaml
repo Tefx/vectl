@@ -110876,10 +110876,10 @@ phases:
     status: pending
     description: 'step_type: verification
 
-      phase-check protecting tests/docs cleanup. Verify real pytest collection, decide
-      targeted tests, recursive docs/archive deletion, test/fixture retirement, and
-      static absence of deleted runtime references plus forbidden decide wording in
-      live source/docs surfaces.
+      phase-check protecting tests/docs cleanup. Verify real pytest collection, preserved
+      decide/MCP targeted tests, recursive docs/archive deletion, test/fixture retirement,
+      and static absence of deleted runtime references plus forbidden decide wording
+      in live source/docs/test/MCP surfaces including `tests/test_mcp.py`.
 
 
       This is a truth-finding step: finding blockers succeeds as discovery but blocks
@@ -110894,17 +110894,17 @@ phases:
       from every ref, or state NOT READ with reason.'
     verification: 'Run and paste raw stdout/stderr for: (1) `uv run pytest --collect-only
       -q`; (2) `uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py
-      -q`; (3) a recursive tests/fixtures probe over `.py/.json/.yaml/.yml` proving
-      no `vectl.orchestration`, `core.orchestration`, `orch_app`, `cli_orchestration`,
+      tests/test_mcp.py -q`; (3) a recursive tests/fixtures probe over `.py/.json/.yaml/.yml`
+      proving no `vectl.orchestration`, `core.orchestration`, `orch_app`, `cli_orchestration`,
       `vectl orch`, `tests/orchestration`, or `tests/fixtures/orchestration` residue
       outside explicitly preserved decide tests; (4) a recursive docs/archive probe
       over `.md/.yaml/.yml/.json/.py/.txt` proving archived orchestration artifacts
       were deleted rather than retained; (5) a decide wording probe covering `src/vectl/decide.py`,
       `src/vectl/decision_state.py`, `src/vectl/model_outputs.py`, `src/vectl/mcp_server.py`,
       `src/vectl/mcp_core_misc_tools.py`, `src/vectl/mcp_core_common.py`, `src/vectl/mcp_render_tools.py`,
-      `src/vectl/mcp_project_tools.py`, READMEs, and `docs/RFC-vectl-decide-advisor-refresh.md`.
-      Static grep is acceptable only for source/text absence; behavioral decide support
-      must be proven by pytest.'
+      `src/vectl/mcp_project_tools.py`, READMEs, `docs/RFC-vectl-decide-advisor-refresh.md`,
+      and `tests/test_mcp.py`. Static grep is acceptable only for source/text absence;
+      behavioral decide support must be proven by pytest.'
     refs:
     - user-request:2026-06-17#tests-docs-verification
     - README.md
@@ -110923,6 +110923,7 @@ phases:
     - src/vectl/mcp_core_common.py
     - src/vectl/mcp_render_tools.py
     - src/vectl/mcp_project_tools.py
+    - tests/test_mcp.py
     depends_on:
     - orch_removal_test_retirement
     - orch_removal_decide_wording_preserve

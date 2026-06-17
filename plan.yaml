@@ -111326,7 +111326,9 @@ phases:
       only when built-in orchestration runtime/control/drive/resolver/runner/worktree
       features are removed, `vectl_decide` remains supported as a caller-owned core
       automation/dispatch advisor, recursive forbidden grep closure is clean, full
-      regression commands are green, plan-validation disposition shows no new/intersecting
+      regression commands are green, packaged CLI top-level help excludes `orch`,
+      the exact negative packaged CLI probe proves `vectl orch --help` is not invokable
+      as a hidden/stub command, plan-validation disposition shows no new/intersecting
       orchestrator-removal validation errors, and no unresolved orchestrator-removal
       blocker remains.
 
@@ -111338,8 +111340,9 @@ phases:
 
       - Those errors are non-blocking for this local removal only when the deep-review
       disposition proves they predate these phases, do not mention `orch_removal_*`,
-      and do not intersect final grep, full pytest, packaged CLI help, invar guard,
-      deleted-runtime cleanup, or decide-preservation evidence.
+      and do not intersect final grep, full pytest, packaged CLI help, negative packaged
+      `vectl orch --help`, invar guard, deleted-runtime cleanup, or decide-preservation
+      evidence.
 
       - Any new validation error in orchestrator-removal phases/steps, or any historical
       error that intersects this gate''s proof obligations, is blocker-class.
@@ -111353,10 +111356,12 @@ phases:
       `shell.orchestration`, `from vectl.shell import orchestration`, `core.orchestration`,
       `orch_app`, `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`,
       deleted path fragments, `.yaml/.yml/.json` docs/test artifacts, and forbidden
-      decide wording across all `src/vectl/**/*.py` decide/MCP surfaces
+      decide wording across all `src/vectl/**/*.py` decide/MCP surfaces plus preserved
+      decide tests including `tests/test_mcp.py`
 
       - final commands include `uv run pytest`, `uvx --refresh --from . vectl --help`,
-      and `uvx invar-tools guard --all`
+      `uvx --refresh --from . vectl orch --help` expecting non-zero/no-such-command/no
+      hidden help, and `uvx invar-tools guard --all`
 
       - decide support is positive proof, not absence-only
 
@@ -111366,11 +111371,14 @@ phases:
       readiness'
     verification: Gate OPEN only with positive evidence for every orchestrator-removal
       requirement row, all final commands green, recursive grep closure clean, deep-review
-      validation disposition complete, and no unresolved orchestrator-removal blocker.
-      Gate BLOCKED if any forbidden-term hit, failing regression command, missing
-      decide proof, unsafe worktree cleanup, missing validation disposition, new/intersecting
-      validation error, or unresolved orchestrator-removal blocker appears. Do not
-      open the gate by claiming repo-wide plan validation clean unless `vectl_vectl_validate`
+      validation disposition complete, top-level packaged CLI help without `orch`,
+      exact negative packaged `uvx --refresh --from . vectl orch --help` proof showing
+      non-zero/no-such-command/no hidden help, and no unresolved orchestrator-removal
+      blocker. Gate BLOCKED if any forbidden-term hit, failing regression command,
+      missing decide proof, unsafe worktree cleanup, missing validation disposition,
+      new/intersecting validation error, missing/zero-exit/hidden-help `vectl orch
+      --help` negative probe, or unresolved orchestrator-removal blocker appears.
+      Do not open the gate by claiming repo-wide plan validation clean unless `vectl_vectl_validate`
       is actually clean.
     refs:
     - user-request:2026-06-17#final-gate

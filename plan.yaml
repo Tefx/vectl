@@ -110920,20 +110920,43 @@ phases:
 
       full-plan-check independent deep review. Review closure evidence for deletion
       completeness, preserved vectl_decide support, safe worktree policy adherence,
-      test/doc cleanup, and final regression proof.
+      test/doc cleanup, recursive archive/test fixture probes, final regression proof,
+      and plan-validation disposition.
 
 
       Review must produce a decision artifact with OPEN/BLOCK recommendation and a
       defect ledger. It must reject `PASS_WITH_BLOCKERS`; blocker-class findings require
-      explicit owner work before final gate.'
-    verification: Review all prior phase gates and finalization evidence. Output a
-      decision artifact mapping every owned requirement to PROVEN/BLOCKED/NON_BLOCKING
-      with evidence refs and no unresolved blocker-class gaps.
+      explicit owner work before final gate.
+
+
+      Plan-validation disposition requirement:
+
+      - Run/read `vectl_vectl_validate` (MCP read-only) or the project CLI equivalent
+      and paste output.
+
+      - Current completed-evidence guard failures are provenance `pre-existing`; they
+      are non-blocking for this local orchestrator-removal gate only if they do not
+      reference `orch_removal_*`, do not arise from newly added/edited orchestrator-removal
+      steps, and do not intersect final grep/pytest/packaged-help/invar commands.
+
+      - Any validation error involving orchestrator-removal phases/steps, forbidden-term
+      closure, deleted runtime paths, decide preservation, or final regression commands
+      is BLOCKING and needs owner work.
+
+      - The review must not claim repo-wide plan validation green while pre-existing
+      validation debt remains.'
+    verification: 'Review all prior phase gates and finalization evidence. Output
+      a decision artifact mapping every owned requirement to PROVEN/BLOCKED/NON_BLOCKING
+      with evidence refs and no unresolved orchestrator-removal blocker-class gaps.
+      Include a plan-validation disposition ledger with fields: validation_command,
+      validation_output_ref, pre_existing_error_count, orch_removal_error_count, gate_intersection,
+      disposition, and owner_if_blocking.'
     refs:
     - user-request:2026-06-17#closure-review
     - docs/RFC-vectl-decide-advisor-refresh.md
     - README.md
     - README_zh.md
+    - MCP:vectl_vectl_validate#pre-existing-completed-evidence-guard-errors
     depends_on:
     - orch_removal_cli_runtime_proof
     - orch_removal_wiring_audit

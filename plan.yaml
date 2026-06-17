@@ -110027,7 +110027,7 @@ phases:
       - product_implementation_files_modified: no.'
 - id: orchestrator-removal-foundation-and-safety-policy
   name: 'Orchestrator Removal: Foundation and Safety Policy'
-  status: in_progress
+  status: done
   gate: Foundation gate requires a deletion/preservation matrix, explicit safe worktree
     cleanup policy, and no product-code mutations yet.
   depends_on:
@@ -110211,7 +110211,7 @@ phases:
       in worker delta.'
   - id: orch_removal_foundation_gate
     name: Gate orchestrator-removal foundation
-    status: claimed
+    status: done
     description: "step_type: gate\nlocal-check gate protecting downstream deletion\
       \ work. Gate blocks unless the scope matrix and worktree cleanup policy are\
       \ explicit, evidence-backed, and preserve vectl_decide.\n\nGate decision basis\
@@ -110259,9 +110259,15 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-17T13:15:36.795992+00:00'
+    done_at: '2026-06-17T13:32:25.752383+00:00'
+    evidence: 'status SUCCESS; gate decision OPEN/PASS; evidence artifact .agent/evidence/orch_removal_foundation_gate.md
+      merged to main in commit 4cb2161; worker commit 30bf1f6e/0edebd5c after main
+      sync; sidecar verdict CONFORMANT; mainline verification: artifact exists, includes
+      PASS / gate decision OPEN, ORCH-REMOVE-SCOPE, DECIDE-PRESERVE, ISOLATION-REMOVE,
+      FINAL-GREP, WT-SAFE-1, WT-SAFE-2, blockers none, and HEAD changed only .agent/evidence/orch_removal_foundation_gate.md.'
 - id: orch_removal_runtime_surface
   name: 'Orchestrator Removal: Runtime and CLI Surface'
-  status: locked
+  status: pending
   gate: Runtime surface gate requires built-in orch CLI removal, orchestration source
     deletion, Step.isolation schema cleanup, preserved vectl_decide support, and targeted
     runtime tests.

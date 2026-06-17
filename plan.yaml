@@ -111710,3 +111710,12 @@ phases:
     - orch_removal_full_regression_check
     - orch_removal_deep_review
     agent: gate-reviewer
+- id: evidence_guard_remediation
+  name: Evidence Guard Remediation
+  status: pending
+  gate: Gate opens only when all 43 initial completed-evidence guard rows have deterministic
+    closure/disposition evidence, `uv run vectl validate` returns 0 errors or a reviewed
+    explicit exception policy exists for any row that cannot be remediated without
+    violating audit integrity, and no product-code fixes were performed by this stream.
+  depends_on:
+  - det_check_finalization

@@ -110267,7 +110267,7 @@ phases:
       FINAL-GREP, WT-SAFE-1, WT-SAFE-2, blockers none, and HEAD changed only .agent/evidence/orch_removal_foundation_gate.md.'
 - id: orch_removal_runtime_surface
   name: 'Orchestrator Removal: Runtime and CLI Surface'
-  status: in_progress
+  status: done
   gate: Runtime surface gate requires built-in orch CLI removal, orchestration source
     deletion, Step.isolation schema cleanup, preserved vectl_decide support, and targeted
     runtime tests.
@@ -110654,7 +110654,7 @@ phases:
       source-absence, decide-preserved, regression-suite PROVEN.'
   - id: orch_removal_runtime_gate
     name: Gate runtime and CLI surface removal
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       phase-check gate. Blocks docs/tests cleanup unless implementation evidence proves
@@ -110684,9 +110684,28 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-17T14:47:04.750898+00:00'
+    done_at: '2026-06-17T14:55:01.307425+00:00'
+    evidence: 'status SUCCESS; headline PASS_WITH_DEBT; verdict PASS; blocking_status
+      NO_BLOCKERS; proof_gap_status NO_BLOCKING_PROOF_GAPS; gate_open_allowed true;
+      Gate Decision OPEN; blockers []; orchestrator_action_hint COMPLETE. Sidecar
+      verdict NOT_APPLICABLE with no changed paths. Refs confirmation: tools/vectl/README.md
+      NOT_READ absent; user-request runtime-removal-gate READ; .agent/evidence/orch_removal_runtime_phase_probe.md
+      READ; plan.yaml runtime section inspected; CONSTITUTION.md absent. Raw checks:
+      uv run pytest tests/test_models.py tests/test_io.py tests/test_mcp.py tests/test_decide.py
+      tests/test_decide_state_isolation.py -q exit 0, 300 passed; uvx --refresh --from
+      . vectl --help exit 0 with no orch command; uvx --refresh --from . vectl orch
+      --help exit 2 No such command ''orch''; Python import probe for vectl.cli/vectl.decide/vectl.decision_state/vectl.model_outputs
+      exit 0; source absence probe under src/vectl for forbidden orchestration needles
+      exit 0; vectl_decide direct runtime invocation through vectl.mcp_server exit
+      0 dispatch/dispatch_available; runtime deletion/package-data/isolation schema
+      probes exit 0. Behavioral proof register: runtime prerequisites, CLI orch removal,
+      runtime source deletion, isolation schema deletion, decide preservation, and
+      targeted regression suite PROVEN. Non-blocking debt explicitly owned downstream:
+      docs/archive guard red owned by pending docs cleanup; decide wording cleanup
+      owned by pending orch_removal_decide_wording_preserve; not final repo readiness.'
 - id: orch_removal_tests_docs
   name: 'Orchestrator Removal: Tests, Docs, and Decide Wording'
-  status: locked
+  status: pending
   gate: Tests/docs gate requires orchestration-only tests and docs retired, README/RFC
     wording updated, and vectl_decide documented as supported caller-owned automation
     advisor.

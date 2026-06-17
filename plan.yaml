@@ -110512,60 +110512,98 @@ phases:
     name: Delete orchestration docs and remove README orch guidance
     status: pending
     description: "step_type: implementation\nTARGET STATE: orchestration documentation\
-      \ is deleted rather than archived, existing archived orchestration proof/workflow\
-      \ artifacts are removed when they preserve forbidden runtime references, README/README_zh\
-      \ no longer advertise `vectl orch`, and docs retain only caller-owned vectl_decide\
-      \ guidance where applicable.\n\nRequirement-to-Evidence Matrix:\n| requirement_id\
-      \ | source_ref + key passage | target_state | evidence_class | required_probe_or_artifact\
-      \ | status |\n| ORCH-DOCS-DELETED | user-request:2026-06-17 — delete docs/ORCHESTRATION-*.md,\
-      \ RFC/ADR/ORCH orchestration docs, RFC-role-profile-overrides | Orchestration\
-      \ docs are absent, not renamed or archived | source_static | Recursive docs\
-      \ deletion probe | OWNED |\n| ARCHIVE-ORCH-ARTIFACTS-DELETED | reviewer evidence\
-      \ — docs/archive/orch_workflow_validation.yaml and docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml\
-      \ preserve deleted runtime proof | Archived `.md/.yaml/.yml/.json/.py/.txt`\
-      \ artifacts under docs/archive no longer preserve `vectl orch`, orchestration\
-      \ runtime module, or orch_app claims | source_static | Recursive archive-disposition\
-      \ probe with explicit stdout | OWNED |\n| README-ORCH-REMOVED | README.md current\
-      \ sections mention `vectl orch recover`; user requires built-in orch removal\
-      \ | READMEs no longer instruct users to run `vectl orch` | source_static | README\
-      \ grep probe | OWNED |\n\nNon-goals: do not archive deleted orchestration docs;\
-      \ do not remove docs/RFC-vectl-decide-advisor-refresh.md. If a non-archive doc\
-      \ is retained, it must not preserve deleted built-in runtime guidance.\n\n##\
-      \ Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
-      \ completion is NOT acceptable; replacing deleted docs with placeholder files\
-      \ that still reference orchestration is rejected.\n\n<intent_closure_contract>\n\
+      \ is deleted rather than archived, existing archived/remediation orchestration\
+      \ proof/workflow artifacts are removed when they preserve forbidden runtime\
+      \ references, README/README_zh no longer advertise `vectl orch`, and docs retain\
+      \ only caller-owned vectl_decide guidance where applicable.\n\nRequirement-to-Evidence\
+      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| ORCH-DOCS-DELETED | user-request:2026-06-17\
+      \ — delete docs/ORCHESTRATION-*.md, RFC/ADR/ORCH orchestration docs, RFC-role-profile-overrides\
+      \ | Orchestration docs are absent, not renamed or archived | source_static |\
+      \ Recursive docs deletion probe | OWNED |\n| ARCHIVE-ORCH-ARTIFACTS-DELETED\
+      \ | reviewer evidence — docs/archive/orch_workflow_validation.yaml and docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml\
+      \ preserve deleted runtime proof | Those exact archived orchestration artifacts\
+      \ are absent; they may not survive as clean rewrites | source_static | Explicit\
+      \ path absence + recursive archive-disposition probe with stdout | OWNED |\n\
+      | REMEDIATION-ORCH-ARTIFACT-DELETED | reviewer evidence — docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md\
+      \ is an orchestration remediation artifact | The exact remediation orchestration\
+      \ artifact is absent; it may not survive as a clean rewrite | source_static\
+      \ | Explicit path absence probe | OWNED |\n| CURRENT-DOC-RESIDUE-CLEANED | reviewer\
+      \ evidence — docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md:59, docs/full-suite-failure-inventory-2026-04-10.md:47,\
+      \ and docs/repo_regression_failure_dispositions.yaml:121 contain forbidden orch/orchestration\
+      \ identifiers | Current non-archive docs are either cleaned of deleted-runtime\
+      \ identifiers or deleted when they are orchestration-only | source_static |\
+      \ Explicit current-doc residual probe plus recursive docs forbidden-reference\
+      \ probe | OWNED |\n| README-ORCH-REMOVED | README.md current sections mention\
+      \ `vectl orch recover`; user requires built-in orch removal | READMEs no longer\
+      \ instruct users to run `vectl orch` | source_static | README grep probe | OWNED\
+      \ |\n\nNon-goals: do not archive deleted orchestration docs; do not remove docs/RFC-vectl-decide-advisor-refresh.md.\
+      \ If a non-archive doc is retained, it must not preserve deleted built-in runtime\
+      \ guidance.\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable; replacing deleted docs with\
+      \ placeholder files that still reference orchestration is rejected.\n\n<intent_closure_contract>\n\
       allowed_paths:\n  - \"README.md\"\n  - \"README_zh.md\"\n  - \"docs/ORCHESTRATION-*.md\"\
       \n  - \"docs/RFC-orch-drive.md\"\n  - \"docs/RFC-opencode-orchestration-runner.md\"\
       \n  - \"docs/ADR-orchestration-*.md\"\n  - \"docs/ORCH-*.md\"\n  - \"docs/RFC-role-profile-overrides.md\"\
-      \n  - \"docs/archive/**\"\n  - \"docs/invar_guard_remediation/**\"\nblocked_paths:\n\
-      \  - \"docs/RFC-vectl-decide-advisor-refresh.md\"\nrequired_claims:\n  - orchestration_docs_deleted_not_archived\n\
-      \  - archive_orchestration_artifacts_disposed\n  - readme_orch_guidance_removed\n\
-      required_checks:\n  - id: docs_deletion_probe\n    command: [\"uv\", \"run\"\
-      , \"python\", \"-c\", \"from pathlib import Path; patterns=['ORCHESTRATION-*.md','RFC-orch-drive.md','RFC-opencode-orchestration-runner.md','ADR-orchestration-*.md','ORCH-*.md','RFC-role-profile-overrides.md'];\
-      \ still=[]; [still.append(str(p)) for pat in patterns for p in Path('docs').rglob(pat)];\
-      \ suffixes={'.md','.yaml','.yml','.json','.py','.txt'}; terms=['vectl orch','vectl.orchestration','core.orchestration','orch_app','cli_orchestration','orchestration-plane\
-      \ runtime','orchestration runtime']; archive=Path('docs/archive'); archive_hits=[];\
-      \ archive_files=[p for p in archive.rglob('*') if p.is_file() and p.suffix in\
-      \ suffixes] if archive.exists() else []; [archive_hits.append(f'{p}:{term}')\
-      \ for p in archive_files for term in terms if term in p.read_text(errors='ignore')];\
-      \ assert not still, still; assert not archive_hits, archive_hits; print('orchestration\
-      \ docs absent and archive-disposition clean')\"]\n    covers_claims:\n     \
-      \ - orchestration_docs_deleted_not_archived\n      - archive_orchestration_artifacts_disposed\n\
-      \  - id: docs_recursive_forbidden_reference_probe\n    command: [\"uv\", \"\
-      run\", \"python\", \"-c\", \"from pathlib import Path; suffixes={'.md','.yaml','.yml','.json','.py','.txt'};\
-      \ terms=['vectl orch','vectl.orchestration','core.orchestration','orch_app','cli_orchestration'];\
-      \ exempt={Path('docs/RFC-vectl-decide-advisor-refresh.md')}; files=[p for p\
-      \ in Path('docs').rglob('*') if p.is_file() and p.suffix in suffixes and p not\
-      \ in exempt]; hits=[f'{p}:{term}' for p in files for term in terms if term in\
-      \ p.read_text(errors='ignore')]; assert not hits, hits; print('recursive docs\
-      \ forbidden references absent')\"]\n    covers_claims:\n      - orchestration_docs_deleted_not_archived\n\
-      \      - archive_orchestration_artifacts_disposed\n  - id: readme_no_orch_probe\n\
-      \    command: [\"uv\", \"run\", \"python\", \"-c\", \"from pathlib import Path;\
-      \ files=[Path('README.md'),Path('README_zh.md')]; terms=['vectl orch','orchestration-plane\
-      \ runtime','orchestration runtime']; hits=[f'{p}:{t}' for p in files if p.exists()\
-      \ for t in terms if t in p.read_text(errors='ignore')]; assert not hits, hits;\
-      \ print('README orch guidance absent')\"]\n    covers_claims:\n      - readme_orch_guidance_removed\n\
-      </intent_closure_contract>"
+      \n  - \"docs/archive/**\"\n  - \"docs/invar_guard_remediation/**\"\n  - \"docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md\"\
+      \n  - \"docs/full-suite-failure-inventory-2026-04-10.md\"\n  - \"docs/repo_regression_failure_dispositions.yaml\"\
+      \nblocked_paths:\n  - \"docs/RFC-vectl-decide-advisor-refresh.md\"\nrequired_claims:\n\
+      \  - orchestration_docs_deleted_not_archived\n  - archive_orchestration_artifacts_disposed\n\
+      \  - remediation_orchestration_artifact_deleted\n  - current_non_archive_doc_residue_removed\n\
+      \  - readme_orch_guidance_removed\nrequired_checks:\n  - id: docs_deletion_probe\n\
+      \    command:\n      - \"uv\"\n      - \"run\"\n      - \"python\"\n      -\
+      \ \"-c\"\n      - |\n        from pathlib import Path\n        patterns = ['ORCHESTRATION-*.md',\
+      \ 'RFC-orch-drive.md', 'RFC-opencode-orchestration-runner.md', 'ADR-orchestration-*.md',\
+      \ 'ORCH-*.md', 'RFC-role-profile-overrides.md']\n        exact_absence = [\n\
+      \            Path('docs/archive/orch_workflow_validation.yaml'),\n         \
+      \   Path('docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml'),\n\
+      \            Path('docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md'),\n\
+      \        ]\n        still = []\n        for pat in patterns:\n            still.extend(str(p)\
+      \ for p in Path('docs').rglob(pat))\n        still.extend(str(p) for p in exact_absence\
+      \ if p.exists())\n        suffixes = {'.md', '.yaml', '.yml', '.json', '.py',\
+      \ '.txt'}\n        terms = ['vectl orch', 'vectl.orchestration', 'core.orchestration',\
+      \ 'orch_app', 'cli_orchestration', 'orchestration-plane runtime', 'orchestration\
+      \ runtime', 'src/vectl/orchestration', 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration']\n\
+      \        archive = Path('docs/archive')\n        archive_files = [p for p in\
+      \ archive.rglob('*') if p.is_file() and p.suffix in suffixes] if archive.exists()\
+      \ else []\n        archive_hits = [f'{p}:{term}' for p in archive_files for\
+      \ term in terms if term in p.read_text(errors='ignore')]\n        assert not\
+      \ still, still\n        assert not archive_hits, archive_hits\n        print('orchestration\
+      \ docs and explicit archive/remediation artifacts are absent; archive disposition\
+      \ is clean')\n    covers_claims:\n      - orchestration_docs_deleted_not_archived\n\
+      \      - archive_orchestration_artifacts_disposed\n      - remediation_orchestration_artifact_deleted\n\
+      \  - id: docs_recursive_forbidden_reference_probe\n    command:\n      - \"\
+      uv\"\n      - \"run\"\n      - \"python\"\n      - \"-c\"\n      - |\n     \
+      \   from pathlib import Path\n        suffixes = {'.md', '.yaml', '.yml', '.json',\
+      \ '.py', '.txt'}\n        terms = ['vectl orch', 'vectl.orchestration', 'core.orchestration',\
+      \ 'orch_app', 'cli_orchestration', 'src/vectl/orchestration', 'src/vectl/core/orchestration',\
+      \ 'src/vectl/shell/orchestration', 'src/vectl/orch_app.py', 'src/vectl/cli_orchestration']\n\
+      \        exempt = {Path('docs/RFC-vectl-decide-advisor-refresh.md')}\n     \
+      \   files = [p for p in Path('docs').rglob('*') if p.is_file() and p.suffix\
+      \ in suffixes and p not in exempt]\n        hits = [f'{p}:{term}' for p in files\
+      \ for term in terms if term in p.read_text(errors='ignore')]\n        assert\
+      \ not hits, hits\n        print('recursive docs forbidden references absent')\n\
+      \    covers_claims:\n      - orchestration_docs_deleted_not_archived\n     \
+      \ - archive_orchestration_artifacts_disposed\n      - remediation_orchestration_artifact_deleted\n\
+      \      - current_non_archive_doc_residue_removed\n  - id: current_docs_residue_probe\n\
+      \    command:\n      - \"uv\"\n      - \"run\"\n      - \"python\"\n      -\
+      \ \"-c\"\n      - |\n        from pathlib import Path\n        files = [\n \
+      \           Path('docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md'),\n   \
+      \         Path('docs/full-suite-failure-inventory-2026-04-10.md'),\n       \
+      \     Path('docs/repo_regression_failure_dispositions.yaml'),\n        ]\n \
+      \       terms = ['vectl orch', 'vectl.orchestration', 'core.orchestration',\
+      \ 'orch_app', 'cli_orchestration', 'src/vectl/orchestration', 'src/vectl/core/orchestration',\
+      \ 'src/vectl/shell/orchestration', 'src/vectl/orch_app.py', 'src/vectl/cli_orchestration']\n\
+      \        hits = [f'{p}:{term}' for p in files if p.exists() for term in terms\
+      \ if term in p.read_text(errors='ignore')]\n        assert not hits, hits\n\
+      \        print('current non-archive docs are free of deleted-runtime identifiers')\n\
+      \    covers_claims:\n      - current_non_archive_doc_residue_removed\n  - id:\
+      \ readme_no_orch_probe\n    command: [\"uv\", \"run\", \"python\", \"-c\", \"\
+      from pathlib import Path; files=[Path('README.md'),Path('README_zh.md')]; terms=['vectl\
+      \ orch','orchestration-plane runtime','orchestration runtime']; hits=[f'{p}:{t}'\
+      \ for p in files if p.exists() for t in terms if t in p.read_text(errors='ignore')];\
+      \ assert not hits, hits; print('README orch guidance absent')\"]\n    covers_claims:\n\
+      \      - readme_orch_guidance_removed\n</intent_closure_contract>\n"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     refs:
     - user-request:2026-06-17#doc-deletion-targets
@@ -110581,6 +110619,9 @@ phases:
     - docs/archive/legacy-proof/black_box_upstream_validation.yaml
     - docs/archive/consumer_boundary_conformance_verify.py
     - docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - docs/full-suite-failure-inventory-2026-04-10.md
+    - docs/repo_regression_failure_dispositions.yaml
     agent: doc-reviewer
   - id: orch_removal_decide_wording_preserve
     name: Reword preserved vectl_decide surfaces as caller-owned automation advisor

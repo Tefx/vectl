@@ -110129,7 +110129,7 @@ phases:
     claimed_at: '2026-06-17T12:54:21.759306+00:00'
   - id: orch_removal_worktree_policy
     name: Define safe worktree and artifact cleanup policy
-    status: claimed
+    status: done
     description: "step_type: investigation\nPROOF ARTIFACT: safe cleanup policy for\
       \ `.vectl/workspaces` and `.vectl/worktrees` artifacts. This step exists to\
       \ prevent destructive cleanup while registered git worktrees exist.\n\nRequirement-to-Evidence\
@@ -110195,6 +110195,13 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-06-17T12:54:27.947023+00:00'
+    done_at: '2026-06-17T13:13:56.898497+00:00'
+    evidence: 'status SUCCESS; evidence artifact .agent/evidence/orch_removal_worktree_policy.md
+      merged to main in commit 2adf5bd; worker commit 4590fd14977fe2c0075e6cc86ae18d6b4101f7dd;
+      sidecar verdict CONFORMANT; mainline verification: artifact exists, contains
+      raw git worktree list --porcelain evidence and policy disposition, HEAD changed
+      only .agent/evidence/orch_removal_worktree_policy.md; no product/plan mutations
+      in worker delta.'
   - id: orch_removal_foundation_gate
     name: Gate orchestrator-removal foundation
     status: pending

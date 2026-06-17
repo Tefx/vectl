@@ -110563,16 +110563,39 @@ phases:
   - id: orch_removal_runtime_phase_probe
     name: Verify runtime surface removal and decide preservation
     status: claimed
-    description: 'step_type: verification
-
-      phase-check protecting the runtime-surface phase and downstream docs/tests cleanup.
-      As an independent tester, run real import/CLI/test probes against the modified
-      worktree. Unit tests with mocks alone are insufficient because CLI/MCP are runtime
-      boundaries.
-
-
-      Required behavioral proof register fields: requirement_ref, behavior_claim,
-      runtime_proof_expected, evidence_ref, status, closure_path, gate_decision_basis.'
+    description: "step_type: verification\nphase-check protecting the runtime-surface\
+      \ phase and downstream docs/tests cleanup. As an independent tester, run real\
+      \ import/CLI/test probes against the modified worktree. Unit tests with mocks\
+      \ alone are insufficient because CLI/MCP are runtime boundaries.\n\nRequired\
+      \ behavioral proof register fields: requirement_ref, behavior_claim, runtime_proof_expected,\
+      \ evidence_ref, status, closure_path, gate_decision_basis.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \".agent/evidence/orch_removal_runtime_phase_probe.md\"\n\
+      \  - \"agent/evidence/orch_removal_runtime_phase_probe.md\"\nblocked_paths:\n\
+      \  - \"src/**\"\n  - \"tests/**\"\n  - \"docs/**\"\n  - \"plan.yaml\"\nrequired_claims:\n\
+      \  - runtime_probe_evidence_artifact_written\n  - raw_pytest_probe_passed\n\
+      \  - installed_cli_help_has_no_orch\n  - decide_runtime_support_preserved\n\
+      \  - deleted_runtime_references_absent\n  - behavioral_gate_passed\n  - no_product_plan_or_test_mutations\n\
+      required_checks:\n  - id: evidence_artifact_marker_probe\n    command:\n   \
+      \   - \"uv\"\n      - \"run\"\n      - \"python\"\n      - \"-c\"\n      - |\n\
+      \        from pathlib import Path\n        paths = [Path(\".agent/evidence/orch_removal_runtime_phase_probe.md\"\
+      ), Path(\"agent/evidence/orch_removal_runtime_phase_probe.md\")]\n        existing\
+      \ = [p for p in paths if p.exists()]\n        assert existing, \"missing evidence\
+      \ artifact\"\n        text = existing[0].read_text(encoding=\"utf-8\")\n   \
+      \     required = [\n            \"uv run pytest tests/test_models.py tests/test_io.py\
+      \ tests/test_mcp.py tests/test_decide.py tests/test_decide_state_isolation.py\
+      \ -q\",\n            \"300 passed\",\n            \"uvx --refresh --from . vectl\
+      \ --help\",\n            \"vectl_decide\",\n            \"source absence probe\"\
+      ,\n            \"behavioral_proof_register\",\n            \"verdict: PASS\"\
+      ,\n        ]\n        for marker in required:\n            assert marker in\
+      \ text, f\"missing marker: {marker}\"\n        assert (\"orch absent\" in text)\
+      \ or (\"no orch command present\" in text), \"missing orch absence marker\"\n\
+      \        assert (\"gate_open_allowed\" in text) or (\"gate_open_allowed: true\"\
+      \ in text), \"missing gate open marker\"\n        assert (\"blockers: []\" in\
+      \ text) or (\"no blockers\" in text), \"missing no-blockers marker\"\n    covers_claims:\n\
+      \      - runtime_probe_evidence_artifact_written\n      - raw_pytest_probe_passed\n\
+      \      - installed_cli_help_has_no_orch\n      - decide_runtime_support_preserved\n\
+      \      - deleted_runtime_references_absent\n      - behavioral_gate_passed\n\
+      \      - no_product_plan_or_test_mutations\n</intent_closure_contract>"
     verification: 'Run and paste raw stdout/stderr for: (1) `uv run pytest tests/test_models.py
       tests/test_io.py tests/test_mcp.py tests/test_decide.py tests/test_decide_state_isolation.py
       -q`; (2) `uvx --refresh --from . vectl --help`; (3) a Python import probe for

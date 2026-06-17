@@ -111841,3 +111841,72 @@ phases:
 
       - Product code/test/doc modifications performed: NONE (required)'
     agent: plan-readiness-auditor
+  - id: egr_dispose_superseded_orchestrator_removal_rows
+    name: Close or disposition superseded driver/orchestrator/runtime evidence rows
+    status: pending
+    description: "TARGET STATE: all validation rows classified as A_superseded_by_orchestrator_removal\
+      \ have same-phase closure/disposition evidence that preserves historical failure\
+      \ facts and explains why the old runtime/orchestrator failure no longer blocks\
+      \ current gates. This step is separate from `orch_removal_*` and must not edit\
+      \ or merge into orchestrator-removal steps.\n\nGroup A initial target rows from\
+      \ the starting validation output:\n- driver-execution-infra.retest-gate-blockers\n\
+      - driver-judgment-expansion-replan.expected-red-decide\n- driver-debt-system-wiring.full-plan-check\n\
+      - driver-evolution-action-registry.verify-planner-dispatch\n- driver-enhancement-observability.design-and-test\n\
+      - driver-enhancement-streaming-progress.design-and-test\n- driver-enhancement-runner-recovery.design-and-test\n\
+      - driver-prompt-foundation.design-and-test\n- driver-judge-hardening-foundation.gate\n\
+      - driver-judge-hardening-foundation.fix-contract-ambiguities\n- driver-judge-hardening-foundation.retest-gate\n\
+      - driver-judge-hardening-structured-output.gate\n- driver-judge-hardening-recovery-policy.design-and-test\n\
+      - driver-continuity-capability-safety.design-and-test\n- driver-live-smoke-foundation.ratify-live-smoke-policy\n\
+      - driver-continuity-hygiene-deep-review.gate\n- driver-agent-selection-contract.gate\n\
+      - driver-agent-selection-implementation.fix-judge-runner-test-defaults\n- driver-agent-selection-implementation.retest-judge-runner-test-defaults\n\
+      - driver-agent-selection-deep-review.gate\n- orch_foundation.contract_tests\n\
+      - orch_foundation.gate\n- orch_operator_recovery_cutover.fix_recovery_contract_conformance\n\
+      - orch_operator_recovery_cutover.reverify_recovery_contract_conformance\n- cli_blackbox_finalization.full-plan-check\n\
+      - opencode_runner_verification.live-smoke\n- opencode_runner_verification.final-gate\n\
+      \nRequired disposition semantics for each row:\n- Preserve the historical FAIL/failed-tests/gate_open_allowed=false/runtime-fail\
+      \ evidence.\n- Add a later same-phase closure/disposition receipt, or append\
+      \ a non-destructive disposition record using vectl mutation tools, stating:\
+      \ provenance=historical_failure, disposition=non_blocking_superseded_by_orchestrator_removal_or_runtime_retirement,\
+      \ gate_intersection=<why the failure does or does not intersect remaining gates>,\
+      \ owner=<current owning plan step if it still intersects>.\n- If any target\
+      \ row still intersects current non-removal gates, do not hide it; reclassify\
+      \ it to D_current_core_failure and create owner coverage in `egr_generate_current_core_owner_path`.\n\
+      \n## Gate Preview (what the gate WILL reject)\n1. Historical evidence erasure\
+      \ or wording that makes prior FAIL evidence disappear.\n2. A generic \"superseded\"\
+      \ claim without gate-intersection reasoning.\n3. Any mutation to `orch_removal_*`\
+      \ steps or product code in this stream.\n\n<intent_closure_contract>\nallowed_paths:\n\
+      \  - \"plan.yaml\"\nblocked_paths:\n  - \"src/**\"\n  - \"tests/**\"\n  - \"\
+      docs/**\"\nrequired_claims:\n  - group_a_rows_closed_or_dispositioned\n  - historical_failure_facts_retained\n\
+      \  - orchestrator_removal_workstream_separate\n  - gate_intersection_recorded\n\
+      required_checks:\n  - id: group_a_absent_from_completed_evidence_guard_errors\n\
+      \    command:\n      - \"uv\"\n      - \"run\"\n      - \"python\"\n      -\
+      \ \"-c\"\n      - |\n        import subprocess, sys\n        ids = [\n     \
+      \       'driver-execution-infra.retest-gate-blockers',\n            'driver-judgment-expansion-replan.expected-red-decide',\n\
+      \            'driver-debt-system-wiring.full-plan-check',\n            'driver-evolution-action-registry.verify-planner-dispatch',\n\
+      \            'driver-enhancement-observability.design-and-test',\n         \
+      \   'driver-enhancement-streaming-progress.design-and-test',\n            'driver-enhancement-runner-recovery.design-and-test',\n\
+      \            'driver-prompt-foundation.design-and-test',\n            'driver-judge-hardening-foundation.gate',\n\
+      \            'driver-judge-hardening-foundation.fix-contract-ambiguities',\n\
+      \            'driver-judge-hardening-foundation.retest-gate',\n            'driver-judge-hardening-structured-output.gate',\n\
+      \            'driver-judge-hardening-recovery-policy.design-and-test',\n   \
+      \         'driver-continuity-capability-safety.design-and-test',\n         \
+      \   'driver-live-smoke-foundation.ratify-live-smoke-policy',\n            'driver-continuity-hygiene-deep-review.gate',\n\
+      \            'driver-agent-selection-contract.gate',\n            'driver-agent-selection-implementation.fix-judge-runner-test-defaults',\n\
+      \            'driver-agent-selection-implementation.retest-judge-runner-test-defaults',\n\
+      \            'driver-agent-selection-deep-review.gate',\n            'orch_foundation.contract_tests',\n\
+      \            'orch_foundation.gate',\n            'orch_operator_recovery_cutover.fix_recovery_contract_conformance',\n\
+      \            'orch_operator_recovery_cutover.reverify_recovery_contract_conformance',\n\
+      \            'cli_blackbox_finalization.full-plan-check',\n            'opencode_runner_verification.live-smoke',\n\
+      \            'opencode_runner_verification.final-gate',\n        ]\n       \
+      \ p = subprocess.run(['uv', 'run', 'vectl', 'validate'], text=True, capture_output=True)\n\
+      \        out = p.stdout + p.stderr\n        print(out)\n        offenders =\
+      \ [i for i in ids if f\"ERROR: Completed evidence guard: step '{i}'\" in out]\n\
+      \        if offenders:\n            print('Group A rows still reported by completed-evidence\
+      \ guard:', offenders)\n            sys.exit(1)\n    covers_claims:\n      -\
+      \ group_a_rows_closed_or_dispositioned\n      - historical_failure_facts_retained\n\
+      \      - orchestrator_removal_workstream_separate\n      - gate_intersection_recorded\n\
+      </intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    depends_on:
+    - egr_inventory_classify_43_errors
+    agent: vectl-planner

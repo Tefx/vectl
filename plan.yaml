@@ -113453,7 +113453,7 @@ phases:
       edited.'
   - id: egr_generate_current_core_owner_path
     name: Generate owner path for any still-current core guard failures
-    status: claimed
+    status: done
     description: "TARGET STATE: after A/B/C remediation, any remaining completed-evidence\
       \ guard error is no longer an unowned historical residue. It is either closed\
       \ by green/OPEN evidence, covered by an explicit exception policy, or has a\
@@ -113716,6 +113716,15 @@ phases:
     agent: vectl-planner
     claimed_by: vectl-planner
     claimed_at: '2026-06-17T13:52:44.811760+00:00'
+    done_at: '2026-06-17T13:57:53.070575+00:00'
+    evidence: status SUCCESS; plan-only mutation in commit 1241fe97 added D-local
+      closure_register entries for the two still-current non-exception rows repo_regression_full_suite_gate.run-full-pytest-regression-gate
+      and repo_regression_triage.capture-full-suite-failure-inventory; sidecar verdict
+      CONFORMANT using clean detached worktree; uv run vectl validate still reports
+      43 known completed-evidence guard rows, now expected to be covered by A/B/C/D
+      row-local records; uv run vectl show egr_generate_current_core_owner_path shows
+      D closure register; equivalent contract check remaining_initial_or_drift_rows_owned_exceptioned_or_absent
+      exited 0; no product code/tests/docs edited.
   - id: egr_independent_closure_audit
     name: Independent audit of evidence-guard closure/disposition
     status: pending

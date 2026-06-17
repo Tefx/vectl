@@ -110032,3 +110032,11 @@ phases:
     cleanup policy, and no product-code mutations yet.
   depends_on:
   - det_check_finalization
+- id: orch_removal_runtime_surface
+  name: 'Orchestrator Removal: Runtime and CLI Surface'
+  status: locked
+  gate: Runtime surface gate requires built-in orch CLI removal, orchestration source
+    deletion, Step.isolation schema cleanup, preserved vectl_decide support, and targeted
+    runtime tests.
+  depends_on:
+  - orchestrator-removal-foundation-and-safety-policy

@@ -110622,3 +110622,205 @@ phases:
     help, invar guard full scan, and independent release-blocking review.
   depends_on:
   - orch_removal_tests_docs
+  steps:
+  - id: orch_removal_cli_runtime_proof
+    name: Prove packaged CLI runtime surface after orch removal
+    status: pending
+    description: 'step_type: verification
+
+      full-plan-check companion for the user-facing CLI surface. Launch the packaged
+      CLI and prove it emits meaningful help without `orch`. Build/type/source evidence
+      alone is insufficient.
+
+
+      Required evidence:
+
+      - surface class: CLI
+
+      - exact launch command: `uvx --refresh --from . vectl --help`
+
+      - terminal capture/stdout showing non-blank top-level help
+
+      - explicit absence of `orch` / `vectl orch` in help
+
+      - one safe documented command still visible or invokable, or a reason interaction
+      is not applicable'
+    verification: Run `uvx --refresh --from . vectl --help`; paste raw stdout/stderr
+      and exit code; confirm the help is meaningful, non-blank, and has no `orch`
+      command. This protects the final gate.
+    refs:
+    - user-request:2026-06-17#final-cli-help
+    - src/vectl/cli.py
+    - README.md
+    - README_zh.md
+    agent: client-runtime-verifier
+  - id: orch_removal_wiring_audit
+    name: Audit wiring after orchestration source deletion
+    status: pending
+    description: 'step_type: audit
+
+      full-plan-check wiring audit. Verify every remaining public surface routes to
+      non-orchestration code and that no deleted module remains imported by CLI, MCP,
+      package metadata, or tests.
+
+
+      PROOF ARTIFACT: conformance matrix with executable import/CLI proof. Grep/import-trace
+      output is discovery only; reachability evidence must include real import, CLI,
+      MCP, or runtime proof.'
+    verification: Provide raw output from import/CLI probes proving `vectl.cli`, `vectl.mcp_server`,
+      `vectl.mcp_core_misc_tools`, and `vectl.model_outputs` import without deleted
+      orchestration modules. Include discovery grep for residual imports and a disposition
+      for every hit.
+    refs:
+    - user-request:2026-06-17#preserve-decide-and-remove-orch
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    - src/vectl/mcp_core_misc_tools.py
+    - src/vectl/model_outputs.py
+    - pyproject.toml
+    agent: wiring-auditor
+  - id: orch_removal_final_grep_closure
+    name: Final forbidden-term grep closure
+    status: pending
+    description: 'step_type: verification
+
+      full-plan-check final grep closure. This step proves product source, tests,
+      docs, READMEs, and packaging metadata no longer contain deleted runtime identifiers
+      or forbidden decide wording. Scope intentionally excludes plan.yaml/plan history
+      and .git/.venv/.vectl artifacts so the plan itself does not make the probe self-failing.
+
+
+      Forbidden general terms: `vectl.orchestration`, `core.orchestration`, `orch_app`,
+      `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`.
+
+      Forbidden decide wording in preserved decide surfaces: `deterministic orchestration
+      advisor`, `orchestration advisor`, `orchestrator advisor`, `external orchestrator
+      agents`, `orchestrator-visible execution`.
+
+
+      Any hit is blocker-class unless explicitly proven to be in an excluded non-product
+      artifact.'
+    verification: 'Run the exact Python grep closure below and paste raw stdout/stderr/exit
+      code:
+
+
+      ```
+
+      uv run python -c "from pathlib import Path; roots=[Path(''src''),Path(''tests''),Path(''docs''),Path(''README.md''),Path(''README_zh.md''),Path(''pyproject.toml'')];
+      general=[''vectl.orchestration'',''core.orchestration'',''orch_app'',''cli_orchestration'',''vectl
+      orch'',''IsolationMode'',''Step.isolation'']; decide_files=[Path(''src/vectl/decide.py''),Path(''src/vectl/decision_state.py''),Path(''src/vectl/model_outputs.py''),Path(''docs/RFC-vectl-decide-advisor-refresh.md''),Path(''README.md''),Path(''README_zh.md''),Path(''src/vectl/mcp_server.py'')];
+      decide_forbidden=[''deterministic orchestration advisor'',''orchestration advisor'',''orchestrator
+      advisor'',''external orchestrator agents'',''orchestrator-visible execution''];
+      files=[]; [files.extend([p] if p.is_file() else [q for q in p.rglob(''*'') if
+      q.is_file() and q.suffix in {''.py'',''.md'',''.toml'',''.txt''}]) for p in
+      roots if p.exists()]; hits=[]; [hits.append(f''{p}:{term}'') for p in files
+      for term in general if term in p.read_text(errors=''ignore'')]; [hits.append(f''{p}:DECIDE:{term}'')
+      for p in decide_files if p.exists() for term in decide_forbidden if term in
+      p.read_text(errors=''ignore'')]; assert not hits, ''\n''.join(hits); print(''forbidden-term
+      closure clean'')"
+
+      ```'
+    refs:
+    - user-request:2026-06-17#final-grep-closure
+    - src/
+    - tests/
+    - docs/
+    - README.md
+    - README_zh.md
+    - pyproject.toml
+    agent: integration-verifier
+  - id: orch_removal_full_regression_check
+    name: Run full regression, packaged help, and invar guard
+    status: pending
+    description: 'step_type: verification
+
+      full-plan-check final regression. This step is the hard runtime/static gate
+      for repository readiness after orchestration removal. It protects the final
+      gate.
+
+
+      Required commands:
+
+      1. `uv run pytest`
+
+      2. `uvx --refresh --from . vectl --help`
+
+      3. `uvx invar-tools guard --all` (the full `invar guard` parity command)
+
+
+      Expected result: green for all commands. Any failure is blocker-class and needs
+      a pending remediation owner before final gate can open.'
+    verification: Run all three required commands and paste raw stdout/stderr plus
+      exit codes. Do not summarize as merely 'tests pass'. Unit tests with mocks alone
+      are insufficient because the packaged CLI and Invar full scan are required.
+    refs:
+    - user-request:2026-06-17#final-regression-gate
+    - pyproject.toml
+    - INVAR.md
+    agent: integration-verifier
+  - id: orch_removal_deep_review
+    name: Independent deep review of orchestrator removal closure
+    status: pending
+    description: 'step_type: review
+
+      full-plan-check independent deep review. Review closure evidence for deletion
+      completeness, preserved vectl_decide support, safe worktree policy adherence,
+      test/doc cleanup, and final regression proof.
+
+
+      Review must produce a decision artifact with OPEN/BLOCK recommendation and a
+      defect ledger. It must reject `PASS_WITH_BLOCKERS`; blocker-class findings require
+      explicit owner work before final gate.'
+    verification: Review all prior phase gates and finalization evidence. Output a
+      decision artifact mapping every owned requirement to PROVEN/BLOCKED/NON_BLOCKING
+      with evidence refs and no unresolved blocker-class gaps.
+    refs:
+    - user-request:2026-06-17#closure-review
+    - docs/RFC-vectl-decide-advisor-refresh.md
+    - README.md
+    - README_zh.md
+    depends_on:
+    - orch_removal_cli_runtime_proof
+    - orch_removal_wiring_audit
+    - orch_removal_final_grep_closure
+    - orch_removal_full_regression_check
+    agent: plan-readiness-auditor
+  - id: orch_removal_final_gate
+    name: Final gate for orchestrator removal
+    status: pending
+    description: 'step_type: gate
+
+      full-plan-check final gate. The gate may open only when built-in orchestration
+      runtime/control/drive/resolver/runner/worktree features are removed, `vectl_decide`
+      remains supported as a caller-owned core automation/dispatch advisor, forbidden
+      grep closure is clean, full regression commands are green, and no unresolved
+      blocker remains.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - final grep closure covers `vectl.orchestration`, `core.orchestration`, `orch_app`,
+      `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`, and forbidden
+      decide wording
+
+      - final commands include `uv run pytest`, `uvx --refresh --from . vectl --help`,
+      and `uvx invar-tools guard --all`
+
+      - decide support is positive proof, not absence-only
+
+      - worktree cleanup policy did not use direct `rm -rf` on registered worktrees'
+    verification: Gate OPEN only with positive evidence for every requirement row
+      and all final commands green. Gate BLOCKED if any forbidden-term hit, failing
+      regression command, missing decide proof, unsafe worktree cleanup, or unresolved
+      blocker appears.
+    refs:
+    - user-request:2026-06-17#final-gate
+    depends_on:
+    - orch_removal_cli_runtime_proof
+    - orch_removal_wiring_audit
+    - orch_removal_final_grep_closure
+    - orch_removal_full_regression_check
+    - orch_removal_deep_review
+    agent: gate-reviewer

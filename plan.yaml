@@ -111955,3 +111955,136 @@ phases:
     depends_on:
     - egr_inventory_classify_43_errors
     agent: vectl-planner
+  - id: egr_triage_repo_regression_post_review_current_state
+    name: Triage repo-regression, invar, post-review, and deterministic-check rows
+    status: pending
+    description: 'PROOF ARTIFACT: determine whether repo-regression/full-suite/invar/post-review/deterministic-check
+      guard rows are already current-green evidence hygiene issues, non-blocking legacy
+      debt with owner/lifecycle, or still-current blocker-class failures.
+
+
+      Group C initial target rows from the starting validation output:
+
+      - repo_regression_full_suite_gate.run-full-pytest-regression-gate
+
+      - repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
+
+      - repo_regression_triage.capture-full-suite-failure-inventory
+
+      - repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces
+
+      - repo_regression_contract_alignment.audit-other-tight-locks-in-failing-scope
+
+      - post_review_remediation.implement-completed-step-failure-evidence-guard
+
+      - post_review_remediation.reverify-completed-step-failure-evidence-guard
+
+      - post_review_remediation.gate
+
+      - post_review_remediation.backfill-missing-gate-evidence
+
+      - invar_guard_remediation.final-regate-durable-uiux-artifact
+
+      - det_check_tests_gate
+
+
+      Required probes:
+
+      - Run `uv run vectl validate` and capture the current completed-evidence guard
+      output.
+
+      - Run targeted `uv run vectl show <step_id>` for each Group C row, or a scripted
+      equivalent that captures the evidence/disposition context.
+
+      - Run `uv run pytest` because this group includes repo-regression/full-suite
+      claims. If pytest is not required for a particular row, explain why in that
+      row; do not generalize.
+
+      - Run invar verification only if the inventory shows the invar row still depends
+      on current invar state; otherwise cite the later current-green evidence that
+      makes it plan-evidence hygiene only.
+
+
+      This step is read-only. It must not modify product code or plan state except
+      its own completion evidence. The next step performs closure/disposition mutations
+      based on this triage.'
+    verification: phase-check protecting evidence_guard_remediation gate. The proof
+      artifact must contain raw runtime command output and classify each Group C row
+      into current_green_closure, non_blocking_legacy_debt_with_owner, or current_blocker_owner_required.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Commands
+
+      ```
+
+      uv run vectl validate
+
+      uv run vectl show <each Group C step id>
+
+      uv run pytest
+
+      # optional only if row requires it: uvx invar-tools guard --all
+
+      ```
+
+
+      ## Raw Outputs
+
+      ### vectl validate
+
+      ```
+
+      <paste stdout/stderr>
+
+      ```
+
+      ### vectl show receipts
+
+      ```
+
+      <paste targeted show output or scripted excerpts for all Group C rows>
+
+      ```
+
+      ### pytest current-code probe
+
+      ```
+
+      <paste stdout/stderr and exit code>
+
+      ```
+
+      ### invar probe or no-probe rationale
+
+      ```
+
+      <paste output, or row-specific reason it is not required>
+
+      ```
+
+
+      ## Group C Triage Table
+
+      | offending_step_id | current_status | current_code_probe_required | command_evidence_ref
+      | disposition_for_next_step | owner_if_blocking |
+
+      |---|---|---|---|---|---|
+
+
+      Allowed current_status values: current_green_closure | non_blocking_legacy_debt_with_owner
+      | current_blocker_owner_required | needs_exception_policy.
+
+
+      ## Policy Confirmation
+
+      - No product code/test/doc modifications performed: YES/NO
+
+      - No direct plan.yaml edits: YES/NO
+
+      - Historical failure facts preserved: YES/NO'
+    depends_on:
+    - egr_inventory_classify_43_errors
+    agent: integration-verifier

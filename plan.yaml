@@ -111118,7 +111118,7 @@ phases:
       of final delta except exact orchestration artifact.'
   - id: orch_removal_decide_wording_preserve
     name: Reword preserved vectl_decide surfaces as caller-owned automation advisor
-    status: claimed
+    status: done
     description: "step_type: implementation\nTARGET STATE: vectl_decide remains a\
       \ supported core automation/dispatch advisor with caller-owned state language.\
       \ Preserved decide docs/code/tests/MCP tool-list surfaces must not describe\
@@ -111238,6 +111238,17 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-06-17T15:25:15.540746+00:00'
+    done_at: '2026-06-17T15:32:57.749828+00:00'
+    evidence: 'status SUCCESS; worker commit fb2f7fec merged to main as 7702e89. Sidecar
+      verdict CONFORMANT; changed docs/RFC-vectl-decide-advisor-refresh.md, src/vectl/decide.py,
+      src/vectl/decision_state.py, src/vectl/mcp_server.py, src/vectl/mcp_core_misc_tools.py,
+      src/vectl/mcp_core_common.py, src/vectl/mcp_render_tools.py, src/vectl/mcp_project_tools.py,
+      src/vectl/model_outputs.py, tests/test_decide.py, tests/test_mcp.py. Mainline
+      verification passed: path presence probe OK for preserved decide targets including
+      RFC; wording probe OK with caller-owned automation/dispatch advisor language
+      and no unallowlisted orchestrat tokens; uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py
+      tests/test_mcp.py -q -> 217 passed. No API/signature/import behavior changes
+      reported.'
   - id: orch_removal_tests_docs_probe
     name: Verify tests/docs cleanup and decide wording
     status: pending

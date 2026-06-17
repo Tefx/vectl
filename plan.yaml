@@ -111316,10 +111316,11 @@ phases:
 
       cross_cutting_focus:
 
-      - final grep closure covers `vectl.orchestration`, `core.orchestration`, `orch_app`,
-      `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`, deleted
-      path fragments, `.yaml/.yml/.json` docs/test artifacts, and forbidden decide
-      wording across all `src/vectl/**/*.py` decide/MCP surfaces
+      - final grep closure covers `vectl.orchestration`, `vectl.shell.orchestration`,
+      `shell.orchestration`, `from vectl.shell import orchestration`, `core.orchestration`,
+      `orch_app`, `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`,
+      deleted path fragments, `.yaml/.yml/.json` docs/test artifacts, and forbidden
+      decide wording across all `src/vectl/**/*.py` decide/MCP surfaces
 
       - final commands include `uv run pytest`, `uvx --refresh --from . vectl --help`,
       and `uvx invar-tools guard --all`

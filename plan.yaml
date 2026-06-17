@@ -110278,20 +110278,21 @@ phases:
       \ advisor | MCP decide surface survives without built-in orch runtime | runtime_probe\
       \ | test_mcp + decide tests | OWNED |\n\nGate Preview (what the gate WILL reject):\n\
       1. Any residual production import or source wording for `vectl.orchestration`,\
-      \ `core.orchestration`, `orch_app`, or `cli_orchestration`, including in `src/vectl/core/__init__.py`.\n\
-      2. Any stale packaging metadata for removed `vectl.driver` package-data or `judge_agent_prompt.md`.\n\
-      3. Any deletion or weakening of `vectl_decide`.\n4. Handler-only proof that\
-      \ does not import the real CLI/MCP modules.\n\n## Completion Criteria (stub\
-      \ exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\
-      \ Private `_Runtime*`, `_Stub*`, or `_Placeholder*` replacements for deleted\
-      \ orchestration are rejected.\n\n<intent_closure_contract>\nallowed_paths:\n\
-      \  - 'src/vectl/orchestration/**'\n  - 'src/vectl/core/orchestration/**'\n \
-      \ - 'src/vectl/shell/orchestration/**'\n  - 'src/vectl/orch_app.py'\n  - 'src/vectl/cli_orchestration*.py'\n\
-      \  - 'src/vectl/core/__init__.py'\n  - 'src/vectl/mcp_core_misc_tools.py'\n\
-      \  - 'src/vectl/mcp_server.py'\n  - 'src/vectl/model_outputs.py'\n  - 'pyproject.toml'\n\
-      blocked_paths:\n  - 'src/vectl/decide.py'\n  - 'src/vectl/decision_state.py'\n\
-      \  - 'tests/test_decide.py'\n  - 'tests/test_decide_state_isolation.py'\nrequired_claims:\n\
-      \  - runtime_source_deleted\n  - production_orchestration_imports_removed\n\
+      \ `vectl.shell.orchestration`, `shell.orchestration`, `from vectl.shell import\
+      \ orchestration`, `core.orchestration`, `orch_app`, or `cli_orchestration`,\
+      \ including in `src/vectl/core/__init__.py`.\n2. Any stale packaging metadata\
+      \ for removed `vectl.driver` package-data or `judge_agent_prompt.md`.\n3. Any\
+      \ deletion or weakening of `vectl_decide`.\n4. Handler-only proof that does\
+      \ not import the real CLI/MCP modules.\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Private\
+      \ `_Runtime*`, `_Stub*`, or `_Placeholder*` replacements for deleted orchestration\
+      \ are rejected.\n\n<intent_closure_contract>\nallowed_paths:\n  - 'src/vectl/orchestration/**'\n\
+      \  - 'src/vectl/core/orchestration/**'\n  - 'src/vectl/shell/orchestration/**'\n\
+      \  - 'src/vectl/orch_app.py'\n  - 'src/vectl/cli_orchestration*.py'\n  - 'src/vectl/core/__init__.py'\n\
+      \  - 'src/vectl/mcp_core_misc_tools.py'\n  - 'src/vectl/mcp_server.py'\n  -\
+      \ 'src/vectl/model_outputs.py'\n  - 'pyproject.toml'\nblocked_paths:\n  - 'src/vectl/decide.py'\n\
+      \  - 'src/vectl/decision_state.py'\n  - 'tests/test_decide.py'\n  - 'tests/test_decide_state_isolation.py'\n\
+      required_claims:\n  - runtime_source_deleted\n  - production_orchestration_imports_removed\n\
       \  - core_facade_residue_removed\n  - stale_driver_package_data_removed\n  -\
       \ decide_surface_preserved\nrequired_checks:\n  - id: runtime_deletion_probe\n\
       \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
@@ -110302,7 +110303,8 @@ phases:
       \ still, still\n        print('deleted targets absent')\n    covers_claims:\n\
       \      - runtime_source_deleted\n  - id: production_import_absence_probe\n \
       \   command:\n      - uv\n      - run\n      - python\n      - -c\n      - |\n\
-      \        from pathlib import Path\n        terms = ['vectl.orchestration', 'core.orchestration',\
+      \        from pathlib import Path\n        terms = ['vectl.orchestration', 'vectl.shell.orchestration',\
+      \ 'shell.orchestration', 'from vectl.shell import orchestration', 'core.orchestration',\
       \ 'orch_app', 'cli_orchestration']\n        files = list(Path('src/vectl').rglob('*.py'))\n\
       \        hits = [f'{p}:{t}' for p in files for t in terms if t in p.read_text(errors='ignore')]\n\
       \        assert not hits, hits\n        print('no production orchestration imports\

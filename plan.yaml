@@ -111358,11 +111358,15 @@ phases:
 
       Gate rejects sampled evidence, top-level-only docs probes, missing preserved
       decide/RFC files, missing conftest cleanup, or omission of archived artifacts.'
-    verification: Gate OPEN only if tests/docs probe is PASS, recursive docs/archive
-      and tests/fixtures probes are clean, exact `tests/conftest.py` active-config
-      cleanup probe passes, preserved decide source/tests/RFC path-presence probe
-      passes, decide preservation tests pass, and every blocker has a pending owner
-      or deterministic closure evidence.
+    verification: Gate OPEN only if tests/docs probe is PASS, README_zh parity fix
+      step is done with raw `readme_zh_decide_parity_probe` stdout/stderr proving
+      15 MCP tools plus `vectl_decide`, recursive docs/archive and tests/fixtures
+      probes are clean, exact `tests/conftest.py` active-config cleanup probe passes,
+      preserved decide source/tests/RFC path-presence probe passes, decide preservation
+      tests pass, and every blocker has a pending owner or deterministic closure evidence.
+      The README_zh 14-tool/vectl_decide omission is blocking until `orch_removal_readme_zh_decide_parity`
+      closes it; do not treat the prior WARN as non-blocking without that closure
+      evidence.
     refs:
     - user-request:2026-06-17#tests-docs-gate
     - docs/archive/orch_workflow_validation.yaml
@@ -111372,11 +111376,15 @@ phases:
     - tests/repro/test_repair_continuity_black_box.py
     - tests/fixtures/orchestration/replay_events.json
     - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md
+    - README.md
+    - README_zh.md
+    - docs/RFC-vectl-decide-advisor-refresh.md
     depends_on:
     - orch_removal_test_retirement
     - orch_removal_doc_cleanup
     - orch_removal_decide_wording_preserve
     - orch_removal_tests_docs_probe
+    - orch_removal_readme_zh_decide_parity
     agent: gate-reviewer
   - id: orch_removal_readme_zh_decide_parity
     name: Update README_zh MCP decide parity

@@ -112525,7 +112525,7 @@ phases:
   steps:
   - id: orch_removal_cli_runtime_proof
     name: Prove packaged CLI runtime surface after orch removal
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       full-plan-check companion for the user-facing CLI surface. Launch the packaged
@@ -112566,6 +112566,107 @@ phases:
     agent: client-runtime-verifier
     claimed_by: client-runtime-verifier
     claimed_at: '2026-06-17T19:03:37.286657+00:00'
+    done_at: '2026-06-17T19:08:34.337155+00:00'
+    evidence: 'surface_class: CLI
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+
+      refs_read_confirmation:
+
+      - user-request:2026-06-17#final-cli-help: NOT READ; non-file anchor unavailable
+      in worktree.
+
+      - src/vectl/cli.py: READ before worker verification.
+
+      - README.md: READ before worker verification.
+
+      - README_zh.md: READ before worker verification.
+
+      - tools/vectl/README.md: ABSENT/NON-AUTHORITATIVE; not blocking.
+
+
+      Sidecar gate:
+
+      ```
+
+      command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_cli_runtime_proof --worktree .vectl/worktrees/orch_removal_cli_runtime_proof
+      --base 287dfac464a90ca610bf95dd83d5eb57e5655bb1 --out .vectl/worktrees/orch_removal_cli_runtime_proof/.agent/gate/verdict.json
+
+      exit_code: 0
+
+      status: NOT_APPLICABLE
+
+      reason: NO_INTENT_CLOSURE_CONTRACT
+
+      changed_paths: []
+
+      ```
+
+
+      command_1: `uvx --refresh --from . vectl --help`
+
+      worker exit_code: 0
+
+      worker stdout: non-blank top-level help with Usage: vectl [OPTIONS] COMMAND
+      [ARGS]..., options, and command list; no `orch` / `vectl orch`.
+
+      worker stderr: empty
+
+      mainline exit_code: 0
+
+      mainline stdout: non-blank top-level help with Usage line, options, and command
+      list; grep confirmed no `orch` / `vectl orch`.
+
+      mainline stderr: empty
+
+
+      command_2: `uvx --refresh --from . vectl orch --help`
+
+      worker exit_code: 2
+
+      worker stdout: empty
+
+      worker stderr: No such command ''orch''. Did you mean ''search''?; no `Usage:
+      vectl orch` or orchestration operator help.
+
+      mainline exit_code: 2
+
+      mainline stdout: empty
+
+      mainline stderr: No such command ''orch''. Did you mean ''search''?; no hidden/stub
+      orch help.
+
+
+      Behavioral proof register:
+
+      - top_level_packaged_cli_help: PASS
+
+      - top_level_help_absent_orch: PASS
+
+      - orch_subcommand_not_invokable: PASS
+
+      - no_hidden_or_stub_orch_help: PASS
+
+      - worktree_clean_after_verification: PASS
+
+
+      mutations:
+
+      - product_code_doc_mutations: none
+
+      - orchestrator_state_mutations: none
+
+      - commit_hash: none; verify-only clean with no changes to commit
+
+      '
   - id: orch_removal_wiring_audit
     name: Audit wiring after orchestration source deletion
     status: claimed

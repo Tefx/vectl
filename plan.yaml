@@ -110929,17 +110929,22 @@ phases:
 
       Forbidden deleted path fragments: `src/vectl/orchestration`, `src/vectl/core/orchestration`,
       `src/vectl/shell/orchestration`, `src/vectl/orch_app.py`, `src/vectl/cli_orchestration`,
-      `tests/orchestration`, `tests/fixtures/orchestration`, `tests/test_orch_cli_surface.py`.
+      `tests/orchestration`, `tests/fixtures/orchestration`, `tests/test_orch_cli_surface.py`,
+      `docs/archive/orch_workflow_validation.yaml`, `docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml`,
+      `docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md`.
 
-      Forbidden decide wording in preserved decide/MCP/doc surfaces: `Decision logic
-      for vectl orchestration`, `deterministic orchestration advisor`, `orchestration
+      Forbidden decide wording in preserved decide/MCP/doc/test surfaces: `Decision
+      logic for vectl orchestration`, `deterministic orchestration advisor`, `orchestration
       advisor`, `orchestrator advisor`, `external orchestrator agents`, `orchestrator-visible
       execution`.
 
 
       Decide wording scope includes every `src/vectl/**/*.py` file plus README/RFC
-      decide docs, so live MCP surfaces cannot be missed. Any hit is blocker-class
-      unless explicitly proven to be in an excluded non-product artifact.'
+      decide docs and preserved decide tests, so live MCP surfaces and test assertion
+      strings cannot be missed. Any hit is blocker-class unless explicitly proven
+      to be in an excluded non-product artifact.
+
+      '
     verification: 'Run the exact Python grep closure below and paste raw stdout/stderr/exit
       code:
 
@@ -110954,8 +110959,8 @@ phases:
       advisor'',''orchestrator advisor'',''external orchestrator agents'',''orchestrator-visible
       execution'']; files=[]; [files.extend([p] if p.is_file() else [q for q in p.rglob(''*'')
       if q.is_file() and q.suffix in suffixes]) for p in roots if p.exists()]; decide_files=[p
-      for p in Path(''src/vectl'').rglob(''*.py'') if p.exists()] + [Path(''docs/RFC-vectl-decide-advisor-refresh.md''),Path(''README.md''),Path(''README_zh.md'')];
-      path_terms=[''src/vectl/orchestration'',''src/vectl/core/orchestration'',''src/vectl/shell/orchestration'',''src/vectl/orch_app.py'',''src/vectl/cli_orchestration'',''tests/orchestration'',''tests/fixtures/orchestration'',''tests/test_orch_cli_surface.py''];
+      for p in Path(''src/vectl'').rglob(''*.py'') if p.exists()] + [Path(''docs/RFC-vectl-decide-advisor-refresh.md''),Path(''README.md''),Path(''README_zh.md''),Path(''tests/test_decide.py''),Path(''tests/test_decide_state_isolation.py'')];
+      path_terms=[''src/vectl/orchestration'',''src/vectl/core/orchestration'',''src/vectl/shell/orchestration'',''src/vectl/orch_app.py'',''src/vectl/cli_orchestration'',''tests/orchestration'',''tests/fixtures/orchestration'',''tests/test_orch_cli_surface.py'',''docs/archive/orch_workflow_validation.yaml'',''docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml'',''docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md''];
       hits=[]; [hits.append(f''{p}:{term}'') for p in files for term in general if
       term in p.read_text(errors=''ignore'')]; [hits.append(f''{p}:PATH:{term}'')
       for p in files for term in path_terms if term in str(p)]; [hits.append(f''{p}:DECIDE:{term}'')
@@ -110963,7 +110968,9 @@ phases:
       p.read_text(errors=''ignore'')]; assert not hits, ''\n''.join(hits); print(''forbidden-term
       closure clean'')"
 
-      ```'
+      ```
+
+      '
     refs:
     - user-request:2026-06-17#final-grep-closure
     - src/
@@ -110979,6 +110986,14 @@ phases:
     - src/vectl/mcp_project_tools.py
     - docs/archive/orch_workflow_validation.yaml
     - docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml
+    - docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md
+    - tests/test_decide.py
+    - tests/test_decide_state_isolation.py
+    - tests/repro/vertical_slice_probe.py
+    - tests/test_gemini_resume_behavior.py
+    - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
+    - docs/full-suite-failure-inventory-2026-04-10.md
+    - docs/repo_regression_failure_dispositions.yaml
     agent: integration-verifier
   - id: orch_removal_full_regression_check
     name: Run full regression, packaged help, and invar guard

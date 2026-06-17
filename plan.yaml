@@ -110035,7 +110035,7 @@ phases:
   steps:
   - id: orch_removal_scope_matrix
     name: Build orchestrator-removal scope and preservation matrix
-    status: claimed
+    status: done
     description: "step_type: investigation\nPROOF ARTIFACT: deletion/preservation\
       \ matrix for removing built-in orchestration while preserving vectl_decide.\
       \ This step is read-only for product/repo files.\n\nRequirement-to-Evidence\
@@ -110127,6 +110127,13 @@ phases:
     agent: architectural-demolitionist
     claimed_by: architectural-demolitionist
     claimed_at: '2026-06-17T12:54:21.759306+00:00'
+    done_at: '2026-06-17T13:14:52.058988+00:00'
+    evidence: 'status SUCCESS; evidence artifact .agent/evidence/orch_removal_scope_matrix.md
+      merged to main in commit 1c841cc; worker commit 094cc81a/d2ae5bfc after main
+      sync; sidecar verdict CONFORMANT; mainline verification: artifact exists and
+      includes deletion_targets_confirmed, preservation_targets_confirmed, FINAL-GREP/final
+      grep scope, dependency map, refs confirmation; HEAD changed only .agent/evidence/orch_removal_scope_matrix.md;
+      no product source/docs/tests modified in worker delta.'
   - id: orch_removal_worktree_policy
     name: Define safe worktree and artifact cleanup policy
     status: done

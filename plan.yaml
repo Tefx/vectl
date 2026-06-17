@@ -110211,7 +110211,7 @@ phases:
       in worker delta.'
   - id: orch_removal_foundation_gate
     name: Gate orchestrator-removal foundation
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       local-check gate protecting downstream deletion work. Gate blocks unless the
@@ -110241,6 +110241,8 @@ phases:
     - orch_removal_scope_matrix
     - orch_removal_worktree_policy
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-17T13:15:36.795992+00:00'
 - id: orch_removal_runtime_surface
   name: 'Orchestrator Removal: Runtime and CLI Surface'
   status: locked

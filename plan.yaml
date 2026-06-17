@@ -111251,7 +111251,7 @@ phases:
       reported.'
   - id: orch_removal_tests_docs_probe
     name: Verify tests/docs cleanup and decide wording
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       phase-check protecting tests/docs cleanup. Verify real pytest collection, preserved
@@ -111316,6 +111316,21 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-17T15:33:18.467185+00:00'
+    done_at: '2026-06-17T15:43:16.733036+00:00'
+    evidence: 'status SUCCESS; verdict PASS; blockers []; gate_open_allowed true;
+      orchestrator_action_hint COMPLETE with warning now owned by new remediation
+      step orch_removal_readme_zh_decide_parity before tests/docs gate. Sidecar verdict
+      NOT_APPLICABLE with no changed paths. Raw commands: uv run pytest --collect-only
+      -q exit 0, 1269 tests collected; uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py
+      tests/test_mcp.py -q exit 0, 217 passed; preserved decide path-presence probe
+      exit 0; recursive tests/fixtures deleted-runtime-residue probe exit 0; tests/conftest.py
+      lowercase orchestration probe exit 0; recursive docs/archive deletion probe
+      exit 0; decide wording probe exit 0; uv run pytest tests/test_cli.py::TestDriveCLI
+      -q exit 0, 4 passed. Behavioral proof: deleted orch CLI surface absent, vectl_decide
+      runtime contract preserved, archived docs absent, fixture/runtime residue absent.
+      Warning README_zh says 14 MCP tools and omits vectl_decide; planner classified
+      as gate-intersecting and added `orch_removal_readme_zh_decide_parity` dependency
+      before gate.'
   - id: orch_removal_tests_docs_gate
     name: Gate tests/docs cleanup
     status: pending

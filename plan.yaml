@@ -112932,23 +112932,27 @@ phases:
       \ why it does not permit hidden product regressions.\n5. For any non-blocking\
       \ closure, the reviewed row-local evidence must include exact validator-recognized\
       \ wording: `non-blocking` or `not blocking`, explicit owner, lifecycle/disposition/tracked\
-      \ language, and gate-intersection=false/non-intersection wording; otherwise\
-      \ require same-phase `gate_open_allowed=true` closure evidence or exception\
-      \ policy.\n6. Gate BLOCKED if any row remains unclassified, unowned, or only\
-      \ narratively dismissed as pre-existing/out-of-scope.\n7. Gate BLOCKED if ownership\
-      \ appears only in static target lists, broad phase descriptions, or global keywords\
-      \ rather than a row-local `offending_step_id` record.\n8. Gate BLOCKED if product\
-      \ code/test/doc changes were made by this phase.\n9. Gate BLOCKED if historical\
-      \ failure facts were erased or rewritten away.\n\nReview depth: THOROUGH\nreview_depth_rationale:\n\
-      - Phase remediates validation guard failures and can otherwise hide historical\
-      \ runtime failures.\n- The requested work is plan evidence hygiene, not product\
-      \ code repair, so audit integrity is the primary risk.\n- Prior readiness review\
-      \ found contradictions between reclassification/owner semantics and required\
-      \ checks; this gate must verify row-local closure semantics specifically.\n\n\
-      cross_cutting_focus:\n- Completed-evidence guard closure semantics.\n- Gate-intersection\
-      \ disposition vs provenance confusion.\n- Separation from `orch_removal_*` work.\n\
-      - Robust validation parsing that cannot miss wrapped step IDs.\n- Validation\
-      \ zero/error exception policy durability."
+      \ language, and gate-intersection=false/non-intersection wording; non-blocking\
+      \ disposition can close only rows absent from current validator output or backed\
+      \ by same-phase `gate_open_allowed=true` closure evidence. Any row still reported\
+      \ by gate-time `uv run vectl validate` requires audited row-local `exception_policy`\
+      \ or `current_blocker_owner` evidence; ordinary `non-blocking_disposition` is\
+      \ insufficient.\n6. Gate BLOCKED if any row remains unclassified, unowned, or\
+      \ only narratively dismissed as pre-existing/out-of-scope.\n7. Gate BLOCKED\
+      \ if ownership appears only in static target lists, broad phase descriptions,\
+      \ or global keywords rather than a row-local `offending_step_id` record.\n8.\
+      \ Gate BLOCKED if product code/test/doc changes were made by this phase.\n9.\
+      \ Gate BLOCKED if historical failure facts were erased or rewritten away.\n\n\
+      Review depth: THOROUGH\nreview_depth_rationale:\n- Phase remediates validation\
+      \ guard failures and can otherwise hide historical runtime failures.\n- The\
+      \ requested work is plan evidence hygiene, not product code repair, so audit\
+      \ integrity is the primary risk.\n- Prior readiness review found contradictions\
+      \ between reclassification/owner semantics and required checks; this gate must\
+      \ verify row-local closure semantics specifically.\n\ncross_cutting_focus:\n\
+      - Completed-evidence guard closure semantics.\n- Gate-intersection disposition\
+      \ vs provenance confusion.\n- Separation from `orch_removal_*` work.\n- Robust\
+      \ validation parsing that cannot miss wrapped step IDs.\n- Validation zero/error\
+      \ exception policy durability."
     verification: full-plan-check. Run `uv run vectl validate`; require 0 errors or
       an explicit audited exception policy for any remaining old guard row. Review
       targeted `vectl show` evidence for every initially failing step before opening

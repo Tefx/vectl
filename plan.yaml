@@ -113663,7 +113663,53 @@ phases:
       \      - remaining_guard_errors_have_row_local_owner_or_exception\n      - current_core_failures_not_hidden\n\
       \      - product_code_fixes_deferred_to_explicit_owner_steps\n      - static_target_lists_do_not_satisfy_ownership\n\
       \      - robust_validation_parsing_used\n      - d_local_closed_by_step_not_owner_sufficiency\n\
-      </intent_closure_contract>"
+      </intent_closure_contract>\n\n## closure_register (D current core / drift offender\
+      \ owner path)\n\n```closure_register\nclosure_register:\n  - offending_step_id:\
+      \ \"repo_regression_full_suite_gate.run-full-pytest-regression-gate\"\n    original_phase:\
+      \ \"repo_regression_full_suite_gate\"\n    group: \"D_current_core_failure\"\
+      \n    status: current_blocker_owner\n    owner: \"egr_final_validate_gate /\
+      \ repo_regression_full_suite_gate current pytest blocker owner path\"\n    lifecycle_disposition:\
+      \ \"tracked lifecycle disposition: this is a real current repo-wide pytest red\
+      \ blocker, not an audit-integrity exception and not hidden by this evidence-hygiene\
+      \ step; it remains open until the later full-plan gate verifies the focused\
+      \ and full pytest commands green or the orchestrator creates a separate product-code\
+      \ fix/retest owner.\"\n    gate_intersection: \"gate-intersection=true with\
+      \ current_blocker_owner; uv run pytest is currently red and intersects repo-wide\
+      \ regression/final validation, so egr_final_validate_gate must stay BLOCKED\
+      \ unless required verification/retest commands prove closure.\"\n    closed_by_step:\
+      \ \"egr_generate_current_core_owner_path\"\n    closed_by: \"D-local writer\
+      \ proof only; current validate still reports this row and C triage recorded\
+      \ uv run pytest exit 1 with tests/test_init_gitattributes.py failures, so no\
+      \ green/OPEN/gate_open_allowed=true closure is claimed here.\"\n    current_blocker_owner:\
+      \ \"egr_final_validate_gate (locked later full-plan-check gate) owns verification/retest\
+      \ enforcement for this current pytest blocker; required commands: uv run pytest\
+      \ tests/test_init_gitattributes.py -q; uv run pytest -q; uv run vectl validate;\
+      \ if any command remains red, the gate must remain BLOCKED and the orchestrator\
+      \ must create a separate product-code fix/retest owner before release.\"\n \
+      \   exception_policy: \"\"\n    validator_status: still_reported\n  - offending_step_id:\
+      \ \"repo_regression_triage.capture-full-suite-failure-inventory\"\n    original_phase:\
+      \ \"repo_regression_test_intent_alignment\"\n    group: \"D_current_core_failure\"\
+      \n    status: current_blocker_owner\n    owner: \"egr_independent_closure_audit\
+      \ plus egr_final_validate_gate current inventory/pytest blocker owner path\"\
+      \n    lifecycle_disposition: \"tracked lifecycle disposition: the historical\
+      \ inventory row remains stale relative to the current red set and is not an\
+      \ audit-integrity exception; it remains open until the later audit/gate records\
+      \ the current offender inventory and verifies the focused/full pytest and validate\
+      \ commands.\"\n    gate_intersection: \"gate-intersection=true with current_blocker_owner;\
+      \ stale full-suite inventory intersects repo-wide regression/final validation\
+      \ because the current red pytest set must be represented accurately before the\
+      \ phase gate can open.\"\n    closed_by_step: \"egr_generate_current_core_owner_path\"\
+      \n    closed_by: \"D-local writer proof only; C triage recorded old inventory\
+      \ evidence of 31 failures versus current uv run pytest exit 1 with tests/test_init_gitattributes.py\
+      \ failures, so no green/OPEN/gate_open_allowed=true closure is claimed here.\"\
+      \n    current_blocker_owner: \"egr_independent_closure_audit must audit the\
+      \ current inventory row and egr_final_validate_gate must enforce verification/retest\
+      \ closure; required commands: uv run vectl validate; uv run pytest tests/test_init_gitattributes.py\
+      \ -q; uv run pytest -q; uv run vectl show repo_regression_triage.capture-full-suite-failure-inventory;\
+      \ if the current red set remains unclosed or unrefreshed, the gate must remain\
+      \ BLOCKED and the orchestrator must create a separate inventory/product-code\
+      \ owner.\"\n    exception_policy: \"\"\n    validator_status: still_reported\n\
+      ```\n"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     depends_on:
     - egr_close_repo_regression_post_review_rows

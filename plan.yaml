@@ -110647,23 +110647,52 @@ phases:
     description: 'step_type: verification
 
       phase-check protecting tests/docs cleanup. Verify real pytest collection, decide
-      targeted tests, and static absence of deleted runtime references in tests/docs/readmes.
+      targeted tests, recursive docs/archive deletion, test/fixture retirement, and
+      static absence of deleted runtime references plus forbidden decide wording in
+      live source/docs surfaces.
 
 
       This is a truth-finding step: finding blockers succeeds as discovery but blocks
-      the phase until owner remediation closes them.'
+      the phase until owner remediation closes them.
+
+
+      Required behavioral proof register fields: requirement_ref, behavior_claim,
+      runtime_proof_expected, evidence_ref, status, closure_path, gate_decision_basis.
+
+
+      Refs confirmation is mandatory: cite key passages or current offending locations
+      from every ref, or state NOT READ with reason.'
     verification: 'Run and paste raw stdout/stderr for: (1) `uv run pytest --collect-only
       -q`; (2) `uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py
-      -q`; (3) a product/docs/tests grep probe for deleted runtime references and
-      forbidden decide wording. Static grep is acceptable only for source/text absence;
-      behavioral decide support must be proven by pytest.'
+      -q`; (3) a recursive tests/fixtures probe over `.py/.json/.yaml/.yml` proving
+      no `vectl.orchestration`, `core.orchestration`, `orch_app`, `cli_orchestration`,
+      `vectl orch`, `tests/orchestration`, or `tests/fixtures/orchestration` residue
+      outside explicitly preserved decide tests; (4) a recursive docs/archive probe
+      over `.md/.yaml/.yml/.json/.py/.txt` proving archived orchestration artifacts
+      were deleted rather than retained; (5) a decide wording probe covering `src/vectl/decide.py`,
+      `src/vectl/decision_state.py`, `src/vectl/model_outputs.py`, `src/vectl/mcp_server.py`,
+      `src/vectl/mcp_core_misc_tools.py`, `src/vectl/mcp_core_common.py`, `src/vectl/mcp_render_tools.py`,
+      `src/vectl/mcp_project_tools.py`, READMEs, and `docs/RFC-vectl-decide-advisor-refresh.md`.
+      Static grep is acceptable only for source/text absence; behavioral decide support
+      must be proven by pytest.'
     refs:
     - user-request:2026-06-17#tests-docs-verification
     - README.md
     - README_zh.md
     - docs/RFC-vectl-decide-advisor-refresh.md
+    - docs/archive/orch_workflow_validation.yaml
+    - docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml
     - tests/test_decide.py
     - tests/test_decide_state_isolation.py
+    - tests/test_orch_cli_surface.py
+    - tests/test_cli.py#TestDriveCLI
+    - tests/repro/test_repair_continuity_black_box.py
+    - tests/fixtures/orchestration/replay_events.json
+    - src/vectl/decide.py
+    - src/vectl/mcp_core_misc_tools.py
+    - src/vectl/mcp_core_common.py
+    - src/vectl/mcp_render_tools.py
+    - src/vectl/mcp_project_tools.py
     depends_on:
     - orch_removal_test_retirement
     - orch_removal_decide_wording_preserve

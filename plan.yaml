@@ -114264,22 +114264,27 @@ phases:
       \ that `uv run vectl validate` reaches 0 errors, or that any remaining completed-evidence\
       \ guard rows have audited row-local `exception_policy` or `current_blocker_owner`\
       \ records with owner, lifecycle/disposition/tracked, and gate-intersection reasoning.\n\
-      \nGate criteria:\n1. All remediation steps in this phase are complete with specific\
-      \ evidence.\n2. The independent closure audit reviewed all 43 initial rows plus\
-      \ every drift/current completed-evidence guard offender reported at audit time\
-      \ using the row-local `closure_register` contract.\n3. `uv run vectl validate`\
-      \ is run at gate time and parsed robustly: use a machine-readable/unwrapped\
-      \ validation source if available, otherwise regex extraction across wrapped\
-      \ output. Exact human-line substring matching for long step IDs is rejected.\n\
-      4. Gate OPEN requires one of:\n   - `uv run vectl validate` returns 0 errors;\
-      \ OR\n   - every remaining completed-evidence guard row is covered by an explicit\
-      \ audited row-local `exception_policy` or `current_blocker_owner` record that\
-      \ names the offending_step_id, explains the owner/lifecycle/disposition/tracked\
-      \ state, provides gate-intersection or non-intersection reasoning, and for current\
-      \ blockers names the concrete owner step/phase plus verification/retest/required-command\
-      \ ownership.\n5. For any non-blocking closure, the reviewed row-local evidence\
-      \ must include exact validator-recognized wording: `non-blocking` or `not blocking`,\
-      \ explicit owner, lifecycle/disposition/tracked language, and gate-intersection=false/non-intersection\
+      \nNo file refs are required for this gate. Do NOT require or read `tools/vectl/README.md`;\
+      \ that path is absent and non-authoritative for this gate. Root `README.md`\
+      \ is not mandatory for this decision unless the reviewer independently needs\
+      \ optional repository context. Gate evidence must rely on the plan records and\
+      \ runtime/probe receipts named below.\n\nGate criteria:\n1. All remediation\
+      \ steps in this phase are complete with specific evidence, including `egr_audit_test_only_exception_disposition`.\n\
+      2. The independent closure audit reviewed all 43 initial rows plus every drift/current\
+      \ completed-evidence guard offender reported at audit time using the row-local\
+      \ `closure_register` contract.\n3. `uv run vectl validate` is run at gate time\
+      \ and parsed robustly: use a machine-readable/unwrapped validation source if\
+      \ available, otherwise regex extraction across wrapped output. Exact human-line\
+      \ substring matching for long step IDs is rejected.\n4. Gate OPEN requires one\
+      \ of:\n   - `uv run vectl validate` returns 0 errors; OR\n   - every remaining\
+      \ completed-evidence guard row is covered by an explicit audited row-local `exception_policy`\
+      \ or `current_blocker_owner` record that names the offending_step_id, explains\
+      \ the owner/lifecycle/disposition/tracked state, provides gate-intersection\
+      \ or non-intersection reasoning, and for current blockers names the concrete\
+      \ owner step/phase plus verification/retest/required-command ownership.\n5.\
+      \ For any non-blocking closure, the reviewed row-local evidence must include\
+      \ exact validator-recognized wording: `non-blocking` or `not blocking`, explicit\
+      \ owner, lifecycle/disposition/tracked language, and gate-intersection=false/non-intersection\
       \ wording; non-blocking disposition can close only rows absent from current\
       \ validator output or backed by same-phase `gate_open_allowed=true` closure\
       \ evidence. Any row still reported by gate-time `uv run vectl validate` requires\
@@ -114292,107 +114297,115 @@ phases:
       \ narratively dismissed as pre-existing/out-of-scope.\n8. Gate BLOCKED if ownership\
       \ appears only in static target lists, broad phase descriptions, or global keywords\
       \ rather than a row-local `offending_step_id` record.\n9. Gate BLOCKED if product\
-      \ code/test/doc changes were made by this phase.\n10. Gate BLOCKED if historical\
-      \ failure facts were erased or rewritten away.\n\nReview depth: THOROUGH\nreview_depth_rationale:\n\
-      - Phase remediates validation guard failures and can otherwise hide historical\
-      \ runtime failures.\n- The requested work is plan evidence hygiene, not product\
-      \ code repair, so audit integrity is the primary risk.\n- Prior readiness review\
+      \ code/test/doc changes were made by this phase, EXCEPT for the specifically\
+      \ named completed test-only current-blocker remediation `egr_fix_init_gitattributes_clirunner_compat`\
+      \ / `egr_retest_init_gitattributes_clirunner_compat` changing `tests/test_init_gitattributes.py`.\
+      \ That exception is acceptable only when `egr_audit_test_only_exception_disposition`\
+      \ returns PASS and proves all of: changed paths are limited to the audited test-only\
+      \ path(s); the mutation was current-blocker owner work for the CliRunner compatibility\
+      \ failure; no product runtime behavior under `src/**` or docs/README/config/lock\
+      \ files were changed; .gitattributes creation/idempotency/preserve assertions\
+      \ and real CLI invocation remain covered; focused/full pytest are green; validate\
+      \ still preserves the 43 historical completed-evidence guard rows or returns\
+      \ 0; and historical failure evidence was not erased. Any other product code/test/doc\
+      \ mutation remains blocking unless a separate explicit audit/disposition step\
+      \ authorizes it.\n10. Gate BLOCKED if historical failure facts were erased or\
+      \ rewritten away.\n\nReview depth: THOROUGH\nreview_depth_rationale:\n- Phase\
+      \ remediates validation guard failures and can otherwise hide historical runtime\
+      \ failures.\n- The requested work is plan evidence hygiene, not product code\
+      \ repair, so audit integrity is the primary risk.\n- Prior readiness review\
       \ found contradictions between reclassification/owner semantics and required\
-      \ checks; this gate must verify row-local closure semantics specifically.\n\n\
-      cross_cutting_focus:\n- Completed-evidence guard closure semantics.\n- Gate-intersection\
-      \ disposition vs provenance confusion.\n- Separation from `orch_removal_*` work.\n\
-      - Robust validation parsing that cannot miss wrapped step IDs.\n- Validation\
-      \ zero/error exception-policy/current-owner durability."
+      \ checks; this gate must verify row-local closure semantics specifically.\n\
+      - A later test-only current-blocker fix exists inside the phase; this gate must\
+      \ accept only the audited named exception and preserve the ordinary no-product/test/doc-change\
+      \ rule.\n\ncross_cutting_focus:\n- Completed-evidence guard closure semantics.\n\
+      - Gate-intersection disposition vs provenance confusion.\n- Separation from\
+      \ `orch_removal_*` work.\n- Robust validation parsing that cannot miss wrapped\
+      \ step IDs.\n- Validation zero/error exception-policy/current-owner durability.\n\
+      - Criterion-9 exception narrowness for `tests/test_init_gitattributes.py` only.\n\
+      - Non-use of nonexistent `tools/vectl/README.md` as a mandatory ref."
     verification: full-plan-check. Run `uv run vectl validate`; require 0 errors OR
       audited row-local `exception_policy`/`current_blocker_owner` records for every
       remaining completed-evidence guard row, including owner, lifecycle/disposition/tracked
       language, gate-intersection reasoning, and for current blockers verification/retest/required-command
       ownership. Review targeted `vectl show` evidence for every initially failing
-      row and every audit-time drift/current offender before opening the gate.
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+      row, every audit-time drift/current offender, and `egr_audit_test_only_exception_disposition`
+      before opening the gate. Do not require nonexistent `tools/vectl/README.md`.
+      Criterion 9 may pass only for the specifically audited test-only CliRunner compatibility
+      exception; all other product code/test/doc mutations remain blocking.
+    evidence_template: '## Final Evidence-Guard Remediation Gate Report
 
-      If no refs were provided, state: "No refs for this step."
+
+      ### refs Read Confirmation (MANDATORY)
+
+      No file refs for this gate. Do NOT require `tools/vectl/README.md`; if stale
+      guidance mentions it, record it as ABSENT/NON-AUTHORITATIVE and do not block
+      solely on that missing path.
 
 
-      ## Commands
-
-      ```
-
-      uv run vectl validate
-
-      uv run vectl show evidence_guard_remediation
-
-      # targeted row checks as needed:
-
-      uv run vectl show <offending_step_id or phase>
+      ### Gate-Time Validation Probe
 
       ```
 
-
-      ## Raw Validation Output
-
-      ```
-
-      <paste stdout/stderr and exit code>
+      <uv run vectl validate raw stdout/stderr and exit code>
 
       ```
 
 
-      ## Gate Decision Basis
+      ### Required Plan Records Reviewed
 
-      | requirement_or_row | evidence_ref_reviewed | status | blocks_gate | closure_path
+      - `egr_independent_closure_audit` — key audit verdict:
+
+      - `egr_audit_test_only_exception_disposition` — criterion-9 exception verdict:
+
+      - `egr_retest_init_gitattributes_clirunner_compat` — command receipts:
+
+      - A/B/C/D closure-register owner/exception records — coverage summary for 43
+      rows plus drift rows:
+
+
+      ### Requirement-to-Evidence Decision Basis
+
+      | requirement_id | required evidence | status | evidence_ref | blocking_reason_if_not_proven
       |
 
-      |---|---|---|---|---|
+      | --- | --- | --- | --- | --- |
+
+      | egr_rows_closed_or_owned | 43 initial rows + drift rows each have row-local
+      closure/exception/current-owner evidence or validate is 0 | PROVEN/UNPROVEN/BLOCKED
+      | <refs> | <reason> |
+
+      | egr_validate_parser_robust | validate parsed without wrapped-line substring
+      fragility | PROVEN/UNPROVEN/BLOCKED | <refs> | <reason> |
+
+      | egr_test_only_exception | `egr_audit_test_only_exception_disposition` PASS
+      for the named CliRunner test-only remediation | PROVEN/UNPROVEN/BLOCKED | <refs>
+      | <reason> |
+
+      | egr_ordinary_change_rule | no other product code/test/doc changes accepted
+      without separate audit | PROVEN/UNPROVEN/BLOCKED | <refs> | <reason> |
+
+      | egr_history_preserved | historical failure facts not erased/reworded away
+      | PROVEN/UNPROVEN/BLOCKED | <refs> | <reason> |
 
 
-      Statuses: PROVEN | UNPROVEN | NEEDS_TEST | BLOCKED | EXCEPTION_POLICY | OWNED_CURRENT_BLOCKER.
+      ### Criterion-9 Exception Review
+
+      - authorized_exception_id: egr_init_gitattributes_clirunner_test_only_current_blocker
+
+      - accepted_changed_paths: <exact paths or BLOCKED>
+
+      - ordinary product/test/doc mutation waiver broadened?: MUST be NO
+
+      - final disposition: ACCEPT_NAMED_EXCEPTION | BLOCKED
 
 
-      ## Remaining Row Exception / Current-Owner Records (required if validate is
-      not zero)
+      ### Gate Decision
 
-      | remaining_row | accepted_status | owner_or_current_owner_step_phase | lifecycle_or_disposition
-      | gate_intersection_reasoning | verification_retest_required_command_ownership
-      | accepted_by_gate |
-
-      |---|---|---|---|---|---|---|
-
-
-      Rules:
-
-      - `accepted_status` must be `exception_policy` or `current_blocker_owner` for
-      every remaining row.
-
-      - For `current_blocker_owner`, name a concrete owner step/phase other than `egr_generate_current_core_owner_path`
-      and cite verification/retest/required-command ownership.
-
-      - For `exception_policy`, explain why closure would violate audit integrity
-      and how owner/lifecycle/gate-intersection reasoning prevents hidden product
-      regressions.
-
-      - `closed_by_step` alone, ordinary `non-blocking_disposition`, sampled evidence,
-      or provenance-only wording cannot open the gate for a still-reported row.
-
-
-      ## Final Decision
-
-      - GATE OPEN / GATE BLOCKED
-
-      - `uv run vectl validate` zero errors: YES/NO
-
-      - If NO, audited row-local `exception_policy` or `current_blocker_owner` accepted
-      for every remaining row: YES/NO
-
-      - Historical failure facts retained: YES/NO
-
-      - No product code/test/doc changes in this stream: YES/NO
-
-      - Separate from `orch_removal_*`: YES/NO
-
-
-      Gate must reject sampled evidence, generic pass claims, or provenance-only dispositions
-      that lack owner/lifecycle/gate-intersection proof.'
+      OPEN only if every blocker-class row is PROVEN or explicitly owned/exceptioned
+      by row-local audited evidence, `egr_audit_test_only_exception_disposition` is
+      PASS for the named test-only exception, no other product/test/doc mutations
+      are accepted, and historical failure evidence is preserved. Otherwise BLOCKED.'
     depends_on:
     - egr_inventory_classify_43_errors
     - egr_dispose_superseded_orchestrator_removal_rows
@@ -114401,7 +114414,9 @@ phases:
     - egr_close_repo_regression_post_review_rows
     - egr_generate_current_core_owner_path
     - egr_independent_closure_audit
+    - egr_fix_init_gitattributes_clirunner_compat
     - egr_retest_init_gitattributes_clirunner_compat
+    - egr_audit_test_only_exception_disposition
     agent: gate-reviewer
   - id: egr_fix_init_gitattributes_clirunner_compat
     name: Fix CliRunner isolated filesystem compatibility for init gitattributes tests

@@ -114287,7 +114287,7 @@ phases:
       by implementation branch.'
   - id: egr_retest_init_gitattributes_clirunner_compat
     name: Retest init gitattributes compatibility and final validation commands
-    status: pending
+    status: claimed
     description: 'PROOF ARTIFACT: independently retest the CliRunner compatibility
       remediation and the final-gate command family from a clean checkout/worktree
       state.
@@ -114335,3 +114335,5 @@ phases:
     depends_on:
     - egr_fix_init_gitattributes_clirunner_compat
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-17T15:25:42.930422+00:00'

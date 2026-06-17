@@ -110830,9 +110830,10 @@ phases:
       `src/vectl/shell/orchestration`, `src/vectl/orch_app.py`, `src/vectl/cli_orchestration`,
       `tests/orchestration`, `tests/fixtures/orchestration`, `tests/test_orch_cli_surface.py`.
 
-      Forbidden decide wording in preserved decide/MCP/doc surfaces: `deterministic
-      orchestration advisor`, `orchestration advisor`, `orchestrator advisor`, `external
-      orchestrator agents`, `orchestrator-visible execution`.
+      Forbidden decide wording in preserved decide/MCP/doc surfaces: `Decision logic
+      for vectl orchestration`, `deterministic orchestration advisor`, `orchestration
+      advisor`, `orchestrator advisor`, `external orchestrator agents`, `orchestrator-visible
+      execution`.
 
 
       Decide wording scope includes every `src/vectl/**/*.py` file plus README/RFC
@@ -110847,12 +110848,12 @@ phases:
       uv run python -c "from pathlib import Path; roots=[Path(''src''),Path(''tests''),Path(''docs''),Path(''README.md''),Path(''README_zh.md''),Path(''pyproject.toml'')];
       suffixes={''.py'',''.md'',''.toml'',''.txt'',''.yaml'',''.yml'',''.json''};
       general=[''vectl.orchestration'',''core.orchestration'',''orch_app'',''cli_orchestration'',''vectl
-      orch'',''IsolationMode'',''Step.isolation'']; decide_forbidden=[''deterministic
-      orchestration advisor'',''orchestration advisor'',''orchestrator advisor'',''external
-      orchestrator agents'',''orchestrator-visible execution'']; files=[]; [files.extend([p]
-      if p.is_file() else [q for q in p.rglob(''*'') if q.is_file() and q.suffix in
-      suffixes]) for p in roots if p.exists()]; decide_files=[p for p in Path(''src/vectl'').rglob(''*.py'')
-      if p.exists()] + [Path(''docs/RFC-vectl-decide-advisor-refresh.md''),Path(''README.md''),Path(''README_zh.md'')];
+      orch'',''IsolationMode'',''Step.isolation'']; decide_forbidden=[''Decision logic
+      for vectl orchestration'',''deterministic orchestration advisor'',''orchestration
+      advisor'',''orchestrator advisor'',''external orchestrator agents'',''orchestrator-visible
+      execution'']; files=[]; [files.extend([p] if p.is_file() else [q for q in p.rglob(''*'')
+      if q.is_file() and q.suffix in suffixes]) for p in roots if p.exists()]; decide_files=[p
+      for p in Path(''src/vectl'').rglob(''*.py'') if p.exists()] + [Path(''docs/RFC-vectl-decide-advisor-refresh.md''),Path(''README.md''),Path(''README_zh.md'')];
       path_terms=[''src/vectl/orchestration'',''src/vectl/core/orchestration'',''src/vectl/shell/orchestration'',''src/vectl/orch_app.py'',''src/vectl/cli_orchestration'',''tests/orchestration'',''tests/fixtures/orchestration'',''tests/test_orch_cli_surface.py''];
       hits=[]; [hits.append(f''{p}:{term}'') for p in files for term in general if
       term in p.read_text(errors=''ignore'')]; [hits.append(f''{p}:PATH:{term}'')
@@ -110870,6 +110871,7 @@ phases:
     - README.md
     - README_zh.md
     - pyproject.toml
+    - src/vectl/decide.py
     - src/vectl/mcp_core_misc_tools.py
     - src/vectl/mcp_core_common.py
     - src/vectl/mcp_render_tools.py

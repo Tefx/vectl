@@ -110788,24 +110788,26 @@ phases:
       \ state container`, src/vectl/model_outputs.py contains `tracked by the orchestrator`\
       \ and `executed by the orchestrator`, live MCP files contain the same advisor\
       \ wording, tests/test_decide.py:127 contains `orchestrator-visible execution`,\
-      \ and docs/RFC-vectl-decide-advisor-refresh.md contains variants such as `orchestrator\
-      \ authors`, `External orchestrator agents`, `agent/orchestrator integration\
-      \ mode`, and `agent/orchestrator consumers` | Preserved decide source/docs/MCP/tests\
-      \ use caller-owned automation/dispatch advisor wording and contain no unallowlisted\
-      \ case-variant `orchestrator` or `orchestration` wording | source_static | Case-insensitive\
-      \ forbidden decide wording probe plus broad `orchestrat` token policy over all\
-      \ listed live source/docs/test surfaces, with only explicit non-decide README\
-      \ checklist wording allowlisted | OWNED |\n\nNon-goals: do not remove `vectl_decide`;\
-      \ do not resurrect built-in `vectl orch`; do not rewrite the decide API for\
-      \ this cleanup. Edits to `src/vectl/decide.py`, `src/vectl/decision_state.py`,\
-      \ `tests/test_decide.py`, and `tests/test_decide_state_isolation.py` are explicitly\
-      \ limited to wording-only docstring/comment/assertion/string cleanup that preserves\
-      \ API, signatures, imports, behavior, and tests.\n\n<intent_closure_contract>\n\
-      allowed_paths:\n  - 'docs/RFC-vectl-decide-advisor-refresh.md'\n  - 'src/vectl/decide.py'\n\
-      \  - 'src/vectl/decision_state.py'\n  - 'src/vectl/mcp_server.py'\n  - 'src/vectl/mcp_core_misc_tools.py'\n\
-      \  - 'src/vectl/mcp_core_common.py'\n  - 'src/vectl/mcp_render_tools.py'\n \
-      \ - 'src/vectl/mcp_project_tools.py'\n  - 'src/vectl/model_outputs.py'\n  -\
-      \ 'README.md'\n  - 'README_zh.md'\n  - 'tests/test_decide.py'\n  - 'tests/test_decide_state_isolation.py'\n\
+      \ tests/test_mcp.py:2971-2978 says `vectl_decide makes orchestration decisions\
+      \ deterministic`, and docs/RFC-vectl-decide-advisor-refresh.md contains variants\
+      \ such as `orchestrator authors`, `External orchestrator agents`, `agent/orchestrator\
+      \ integration mode`, and `agent/orchestrator consumers` | Preserved decide source/docs/MCP/tests,\
+      \ including `tests/test_mcp.py`, use caller-owned automation/dispatch advisor\
+      \ wording and contain no unallowlisted case-variant `orchestrator` or `orchestration`\
+      \ wording | source_static | Case-insensitive forbidden decide wording probe\
+      \ plus broad `orchestrat` token policy over all listed live source/docs/test/MCP\
+      \ surfaces, with only explicit non-decide README checklist wording allowlisted\
+      \ | OWNED |\n\nNon-goals: do not remove `vectl_decide`; do not resurrect built-in\
+      \ `vectl orch`; do not rewrite the decide API for this cleanup. Edits to `src/vectl/decide.py`,\
+      \ `src/vectl/decision_state.py`, `tests/test_decide.py`, `tests/test_decide_state_isolation.py`,\
+      \ and `tests/test_mcp.py` are explicitly limited to wording-only docstring/comment/assertion/string\
+      \ cleanup that preserves API, signatures, imports, behavior, and tests.\n\n\
+      <intent_closure_contract>\nallowed_paths:\n  - 'docs/RFC-vectl-decide-advisor-refresh.md'\n\
+      \  - 'src/vectl/decide.py'\n  - 'src/vectl/decision_state.py'\n  - 'src/vectl/mcp_server.py'\n\
+      \  - 'src/vectl/mcp_core_misc_tools.py'\n  - 'src/vectl/mcp_core_common.py'\n\
+      \  - 'src/vectl/mcp_render_tools.py'\n  - 'src/vectl/mcp_project_tools.py'\n\
+      \  - 'src/vectl/model_outputs.py'\n  - 'README.md'\n  - 'README_zh.md'\n  -\
+      \ 'tests/test_decide.py'\n  - 'tests/test_decide_state_isolation.py'\n  - 'tests/test_mcp.py'\n\
       blocked_paths: []\nrequired_claims:\n  - decide_advisor_wording_caller_owned\n\
       \  - decide_api_and_tests_preserved\n  - no_built_in_orch_wording_in_decide_surfaces\n\
       \  - broad_decide_surface_orchestration_terms_rejected\n  - live_mcp_decide_surfaces_reworded\n\
@@ -110818,35 +110820,37 @@ phases:
       \            Path('src/vectl/mcp_project_tools.py'),\n            Path('src/vectl/model_outputs.py'),\n\
       \            Path('README.md'),\n            Path('README_zh.md'),\n       \
       \     Path('tests/test_decide.py'),\n            Path('tests/test_decide_state_isolation.py'),\n\
-      \        ]\n        forbidden = [\n            'decision logic for vectl orchestration',\n\
-      \            'mutable decide-side orchestration state container',\n        \
-      \    'deterministic orchestration advisor',\n            'orchestration advisor',\n\
-      \            'orchestrator advisor',\n            'external orchestrator agent',\n\
-      \            'orchestrator-visible',\n            'orchestrator authors',\n\
-      \            'agent/orchestrator',\n            'orchestrator consumer',\n \
-      \           'orchestration-plane runtime',\n            'orchestration plane',\n\
-      \            'external orchestration',\n            'tracked by the orchestrator',\n\
-      \            'executed by the orchestrator',\n        ]\n        allowlist =\
-      \ {\n            Path('README.md'): [\n                'for orchestrators and\
-      \ automation',\n                'worker/orchestrator receipt flow',\n      \
-      \          'in orchestrated work',\n                'the orchestrator owns actual\
-      \ checklist mutation',\n                'the orchestrator validates the receipt\
-      \ schema',\n            ],\n        }\n        hits = []\n        for p in files:\n\
-      \            if not p.exists():\n                continue\n            text\
-      \ = p.read_text(errors='ignore')\n            lower_text = text.lower()\n  \
-      \          hits.extend(f'{p}:{term}' for term in forbidden if term in lower_text)\n\
-      \            for lineno, line in enumerate(lower_text.splitlines(), start=1):\n\
-      \                if 'orchestrat' not in line:\n                    continue\n\
-      \                allowed = any(fragment in line for fragment in allowlist.get(p,\
-      \ []))\n                if not allowed:\n                    hits.append(f'{p}:{lineno}:unallowlisted-orchestrat:{line.strip()}')\n\
-      \        assert not hits, hits\n        print('decide source, tests, docs, and\
-      \ live MCP wording are caller-owned automation/dispatch advisor with no unallowlisted\
-      \ orchestrat tokens')\n    covers_claims:\n      - decide_advisor_wording_caller_owned\n\
+      \            Path('tests/test_mcp.py'),\n        ]\n        forbidden = [\n\
+      \            'decision logic for vectl orchestration',\n            'mutable\
+      \ decide-side orchestration state container',\n            'deterministic orchestration\
+      \ advisor',\n            'orchestration advisor',\n            'orchestrator\
+      \ advisor',\n            'external orchestrator agent',\n            'orchestrator-visible',\n\
+      \            'orchestrator authors',\n            'agent/orchestrator',\n  \
+      \          'orchestrator consumer',\n            'orchestration-plane runtime',\n\
+      \            'orchestration plane',\n            'external orchestration',\n\
+      \            'tracked by the orchestrator',\n            'executed by the orchestrator',\n\
+      \        ]\n        allowlist = {\n            Path('README.md'): [\n      \
+      \          'for orchestrators and automation',\n                'worker/orchestrator\
+      \ receipt flow',\n                'in orchestrated work',\n                'the\
+      \ orchestrator owns actual checklist mutation',\n                'the orchestrator\
+      \ validates the receipt schema',\n            ],\n        }\n        hits =\
+      \ []\n        for p in files:\n            if not p.exists():\n            \
+      \    continue\n            text = p.read_text(errors='ignore')\n           \
+      \ lower_text = text.lower()\n            hits.extend(f'{p}:{term}' for term\
+      \ in forbidden if term in lower_text)\n            for lineno, line in enumerate(lower_text.splitlines(),\
+      \ start=1):\n                if 'orchestrat' not in line:\n                \
+      \    continue\n                allowed = any(fragment in line for fragment in\
+      \ allowlist.get(p, []))\n                if not allowed:\n                 \
+      \   hits.append(f'{p}:{lineno}:unallowlisted-orchestrat:{line.strip()}')\n \
+      \       assert not hits, hits\n        print('decide source, tests, docs, live\
+      \ MCP wording, and tests/test_mcp.py are caller-owned automation/dispatch advisor\
+      \ with no unallowlisted orchestrat tokens')\n    covers_claims:\n      - decide_advisor_wording_caller_owned\n\
       \      - no_built_in_orch_wording_in_decide_surfaces\n      - broad_decide_surface_orchestration_terms_rejected\n\
       \      - live_mcp_decide_surfaces_reworded\n      - preserved_decide_tests_wording_cleaned\n\
       \  - id: decide_preservation_tests\n    command:\n      - uv\n      - run\n\
       \      - pytest\n      - tests/test_decide.py\n      - tests/test_decide_state_isolation.py\n\
-      \      - -q\n    covers_claims:\n      - decide_api_and_tests_preserved\n</intent_closure_contract>"
+      \      - tests/test_mcp.py\n      - -q\n    covers_claims:\n      - decide_api_and_tests_preserved\n\
+      </intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     refs:
     - user-request:2026-06-17#decide-wording-cleanup
@@ -110863,6 +110867,7 @@ phases:
     - README_zh.md
     - tests/test_decide.py
     - tests/test_decide_state_isolation.py
+    - tests/test_mcp.py
     depends_on:
     - orch_removal_doc_cleanup
     agent: doc-reviewer

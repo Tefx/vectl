@@ -111743,67 +111743,68 @@ phases:
   - id: egr_inventory_classify_43_errors
     name: Inventory and classify all completed-evidence guard errors
     status: claimed
-    description: 'PROOF ARTIFACT: deterministic inventory for the current completed-evidence
-      guard backlog.
-
-
-      Work type: proof_closure. This is a read-only classification step; do not mutate
-      product code, docs, tests, or historical evidence.
-
-
-      Required inventory source:
-
-      - Run `uv run vectl validate` from `/Users/tefx/Projects/vectl`.
-
-      - Capture every completed-evidence guard error currently reported. The expected
-      starting count from the request is 43; if the count has drifted, explain the
-      drift and still classify every current row.
-
-
-      Classification table columns:
-
-      - error_index
-
-      - offending_step_id
-
-      - offending_phase_id
-
-      - failure_signal (`FAIL`, `failed tests`, `NEEDS_REVISION`, `gate_open_allowed=false`,
-      `runtime non-closure`, or combined)
-
-      - likely_group: A_superseded_by_orchestrator_removal | B_scoped_pass_global_fail
-      | C_repo_regression_full_suite_invar_post_review | D_current_core_failure
-
-      - provenance: historical_failure | expected_red | out_of_step_origin | current_unknown
-
-      - disposition_needed: same_phase_closure | non_blocking_superseded | gate_intersection_disposition
-      | current_green_closure | current_blocker_owner
-
-      - intersects_remaining_gates: yes | no | unknown
-
-      - current_code_verification_required: yes | no
-
-      - planned_owner_step: one of the later `egr_*` steps.
-
-
-      Hard constraints:
-
-      - All plan mutations in later steps must use vectl MCP/CLI mutation tools only;
-      no direct `plan.yaml` edits.
-
-      - Do not falsify, erase, or rewrite historical failure facts to hide guard failures.
-
-      - Do not implement product code fixes in this phase.
-
-      - If an error cannot be safely classified, mark it D_current_core_failure rather
-      than guessing.
-
-
-      Acceptance: the evidence contains a complete 43-row (or drift-adjusted) table,
-      exact validate command output, and a count summary by group.'
+    description: "PROOF ARTIFACT: deterministic inventory for the current completed-evidence\
+      \ guard backlog.\n\nWork type: proof_closure. This is a read-only classification\
+      \ step; do not mutate product code, docs, tests, or historical evidence.\n\n\
+      Required inventory source:\n- Run `uv run vectl validate` from `/Users/tefx/Projects/vectl`.\n\
+      - Capture every completed-evidence guard error currently reported. The expected\
+      \ starting count from the request is 43; if the count has drifted, explain the\
+      \ drift and still classify every current row.\n\nClassification table columns:\n\
+      - error_index\n- offending_step_id\n- offending_phase_id\n- failure_signal (`FAIL`,\
+      \ `failed tests`, `NEEDS_REVISION`, `gate_open_allowed=false`, `runtime non-closure`,\
+      \ or combined)\n- likely_group: A_superseded_by_orchestrator_removal | B_scoped_pass_global_fail\
+      \ | C_repo_regression_full_suite_invar_post_review | D_current_core_failure\n\
+      - provenance: historical_failure | expected_red | out_of_step_origin | current_unknown\n\
+      - disposition_needed: same_phase_closure | non_blocking_superseded | gate_intersection_disposition\
+      \ | current_green_closure | current_blocker_owner\n- intersects_remaining_gates:\
+      \ yes | no | unknown\n- current_code_verification_required: yes | no\n- planned_owner_step:\
+      \ one of the later `egr_*` steps.\n\nHard constraints:\n- All plan mutations\
+      \ in later steps must use vectl MCP/CLI mutation tools only; no direct `plan.yaml`\
+      \ edits.\n- Do not falsify, erase, or rewrite historical failure facts to hide\
+      \ guard failures.\n- Do not implement product code fixes in this phase.\n- If\
+      \ an error cannot be safely classified, mark it D_current_core_failure rather\
+      \ than guessing.\n- Allowed repo mutation for this proof step: exactly one proof\
+      \ artifact at `.agent/evidence/egr_inventory_classify_43_errors.md` (or sidecar-normalized\
+      \ `agent/evidence/egr_inventory_classify_43_errors.md`).\n- Forbidden repo mutations:\
+      \ product/source/test/doc/config edits, direct `plan.yaml` edits, and any evidence\
+      \ artifact path other than the exact step artifact above.\n\nAcceptance: the\
+      \ evidence contains a complete 43-row (or drift-adjusted) table, exact validate\
+      \ command output, and a count summary by group.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \".agent/evidence/egr_inventory_classify_43_errors.md\"\n\
+      \  - \"agent/evidence/egr_inventory_classify_43_errors.md\"\nblocked_paths:\n\
+      \  - \"src/**\"\n  - \"tests/**\"\n  - \"docs/**\"\n  - \"plan.yaml\"\n  - \"\
+      pyproject.toml\"\n  - \"uv.lock\"\nrequired_claims:\n  - refs_confirmed\n  -\
+      \ raw_validate_output_recorded\n  - completed_evidence_guard_rows_classified\n\
+      \  - disposition_owner_mapping_complete\n  - no_product_or_plan_mutations\n\
+      \  - evidence_artifact_exists\nrequired_checks:\n  - id: evidence_artifact_content\n\
+      \    command: [\"python\", \"-c\", \"from pathlib import Path\\npaths=[Path('.agent/evidence/egr_inventory_classify_43_errors.md'),\
+      \ Path('agent/evidence/egr_inventory_classify_43_errors.md')]\\np=next((p for\
+      \ p in paths if p.exists()), None)\\nassert p is not None, 'missing evidence\
+      \ artifact for egr_inventory_classify_43_errors'\\ntext=p.read_text(encoding='utf-8')\\\
+      nrequired=['uv run vectl validate','error_index','offending_step_id','likely_group','provenance','disposition_needed','planned_owner_step']\\\
+      nmissing=[s for s in required if s not in text]\\nassert not missing, 'missing\
+      \ required inventory markers: '+repr(missing)\\nassert ('43' in text or 'drift'\
+      \ in text.lower()), 'evidence must mention the expected 43-row count or explain\
+      \ count drift'\\nprint(f'OK evidence artifact {p} contains validate output and\
+      \ classification markers')\"]\n    covers_claims:\n      - refs_confirmed\n\
+      \      - raw_validate_output_recorded\n      - completed_evidence_guard_rows_classified\n\
+      \      - disposition_owner_mapping_complete\n      - evidence_artifact_exists\n\
+      \  - id: changed_path_allowlist\n    command: [\"python\", \"-c\", \"from pathlib\
+      \ import Path\\nimport subprocess\\nallowed={'.agent/evidence/egr_inventory_classify_43_errors.md','agent/evidence/egr_inventory_classify_43_errors.md'}\\\
+      nchanged=set()\\nfor cmd in (['git','diff','--name-only'], ['git','diff','--cached','--name-only'],\
+      \ ['git','diff-tree','--no-commit-id','--name-only','-r','HEAD']):\\n    try:\\\
+      n        out=subprocess.run(cmd, check=False, text=True, stdout=subprocess.PIPE,\
+      \ stderr=subprocess.DEVNULL).stdout\\n    except Exception:\\n        out=''\\\
+      n    changed.update(line.strip() for line in out.splitlines() if line.strip())\\\
+      nbad=sorted(p for p in changed if p not in allowed)\\nassert not bad, 'unexpected\
+      \ product/source/test/doc/plan changes in current sidecar diff context: '+repr(bad)\\\
+      nprint('OK changed path allowlist: '+(repr(sorted(changed)) if changed else\
+      \ 'no local diff paths visible; sidecar allowed_paths remains authoritative'))\"\
+      ]\n    covers_claims:\n      - no_product_or_plan_mutations\n</intent_closure_contract>"
     verification: local-check protecting the evidence_guard_remediation remediation
-      phase. Inventory evidence must include raw `uv run vectl validate` output and
-      a complete classification table before any category-specific remediation runs.
+      phase. Run Intent-Closure sidecar gate and the contract-owned checks. Inventory
+      evidence must include raw `uv run vectl validate` output and a complete classification
+      table before any category-specific remediation runs.
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       If no refs were provided, state: "No refs for this step."

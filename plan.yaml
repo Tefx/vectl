@@ -111373,15 +111373,21 @@ phases:
 
       Gate rejects sampled evidence, top-level-only docs probes, missing preserved
       decide/RFC files, missing conftest cleanup, or omission of archived artifacts.'
-    verification: Gate OPEN only if tests/docs probe is PASS, README_zh parity fix
-      step is done with raw `readme_zh_decide_parity_probe` stdout/stderr proving
-      15 MCP tools plus `vectl_decide`, recursive docs/archive and tests/fixtures
-      probes are clean, exact `tests/conftest.py` active-config cleanup probe passes,
-      preserved decide source/tests/RFC path-presence probe passes, decide preservation
-      tests pass, and every blocker has a pending owner or deterministic closure evidence.
-      The README_zh 14-tool/vectl_decide omission is blocking until `orch_removal_readme_zh_decide_parity`
-      closes it; do not treat the prior WARN as non-blocking without that closure
-      evidence.
+    verification: 'Gate OPEN only if tests/docs probe is PASS, README_zh parity fix
+      step is done, and `orch_removal_mcp_tool_inventory_doc_truth` is done with raw
+      stdout/stderr from `runtime_mcp_inventory_count_list` proving the live MCP server
+      exposes 20 tools including `vectl_decide`, `readme_mcp_inventory_parity_probe`
+      proving README.md/README_zh.md both state the runtime-backed 20-tool inventory
+      and include `vectl_decide`, `stale_mcp_tool_count_wording_probe` proving active
+      README/MCP source surfaces contain no stale 15-tool wording or stale `Tool 16:
+      vectl_decide` numbering, and `decide_mcp_targeted_tests` passing. Recursive
+      docs/archive and tests/fixtures probes must remain clean, exact `tests/conftest.py`
+      active-config cleanup probe must pass, preserved decide source/tests/RFC path-presence
+      probe must pass, decide preservation tests must pass, and every blocker must
+      have a pending owner or deterministic closure evidence. The prior 15-tool README/README_zh/source-comment
+      wording is blocking until `orch_removal_mcp_tool_inventory_doc_truth` closes
+      it; do not treat a sampled README-only update as sufficient without the runtime
+      inventory and source wording probes.'
     refs:
     - user-request:2026-06-17#tests-docs-gate
     - docs/archive/orch_workflow_validation.yaml
@@ -111394,12 +111400,18 @@ phases:
     - README.md
     - README_zh.md
     - docs/RFC-vectl-decide-advisor-refresh.md
+    - src/vectl/mcp_server.py
+    - src/vectl/mcp_core_common.py
+    - src/vectl/mcp_project_tools.py
+    - src/vectl/mcp_render_tools.py
+    - src/vectl/mcp_core_misc_tools.py
     depends_on:
     - orch_removal_test_retirement
     - orch_removal_doc_cleanup
     - orch_removal_decide_wording_preserve
     - orch_removal_tests_docs_probe
     - orch_removal_readme_zh_decide_parity
+    - orch_removal_mcp_tool_inventory_doc_truth
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-17T15:46:38.427078+00:00'

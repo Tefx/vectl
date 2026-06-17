@@ -112834,7 +112834,7 @@ phases:
       '
   - id: orch_removal_final_grep_closure
     name: Final forbidden-term grep closure
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       full-plan-check final grep closure. This step proves product source, tests,
@@ -113145,6 +113145,120 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-17T19:04:01.619190+00:00'
+    done_at: '2026-06-17T19:17:30.236965+00:00'
+    evidence: 'verdict: FAIL
+
+      blockers:
+
+      - B2-final-grep-forbidden-residue: final grep closure command exited 1 with
+      forbidden path/content hits.
+
+      gate_open_allowed: false
+
+      orchestrator_action_hint: DO_NOT_COMPLETE_ORIGINAL_GATE_UNTIL_RETEST; completed
+      as blocker-finding/reporting step after planner created owner `orch_removal_fix_final_grep_forbidden_residue`
+      and retest `orch_removal_retest_final_grep_closure`.
+
+
+      Refs read confirmation:
+
+      - user-request:2026-06-17#final-grep-closure: NOT READ; non-file anchor.
+
+      - roots inspected by worker: src/, tests/, docs/, README.md, README_zh.md, pyproject.toml.
+
+      - preserved refs present: src/vectl/decide.py, src/vectl/decision_state.py,
+      src/vectl/model_outputs.py, src/vectl/mcp_core_misc_tools.py, src/vectl/mcp_core_common.py,
+      src/vectl/mcp_render_tools.py, src/vectl/mcp_project_tools.py, tests/test_decide.py,
+      tests/test_decide_state_isolation.py, tests/test_mcp.py, docs/RFC-vectl-decide-advisor-refresh.md.
+
+      - tools/vectl/README.md: absent/non-authoritative.
+
+
+      Sidecar gate:
+
+      command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_final_grep_closure --worktree .vectl/worktrees/orch_removal_final_grep_closure
+      --base 287dfac464a90ca610bf95dd83d5eb57e5655bb1 --out .vectl/worktrees/orch_removal_final_grep_closure/.agent/gate/verdict.json
+
+      exit_code: 0
+
+      status: NOT_APPLICABLE
+
+      reason: NO_INTENT_CLOSURE_CONTRACT
+
+      changed_paths: []
+
+
+      Exact command executed by worker:
+
+      - cwd: .vectl/worktrees/orch_removal_final_grep_closure
+
+      - command: uv run python - <<''PY'' ... PY (task-provided heredoc payload exactly;
+      no vectl CLI/MCP commands)
+
+      - exit_code: 1
+
+      - stdout: empty
+
+      - stderr: AssertionError listing forbidden hits.
+
+
+      Forbidden hit summary from raw stderr:
+
+      - tests/test_models.py:IsolationMode
+
+      - docs/invar_guard_remediation/uiux-proof-artifact.md: orch_app, vectl orch,
+      CONTENT_PATH docs/ORCHESTRATION-, CONTENT_PATH docs/RFC-orch-drive.md, LEGACY_DRIVER
+      .vectl/worktrees
+
+      - docs/invar_guard_remediation/guard_all_raw.txt: orch_app, cli_orchestration,
+      CONTENT_PATH src/vectl/orchestration, src/vectl/orch_app.py, src/vectl/cli_orchestration,
+      docs/archive/consumer_boundary_conformance_verify.py
+
+      - docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md:
+      orch_app, CONTENT_PATH src/vectl/orchestration, src/vectl/orch_app.py, tests/orchestration,
+      docs/RFC-opencode-orchestration-runner.md
+
+      - docs/invar_guard_remediation/escape_budget_authority_decision.md: orch_app,
+      CONTENT_PATH src/vectl/orchestration, src/vectl/core/orchestration, src/vectl/orch_app.py
+
+      - docs/invar_guard_remediation/failure_inventory.md: orch_app, cli_orchestration,
+      CONTENT_PATH src/vectl/orchestration, src/vectl/orch_app.py, src/vectl/cli_orchestration,
+      docs/archive/consumer_boundary_conformance_verify.py
+
+      - docs/invar_guard_remediation/post_salvage_residual_classification_register.md:
+      orch_app, cli_orchestration, vectl orch, CONTENT_PATH src/vectl/orchestration,
+      src/vectl/orch_app.py, src/vectl/cli_orchestration, docs/archive/consumer_boundary_conformance_verify.py
+
+
+      Behavioral proof register:
+
+      - final_grep_closure_prints_clean_message: DISPROVEN
+
+      - forbidden_path_content_decide_package_hits_absent: DISPROVEN
+
+      - preserved_decide_targets_present: PROVEN
+
+      - exact_deleted_targets_absent: PROVEN
+
+      - verify_only_no_mutation: PROVEN
+
+
+      Disposition / owner creation:
+
+      - Planner created `orch_removal_fix_final_grep_forbidden_residue` to own B2-final-grep-forbidden-residue.
+
+      - Planner created `orch_removal_retest_final_grep_closure` to rerun the exact
+      closure command after fix.
+
+      - Downstream deep review and final gate now depend on the fix and retest.
+
+
+      Worktree/mutations:
+
+      - Verify-only worker made no product/doc/test mutations; no commit created.
+
+      '
   - id: orch_removal_full_regression_check
     name: Run full regression, packaged help, and invar guard
     status: done

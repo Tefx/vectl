@@ -111861,7 +111861,7 @@ phases:
       '
   - id: orch_removal_live_smoke_dispatch_b1_fix
     name: Fix B1 active live-smoke dispatch runtime tests remain
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: project\n\nFix the blocker\
       \ found by `orch_removal_tests_docs_gate`: `B1-active-live-smoke-dispatch-runtime-tests-remain`.\
       \ This is a batched demolition remediation owner step; close the finding without\
@@ -112078,6 +112078,188 @@ phases:
     agent: architectural-demolitionist
     claimed_by: architectural-demolitionist
     claimed_at: '2026-06-17T18:48:41.762556+00:00'
+    done_at: '2026-06-17T18:55:18.971226+00:00'
+    evidence: '## B1 Fix Evidence
+
+
+      ### refs Read Confirmation
+
+      - `tools/vectl/README.md` — NOT READ: absent/non-authoritative.
+
+      - `CONSTITUTION.md` — absent.
+
+      - `tests/live_smoke/helpers.py` — removed; prior content was live-smoke harness
+      with driver live-smoke policy markers, dispatch_live, pinned runner models,
+      subprocess capture.
+
+      - `tests/live_smoke/test_codex_dispatch_live.py` — removed; prior header advertised
+      `driver.yaml codex runner contract -> dispatch integration -> real codex subprocess`.
+
+      - `tests/live_smoke/test_opencode_dispatch_live.py` — removed; prior header
+      advertised `driver.yaml opencode runner contract -> dispatch integration ->
+      real opencode subprocess`.
+
+      - `tests/test_cli.py` — stale `test_orch_` method renamed/re-scoped to explicit
+      `B1_NEGATIVE_ORCH_REMOVAL_COVERAGE`.
+
+
+      ### Changed Paths
+
+      - `tests/live_smoke/helpers.py` — deleted; only supported deleted live-smoke
+      dispatch/runtime semantics.
+
+      - `tests/live_smoke/test_codex_dispatch_live.py` — deleted forbidden real-runner
+      dispatch runtime test surface.
+
+      - `tests/live_smoke/test_opencode_dispatch_live.py` — deleted forbidden real-runner
+      dispatch runtime test surface.
+
+      - `tests/test_cli.py` — re-scoped stale `test_orch_` residue as explicit B1
+      negative removal coverage.
+
+
+      ### Commits
+
+      - Worker commit: 27484733df6fd1f2ab4a8da343067b7a257cf821 (`Remove live smoke
+      dispatch runtime tests`)
+
+      - Mainline squash commit: 2a6635694f39dc10e46130e83f88d89b95df8db6
+
+
+      ### Requirement-to-Evidence Matrix
+
+      | requirement_id | status | evidence_ref |
+
+      | --- | --- | --- |
+
+      | B1-LIVE-SMOKE-DISPATCH-TESTS-RETIRED | PROVEN | worker active probe PASS;
+      sidecar `active_live_smoke_orch_retirement_probe` pass; mainline active probe
+      exit 0; mainline live_smoke collect-only exit 0 with no forbidden dispatch/runtime
+      tests collected |
+
+      | B1-HELPER-POLICY-RESCOPED | PROVEN | helper file deleted; worker/sidecar/mainline
+      active probes pass; mainline helper import search exit 0 |
+
+      | B1-CLI-STALE-TEST-ORCH-CLOSED | PROVEN | no unresolved `test_orch_`; mainline
+      `tests/test_cli.py::TestDriveCLI` exit 0 with 4 passed |
+
+      | B1-NO-PRODUCT-DOCS-RUNTIME-CHANGES | PROVEN | sidecar changed_paths only allowed
+      B1 test files; mainline blocked product/docs/preserved-test paths unchanged
+      |
+
+      | DECIDE-MCP-PRESERVED | PROVEN | worker targeted tests 217 passed; sidecar
+      targeted test check pass; mainline targeted decide/MCP tests 217 passed |
+
+
+      ### Intent-Closure Sidecar Gate
+
+      ```
+
+      command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_live_smoke_dispatch_b1_fix --worktree .vectl/worktrees/orch_removal_live_smoke_dispatch_b1_fix
+      --base 22d437648155308c9f7485b7ff723117c368f2fd --out .vectl/worktrees/orch_removal_live_smoke_dispatch_b1_fix/.agent/gate/verdict.json
+
+      exit_code: 0
+
+      status: CONFORMANT
+
+      changed_paths: tests/live_smoke/helpers.py, tests/live_smoke/test_codex_dispatch_live.py,
+      tests/live_smoke/test_opencode_dispatch_live.py, tests/test_cli.py
+
+      checked_claims: B1-LIVE-SMOKE-DISPATCH-TESTS-RETIRED, B1-HELPER-POLICY-RESCOPED,
+      B1-CLI-STALE-TEST-ORCH-CLOSED, B1-NO-PRODUCT-DOCS-RUNTIME-CHANGES, DECIDE-MCP-PRESERVED
+
+      check_results: active_live_smoke_orch_retirement_probe pass; live_smoke_collect_only_no_forbidden_dispatch_runtime_tests
+      pass; no_product_docs_runtime_changes_outside_allowed_paths pass; targeted_decide_mcp_preservation_tests
+      pass
+
+      ```
+
+
+      ### Mainline Final-State Verification
+
+      ```
+
+      command: active_live_smoke_orch_retirement_probe
+
+      exit_code: 0
+
+      stdout: B1 active live-smoke/orchestration retirement probe passed
+
+      stderr: empty
+
+
+      command: live_smoke_collect_only_no_forbidden_dispatch_runtime_tests
+
+      exit_code: 0
+
+      stdout: collected 0 items; no tests collected; no live_smoke forbidden dispatch-runtime
+      tests collected
+
+      stderr: empty
+
+
+      command: no_product_docs_runtime_changes_outside_allowed_paths
+
+      exit_code: 0
+
+      stdout: blocked product/docs/preserved-test paths unchanged in mainline HEAD
+
+      stderr: empty
+
+
+      command: helper import/user search for tests.live_smoke.helpers/live_smoke.helpers/from
+      tests.live_smoke
+
+      exit_code: 0
+
+      stdout: PASS no live Python import/users of tests.live_smoke.helpers remain
+
+      stderr: empty
+
+
+      command: env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/test_cli.py::TestDriveCLI
+      -q
+
+      exit_code: 0
+
+      stdout: 4 passed in 0.35s
+
+      stderr: empty
+
+
+      command: env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/test_mcp.py
+      tests/test_decide.py tests/test_decide_state_isolation.py -q
+
+      exit_code: 0
+
+      stdout: 217 passed in 4.00s
+
+      stderr: empty
+
+      ```
+
+
+      ### Scope Guard
+
+      - Product runtime/docs changed: NO
+
+      - New abstraction/skip/xfail shell introduced: NO
+
+
+      ### Closure Claim
+
+      `B1-active-live-smoke-dispatch-runtime-tests-remain` found by `orch_removal_tests_docs_gate`
+      is closed by this fix: forbidden files are deleted, live-smoke collect-only
+      reports 0 collected items, no forbidden markers/importers remain, and preserved
+      decide/MCP tests pass.
+
+
+      ### Deviation/gaps/notes
+
+      - No deviations.
+
+      '
   - id: orch_removal_live_smoke_dispatch_b1_retest
     name: Retest B1 live-smoke dispatch retirement and gate reopening proof
     status: pending

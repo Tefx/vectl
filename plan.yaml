@@ -110714,7 +110714,7 @@ phases:
   steps:
   - id: orch_removal_test_retirement
     name: Retire orchestration-only tests and repro/live-smoke probes
-    status: pending
+    status: claimed
     description: "step_type: implementation\nTARGET STATE: tests and fixtures that\
       \ exist only to validate the deleted built-in orchestration runtime are removed\
       \ or narrowly rewritten to assert removal, while decide/model/io/MCP non-orchestration\
@@ -110933,6 +110933,8 @@ phases:
     - tests/fixtures/helpers/continuity_hygiene.py
     - tests/conftest.py
     agent: architectural-demolitionist
+    claimed_by: architectural-demolitionist
+    claimed_at: '2026-06-17T14:56:26.471689+00:00'
   - id: orch_removal_doc_cleanup
     name: Delete orchestration docs and remove README orch guidance
     status: claimed

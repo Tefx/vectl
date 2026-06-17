@@ -409,35 +409,6 @@ uvx vectl repair claims --dry-run  # Should now show no changes
 
 ---
 
-## Continuity Recovery (`vectl orch recover`)
-
-`vectl repair continuity` is retired. The supported recovery surface is:
-
-```bash
-uv run vectl orch recover [RUN_ID|--latest]
-```
-
-Use dry-run JSON diagnostics when triaging startup/recovery state:
-
-```bash
-uv run vectl orch recover --latest --dry-run --json
-```
-
-**Recovery semantics (hardened behavior):**
-
-- `--dry-run`: Diagnostic-only mode; no state modifications performed
-- Non `--dry-run`: Performs actual recovery actions including repairs and state transitions
-- **No-silent-deletion invariant**: Recovery operations never silently delete run data; any destructive action requires explicit `--yes` confirmation or the `--force` flag
-- `--latest` selector safety: If no matching run exists, exits with error code 2 (Not found); no implicit fallback or run creation occurs
-
-For claim/plan consistency repair, use `repair claims` (separate surface):
-
-```bash
-uv run vectl repair claims --dry-run
-```
-
-Recovery behavior, quarantine semantics, and operator handling are defined by the orchestration-plane recovery contracts and implementation (`src/vectl/orchestration/recovery.py`, `src/vectl/orch_app.py`).
-
 ## Technical Details
 
 Architecture, CAS safety, and test coverage (Hypothesis state machine verification): [docs/DESIGN.md](docs/DESIGN.md).

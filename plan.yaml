@@ -110276,7 +110276,7 @@ phases:
   steps:
   - id: orch_removal_cli_cutout
     name: Remove built-in `vectl orch` CLI surface
-    status: claimed
+    status: done
     description: "step_type: implementation\nTARGET STATE: the packaged CLI imports\
       \ successfully, `vectl --help` no longer exposes `orch` or orchestration subcommands,\
       \ `vectl orch --help` is not invokable as a hidden/stub command, `cli_plan_common.py`\
@@ -110353,6 +110353,15 @@ phases:
     agent: architectural-demolitionist
     claimed_by: architectural-demolitionist
     claimed_at: '2026-06-17T13:33:12.965167+00:00'
+    done_at: '2026-06-17T13:41:44.058262+00:00'
+    evidence: 'status SUCCESS; worker commit 409e044b65b44f6b3aa8180bc6cb9e96343cd438
+      merged to main as 14b94bb; sidecar verdict CONFORMANT; files changed src/vectl/cli.py
+      and src/vectl/cli_plan_common.py only. Mainline verification passed: cli+decide
+      import probe OK; cli_plan_common deleted-runtime wiring absent; uvx --refresh
+      --from . vectl --help exits 0 with no orch/orchestration runtime surface; uvx
+      --refresh --from . vectl orch --help exits 2 with No such command ''orch'' and
+      no hidden/stub help; uv run pytest tests/test_mcp.py -q: 179 passed. Preserved
+      decide.py/decision_state.py/model_outputs.py/MCP decide surface.'
   - id: orch_removal_runtime_delete
     name: Delete orchestration runtime source packages and files
     status: pending

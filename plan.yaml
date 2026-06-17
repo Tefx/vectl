@@ -112776,21 +112776,35 @@ phases:
       \ errors have an explicit audited exception policy because closure would violate\
       \ historical audit integrity.\n\nGate criteria:\n1. All remediation steps in\
       \ this phase are complete with specific evidence.\n2. The independent closure\
-      \ audit reviewed all 43 initial rows.\n3. `uv run vectl validate` is run at\
-      \ gate time.\n4. Gate OPEN requires one of:\n   - `uv run vectl validate` returns\
-      \ 0 errors; OR\n   - every remaining completed-evidence guard row is covered\
-      \ by an explicit exception-policy record that names the row, why closure cannot\
-      \ be done without falsifying history, the lifecycle/owner, and why it does not\
-      \ permit hidden product regressions.\n5. Gate BLOCKED if any row remains unclassified,\
-      \ unowned, or only narratively dismissed as pre-existing/out-of-scope.\n6. Gate\
-      \ BLOCKED if product code/test/doc changes were made by this phase.\n7. Gate\
-      \ BLOCKED if historical failure facts were erased or rewritten away.\n\nReview\
-      \ depth: THOROUGH\nreview_depth_rationale:\n- Phase remediates validation guard\
-      \ failures and can otherwise hide historical runtime failures.\n- The requested\
-      \ work is plan evidence hygiene, not product code repair, so audit integrity\
-      \ is the primary risk.\n\ncross_cutting_focus:\n- Completed-evidence guard closure\
-      \ semantics.\n- Gate-intersection disposition vs provenance confusion.\n- Separation\
-      \ from `orch_removal_*` work.\n- Validation zero/error exception policy durability."
+      \ audit reviewed all 43 initial rows using the row-local `closure_register`\
+      \ contract.\n3. `uv run vectl validate` is run at gate time and parsed robustly:\
+      \ use a machine-readable/unwrapped validation source if available, otherwise\
+      \ regex extraction across wrapped output. Exact human-line substring matching\
+      \ for long step IDs is rejected.\n4. Gate OPEN requires one of:\n   - `uv run\
+      \ vectl validate` returns 0 errors; OR\n   - every remaining completed-evidence\
+      \ guard row is covered by an explicit audited row-local exception-policy/current_blocker_owner\
+      \ record that names the offending_step_id, why closure cannot be done without\
+      \ falsifying history or which owner will close it, the lifecycle/owner, and\
+      \ why it does not permit hidden product regressions.\n5. For any non-blocking\
+      \ closure, the reviewed row-local evidence must include exact validator-recognized\
+      \ wording: `non-blocking` or `not blocking`, explicit owner, lifecycle/disposition/tracked\
+      \ language, and gate-intersection=false/non-intersection wording; otherwise\
+      \ require same-phase `gate_open_allowed=true` closure evidence or exception\
+      \ policy.\n6. Gate BLOCKED if any row remains unclassified, unowned, or only\
+      \ narratively dismissed as pre-existing/out-of-scope.\n7. Gate BLOCKED if ownership\
+      \ appears only in static target lists, broad phase descriptions, or global keywords\
+      \ rather than a row-local `offending_step_id` record.\n8. Gate BLOCKED if product\
+      \ code/test/doc changes were made by this phase.\n9. Gate BLOCKED if historical\
+      \ failure facts were erased or rewritten away.\n\nReview depth: THOROUGH\nreview_depth_rationale:\n\
+      - Phase remediates validation guard failures and can otherwise hide historical\
+      \ runtime failures.\n- The requested work is plan evidence hygiene, not product\
+      \ code repair, so audit integrity is the primary risk.\n- Prior readiness review\
+      \ found contradictions between reclassification/owner semantics and required\
+      \ checks; this gate must verify row-local closure semantics specifically.\n\n\
+      cross_cutting_focus:\n- Completed-evidence guard closure semantics.\n- Gate-intersection\
+      \ disposition vs provenance confusion.\n- Separation from `orch_removal_*` work.\n\
+      - Robust validation parsing that cannot miss wrapped step IDs.\n- Validation\
+      \ zero/error exception policy durability."
     verification: full-plan-check. Run `uv run vectl validate`; require 0 errors or
       an explicit audited exception policy for any remaining old guard row. Review
       targeted `vectl show` evidence for every initially failing step before opening

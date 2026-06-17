@@ -110212,27 +110212,43 @@ phases:
   - id: orch_removal_foundation_gate
     name: Gate orchestrator-removal foundation
     status: claimed
-    description: 'step_type: gate
-
-      local-check gate protecting downstream deletion work. Gate blocks unless the
-      scope matrix and worktree cleanup policy are explicit, evidence-backed, and
-      preserve vectl_decide.
-
-
-      Gate decision basis must review ORCH-REMOVE-SCOPE, DECIDE-PRESERVE, ISOLATION-REMOVE,
-      FINAL-GREP, WT-SAFE-1, and WT-SAFE-2.
-
-
-      review_depth: STANDARD
-
-      cross_cutting_focus:
-
-      - built-in orchestration is removed without deleting vectl_decide
-
-      - direct `rm -rf .vectl/workspaces .vectl/worktrees` remains forbidden while
-      worktrees are registered
-
-      - no downstream implementation step starts from an ambiguous deletion target'
+    description: "step_type: gate\nlocal-check gate protecting downstream deletion\
+      \ work. Gate blocks unless the scope matrix and worktree cleanup policy are\
+      \ explicit, evidence-backed, and preserve vectl_decide.\n\nGate decision basis\
+      \ must review ORCH-REMOVE-SCOPE, DECIDE-PRESERVE, ISOLATION-REMOVE, FINAL-GREP,\
+      \ WT-SAFE-1, and WT-SAFE-2.\n\nreview_depth: STANDARD\ncross_cutting_focus:\n\
+      - built-in orchestration is removed without deleting vectl_decide\n- direct\
+      \ `rm -rf .vectl/workspaces .vectl/worktrees` remains forbidden while worktrees\
+      \ are registered\n- no downstream implementation step starts from an ambiguous\
+      \ deletion target\n\nThis gate is evidence-only. It must not modify product\
+      \ code, tests, docs, or plan state except its own completion evidence artifact.\n\
+      \n<intent_closure_contract>\nallowed_paths:\n  - \".agent/evidence/orch_removal_foundation_gate.md\"\
+      \n  - \"agent/evidence/orch_removal_foundation_gate.md\"\nblocked_paths:\n \
+      \ - \"src/**\"\n  - \"tests/**\"\n  - \"test_*.py\"\n  - \"docs/**\"\n  - \"\
+      README*\"\n  - \"BACKLOG.md\"\n  - \"CLAUDE.md\"\n  - \"GEMINI.md\"\n  - \"\
+      INVAR.md\"\n  - \"AGENTS.md\"\n  - \"plan.yaml\"\n  - \"plan.yaml.lock\"\n \
+      \ - \"pyproject.toml\"\n  - \"pyrightconfig.json\"\n  - \"uv.lock\"\n  - \"\
+      .github/**\"\nrequired_claims:\n  - evidence_artifact_exists\n  - gate_decision_open_or_pass_recorded\n\
+      \  - scope_markers_recorded\n  - no_blockers_recorded\n  - no_product_or_plan_mutations\n\
+      required_checks:\n  - id: evidence_artifact_markers\n    command:\n      - \"\
+      python\"\n      - \"-c\"\n      - |\n        from pathlib import Path\n    \
+      \    paths = [Path('.agent/evidence/orch_removal_foundation_gate.md'), Path('agent/evidence/orch_removal_foundation_gate.md')]\n\
+      \        artifact = next((p for p in paths if p.exists()), None)\n        assert\
+      \ artifact is not None, 'missing evidence artifact in .agent/evidence or agent/evidence'\n\
+      \        text = artifact.read_text(encoding='utf-8')\n        upper = text.upper()\n\
+      \        lower = text.lower()\n        def require(label, ok):\n           \
+      \ assert ok, f'missing marker: {label}'\n        require('gate decision OPEN/PASS',\
+      \ 'OPEN' in upper or 'PASS' in upper)\n        for marker in ['ORCH-REMOVE-SCOPE',\
+      \ 'DECIDE-PRESERVE', 'ISOLATION-REMOVE', 'FINAL-GREP', 'WT-SAFE-1', 'WT-SAFE-2']:\n\
+      \            require(marker, marker in text)\n        require('no blockers',\
+      \ 'no blocker' in lower or 'blockers: none' in lower or 'blocking issues: none'\
+      \ in lower)\n        require('no product/plan mutations', (('product' in lower\
+      \ or 'source' in lower) and 'plan' in lower and ('no ' in lower or 'not ' in\
+      \ lower) and ('mutation' in lower or 'mutat' in lower or 'modified' in lower)))\n\
+      \        print(f'OK evidence artifact markers: {artifact}')\n    covers_claims:\n\
+      \      - evidence_artifact_exists\n      - gate_decision_open_or_pass_recorded\n\
+      \      - scope_markers_recorded\n      - no_blockers_recorded\n      - no_product_or_plan_mutations\n\
+      </intent_closure_contract>"
     verification: Gate OPEN only if the two proof artifacts are complete and no product-code
       mutation occurred in this phase.
     refs:

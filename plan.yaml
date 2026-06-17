@@ -112974,47 +112974,54 @@ phases:
     status: pending
     description: "DECISION ARTIFACT: final independent gate for the evidence_guard_remediation\
       \ phase.\n\nVerification scope: full-plan-check protecting the final target\
-      \ that `uv run vectl validate` reaches 0 errors, or that any remaining old validation\
-      \ errors have an explicit audited exception policy because closure would violate\
-      \ historical audit integrity.\n\nGate criteria:\n1. All remediation steps in\
-      \ this phase are complete with specific evidence.\n2. The independent closure\
-      \ audit reviewed all 43 initial rows using the row-local `closure_register`\
-      \ contract.\n3. `uv run vectl validate` is run at gate time and parsed robustly:\
-      \ use a machine-readable/unwrapped validation source if available, otherwise\
-      \ regex extraction across wrapped output. Exact human-line substring matching\
-      \ for long step IDs is rejected.\n4. Gate OPEN requires one of:\n   - `uv run\
-      \ vectl validate` returns 0 errors; OR\n   - every remaining completed-evidence\
-      \ guard row is covered by an explicit audited row-local exception-policy/current_blocker_owner\
-      \ record that names the offending_step_id, why closure cannot be done without\
-      \ falsifying history or which owner will close it, the lifecycle/owner, and\
-      \ why it does not permit hidden product regressions.\n5. For any non-blocking\
-      \ closure, the reviewed row-local evidence must include exact validator-recognized\
-      \ wording: `non-blocking` or `not blocking`, explicit owner, lifecycle/disposition/tracked\
-      \ language, and gate-intersection=false/non-intersection wording; non-blocking\
-      \ disposition can close only rows absent from current validator output or backed\
-      \ by same-phase `gate_open_allowed=true` closure evidence. Any row still reported\
-      \ by gate-time `uv run vectl validate` requires audited row-local `exception_policy`\
-      \ or `current_blocker_owner` evidence; ordinary `non-blocking_disposition` is\
-      \ insufficient.\n6. Gate BLOCKED if any row remains unclassified, unowned, or\
-      \ only narratively dismissed as pre-existing/out-of-scope.\n7. Gate BLOCKED\
-      \ if ownership appears only in static target lists, broad phase descriptions,\
-      \ or global keywords rather than a row-local `offending_step_id` record.\n8.\
-      \ Gate BLOCKED if product code/test/doc changes were made by this phase.\n9.\
-      \ Gate BLOCKED if historical failure facts were erased or rewritten away.\n\n\
-      Review depth: THOROUGH\nreview_depth_rationale:\n- Phase remediates validation\
-      \ guard failures and can otherwise hide historical runtime failures.\n- The\
-      \ requested work is plan evidence hygiene, not product code repair, so audit\
-      \ integrity is the primary risk.\n- Prior readiness review found contradictions\
-      \ between reclassification/owner semantics and required checks; this gate must\
-      \ verify row-local closure semantics specifically.\n\ncross_cutting_focus:\n\
-      - Completed-evidence guard closure semantics.\n- Gate-intersection disposition\
-      \ vs provenance confusion.\n- Separation from `orch_removal_*` work.\n- Robust\
-      \ validation parsing that cannot miss wrapped step IDs.\n- Validation zero/error\
-      \ exception policy durability."
-    verification: full-plan-check. Run `uv run vectl validate`; require 0 errors or
-      an explicit audited exception policy for any remaining old guard row. Review
-      targeted `vectl show` evidence for every initially failing step before opening
-      the gate.
+      \ that `uv run vectl validate` reaches 0 errors, or that any remaining completed-evidence\
+      \ guard rows have audited row-local `exception_policy` or `current_blocker_owner`\
+      \ records with owner, lifecycle/disposition/tracked, and gate-intersection reasoning.\n\
+      \nGate criteria:\n1. All remediation steps in this phase are complete with specific\
+      \ evidence.\n2. The independent closure audit reviewed all 43 initial rows plus\
+      \ every drift/current completed-evidence guard offender reported at audit time\
+      \ using the row-local `closure_register` contract.\n3. `uv run vectl validate`\
+      \ is run at gate time and parsed robustly: use a machine-readable/unwrapped\
+      \ validation source if available, otherwise regex extraction across wrapped\
+      \ output. Exact human-line substring matching for long step IDs is rejected.\n\
+      4. Gate OPEN requires one of:\n   - `uv run vectl validate` returns 0 errors;\
+      \ OR\n   - every remaining completed-evidence guard row is covered by an explicit\
+      \ audited row-local `exception_policy` or `current_blocker_owner` record that\
+      \ names the offending_step_id, explains the owner/lifecycle/disposition/tracked\
+      \ state, provides gate-intersection or non-intersection reasoning, and for current\
+      \ blockers names the concrete owner step/phase plus verification/retest/required-command\
+      \ ownership.\n5. For any non-blocking closure, the reviewed row-local evidence\
+      \ must include exact validator-recognized wording: `non-blocking` or `not blocking`,\
+      \ explicit owner, lifecycle/disposition/tracked language, and gate-intersection=false/non-intersection\
+      \ wording; non-blocking disposition can close only rows absent from current\
+      \ validator output or backed by same-phase `gate_open_allowed=true` closure\
+      \ evidence. Any row still reported by gate-time `uv run vectl validate` requires\
+      \ audited row-local `exception_policy` or `current_blocker_owner` evidence;\
+      \ ordinary `non-blocking_disposition` is insufficient.\n6. For any still-reported\
+      \ non-exception row using `current_blocker_owner`, the accepted record must\
+      \ name a concrete owner other than `egr_generate_current_core_owner_path`; D-local\
+      \ `closed_by_step` is writer proof only and cannot satisfy owner closure by\
+      \ itself.\n7. Gate BLOCKED if any row remains unclassified, unowned, or only\
+      \ narratively dismissed as pre-existing/out-of-scope.\n8. Gate BLOCKED if ownership\
+      \ appears only in static target lists, broad phase descriptions, or global keywords\
+      \ rather than a row-local `offending_step_id` record.\n9. Gate BLOCKED if product\
+      \ code/test/doc changes were made by this phase.\n10. Gate BLOCKED if historical\
+      \ failure facts were erased or rewritten away.\n\nReview depth: THOROUGH\nreview_depth_rationale:\n\
+      - Phase remediates validation guard failures and can otherwise hide historical\
+      \ runtime failures.\n- The requested work is plan evidence hygiene, not product\
+      \ code repair, so audit integrity is the primary risk.\n- Prior readiness review\
+      \ found contradictions between reclassification/owner semantics and required\
+      \ checks; this gate must verify row-local closure semantics specifically.\n\n\
+      cross_cutting_focus:\n- Completed-evidence guard closure semantics.\n- Gate-intersection\
+      \ disposition vs provenance confusion.\n- Separation from `orch_removal_*` work.\n\
+      - Robust validation parsing that cannot miss wrapped step IDs.\n- Validation\
+      \ zero/error exception-policy/current-owner durability."
+    verification: full-plan-check. Run `uv run vectl validate`; require 0 errors OR
+      audited row-local `exception_policy`/`current_blocker_owner` records for every
+      remaining completed-evidence guard row, including owner, lifecycle/disposition/tracked
+      language, gate-intersection reasoning, and for current blockers verification/retest/required-command
+      ownership. Review targeted `vectl show` evidence for every initially failing
+      row and every audit-time drift/current offender before opening the gate.
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       If no refs were provided, state: "No refs for this step."
@@ -113052,15 +113059,33 @@ phases:
       |---|---|---|---|---|
 
 
-      Statuses: PROVEN | UNPROVEN | NEEDS_TEST | BLOCKED | EXCEPTION_POLICY.
+      Statuses: PROVEN | UNPROVEN | NEEDS_TEST | BLOCKED | EXCEPTION_POLICY | OWNED_CURRENT_BLOCKER.
 
 
-      ## Exception Policy (only if validate is not zero)
+      ## Remaining Row Exception / Current-Owner Records (required if validate is
+      not zero)
 
-      | remaining_row | why_not_closable_without_audit_violation | owner | lifecycle
-      | non_intersection_evidence | accepted_by_gate |
+      | remaining_row | accepted_status | owner_or_current_owner_step_phase | lifecycle_or_disposition
+      | gate_intersection_reasoning | verification_retest_required_command_ownership
+      | accepted_by_gate |
 
-      |---|---|---|---|---|---|
+      |---|---|---|---|---|---|---|
+
+
+      Rules:
+
+      - `accepted_status` must be `exception_policy` or `current_blocker_owner` for
+      every remaining row.
+
+      - For `current_blocker_owner`, name a concrete owner step/phase other than `egr_generate_current_core_owner_path`
+      and cite verification/retest/required-command ownership.
+
+      - For `exception_policy`, explain why closure would violate audit integrity
+      and how owner/lifecycle/gate-intersection reasoning prevents hidden product
+      regressions.
+
+      - `closed_by_step` alone, ordinary `non-blocking_disposition`, sampled evidence,
+      or provenance-only wording cannot open the gate for a still-reported row.
 
 
       ## Final Decision
@@ -113069,7 +113094,8 @@ phases:
 
       - `uv run vectl validate` zero errors: YES/NO
 
-      - If NO, exception policy accepted for every remaining row: YES/NO
+      - If NO, audited row-local `exception_policy` or `current_blocker_owner` accepted
+      for every remaining row: YES/NO
 
       - Historical failure facts retained: YES/NO
 
@@ -113079,7 +113105,7 @@ phases:
 
 
       Gate must reject sampled evidence, generic pass claims, or provenance-only dispositions
-      that lack lifecycle/gate-intersection proof.'
+      that lack owner/lifecycle/gate-intersection proof.'
     depends_on:
     - egr_inventory_classify_43_errors
     - egr_dispose_superseded_orchestrator_removal_rows

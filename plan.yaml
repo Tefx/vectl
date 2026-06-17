@@ -112290,7 +112290,7 @@ phases:
     claimed_at: '2026-06-17T13:15:24.379489+00:00'
   - id: egr_triage_repo_regression_post_review_current_state
     name: Triage repo-regression, invar, post-review, and deterministic-check rows
-    status: pending
+    status: claimed
     description: 'PROOF ARTIFACT: determine whether repo-regression/full-suite/invar/post-review/deterministic-check
       guard rows are already current-green evidence hygiene issues, non-blocking legacy
       debt with owner/lifecycle, or still-current blocker-class failures.
@@ -112421,6 +112421,8 @@ phases:
     depends_on:
     - egr_inventory_classify_43_errors
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-17T13:15:30.577048+00:00'
   - id: egr_close_repo_regression_post_review_rows
     name: Apply closure/disposition for repo-regression and post-review rows
     status: pending

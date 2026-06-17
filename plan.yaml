@@ -110407,7 +110407,10 @@ phases:
     verification: 'Run and paste raw stdout/stderr for: (1) `uv run pytest tests/test_models.py
       tests/test_io.py tests/test_mcp.py tests/test_decide.py tests/test_decide_state_isolation.py
       -q`; (2) `uvx --refresh --from . vectl --help`; (3) a Python import probe for
-      `vectl.cli`, `vectl.decide`, `vectl.decision_state`, and `vectl.model_outputs`.
+      `vectl.cli`, `vectl.decide`, `vectl.decision_state`, and `vectl.model_outputs`;
+      (4) a deleted-runtime import absence source probe under `src/vectl` forbidding
+      `vectl.orchestration`, `vectl.shell.orchestration`, `shell.orchestration`, `from
+      vectl.shell import orchestration`, `core.orchestration`, `orch_app`, and `cli_orchestration`.
       Confirm `orch` is absent from CLI help and `vectl_decide` remains supported.'
     refs:
     - user-request:2026-06-17#runtime-verification

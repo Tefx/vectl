@@ -213,17 +213,15 @@ def _cleanup_default_fields() -> dict[str, Any] | Result[dict[str, Any], str]:
     """Return model fields eligible for default-value omission.
 
     Authority:
-        docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md section 6
         docs/RFC-affinity.md
 
     Includes:
         - affinity-related defaults for cleaner YAML output
-        - step isolation default so omission continues to mean "default"
     """
     cleanup_defaults: dict[str, Any] = {}
     for model in (Step, Plan):
         for field_name, field in model.model_fields.items():
-            if "affinity" in field_name or field_name == "isolation":
+            if "affinity" in field_name:
                 cleanup_defaults[field_name] = field.default
     return cleanup_defaults
 
@@ -253,7 +251,6 @@ def _clean_dict(d: dict[str, Any]) -> dict[str, Any] | Result[dict[str, Any], st
         elif v == "" and k not in ("project", "name", "id", "description"):
             continue
         # RFC: docs/RFC-affinity.md
-        # Isolation semantics: docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md section 6
         # Exclude eligible default fields for cleaner YAML.
         # affinity_override: False means "no override" → omit from YAML.
         elif k in cleanup_default_fields and v == cleanup_default_fields[k]:

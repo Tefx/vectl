@@ -53,22 +53,6 @@ class AffinityMode(str, Enum):
     EXCLUSIVE = "exclusive"  # Reject non-matching agent unless --force
 
 
-class IsolationMode(str, Enum):
-    """Authoritative step-level execution isolation semantic.
-
-    Authority:
-        docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md section 2
-        docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 7
-
-    This is intentionally a single authoritative field value set for step
-    semantics. It does not introduce architecture-level continuity concepts.
-    """
-
-    DEFAULT = "default"
-    WORKSPACE = "workspace"
-    INDEPENDENT = "independent"
-
-
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
@@ -99,11 +83,6 @@ class Step(BaseModel):
     verify: Literal["expected_red", "must_green"] | None = None
     refs: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
-    # Authority:
-    #   docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md sections 2 and 3
-    #   docs/ORCHESTRATION-PLANE-IMPLEMENTATION-DESIGN.md section 7
-    # Single authoritative task isolation semantic.
-    isolation: IsolationMode = IsolationMode.DEFAULT
     agent: str | None = None
     # RFC: docs/RFC-affinity.md
     # Agent affinity enforcement mode. None inherits from plan.default_affinity.

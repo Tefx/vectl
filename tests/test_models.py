@@ -2,10 +2,10 @@
 
 import pytest
 
+import vectl.models as models
 from vectl.models import (
     AffinityMode,
     Clipboard,
-    IsolationMode,
     Phase,
     PhaseStatus,
     Plan,
@@ -57,15 +57,15 @@ class TestStep:
         assert step.status == StepStatus.PENDING
         assert step.depends_on == []
         assert step.refs == []
-        assert step.isolation == IsolationMode.DEFAULT
+        assert "isolation" not in Step.model_fields
 
-    def test_isolation_explicit_workspace(self):
-        step = Step(id="s1", name="Do thing", isolation=IsolationMode.WORKSPACE)
-        assert step.isolation == IsolationMode.WORKSPACE
+    def test_legacy_isolation_payload_is_not_model_state(self):
+        step = Step.model_validate({"id": "s1", "name": "Do thing", "isolation": "workspace"})
+        assert "isolation" not in Step.model_fields
+        assert "isolation" not in step.model_dump()
 
-    def test_isolation_explicit_independent(self):
-        step = Step(id="s1", name="Do thing", isolation=IsolationMode.INDEPENDENT)
-        assert step.isolation == IsolationMode.INDEPENDENT
+    def test_isolation_mode_is_not_exported(self):
+        assert not hasattr(models, "IsolationMode")
 
     def test_skipped_requires_reason(self):
         with pytest.raises(ValueError, match="skipped_reason is required"):

@@ -24,7 +24,6 @@ from vectl.models import (
     AffinityMode,
     CASConflictError,
     Clipboard,
-    IsolationMode,
     Phase,
     PhaseStatus,
     Plan,
@@ -254,46 +253,29 @@ class TestAffinityCleanup:
         assert "default_affinity" not in string_constants
 
 
-class TestIsolationCleanup:
-    def test_clean_dict_omits_default_isolation_value(self) -> None:
-        payload = {
-            "phases": [
-                {
-                    "steps": [
-                        {
-                            "id": "s1",
-                            "name": "Step 1",
-                            "isolation": Step.model_fields["isolation"].default,
-                        }
-                    ]
-                }
-            ]
-        }
+class TestDeletedStepIsolationField:
+    def test_load_legacy_step_isolation_payload_does_not_round_trip(self, tmp_path: Path) -> None:
+        path = tmp_path / "plan.yaml"
+        path.write_text(
+            "project: test\n"
+            "phases:\n"
+            "  - id: p1\n"
+            "    name: Phase 1\n"
+            "    steps:\n"
+            "      - id: s1\n"
+            "        name: Step 1\n"
+            "        isolation: independent\n",
+            encoding="utf-8",
+        )
 
-        cleaned = _clean_dict(payload)
-        step = cleaned["phases"][0]["steps"][0]
+        plan, _ = load_plan(path)
+        step = plan.phases[0].steps[0]
+        assert "isolation" not in Step.model_fields
+        assert "isolation" not in step.model_dump()
 
-        assert "isolation" not in step
+        save_plan(plan, path)
 
-    def test_clean_dict_preserves_non_default_isolation_values(self) -> None:
-        payload = {
-            "phases": [
-                {
-                    "steps": [
-                        {
-                            "id": "s1",
-                            "name": "Step 1",
-                            "isolation": IsolationMode.INDEPENDENT,
-                        }
-                    ]
-                }
-            ]
-        }
-
-        cleaned = _clean_dict(payload)
-        step = cleaned["phases"][0]["steps"][0]
-
-        assert step["isolation"] == IsolationMode.INDEPENDENT
+        assert "isolation" not in path.read_text(encoding="utf-8")
 
 
 class TestCAS:

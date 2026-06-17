@@ -2,19 +2,19 @@
 
 **Status:** Proposed  
 **Date:** 2026-04-05  
-**Audience:** vectl core maintainers, orchestrator authors, MCP consumers
+**Audience:** vectl core maintainers, automation authors, MCP consumers
 
 ## 1. Summary
 
 This RFC defines the final contract direction for `vectl_decide`.
 
-`vectl_decide` remains part of `vectl` and remains valid outside the
-orchestration plane. It is not redefined as a pure plan-theory function and it
-is not deprecated in favor of the orchestration plane.
+`vectl_decide` remains part of `vectl` and remains valid outside any
+built-in execution runtime. It is not redefined as a pure plan-theory function
+and it is not deprecated in favor of a built-in execution runtime.
 
 Instead, `vectl_decide` is clarified and strengthened as a:
 
-> deterministic orchestration advisor for external orchestrator agents.
+> deterministic automation/dispatch advisor for caller-owned agents.
 
 This RFC keeps the useful parts of the current design:
 
@@ -36,7 +36,7 @@ and fixes the main contract weaknesses:
 
 This RFC does **not**:
 
-- make orchestration plane the only valid host for vectl
+- make any built-in execution runtime the only valid host for vectl
 - remove `vectl_decide`
 - redefine core task semantics so that `task_id == session_id`
 - require `vectl_decide` to become a pure function library
@@ -47,7 +47,7 @@ This RFC does **not**:
 ### 3.1 vectl is independently usable
 
 `vectl` is a control plane around `plan.yaml` and remains valid even when no
-orchestration-plane runtime is present. External orchestrator agents may call
+built-in execution runtime is present. Caller-owned automation agents may call
 `vectl_decide` directly via MCP or CLI and use it as their deterministic
 decision surface.
 
@@ -122,7 +122,7 @@ escalate` policy inside the advisor is too rigid.
 The final direction is:
 
 1. keep `vectl_decide`
-2. keep it usable by external orchestrator agents
+2. keep it usable by caller-owned automation agents
 3. preserve reusable-context and failure-memory functionality
 4. make state explicit and caller-owned
 5. clarify reuse provenance and token semantics
@@ -164,7 +164,7 @@ Final direction:
 
 Meaning:
 
-- `task_id` = orchestrator-visible execution/task identifier
+- `task_id` = caller-visible execution/task identifier
 - `runner` = runner namespace/source that owns any reuse semantics attached to that task
 
 Concrete values at rollout:
@@ -226,7 +226,7 @@ This allows:
 - stable failure memory
 - stable reuse TTL behavior
 - multi-loop isolation
-- deterministic external orchestration
+- deterministic caller-owned automation
 
 ### 6.2.1 State serialization contract
 
@@ -245,7 +245,7 @@ Minimum state shape should align with existing `DecideState` fields:
 - `session_registry`
 - `failure_counts`
 
-`state=None` is not the intended agent/orchestrator integration mode.
+`state=None` is not the intended long-running automation integration mode.
 
 ### 6.3 Replace weak continuation signaling with structured top-level status
 
@@ -529,7 +529,7 @@ Required test updates:
 - add MCP tests for explicit state round-tripping
 - update callers that currently consume `Action.task_id` as a reuse handle
 
-## 9. Guidance for agent/orchestrator consumers
+## 9. Guidance for automation/dispatch consumers
 
 Consumers should follow these rules:
 
@@ -540,12 +540,12 @@ Consumers should follow these rules:
 5. use top-level status as control summary, but keep authority mutations in vectl core surfaces
 6. do not treat `task_id` as a reuse handle unless the contract explicitly says so
 
-## 10. Impact on orchestration plane
+## 10. Impact on built-in execution runtimes
 
-These changes do **not** require orchestration plane adoption and do **not**
+These changes do **not** require built-in execution runtime adoption and do **not**
 invalidate standalone vectl usage.
 
-They should generally help orchestration plane alignment because they:
+They should generally help runtime integration alignment because they:
 
 - clarify token provenance
 - make state ownership more explicit

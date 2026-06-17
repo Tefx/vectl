@@ -16,7 +16,7 @@ init, render, check, and decide):
   12. vectl_init   — initialize new vectl project (create plan.yaml + AGENTS.md/CLAUDE.md)
   13. vectl_render — render plan as Markdown stakeholder report
   14. vectl_check  — toggle/add checklist items in step descriptions
-  15. vectl_decide — deterministic orchestration advisor (session reuse, status/reason_code)
+  15. vectl_decide — deterministic automation/dispatch advisor (session reuse, status/reason_code)
 
 Tools generally return Markdown-formatted text.
 

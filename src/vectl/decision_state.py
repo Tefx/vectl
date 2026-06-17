@@ -1,4 +1,4 @@
-"""Mutable decide-side orchestration state container.
+"""Mutable decide-side automation/dispatch state container.
 
 This module is the sole runtime owner for the decide-side mutable memory used by
 session reuse and repeated-failure escalation decisions.

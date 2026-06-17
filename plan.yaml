@@ -110882,8 +110882,9 @@ phases:
     description: 'step_type: verification
 
       full-plan-check final regression. This step is the hard runtime/static gate
-      for repository readiness after orchestration removal. It protects the final
-      gate.
+      for orchestrator-removal code readiness after orchestration removal. It protects
+      the final gate but does not claim that historical plan-validation completed-evidence
+      guard debt is resolved.
 
 
       Required commands:
@@ -110895,15 +110896,22 @@ phases:
       3. `uvx invar-tools guard --all` (the full `invar guard` parity command)
 
 
-      Expected result: green for all commands. Any failure is blocker-class and needs
-      a pending remediation owner before final gate can open.'
+      Expected result: green for all commands. Any failure in these commands is blocker-class
+      and needs a pending remediation owner before final gate can open. Separately,
+      final gate/deep review must include a `vectl_vectl_validate` disposition: known
+      completed-evidence guard validation errors are pre-existing and non-blocking
+      for this local removal only if they do not mention `orch_removal_*` and do not
+      intersect these required commands.'
     verification: Run all three required commands and paste raw stdout/stderr plus
       exit codes. Do not summarize as merely 'tests pass'. Unit tests with mocks alone
       are insufficient because the packaged CLI and Invar full scan are required.
+      Also record whether any failure is caused by orchestrator-removal changes versus
+      pre-existing unrelated validation debt.
     refs:
     - user-request:2026-06-17#final-regression-gate
     - pyproject.toml
     - INVAR.md
+    - MCP:vectl_vectl_validate#pre-existing-completed-evidence-guard-errors
     agent: integration-verifier
   - id: orch_removal_deep_review
     name: Independent deep review of orchestrator removal closure

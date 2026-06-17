@@ -10,39 +10,6 @@ from rich.console import Console
 
 from vectl import __version__
 from vectl.cli_agents_md import agents_md_cmd, init
-from vectl.cli_orchestration import (
-    _build_orchestration_runtime_app,
-    orch_case_list,
-    orch_case_respond,
-    orch_case_show,
-    orch_config_show,
-    orch_config_tools,
-    orch_config_validate,
-    orch_control_pause,
-    orch_control_stop,
-    orch_control_unpause,
-    orch_drive,
-    orch_drive_recover,
-    orch_drive_resume,
-    orch_drive_runs,
-    orch_drive_status,
-    orch_inspect_actions,
-    orch_inspect_artifacts,
-    orch_inspect_events,
-    orch_inspect_logs,
-    orch_inspect_status,
-    orch_migration_advance_state,
-    orch_migration_validate_cutover,
-    orch_prune,
-    orch_recover,
-    orch_resume,
-    orch_run,
-    orch_runs,
-)
-from vectl.cli_orchestration_runtime_helpers import (
-    _build_orchestration_runtime_app_or_die,
-    _step_id_for_run,
-)
 from vectl.cli_plan import (
     add_phase_cmd,
     add_step_cmd,
@@ -90,7 +57,6 @@ from vectl.io import _resolve_git_dir
 from vectl.merge_driver import merge_plans
 from vectl.plan_path import is_linked_worktree, resolve_plan_path
 from vectl.semantics import is_step_locked
-from vectl.cli_orchestration_runtime_helpers import _enrich_drive_scope_result
 
 console = Console(stderr=True)
 out = Console()
@@ -103,25 +69,6 @@ app = typer.Typer(
 )
 repair_app = typer.Typer(help="Operator recovery commands.")
 app.add_typer(repair_app, name="repair")
-
-orch_app = typer.Typer(
-    help=(
-        "Orchestration operator commands: run, resume, recover, inspect, "
-        "case, control, config, migration."
-    ),
-)
-app.add_typer(orch_app, name="orch")
-orch_inspect_app = typer.Typer(help="Inspect orchestration runtime surfaces.")
-orch_case_app = typer.Typer(help="Case inspection and operator response surfaces.")
-orch_control_app = typer.Typer(help="Operator control actions (pause/unpause/stop).")
-orch_config_app = typer.Typer(help="Orchestration config surfaces.")
-orch_migration_app = typer.Typer(help="Legacy migration and cutover surfaces.")
-orch_app.add_typer(orch_inspect_app, name="inspect")
-orch_app.add_typer(orch_case_app, name="case")
-orch_app.add_typer(orch_control_app, name="control")
-orch_app.add_typer(orch_config_app, name="config")
-orch_app.add_typer(orch_migration_app, name="migration")
-
 
 def _version_callback(value: bool) -> Result[None, str]:
     if value:
@@ -166,48 +113,6 @@ def merge_driver_cmd(
     raise typer.Exit(merge_plans(base, ours, theirs))
 
 
-orch_app.command("run")(orch_run)
-orch_app.command("resume")(orch_resume)
-orch_app.command("recover")(orch_recover)
-orch_app.command("runs")(orch_runs)
-orch_app.command("prune")(orch_prune)
-orch_migration_app.command("validate-cutover")(orch_migration_validate_cutover)
-orch_app.command("cutover-validate")(orch_migration_validate_cutover)
-orch_migration_app.command("advance-state")(orch_migration_advance_state)
-orch_app.command("migration-advance-state")(orch_migration_advance_state)
-orch_inspect_app.command("status")(orch_inspect_status)
-orch_app.command("status")(orch_inspect_status)
-orch_inspect_app.command("events")(orch_inspect_events)
-orch_app.command("events")(orch_inspect_events)
-orch_inspect_app.command("logs")(orch_inspect_logs)
-orch_app.command("logs")(orch_inspect_logs)
-orch_inspect_app.command("artifacts")(orch_inspect_artifacts)
-orch_app.command("artifacts")(orch_inspect_artifacts)
-orch_inspect_app.command("actions")(orch_inspect_actions)
-orch_app.command("actions")(orch_inspect_actions)
-orch_case_app.command("list")(orch_case_list)
-orch_app.command("case-list")(orch_case_list)
-orch_case_app.command("show")(orch_case_show)
-orch_app.command("case-show")(orch_case_show)
-orch_case_app.command("respond")(orch_case_respond)
-orch_app.command("case-respond")(orch_case_respond)
-orch_control_app.command("pause")(orch_control_pause)
-orch_app.command("pause")(orch_control_pause)
-orch_control_app.command("unpause")(orch_control_unpause)
-orch_app.command("unpause")(orch_control_unpause)
-orch_control_app.command("stop")(orch_control_stop)
-orch_app.command("stop")(orch_control_stop)
-orch_config_app.command("show")(orch_config_show)
-orch_app.command("config-show")(orch_config_show)
-orch_config_app.command("validate")(orch_config_validate)
-orch_app.command("config-validate")(orch_config_validate)
-orch_config_app.command("tools")(orch_config_tools)
-orch_app.command("config-tools")(orch_config_tools)
-orch_app.command("drive")(orch_drive)
-orch_app.command("drive-status")(orch_drive_status)
-orch_app.command("drive-runs")(orch_drive_runs)
-orch_app.command("drive-resume")(orch_drive_resume)
-orch_app.command("drive-recover")(orch_drive_recover)
 app.command()(render)
 app.command("diff")(diff_cmd)
 app.command("log")(log_cmd)

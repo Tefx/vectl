@@ -90,8 +90,6 @@ from vectl.models import (
     StepStatus,
     format_step_selector,
 )
-from vectl.orch_app import ControlResult
-from vectl.orchestration.recovery import LegacyRunStatus
 from vectl.plan_path import (
     is_linked_worktree,
     resolve_claims_path,
@@ -417,24 +415,6 @@ app = typer.Typer(
 
 repair_app = typer.Typer(help="Operator recovery commands.")
 app.add_typer(repair_app, name="repair")
-
-orch_app = typer.Typer(
-    help=(
-        "Orchestration operator commands: run, resume, recover, inspect, "
-        "case, control, config, migration."
-    ),
-)
-app.add_typer(orch_app, name="orch")
-orch_inspect_app = typer.Typer(help="Inspect orchestration runtime surfaces.")
-orch_case_app = typer.Typer(help="Case inspection and operator response surfaces.")
-orch_control_app = typer.Typer(help="Operator control actions (pause/unpause/stop).")
-orch_config_app = typer.Typer(help="Orchestration config surfaces.")
-orch_migration_app = typer.Typer(help="Legacy migration and cutover surfaces.")
-orch_app.add_typer(orch_inspect_app, name="inspect")
-orch_app.add_typer(orch_case_app, name="case")
-orch_app.add_typer(orch_control_app, name="control")
-orch_app.add_typer(orch_config_app, name="config")
-orch_app.add_typer(orch_migration_app, name="migration")
 
 PlanOption = typer.Option(
     None,

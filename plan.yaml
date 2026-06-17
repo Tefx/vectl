@@ -110985,25 +110985,35 @@ phases:
     description: 'step_type: verification
 
       full-plan-check companion for the user-facing CLI surface. Launch the packaged
-      CLI and prove it emits meaningful help without `orch`. Build/type/source evidence
-      alone is insufficient.
+      CLI and prove it emits meaningful top-level help without `orch`, and separately
+      prove `vectl orch --help` is not invokable as a hidden/stub command. Build/type/source
+      evidence alone is insufficient.
 
 
       Required evidence:
 
       - surface class: CLI
 
-      - exact launch command: `uvx --refresh --from . vectl --help`
+      - exact top-level launch command: `uvx --refresh --from . vectl --help`
 
       - terminal capture/stdout showing non-blank top-level help
 
-      - explicit absence of `orch` / `vectl orch` in help
+      - explicit absence of `orch` / `vectl orch` in top-level help
+
+      - exact negative subcommand launch command: `uvx --refresh --from . vectl orch
+      --help`
+
+      - raw stdout/stderr/exit code for the negative subcommand probe, expecting non-zero
+      and a no-such/unknown-command response without `Usage: vectl orch` or orchestration
+      operator help
 
       - one safe documented command still visible or invokable, or a reason interaction
       is not applicable'
     verification: Run `uvx --refresh --from . vectl --help`; paste raw stdout/stderr
       and exit code; confirm the help is meaningful, non-blank, and has no `orch`
-      command. This protects the final gate.
+      command. Then run `uvx --refresh --from . vectl orch --help`; paste raw stdout/stderr
+      and exit code; confirm it exits non-zero as no-such/unknown command and does
+      not display hidden/stub `vectl orch` help. This protects the final gate.
     refs:
     - user-request:2026-06-17#final-cli-help
     - src/vectl/cli.py

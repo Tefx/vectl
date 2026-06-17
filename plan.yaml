@@ -112103,7 +112103,7 @@ phases:
     agent: vectl-planner
   - id: egr_dispose_scoped_pass_global_fail_rows
     name: Close scoped-pass/global-fail historical guard rows
-    status: pending
+    status: claimed
     description: "TARGET STATE: rows where the historical evidence indicates a bounded\
       \ scoped objective passed while unrelated global debt failed are closed with\
       \ explicit row-local gate-intersection disposition instead of broad product\
@@ -112286,6 +112286,8 @@ phases:
     depends_on:
     - egr_inventory_classify_43_errors
     agent: vectl-planner
+    claimed_by: vectl-planner
+    claimed_at: '2026-06-17T13:15:24.379489+00:00'
   - id: egr_triage_repo_regression_post_review_current_state
     name: Triage repo-regression, invar, post-review, and deterministic-check rows
     status: pending

@@ -111101,13 +111101,12 @@ phases:
       Decide wording scope includes preserved decide source files (`src/vectl/decide.py`,
       `src/vectl/decision_state.py`, `src/vectl/model_outputs.py`), live MCP surfaces
       (`src/vectl/mcp*.py` plus known split MCP helper files), README/RFC decide docs,
-      and preserved decide tests, so live MCP surfaces, model-output strings, RFC
-      text, and test assertion strings cannot be missed. README non-decide checklist
-      receipt wording may be allowlisted only by exact phrase in the probe; any other
-      hit is blocker-class unless explicitly proven to be in an excluded non-product
-      artifact.
-
-      '
+      and preserved decide tests including `tests/test_decide.py`, `tests/test_decide_state_isolation.py`,
+      and `tests/test_mcp.py`, so live MCP surfaces, model-output strings, RFC text,
+      MCP test assertion strings, and preserved decide test assertion strings cannot
+      be missed. README non-decide checklist receipt wording may be allowlisted only
+      by exact phrase in the probe; any other hit is blocker-class unless explicitly
+      proven to be in an excluded non-product artifact.'
     verification: "Run the exact Python grep closure below and paste raw stdout/stderr/exit\
       \ code:\n\n```\nuv run python - <<'PY'\nfrom pathlib import Path\nimport tomllib\n\
       \nroots = [Path('src'), Path('tests'), Path('docs'), Path('README.md'), Path('README_zh.md'),\
@@ -111143,15 +111142,16 @@ phases:
       \    Path('src/vectl/mcp_core_common.py'),\n    Path('src/vectl/mcp_render_tools.py'),\n\
       \    Path('src/vectl/mcp_project_tools.py'),\n    Path('docs/RFC-vectl-decide-advisor-refresh.md'),\n\
       \    Path('README.md'),\n    Path('README_zh.md'),\n    Path('tests/test_decide.py'),\n\
-      \    Path('tests/test_decide_state_isolation.py'),\n]\nif Path('src/vectl').exists():\n\
-      \    for p in Path('src/vectl').glob('mcp*.py'):\n        if p not in decide_policy_files:\n\
-      \            decide_policy_files.append(p)\ndecide_allowlist = {\n    Path('README.md'):\
-      \ [\n        'for orchestrators and automation',\n        'worker/orchestrator\
-      \ receipt flow',\n        'in orchestrated work',\n        'the orchestrator\
-      \ owns actual checklist mutation',\n        'the orchestrator validates the\
-      \ receipt schema',\n    ],\n}\n\nhits = []\nfor p in files:\n    text = p.read_text(errors='ignore')\n\
-      \    hits.extend(f'{p}:{term}' for term in general if term in text)\n    hits.extend(f'{p}:PATH:{term}'\
-      \ for term in path_fragments if term in str(p))\n    hits.extend(f'{p}:CONTENT_PATH:{term}'\
+      \    Path('tests/test_decide_state_isolation.py'),\n    Path('tests/test_mcp.py'),\n\
+      ]\nif Path('src/vectl').exists():\n    for p in Path('src/vectl').glob('mcp*.py'):\n\
+      \        if p not in decide_policy_files:\n            decide_policy_files.append(p)\n\
+      decide_allowlist = {\n    Path('README.md'): [\n        'for orchestrators and\
+      \ automation',\n        'worker/orchestrator receipt flow',\n        'in orchestrated\
+      \ work',\n        'the orchestrator owns actual checklist mutation',\n     \
+      \   'the orchestrator validates the receipt schema',\n    ],\n}\n\nhits = []\n\
+      for p in files:\n    text = p.read_text(errors='ignore')\n    hits.extend(f'{p}:{term}'\
+      \ for term in general if term in text)\n    hits.extend(f'{p}:PATH:{term}' for\
+      \ term in path_fragments if term in str(p))\n    hits.extend(f'{p}:CONTENT_PATH:{term}'\
       \ for term in path_fragments if term in text)\n    hits.extend(f'{p}:LEGACY_DRIVER:{term}'\
       \ for term in legacy_driver_terms if term in text)\n\nfor p in decide_policy_files:\n\
       \    if not p.exists():\n        continue\n    text = p.read_text(errors='ignore')\n\
@@ -111168,7 +111168,8 @@ phases:
       \ entries in package_data.items():\n        for entry in entries:\n        \
       \    if entry == 'judge_agent_prompt.md':\n                hits.append(f'pyproject.toml:PACKAGE_DATA:{package}:judge_agent_prompt.md')\n\
       \nassert not hits, hits\nprint('forbidden-term closure clean, including decide\
-      \ wording policy and both legacy worktree roots')\nPY\n```"
+      \ wording policy over tests/test_mcp.py and both legacy worktree roots')\nPY\n\
+      ```"
     evidence_template: '## Final Grep Closure Evidence
 
 
@@ -111235,6 +111236,7 @@ phases:
     - docs/archive/independent_verification_report.md
     - docs/archive/legacy-proof/black_box_upstream_validation.yaml
     - docs/archive/legacy-proof/independent_architecture_retest_report.md
+    - tests/test_mcp.py
     agent: integration-verifier
   - id: orch_removal_full_regression_check
     name: Run full regression, packaged help, and invar guard

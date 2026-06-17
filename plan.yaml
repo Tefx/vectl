@@ -112593,7 +112593,7 @@ phases:
     agent: wiring-auditor
   - id: orch_removal_final_grep_closure
     name: Final forbidden-term grep closure
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       full-plan-check final grep closure. This step proves product source, tests,
@@ -112902,6 +112902,8 @@ phases:
     - tests/test_mcp.py
     - docs/RFC-orch-drive.md
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-17T19:04:01.619190+00:00'
   - id: orch_removal_full_regression_check
     name: Run full regression, packaged help, and invar guard
     status: pending

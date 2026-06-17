@@ -111027,8 +111027,9 @@ phases:
       `.vectl/workspaces` and `.vectl/worktrees` in product/docs/tests.
 
 
-      Forbidden general terms: `vectl.orchestration`, `core.orchestration`, `orch_app`,
-      `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`.
+      Forbidden general terms: `vectl.orchestration`, `vectl.shell.orchestration`,
+      `shell.orchestration`, `from vectl.shell import orchestration`, `core.orchestration`,
+      `orch_app`, `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`.
 
       Forbidden deleted path fragments checked against BOTH file paths and file contents:
       `src/vectl/orchestration`, `src/vectl/core/orchestration`, `src/vectl/shell/orchestration`,
@@ -111075,9 +111076,10 @@ phases:
       \ '.yml', '.json'}\nfiles = []\nfor root in roots:\n    if not root.exists():\n\
       \        continue\n    if root.is_file():\n        files.append(root)\n    else:\n\
       \        files.extend(p for p in root.rglob('*') if p.is_file() and p.suffix\
-      \ in suffixes)\n\ngeneral = ['vectl.orchestration', 'core.orchestration', 'orch_app',\
-      \ 'cli_orchestration', 'vectl orch', 'IsolationMode', 'Step.isolation']\npath_fragments\
-      \ = [\n    'src/vectl/orchestration',\n    'src/vectl/core/orchestration',\n\
+      \ in suffixes)\n\ngeneral = ['vectl.orchestration', 'vectl.shell.orchestration',\
+      \ 'shell.orchestration', 'from vectl.shell import orchestration', 'core.orchestration',\
+      \ 'orch_app', 'cli_orchestration', 'vectl orch', 'IsolationMode', 'Step.isolation']\n\
+      path_fragments = [\n    'src/vectl/orchestration',\n    'src/vectl/core/orchestration',\n\
       \    'src/vectl/shell/orchestration',\n    'src/vectl/orch_app.py',\n    'src/vectl/cli_orchestration',\n\
       \    'tests/orchestration',\n    'tests/fixtures/orchestration',\n    'tests/test_orch_cli_surface.py',\n\
       \    'tests/fixtures/helpers/continuity_capability_safety.py',\n    'tests/fixtures/helpers/continuity_hygiene.py',\n\

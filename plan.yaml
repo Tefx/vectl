@@ -111915,15 +111915,14 @@ phases:
       \ generic \"superseded\" claim without row-local gate-intersection reasoning.\n\
       \        3. Any mutation to `orch_removal_*` steps or product code in this stream.\n\
       \        4. Exact substring parsing of wrapped `vectl validate` output.\n\n\
-      \        <intent_closure_contract>\n  allowed_paths:\n    - \"plan.yaml\"\n\
-      \  blocked_paths:\n    - \"src/**\"\n    - \"tests/**\"\n    - \"docs/**\"\n\
-      \  required_claims:\n    - group_a_rows_closed_or_row_locally_dispositioned\n\
-      - historical_failure_facts_retained\n- orchestrator_removal_workstream_separate\n\
-      - gate_intersection_recorded_row_locally\n- robust_validation_parsing_used\n\
-      \  required_checks:\n    - id: group_a_absent_or_row_locally_dispositioned\n\
-      \      command:\n        - \"uv\"\n        - \"run\"\n        - \"python\"\n\
-      \        - \"-c\"\n        - |\n      import re\n  import subprocess\n  import\
-      \ sys\n\n  IDS = ['driver-execution-infra.retest-gate-blockers', 'driver-judgment-expansion-replan.expected-red-decide',\
+      \        <intent_closure_contract>\nallowed_paths:\n  - \"plan.yaml\"\nblocked_paths:\n\
+      \  - \"src/**\"\n  - \"tests/**\"\n  - \"docs/**\"\nrequired_claims:\n  - group_a_rows_closed_or_row_locally_dispositioned\n\
+      \  - historical_failure_facts_retained\n  - orchestrator_removal_workstream_separate\n\
+      \  - gate_intersection_recorded_row_locally\n  - robust_validation_parsing_used\n\
+      required_checks:\n  - id: group_a_absent_or_row_locally_dispositioned\n    command:\n\
+      \      - \"uv\"\n      - \"run\"\n      - \"python\"\n      - \"-c\"\n     \
+      \ - |\n        import re\n        import subprocess\n        import sys\n\n\
+      \        IDS = ['driver-execution-infra.retest-gate-blockers', 'driver-judgment-expansion-replan.expected-red-decide',\
       \ 'driver-debt-system-wiring.full-plan-check', 'driver-evolution-action-registry.verify-planner-dispatch',\
       \ 'driver-enhancement-observability.design-and-test', 'driver-enhancement-streaming-progress.design-and-test',\
       \ 'driver-enhancement-runner-recovery.design-and-test', 'driver-prompt-foundation.design-and-test',\
@@ -111937,84 +111936,93 @@ phases:
       \ 'orch_foundation.gate', 'orch_operator_recovery_cutover.fix_recovery_contract_conformance',\
       \ 'orch_operator_recovery_cutover.reverify_recovery_contract_conformance', 'cli_blackbox_finalization.full-plan-check',\
       \ 'opencode_runner_verification.live-smoke', 'opencode_runner_verification.final-gate']\n\
-      \  CLOSURE_STEPS = ['egr_dispose_superseded_orchestrator_removal_rows']\n  THIS_STEP\
-      \ = 'egr_dispose_superseded_orchestrator_removal_rows'\n  REQUIRE_THIS_CLOSED_BY_STEP\
-      \ = True\n  INCLUDE_EXTRA_CURRENT_OFFENDERS = False\n  ALLOWED_STATUSES = ['closed_by_validator_absence',\
-      \ 'closed_by_green_same_phase', 'non-blocking_disposition', 'current_blocker_owner',\
-      \ 'exception_policy', 'reclassified_to_d_current_core_failure']\n  CURRENT_ALLOWED_STATUSES\
-      \ = ['non-blocking_disposition', 'current_blocker_owner', 'exception_policy',\
-      \ 'reclassified_to_d_current_core_failure']\n\n  def run_vectl(args):\n    \
-      \  proc = subprocess.run(['uv', 'run', 'vectl', *args], text=True, capture_output=True)\n\
-      \      text = proc.stdout + proc.stderr\n      print('$ uv run vectl ' + ' '.join(args))\n\
-      \      print(text)\n      return text\n\n  def completed_guard_offenders(validate_output):\n\
-      \      # Robust parser: tolerate terminal wrapping by matching across whitespace\
-      \ and normalizing any\n      # whitespace inserted inside long step ids. Do\
-      \ not use exact human-line substring matching.\n      collapsed = re.sub(r'\\\
-      s+', ' ', validate_output)\n      offenders = set()\n      pattern = re.compile(\n\
-      \          r\"ERROR:\\s*Completed evidence guard:\\s*step\\s*'(?P<step>.*?)'\\\
-      s+in\\s+phase\\s*'(?P<phase>.*?)'\\s+has unclosed failure evidence\",\n    \
-      \      re.IGNORECASE | re.DOTALL,\n      )\n      for match in pattern.finditer(collapsed):\n\
-      \          offenders.add(re.sub(r'\\s+', '', match.group('step')))\n      return\
-      \ offenders\n\n  def flexible_id_pattern(step_id):\n      return r'\\s*'.join(re.escape(ch)\
-      \ for ch in step_id)\n\n  def record_text():\n      parts = []\n      for step_id\
-      \ in CLOSURE_STEPS:\n          parts.append(run_vectl(['show', step_id]))\n\
-      \      return '\\n'.join(parts)\n\n  def entry_for(text, step_id):\n      marker\
-      \ = re.compile(\n          r\"offending_step_id\\s*[:=]\\s*['\\\"]?\" + flexible_id_pattern(step_id)\
-      \ + r\"['\\\"]?\",\n          re.IGNORECASE | re.DOTALL,\n      )\n      matches\
-      \ = list(marker.finditer(text))\n      if not matches:\n          return ''\n\
-      \      match = matches[-1]\n      tail = text[match.start():]\n      next_marker\
-      \ = re.search(\n          r\"\\n\\s*-\\s+offending_step_id\\s*[:=]|\\n\\s*offending_step_id\\\
-      s*[:=]\",\n          tail[len(match.group(0)):],\n          re.IGNORECASE,\n\
-      \      )\n      end = len(tail) if next_marker is None else len(match.group(0))\
-      \ + next_marker.start()\n      return tail[: min(end, 2500)]\n\n  def status_for(entry):\n\
-      \      match = re.search(r\"status\\s*[:=]\\s*['\\\"]?([a-z0-9_\\-]+)\", entry,\
-      \ re.IGNORECASE)\n      return match.group(1).lower() if match else ''\n\n \
-      \ def has_owner(entry):\n      return bool(re.search(r\"\\bowner\\s*[:=]\\s*['\\\
-      \"]?[^'\\\"\\n]+\", entry, re.IGNORECASE))\n\n  def row_problem(step_id, entry,\
-      \ currently_reported):\n      if not entry:\n          return 'missing row-local\
-      \ closure_register entry with offending_step_id'\n      low = entry.lower()\n\
-      \      status = status_for(entry)\n      if status not in ALLOWED_STATUSES:\n\
-      \          return 'missing/invalid row-local status'\n      if currently_reported\
-      \ and status not in CURRENT_ALLOWED_STATUSES:\n          return 'validator still\
-      \ reports row but status is not an allowed owned/dispositioned current status'\n\
-      \      if REQUIRE_THIS_CLOSED_BY_STEP:\n          expected_a = f\"closed_by_step:\
-      \ {THIS_STEP}\".lower()\n          expected_b = f\"closed_by_step={THIS_STEP}\"\
-      .lower()\n          if expected_a not in low and expected_b not in low:\n  \
-      \            return 'row entry is not tied to this exact step by closed_by_step'\n\
-      \      elif 'closed_by_step' not in low:\n          return 'row entry lacks\
-      \ closed_by_step tying the record to an egr closure step'\n      needs_mechanical_disposition\
-      \ = status in {\n          'non-blocking_disposition',\n          'current_blocker_owner',\n\
-      \          'exception_policy',\n          'reclassified_to_d_current_core_failure',\n\
-      \      }\n      if needs_mechanical_disposition:\n          if not has_owner(entry):\n\
-      \              return 'missing row-local owner'\n          if not any(token\
-      \ in low for token in ['lifecycle', 'disposition', 'tracked']):\n          \
-      \    return 'missing lifecycle/disposition/tracked wording'\n          if not\
-      \ any(token in low for token in ['gate-intersection', 'gate_intersection', 'non-intersection']):\n\
-      \              return 'missing gate-intersection/non-intersection wording'\n\
-      \      if status == 'non-blocking_disposition':\n          if 'non-blocking'\
-      \ not in low and 'not blocking' not in low:\n              return 'missing exact\
-      \ validator-recognized non-blocking/not blocking phrase'\n      if status in\
-      \ {'current_blocker_owner', 'reclassified_to_d_current_core_failure'}:\n   \
-      \       if 'current_blocker_owner' not in low:\n              return 'missing\
-      \ current_blocker_owner field for current/reclassified row'\n      if status\
-      \ == 'exception_policy' and 'exception_policy' not in low:\n          return\
-      \ 'missing exception_policy field for exception row'\n      if currently_reported\
-      \ and not any(token in low for token in ['closed_by:', 'closed_by=', 'exception_policy',\
-      \ 'current_blocker_owner']):\n          return 'remaining validator offender\
-      \ lacks row-local closed_by/exception_policy/current_blocker_owner field'\n\
-      \      return ''\n\n  validate_output = run_vectl(['validate'])\n  offenders\
-      \ = completed_guard_offenders(validate_output)\n  text = record_text()\n  to_check\
-      \ = list(IDS)\n  if INCLUDE_EXTRA_CURRENT_OFFENDERS:\n      for offender in\
-      \ sorted(offenders):\n          if offender not in to_check:\n             \
-      \ to_check.append(offender)\n  problems = {}\n  for step_id in to_check:\n \
-      \     entry = entry_for(text, step_id)\n      problem = row_problem(step_id,\
-      \ entry, step_id in offenders)\n      if problem:\n          problems[step_id]\
-      \ = problem\n  if problems:\n      print('Rows lacking row-local closure/owner/exception\
-      \ records:')\n      for step_id, problem in problems.items():\n          print(f'-\
-      \ {step_id}: {problem}')\n      sys.exit(1)\n      covers_claims:\n        -\
-      \ group_a_rows_closed_or_row_locally_dispositioned\n    - historical_failure_facts_retained\n\
-      \    - orchestrator_removal_workstream_separate\n    - gate_intersection_recorded_row_locally\n\
-      \    - robust_validation_parsing_used\n  </intent_closure_contract>"
+      \        CLOSURE_STEPS = ['egr_dispose_superseded_orchestrator_removal_rows']\n\
+      \        THIS_STEP = 'egr_dispose_superseded_orchestrator_removal_rows'\n  \
+      \      REQUIRE_THIS_CLOSED_BY_STEP = True\n        INCLUDE_EXTRA_CURRENT_OFFENDERS\
+      \ = False\n        ALLOWED_STATUSES = ['closed_by_validator_absence', 'closed_by_green_same_phase',\
+      \ 'non-blocking_disposition', 'current_blocker_owner', 'exception_policy', 'reclassified_to_d_current_core_failure']\n\
+      \        CURRENT_ALLOWED_STATUSES = ['non-blocking_disposition', 'current_blocker_owner',\
+      \ 'exception_policy', 'reclassified_to_d_current_core_failure']\n\n        def\
+      \ run_vectl(args):\n            proc = subprocess.run(['uv', 'run', 'vectl',\
+      \ *args], text=True, capture_output=True)\n            text = proc.stdout +\
+      \ proc.stderr\n            print('$ uv run vectl ' + ' '.join(args))\n     \
+      \       print(text)\n            return text\n\n        def completed_guard_offenders(validate_output):\n\
+      \            # Robust parser: tolerate terminal wrapping by matching across\
+      \ whitespace and normalizing any\n            # whitespace inserted inside long\
+      \ step ids. Do not use exact human-line substring matching.\n            collapsed\
+      \ = re.sub(r'\\s+', ' ', validate_output)\n            offenders = set()\n \
+      \           pattern = re.compile(\n                r\"ERROR:\\s*Completed evidence\
+      \ guard:\\s*step\\s*'(?P<step>.*?)'\\s+in\\s+phase\\s*'(?P<phase>.*?)'\\s+has\
+      \ unclosed failure evidence\",\n                re.IGNORECASE | re.DOTALL,\n\
+      \            )\n            for match in pattern.finditer(collapsed):\n    \
+      \            offenders.add(re.sub(r'\\s+', '', match.group('step')))\n     \
+      \       return offenders\n\n        def flexible_id_pattern(step_id):\n    \
+      \        return r'\\s*'.join(re.escape(ch) for ch in step_id)\n\n        def\
+      \ record_text():\n            parts = []\n            for step_id in CLOSURE_STEPS:\n\
+      \                parts.append(run_vectl(['show', step_id]))\n            return\
+      \ '\\n'.join(parts)\n\n        def entry_for(text, step_id):\n            marker\
+      \ = re.compile(\n                r\"offending_step_id\\s*[:=]\\s*['\\\"]?\"\
+      \ + flexible_id_pattern(step_id) + r\"['\\\"]?\",\n                re.IGNORECASE\
+      \ | re.DOTALL,\n            )\n            matches = list(marker.finditer(text))\n\
+      \            if not matches:\n                return ''\n            match =\
+      \ matches[-1]\n            tail = text[match.start():]\n            next_marker\
+      \ = re.search(\n                r\"\\n\\s*-\\s+offending_step_id\\s*[:=]|\\\
+      n\\s*offending_step_id\\s*[:=]\",\n                tail[len(match.group(0)):],\n\
+      \                re.IGNORECASE,\n            )\n            end = len(tail)\
+      \ if next_marker is None else len(match.group(0)) + next_marker.start()\n  \
+      \          return tail[: min(end, 2500)]\n\n        def status_for(entry):\n\
+      \            match = re.search(r\"status\\s*[:=]\\s*['\\\"]?([a-z0-9_\\-]+)\"\
+      , entry, re.IGNORECASE)\n            return match.group(1).lower() if match\
+      \ else ''\n\n        def has_owner(entry):\n            return bool(re.search(r\"\
+      \\bowner\\s*[:=]\\s*['\\\"]?[^'\\\"\\n]+\", entry, re.IGNORECASE))\n\n     \
+      \   def row_problem(step_id, entry, currently_reported):\n            if not\
+      \ entry:\n                return 'missing row-local closure_register entry with\
+      \ offending_step_id'\n            low = entry.lower()\n            status =\
+      \ status_for(entry)\n            if status not in ALLOWED_STATUSES:\n      \
+      \          return 'missing/invalid row-local status'\n            if currently_reported\
+      \ and status not in CURRENT_ALLOWED_STATUSES:\n                return 'validator\
+      \ still reports row but status is not an allowed owned/dispositioned current\
+      \ status'\n            if REQUIRE_THIS_CLOSED_BY_STEP:\n                expected_a\
+      \ = f\"closed_by_step: {THIS_STEP}\".lower()\n                expected_b = f\"\
+      closed_by_step={THIS_STEP}\".lower()\n                if expected_a not in low\
+      \ and expected_b not in low:\n                    return 'row entry is not tied\
+      \ to this exact step by closed_by_step'\n            elif 'closed_by_step' not\
+      \ in low:\n                return 'row entry lacks closed_by_step tying the\
+      \ record to an egr closure step'\n            needs_mechanical_disposition =\
+      \ status in {\n                'non-blocking_disposition',\n               \
+      \ 'current_blocker_owner',\n                'exception_policy',\n          \
+      \      'reclassified_to_d_current_core_failure',\n            }\n          \
+      \  if needs_mechanical_disposition:\n                if not has_owner(entry):\n\
+      \                    return 'missing row-local owner'\n                if not\
+      \ any(token in low for token in ['lifecycle', 'disposition', 'tracked']):\n\
+      \                    return 'missing lifecycle/disposition/tracked wording'\n\
+      \                if not any(token in low for token in ['gate-intersection',\
+      \ 'gate_intersection', 'non-intersection']):\n                    return 'missing\
+      \ gate-intersection/non-intersection wording'\n            if status == 'non-blocking_disposition':\n\
+      \                if 'non-blocking' not in low and 'not blocking' not in low:\n\
+      \                    return 'missing exact validator-recognized non-blocking/not\
+      \ blocking phrase'\n            if status in {'current_blocker_owner', 'reclassified_to_d_current_core_failure'}:\n\
+      \                if 'current_blocker_owner' not in low:\n                  \
+      \  return 'missing current_blocker_owner field for current/reclassified row'\n\
+      \            if status == 'exception_policy' and 'exception_policy' not in low:\n\
+      \                return 'missing exception_policy field for exception row'\n\
+      \            if currently_reported and not any(token in low for token in ['closed_by:',\
+      \ 'closed_by=', 'exception_policy', 'current_blocker_owner']):\n           \
+      \     return 'remaining validator offender lacks row-local closed_by/exception_policy/current_blocker_owner\
+      \ field'\n            return ''\n\n        validate_output = run_vectl(['validate'])\n\
+      \        offenders = completed_guard_offenders(validate_output)\n        text\
+      \ = record_text()\n        to_check = list(IDS)\n        if INCLUDE_EXTRA_CURRENT_OFFENDERS:\n\
+      \            for offender in sorted(offenders):\n                if offender\
+      \ not in to_check:\n                    to_check.append(offender)\n        problems\
+      \ = {}\n        for step_id in to_check:\n            entry = entry_for(text,\
+      \ step_id)\n            problem = row_problem(step_id, entry, step_id in offenders)\n\
+      \            if problem:\n                problems[step_id] = problem\n    \
+      \    if problems:\n            print('Rows lacking row-local closure/owner/exception\
+      \ records:')\n            for step_id, problem in problems.items():\n      \
+      \          print(f'- {step_id}: {problem}')\n            sys.exit(1)\n    covers_claims:\n\
+      \      - group_a_rows_closed_or_row_locally_dispositioned\n      - historical_failure_facts_retained\n\
+      \      - orchestrator_removal_workstream_separate\n      - gate_intersection_recorded_row_locally\n\
+      \      - robust_validation_parsing_used\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     depends_on:
     - egr_inventory_classify_43_errors

@@ -113356,6 +113356,8 @@ phases:
     - orch_removal_wiring_audit
     - orch_removal_final_grep_closure
     - orch_removal_full_regression_check
+    - orch_removal_fix_final_grep_forbidden_residue
+    - orch_removal_retest_final_grep_closure
     agent: plan-readiness-auditor
   - id: orch_removal_final_gate
     name: Final gate for orchestrator removal

@@ -110364,7 +110364,7 @@ phases:
       decide.py/decision_state.py/model_outputs.py/MCP decide surface.'
   - id: orch_removal_runtime_delete
     name: Delete orchestration runtime source packages and files
-    status: claimed
+    status: done
     description: "step_type: implementation\nTARGET STATE: built-in orchestration\
       \ runtime/control/drive/resolver/runner/worktree implementation modules are\
       \ absent from source, core facade wording no longer references the deleted orchestration\
@@ -110457,6 +110457,17 @@ phases:
     agent: architectural-demolitionist
     claimed_by: architectural-demolitionist
     claimed_at: '2026-06-17T13:42:46.029331+00:00'
+    done_at: '2026-06-17T13:52:07.037801+00:00'
+    evidence: 'status SUCCESS; worker commit a277e31f007686eb71a1e2d6d8b6d01bb576f5a4
+      merged to main as c40a77e; sidecar verdict CONFORMANT; changed 97 files including
+      deletion of built-in orchestration runtime/control/drive/resolver/runner/worktree
+      source packages and stale CLI orchestration files, updated pyproject.toml and
+      src/vectl/core/__init__.py. Mainline verification passed after removing untracked
+      __pycache__ residue from deleted dirs: runtime deletion probe deleted targets
+      absent; production orchestration import/facade residue absent; stale vectl.driver/judge_agent_prompt.md
+      package-data absent; uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py
+      tests/test_mcp.py -q: 217 passed. Preserved vectl_decide/decision_state/model_outputs
+      and blocked decide test paths.'
   - id: orch_removal_isolation_schema_delete
     name: Remove Step.isolation and IsolationMode from core schema and IO
     status: done

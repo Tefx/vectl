@@ -112644,9 +112644,26 @@ phases:
       - Run `uv run vectl validate` and record whether completed-evidence guard errors
       remain.
 
-      - Run targeted `uv run vectl show` or scripted equivalents proving each initially
-      failing step now has same-phase closure/disposition, explicit current owner,
-      or exception-policy lifecycle.
+      - Parse validation output using a machine-readable/unwrapped validation source
+      if available, otherwise robust extraction that tolerates wrapped long step IDs.
+      Exact human-line substring matching is not acceptable audit evidence.
+
+      - Review the row-local `closure_register` entries from `egr_dispose_superseded_orchestrator_removal_rows`,
+      `egr_dispose_scoped_pass_global_fail_rows`, `egr_close_repo_regression_post_review_rows`,
+      and `egr_generate_current_core_owner_path`.
+
+      - Produce a 43-row decision artifact with: offending_step_id, original_phase,
+      group, status, owner, lifecycle/disposition/tracked evidence, gate_intersection/non-intersection
+      evidence, closed_by_step, validator_status, and audit verdict.
+
+      - For any row still reported by `vectl validate`, confirm the exact row has
+      row-local `closed_by`, `exception_policy`, or `current_blocker_owner` evidence.
+      Global keywords or static target lists do not count.
+
+      - Confirm non-blocking dispositions use validator-recognized wording: `non-blocking`
+      or `not blocking`, explicit owner, lifecycle/disposition/tracked language, and
+      gate-intersection=false/non-intersection wording; otherwise require a same-phase
+      `gate_open_allowed=true` closure or exception-policy record.
 
       - Confirm no `orch_removal_*` step was edited by this stream except as an untouched
       contextual reference.
@@ -112656,9 +112673,9 @@ phases:
       - Confirm historical failure evidence still exists and was not rewritten away.
 
 
-      The audit may PASS only if each initial row is PROVEN closed/dispositioned/owned,
-      or if an explicit exception policy is present and justified by audit-integrity
-      constraints.'
+      The audit may PASS only if each initial row is PROVEN closed/dispositioned/owned
+      by row-local evidence, or if an explicit exception policy is present and justified
+      by audit-integrity constraints.'
     verification: full-plan-check. The audit must provide raw command output and a
       43-row decision artifact before the final gate can open.
     evidence_template: '## refs Read Confirmation (MANDATORY)

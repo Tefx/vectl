@@ -111468,7 +111468,7 @@ phases:
       verified by probe. No source/tests/RFC/README.md changes.'
   - id: orch_removal_mcp_tool_inventory_doc_truth
     name: Align MCP tool inventory wording with runtime
-    status: claimed
+    status: pending
     description: "step_type: implementation\nagent_source: project\n\nTARGET STATE:\n\
       README.md, README_zh.md, and active MCP source docstrings/comments state the\
       \ runtime MCP tool inventory truthfully. The runtime probe authority is `vectl.mcp_server.mcp.list_tools()`:\
@@ -111543,8 +111543,6 @@ phases:
     depends_on:
     - orch_removal_readme_zh_decide_parity
     agent: doc-reviewer
-    claimed_by: doc-reviewer
-    claimed_at: '2026-06-17T16:02:19.473579+00:00'
 - id: orch_removal_finalization
   name: 'Orchestrator Removal: Closure and Full Regression'
   status: locked

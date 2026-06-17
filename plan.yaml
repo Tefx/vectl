@@ -110025,3 +110025,10 @@ phases:
       - blockers: none.
 
       - product_implementation_files_modified: no.'
+- id: orchestrator-removal-foundation-and-safety-policy
+  name: 'Orchestrator Removal: Foundation and Safety Policy'
+  status: pending
+  gate: Foundation gate requires a deletion/preservation matrix, explicit safe worktree
+    cleanup policy, and no product-code mutations yet.
+  depends_on:
+  - det_check_finalization

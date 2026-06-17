@@ -111491,17 +111491,19 @@ phases:
       \ 20 | Both READMEs state the same runtime-backed 20-tool count and include\
       \ `vectl_decide` | artifact_review | `readme_mcp_inventory_parity_probe` raw\
       \ stdout/stderr | OWNED |\n| SOURCE-COMMENT-COUNT | `src/vectl/mcp_server.py`\
-      \ and related MCP module docstrings/comments claim 15; `src/vectl/mcp_project_tools.py`\
-      \ has stale `Tool 16: vectl_decide` | Active MCP source comments/docstrings\
-      \ are inventory-truthful and contain no stale 15-tool wording or stale decide\
-      \ numbering | source_static | `stale_mcp_tool_count_wording_probe` raw stdout/stderr\
-      \ | OWNED |\n| MCP-DECIDE-PRESERVED | Existing preserved decide/MCP tests protect\
-      \ `vectl_decide` behavior | Documentation/comment update does not break MCP/decide\
-      \ behavior | runtime_probe | `decide_mcp_targeted_tests` raw stdout/stderr |\
-      \ OWNED |\n\n<intent_closure_contract>\nallowed_paths:\n  - \"README.md\"\n\
-      \  - \"README_zh.md\"\n  - \"src/vectl/mcp_*.py\"\nblocked_paths:\n  - \"src/vectl/decide.py\"\
-      \n  - \"src/vectl/decision_state.py\"\n  - \"src/vectl/model_outputs.py\"\n\
-      \  - \"tests/**\"\n  - \"docs/archive/**\"\n  - \"docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md\"\
+      \ and related MCP module docstrings/comments must positively state the runtime-backed\
+      \ 20-tool inventory and include `vectl_decide`; `src/vectl/mcp_project_tools.py`\
+      \ previously had stale `Tool 16: vectl_decide` wording | Active MCP source comments/docstrings\
+      \ are inventory-truthful: they positively state the 20-tool MCP inventory, include\
+      \ `vectl_decide`, and contain no stale 15-tool wording or stale decide numbering\
+      \ | source_static | `source_comment_inventory_truth_probe` and `stale_mcp_tool_count_wording_probe`\
+      \ raw stdout/stderr | OWNED |\n| MCP-DECIDE-PRESERVED | Existing preserved decide/MCP\
+      \ tests protect `vectl_decide` behavior | Documentation/comment update does\
+      \ not break MCP/decide behavior | runtime_probe | `decide_mcp_targeted_tests`\
+      \ raw stdout/stderr | OWNED |\n\n<intent_closure_contract>\nallowed_paths:\n\
+      \  - \"README.md\"\n  - \"README_zh.md\"\n  - \"src/vectl/mcp_*.py\"\nblocked_paths:\n\
+      \  - \"src/vectl/decide.py\"\n  - \"src/vectl/decision_state.py\"\n  - \"src/vectl/model_outputs.py\"\
+      \n  - \"tests/**\"\n  - \"docs/archive/**\"\n  - \"docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md\"\
       \nrequired_claims:\n  - runtime_inventory_count_established\n  - readmes_match_runtime_inventory\n\
       \  - mcp_source_comments_match_runtime_inventory\n  - stale_15_tool_wording_removed\n\
       \  - stale_decide_numbering_removed\n  - decide_mcp_behavior_preserved\nrequired_checks:\n\
@@ -111523,6 +111525,35 @@ phases:
       nif errors:\\n    raise SystemExit('\\\\n'.join(errors))\\nprint('README MCP\
       \ inventory parity verified: 20 tools including vectl_decide')\"]\n    covers_claims:\n\
       \      - readmes_match_runtime_inventory\n      - stale_15_tool_wording_removed\n\
+      \  - id: source_comment_inventory_truth_probe\n    command: [\"uv\", \"run\"\
+      , \"python\", \"-c\", \"import ast, asyncio, io, re, tokenize\\nfrom pathlib\
+      \ import Path\\nfrom vectl.mcp_server import mcp\\nasync def runtime_inventory():\\\
+      n    tools = await mcp.list_tools()\\n    names = sorted(getattr(t, 'name',\
+      \ str(t)) for t in tools)\\n    assert len(names) == 20, names\\n    assert\
+      \ 'vectl_decide' in names, names\\n    return names\\ndef source_doc_comment_lines(path):\\\
+      n    text = path.read_text(encoding='utf-8', errors='ignore')\\n    lines =\
+      \ []\\n    tree = ast.parse(text, filename=str(path))\\n    for node in ast.walk(tree):\\\
+      n        doc = ast.get_docstring(node, clean=False)\\n        if doc:\\n   \
+      \         lines.extend(f'{path}:doc:{part.strip()}' for part in doc.splitlines()\
+      \ if part.strip())\\n    for tok in tokenize.generate_tokens(io.StringIO(text).readline):\\\
+      n        if tok.type == tokenize.COMMENT:\\n            value = tok.string.lstrip('#').strip()\\\
+      n            if value:\\n                lines.append(f'{path}:comment:{value}')\\\
+      n    return lines\\nasync def main():\\n    names = await runtime_inventory()\\\
+      n    paths = sorted(set(Path('src/vectl').glob('mcp_*.py')) | {Path('src/vectl/mcp_server.py')})\\\
+      n    lines = []\\n    for path in paths:\\n        if path.exists():\\n    \
+      \        lines.extend(source_doc_comment_lines(path))\\n    corpus = '\\\\n'.join(lines)\\\
+      n    count_pattern = re.compile(r'\\\\b20\\\\b[^\\\\n]{0,80}\\\\b(?:public\\\
+      \\s+)?(?:MCP\\\\s+)?tools?\\\\b|\\\\b(?:public\\\\s+)?(?:MCP\\\\s+)?tools?\\\
+      \\b[^\\\\n]{0,80}\\\\b20\\\\b', re.I)\\n    count_lines = [line for line in\
+      \ lines if count_pattern.search(line)]\\n    errors = []\\n    if not count_lines:\\\
+      n        errors.append('no active MCP source comment/docstring positively states\
+      \ the 20-tool MCP inventory')\\n    if 'vectl_decide' not in corpus:\\n    \
+      \    errors.append('vectl_decide is absent from active MCP source comments/docstrings')\\\
+      n    if errors:\\n        raise SystemExit('\\\\n'.join(errors) + '\\\\nactive\
+      \ source comment/docstring corpus:\\\\n' + corpus)\\n    print('runtime_mcp_tool_count=',\
+      \ len(names), sep='')\\n    print('source_comment_inventory_count_lines=')\\\
+      n    print('\\\\n'.join(count_lines))\\n    print('source_comment_inventory_contains_vectl_decide=True')\\\
+      nasyncio.run(main())\"]\n    covers_claims:\n      - mcp_source_comments_match_runtime_inventory\n\
       \  - id: stale_mcp_tool_count_wording_probe\n    command: [\"uv\", \"run\",\
       \ \"python\", \"-c\", \"from pathlib import Path\\npaths = [Path('README.md'),\
       \ Path('README_zh.md')] + sorted(Path('src/vectl').glob('mcp_*.py')) + [Path('src/vectl/mcp_server.py')]\\\
@@ -111533,12 +111564,12 @@ phases:
       n            hits.append(f'{p}:{pattern}')\\nif hits:\\n    raise SystemExit('stale\
       \ MCP inventory wording remains:\\\\n' + '\\\\n'.join(hits))\\nprint('no stale\
       \ 15-tool wording or Tool 16 decide numbering remains in active README/MCP source\
-      \ surfaces')\"]\n    covers_claims:\n      - mcp_source_comments_match_runtime_inventory\n\
-      \      - stale_15_tool_wording_removed\n      - stale_decide_numbering_removed\n\
-      \  - id: decide_mcp_targeted_tests\n    command: [\"uv\", \"run\", \"pytest\"\
-      , \"tests/test_mcp.py\", \"tests/test_decide.py\", \"tests/test_decide_state_isolation.py\"\
-      , \"-q\"]\n    covers_claims:\n      - decide_mcp_behavior_preserved\n     \
-      \ - runtime_inventory_count_established\n</intent_closure_contract>"
+      \ surfaces')\"]\n    covers_claims:\n      - stale_15_tool_wording_removed\n\
+      \      - stale_decide_numbering_removed\n  - id: decide_mcp_targeted_tests\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_mcp.py\", \"tests/test_decide.py\"\
+      , \"tests/test_decide_state_isolation.py\", \"-q\"]\n    covers_claims:\n  \
+      \    - decide_mcp_behavior_preserved\n      - runtime_inventory_count_established\n\
+      </intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     depends_on:
     - orch_removal_readme_zh_decide_parity

@@ -114580,7 +114580,7 @@ phases:
       status left for final gate.'
   - id: egr_audit_test_only_exception_disposition
     name: Audit test-only exception disposition for init gitattributes remediation
-    status: pending
+    status: claimed
     description: 'CONFORMANCE ARTIFACT: focused audit/disposition for the completed
       test-only remediation that changed `tests/test_init_gitattributes.py` inside
       the evidence_guard_remediation stream.
@@ -114743,3 +114743,5 @@ phases:
     - egr_fix_init_gitattributes_clirunner_compat
     - egr_retest_init_gitattributes_clirunner_compat
     agent: plan-readiness-auditor
+    claimed_by: plan-readiness-auditor
+    claimed_at: '2026-06-17T17:03:45.770199+00:00'

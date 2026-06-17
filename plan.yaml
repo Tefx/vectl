@@ -112587,7 +112587,9 @@ phases:
       \ tied to that exact offending_step_id. Static target lists, phase descriptions,\
       \ or global mentions of `current_blocker_owner`/`exception_policy` must not\
       \ satisfy ownership.\n        - `current_blocker_owner` must name a pending\
-      \ or later closure step, required commands, and why code verification is required.\n\
+      \ or later closure step, required commands, and why code verification is required.\
+      \ For still-reported non-exception rows, at least one `current_blocker_owner`\
+      \ value must be a concrete pending/later owner other than `egr_generate_current_core_owner_path`.\n\
       \        - Exception policy is allowed only when closing the guard would require\
       \ falsifying/erasing historical failure evidence; the exception must explain\
       \ lifecycle, owner, and gate-intersection status.\n        - The check must\
@@ -112603,37 +112605,46 @@ phases:
       \ `uv run vectl validate` output, ordinary `non-blocking_disposition` is insufficient;\
       \ the row-local record must include `exception_policy` or `current_blocker_owner`\
       \ with owner/lifecycle/gate-intersection semantics.\n        Additional D-local\
-      \ ownership rule:\n        - For every offender still reported after this step\
-      \ runs, a prior A/B/C record that merely points `current_blocker_owner` at `egr_generate_current_core_owner_path`\
-      \ is not enough. The row must either have a D-local `closed_by_step: egr_generate_current_core_owner_path`\
-      \ record, or a concrete pending/later owner step other than this D generator\
-      \ with verification/retest command ownership preserved.\n\n        Required\
-      \ `closure_register` record shape for rows owned by this step:\n        - offending_step_id:\
-      \ \"<exact row id>\"\n        - original_phase: \"<phase id from validate output>\"\
-      \n        - group: \"D_current_core_failure\" or \"drift_current_guard_offender\"\
-      \n        - status: current_blocker_owner | exception_policy | closed_by_green_same_phase\
-      \ | non-blocking_disposition\n        - owner: \"<pending/later owner step>\"\
-      \n        - lifecycle_disposition: \"<must include lifecycle, disposition, or\
-      \ tracked wording>\"\n        - gate_intersection: \"gate-intersection=true\
-      \ with current_blocker_owner, or gate-intersection=false / non-intersection\"\
-      \n        - closed_by_step: \"egr_generate_current_core_owner_path\"\n     \
-      \   - closed_by: \"<green/OPEN/gate_open_allowed=true evidence ref when applicable>\"\
-      \n        - current_blocker_owner: \"<pending/later owner step when still current>\"\
-      \n        - exception_policy: \"<audit-integrity exception only when applicable>\"\
-      \n        - validator_status: absent | still_reported | not_checked\n\n    \
-      \    ## Gate Preview (what the gate WILL reject)\n        1. Remaining guard\
-      \ errors with no exact row-local owner/exception/closed_by record.\n       \
-      \ 2. Product code modifications hidden inside evidence hygiene.\n        3.\
-      \ Exception policy used for convenience rather than audit integrity.\n     \
-      \   4. Passing the check because row IDs or ownership words appear only in static\
-      \ descriptions.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"plan.yaml\"\
-      \nblocked_paths:\n  - \"src/**\"\n  - \"tests/**\"\n  - \"docs/**\"\nrequired_claims:\n\
-      \  - remaining_guard_errors_have_row_local_owner_or_exception\n  - current_core_failures_not_hidden\n\
-      \  - product_code_fixes_deferred_to_explicit_owner_steps\n  - static_target_lists_do_not_satisfy_ownership\n\
-      \  - robust_validation_parsing_used\nrequired_checks:\n  - id: remaining_initial_or_drift_rows_owned_exceptioned_or_absent\n\
-      \    command:\n      - \"uv\"\n      - \"run\"\n      - \"python\"\n      -\
-      \ \"-c\"\n      - |\n        import re\n        import subprocess\n        import\
-      \ sys\n\n        IDS = ['claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix',\
+      \ ownership rule:\n        - For every non-exception offender still reported\
+      \ after this step runs, D-local `closed_by_step: egr_generate_current_core_owner_path`\
+      \ is writer proof only and is never sufficient owner closure by itself.\n  \
+      \      - Such rows must also have at least one row-local `current_blocker_owner`\
+      \ value other than `egr_generate_current_core_owner_path`; the row text must\
+      \ name the concrete pending/later owner step or phase plus verification/retest/required-command\
+      \ responsibility.\n        - Exception-policy rows remain allowed only under\
+      \ the audit-integrity exception rules; ordinary `closed_by`, `closed_by_step`,\
+      \ or `non-blocking_disposition` cannot satisfy a still-reported non-exception\
+      \ row.\n\n        Required `closure_register` record shape for rows owned by\
+      \ this step:\n        - offending_step_id: \"<exact row id>\"\n        - original_phase:\
+      \ \"<phase id from validate output>\"\n        - group: \"D_current_core_failure\"\
+      \ or \"drift_current_guard_offender\"\n        - status: current_blocker_owner\
+      \ | exception_policy | closed_by_green_same_phase | non-blocking_disposition\n\
+      \        - owner: \"<pending/later owner step; for still-reported non-exception\
+      \ rows this cannot be only egr_generate_current_core_owner_path>\"\n       \
+      \ - lifecycle_disposition: \"<must include lifecycle, disposition, or tracked\
+      \ wording>\"\n        - gate_intersection: \"gate-intersection=true with current_blocker_owner,\
+      \ or gate-intersection=false / non-intersection\"\n        - closed_by_step:\
+      \ \"egr_generate_current_core_owner_path\"\n        - closed_by: \"<green/OPEN/gate_open_allowed=true\
+      \ evidence ref when applicable>\"\n        - current_blocker_owner: \"<pending/later\
+      \ owner step when still current; for still-reported non-exception rows at least\
+      \ one value must not be egr_generate_current_core_owner_path and must carry\
+      \ verification/retest/required-command ownership>\"\n        - exception_policy:\
+      \ \"<audit-integrity exception only when applicable>\"\n        - validator_status:\
+      \ absent | still_reported | not_checked\n\n        ## Gate Preview (what the\
+      \ gate WILL reject)\n        1. Remaining guard errors with no exact row-local\
+      \ owner/exception/closed_by record.\n        2. Product code modifications hidden\
+      \ inside evidence hygiene.\n        3. Exception policy used for convenience\
+      \ rather than audit integrity.\n        4. Passing the check because row IDs\
+      \ or ownership words appear only in static descriptions.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \"plan.yaml\"\nblocked_paths:\n  - \"src/**\"\n  - \"tests/**\"\
+      \n  - \"docs/**\"\nrequired_claims:\n  - remaining_guard_errors_have_row_local_owner_or_exception\n\
+      \  - current_core_failures_not_hidden\n  - product_code_fixes_deferred_to_explicit_owner_steps\n\
+      \  - static_target_lists_do_not_satisfy_ownership\n  - robust_validation_parsing_used\n\
+      \  - d_local_closed_by_step_not_owner_sufficiency\nrequired_checks:\n  - id:\
+      \ remaining_initial_or_drift_rows_owned_exceptioned_or_absent\n    command:\n\
+      \      - \"uv\"\n      - \"run\"\n      - \"python\"\n      - \"-c\"\n     \
+      \ - |\n        import re\n        import subprocess\n        import sys\n\n\
+      \        IDS = ['claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix',\
       \ 'claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest', 'step-id-resolver-hardening.retest-gate-blockers',\
       \ 'driver-execution-infra.retest-gate-blockers', 'driver-judgment-expansion-replan.expected-red-decide',\
       \ 'driver-debt-system-wiring.full-plan-check', 'driver-evolution-action-registry.verify-planner-dispatch',\
@@ -112738,21 +112749,26 @@ phases:
       \ and not (current_owner_values or exception_values):\n                return\
       \ 'remaining validator offender lacks row-local exception_policy/current_blocker_owner\
       \ field required by final gate'\n            if currently_reported and THIS_STEP\
-      \ == 'egr_generate_current_core_owner_path':\n                d_local = THIS_STEP.lower()\
-      \ in closed_by_steps\n                concrete_later_owners = [\n          \
-      \          value for value in current_owner_values\n                    if value.strip().lower()\
-      \ != THIS_STEP.lower()\n                ]\n                if not (d_local or\
-      \ concrete_later_owners or exception_values):\n                    return 'remaining\
-      \ validator offender must have D-local closed_by_step or concrete later current_blocker_owner\
-      \ not this D generator step'\n                if current_owner_values and not\
-      \ (concrete_later_owners or d_local):\n                    return 'current_blocker_owner\
-      \ points only to this D generator step without D-local closure record'\n   \
-      \             if concrete_later_owners and not any(token in low for token in\
-      \ ['verification', 'retest', 're-test', 'required command', 'required commands',\
-      \ 'command:', 'commands:']):\n                    return 'concrete later current_blocker_owner\
-      \ lacks verification/retest ownership wording'\n            return ''\n\n  \
-      \      validate_output = run_vectl(['validate'])\n        offenders = completed_guard_offenders(validate_output)\n\
-      \        text = record_text()\n        to_check = list(IDS)\n        if INCLUDE_EXTRA_CURRENT_OFFENDERS:\n\
+      \ == 'egr_generate_current_core_owner_path':\n                closed_by_norms\
+      \ = [re.sub(r'[^a-z0-9_.-]+', '', value) for value in closed_by_steps]\n   \
+      \             d_local = THIS_STEP.lower() in closed_by_norms\n             \
+      \   concrete_later_owners = [\n                    value for value in current_owner_values\n\
+      \                    if re.sub(r'[^a-z0-9_.-]+', '', value.strip().lower())\
+      \ != THIS_STEP.lower()\n                ]\n                if exception_values:\n\
+      \                    return ''\n                if not d_local:\n          \
+      \          return 'still-reported non-exception row lacks D-local closed_by_step\
+      \ writer proof'\n                if not current_owner_values:\n            \
+      \        return 'still-reported non-exception row requires row-local current_blocker_owner\
+      \ naming a concrete pending/later owner'\n                if not concrete_later_owners:\n\
+      \                    return 'still-reported non-exception row current_blocker_owner\
+      \ points only to this D generator step; D-local closed_by_step is writer proof\
+      \ only and is not sufficient owner closure'\n                if not any(token\
+      \ in low for token in ['verification', 'retest', 're-test', 'required command',\
+      \ 'required commands', 'command:', 'commands:']):\n                    return\
+      \ 'concrete later current_blocker_owner lacks verification/retest/required-command\
+      \ ownership wording'\n            return ''\n\n        validate_output = run_vectl(['validate'])\n\
+      \        offenders = completed_guard_offenders(validate_output)\n        text\
+      \ = record_text()\n        to_check = list(IDS)\n        if INCLUDE_EXTRA_CURRENT_OFFENDERS:\n\
       \            for offender in sorted(offenders):\n                if offender\
       \ not in to_check:\n                    to_check.append(offender)\n        problems\
       \ = {}\n        for step_id in to_check:\n            entry = entry_for(text,\
@@ -112763,7 +112779,8 @@ phases:
       \          print(f'- {step_id}: {problem}')\n            sys.exit(1)\n    covers_claims:\n\
       \      - remaining_guard_errors_have_row_local_owner_or_exception\n      - current_core_failures_not_hidden\n\
       \      - product_code_fixes_deferred_to_explicit_owner_steps\n      - static_target_lists_do_not_satisfy_ownership\n\
-      \      - robust_validation_parsing_used\n</intent_closure_contract>"
+      \      - robust_validation_parsing_used\n      - d_local_closed_by_step_not_owner_sufficiency\n\
+      </intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     depends_on:
     - egr_close_repo_regression_post_review_rows

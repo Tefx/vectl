@@ -111378,6 +111378,49 @@ phases:
     - orch_removal_decide_wording_preserve
     - orch_removal_tests_docs_probe
     agent: gate-reviewer
+  - id: orch_removal_readme_zh_decide_parity
+    name: Update README_zh MCP decide parity
+    status: pending
+    description: "step_type: implementation\nagent_source: project\n\nTARGET STATE:\n\
+      README_zh.md matches the live README/RFC wording for this narrow issue only:\
+      \ the MCP tools sentence says vectl exposes 15 MCP tools and includes `vectl_decide`\
+      \ as a supported caller-owned automation advisor entry point.\n\nNON-GOALS:\n\
+      - Do not change README.md, the RFC, source code, tests, or unrelated Chinese\
+      \ README wording.\n- Do not resurrect any orchestration runtime wording or alter\
+      \ docs beyond the one README_zh MCP tool-count / vectl_decide parity fix.\n\n\
+      Requirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
+      \ | target_state | evidence_class | required_probe_or_artifact | status |\n\
+      | readme_zh_mcp_count | README.md MCP passage: `vectl exposes 15 MCP tools`\
+      \ | README_zh MCP sentence says 15, not stale 14 | artifact_review | `readme_zh_decide_parity_probe`\
+      \ raw stdout/stderr | OWNED |\n| readme_zh_decide_surface | README.md MCP passage\
+      \ includes `vectl_decide`; RFC §3.1 says caller-owned automation agents may\
+      \ call `vectl_decide` via MCP/CLI | README_zh MCP sentence includes `vectl_decide`\
+      \ without built-in orchestration-advisor wording | artifact_review | `readme_zh_decide_parity_probe`\
+      \ raw stdout/stderr | OWNED |\n\n<intent_closure_contract>\nallowed_paths:\n\
+      \  - \"README_zh.md\"\nblocked_paths:\n  - \"README.md\"\n  - \"docs/RFC-vectl-decide-advisor-refresh.md\"\
+      \n  - \"src/**\"\n  - \"tests/**\"\nrequired_claims:\n  - readme_zh_mcp_count_updated\n\
+      \  - readme_zh_vectl_decide_documented\n  - readme_zh_matches_caller_owned_decide_authority\n\
+      required_checks:\n  - id: readme_zh_decide_parity_probe\n    command: [\"uv\"\
+      , \"run\", \"python\", \"-c\", \"from pathlib import Path\\nzh = Path('README_zh.md').read_text(encoding='utf-8')\\\
+      nen = Path('README.md').read_text(encoding='utf-8')\\nrfc = Path('docs/RFC-vectl-decide-advisor-refresh.md').read_text(encoding='utf-8')\\\
+      nline = next((line for line in zh.splitlines() if 'vectl_status' in line and\
+      \ 'MCP' in line), '')\\nif not line:\\n    raise SystemExit('README_zh.md MCP\
+      \ tools sentence not found')\\nif '15' not in line or '14' in line:\\n    raise\
+      \ SystemExit(f'bad README_zh MCP count line: {line}')\\nif 'vectl_decide' not\
+      \ in line:\\n    raise SystemExit(f'README_zh MCP line missing vectl_decide:\
+      \ {line}')\\nif 'vectl exposes 15 MCP tools' not in en or '`vectl_decide`' not\
+      \ in en:\\n    raise SystemExit('README.md source passage is not the expected\
+      \ 15-tool decide wording')\\nif 'Caller-owned automation agents may call' not\
+      \ in rfc or '`vectl_decide` directly via MCP or CLI' not in rfc:\\n    raise\
+      \ SystemExit('RFC caller-owned decide authority passage missing')\\nprint('README_zh\
+      \ MCP decide parity verified')\"]\n    covers_claims:\n      - readme_zh_mcp_count_updated\n\
+      \      - readme_zh_vectl_decide_documented\n      - readme_zh_matches_caller_owned_decide_authority\n\
+      </intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+      Paste raw stdout/stderr from `readme_zh_decide_parity_probe`.
+    depends_on:
+    - orch_removal_tests_docs_probe
+    agent: doc-reviewer
 - id: orch_removal_finalization
   name: 'Orchestrator Removal: Closure and Full Regression'
   status: locked

@@ -110189,6 +110189,217 @@ phases:
     runtime tests.
   depends_on:
   - orchestrator-removal-foundation-and-safety-policy
+  steps:
+  - id: orch_removal_cli_cutout
+    name: Remove built-in `vectl orch` CLI surface
+    status: pending
+    description: "step_type: implementation\nTARGET STATE: the packaged CLI imports\
+      \ successfully, `vectl --help` no longer exposes `orch` or orchestration subcommands,\
+      \ and non-orchestration CLI/MCP surfaces remain reachable.\n\nRequirement-to-Evidence\
+      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| CLI-ORCH-REMOVED | user-request:2026-06-17\
+      \ — current CLI imports fine but still exposes `orch`; remove built-in `vectl\
+      \ orch` | `vectl --help` has no orch command or orchestration help text | runtime_probe\
+      \ | Packaged CLI help probe with stdout | OWNED |\n| DECIDE-STILL-IMPORTS |\
+      \ user-request:2026-06-17 — keep vectl_decide as core automation advisor, not\
+      \ orch | CLI and decide modules import without orchestration runtime | runtime_probe\
+      \ | Python import probe for vectl.cli and vectl.decide | OWNED |\n\nNon-goals:\
+      \ do not delete `src/vectl/decide.py`, `src/vectl/decision_state.py`, or `src/vectl/model_outputs.py`;\
+      \ do not remove MCP `vectl_decide`.\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; removing\
+      \ `orch` by replacing it with a hidden/no-op placeholder is rejected.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \"src/vectl/cli.py\"\n  - \"src/vectl/cli_plan_common.py\"\
+      \n  - \"tests/test_mcp.py\"\nblocked_paths:\n  - \"src/vectl/decide.py\"\n \
+      \ - \"src/vectl/decision_state.py\"\n  - \"src/vectl/model_outputs.py\"\nrequired_claims:\n\
+      \  - cli_orch_surface_removed\n  - cli_imports_without_orchestration_runtime\n\
+      \  - decide_surface_preserved\nrequired_checks:\n  - id: cli_import_probe\n\
+      \    command: [\"uv\", \"run\", \"python\", \"-c\", \"import vectl.cli; import\
+      \ vectl.decide; import vectl.decision_state; import vectl.model_outputs; print('cli+decide\
+      \ imports ok')\"]\n    covers_claims:\n      - cli_imports_without_orchestration_runtime\n\
+      \      - decide_surface_preserved\n  - id: cli_help_no_orch_probe\n    command:\
+      \ [\"uv\", \"run\", \"python\", \"-c\", \"import subprocess, sys; cp=subprocess.run(['uvx','--refresh','--from','.','vectl','--help'],\
+      \ text=True, capture_output=True); print(cp.stdout); print(cp.stderr, file=sys.stderr);\
+      \ assert cp.returncode == 0; bad=[t for t in ['vectl orch',' orch ','Orchestration','orchestration\
+      \ runtime'] if t in cp.stdout]; assert not bad, bad\"]\n    covers_claims:\n\
+      \      - cli_orch_surface_removed\n      - cli_imports_without_orchestration_runtime\n\
+      \  - id: mcp_surface_smoke\n    command: [\"uv\", \"run\", \"pytest\", \"tests/test_mcp.py\"\
+      , \"-q\"]\n    covers_claims:\n      - decide_surface_preserved\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    refs:
+    - user-request:2026-06-17#remove-built-in-vectl-orch
+    - src/vectl/cli.py
+    - src/vectl/cli_plan_common.py
+    - tests/test_mcp.py
+    agent: architectural-demolitionist
+  - id: orch_removal_runtime_delete
+    name: Delete orchestration runtime source packages and files
+    status: pending
+    description: "step_type: implementation\nTARGET STATE: built-in orchestration\
+      \ runtime/control/drive/resolver/runner/worktree implementation modules are\
+      \ absent from source, while vectl_decide and normal CLI/MCP imports continue\
+      \ to work.\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref\
+      \ + key passage | target_state | evidence_class | required_probe_or_artifact\
+      \ | status |\n| RUNTIME-SOURCE-DELETED | user-request:2026-06-17 — delete `src/vectl/orchestration/`,\
+      \ `src/vectl/core/orchestration/`, `src/vectl/shell/orchestration/`, `orch_app.py`,\
+      \ and all `cli_orchestration*.py` | Target runtime packages/files no longer\
+      \ exist | source_static | Deletion existence probe over exact paths | OWNED\
+      \ |\n| DECIDE-NO-ORCH-IMPORTS | discovery evidence — decide.py, decision_state.py,\
+      \ model_outputs.py do not import orchestration modules | Preserved decide files\
+      \ remain importable and do not gain orchestration imports | runtime_probe |\
+      \ Import probe and targeted decide tests | OWNED |\n| MCP-WORDING-READY | user-request:2026-06-17\
+      \ — modify mcp_server/model_outputs wording from orchestration advisor to core\
+      \ automation/dispatch advisor | MCP decide surface survives without built-in\
+      \ orch runtime | runtime_probe | test_mcp + decide tests | OWNED |\n\nGate Preview\
+      \ (what the gate WILL reject):\n1. Any residual production import of `vectl.orchestration`,\
+      \ `core.orchestration`, `orch_app`, or `cli_orchestration`.\n2. Any deletion\
+      \ or weakening of `vectl_decide`.\n3. Handler-only proof that does not import\
+      \ the real CLI/MCP modules.\n\n## Completion Criteria (stub exclusion)\nThis\
+      \ is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Private\
+      \ `_Runtime*`, `_Stub*`, or `_Placeholder*` replacements for deleted orchestration\
+      \ are rejected.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"src/vectl/orchestration/**\"\
+      \n  - \"src/vectl/core/orchestration/**\"\n  - \"src/vectl/shell/orchestration/**\"\
+      \n  - \"src/vectl/orch_app.py\"\n  - \"src/vectl/cli_orchestration*.py\"\n \
+      \ - \"src/vectl/mcp_core_misc_tools.py\"\n  - \"src/vectl/mcp_server.py\"\n\
+      \  - \"src/vectl/model_outputs.py\"\n  - \"pyproject.toml\"\nblocked_paths:\n\
+      \  - \"src/vectl/decide.py\"\n  - \"src/vectl/decision_state.py\"\n  - \"tests/test_decide.py\"\
+      \n  - \"tests/test_decide_state_isolation.py\"\nrequired_claims:\n  - runtime_source_deleted\n\
+      \  - production_orchestration_imports_removed\n  - decide_surface_preserved\n\
+      required_checks:\n  - id: runtime_deletion_probe\n    command: [\"uv\", \"run\"\
+      , \"python\", \"-c\", \"from pathlib import Path; targets=['src/vectl/orchestration','src/vectl/core/orchestration','src/vectl/shell/orchestration','src/vectl/orch_app.py'];\
+      \ targets += [str(p) for p in Path('src/vectl').glob('cli_orchestration*.py')];\
+      \ still=[p for p in targets if Path(p).exists()]; assert not still, still; print('deleted\
+      \ targets absent')\"]\n    covers_claims:\n      - runtime_source_deleted\n\
+      \  - id: production_import_absence_probe\n    command: [\"uv\", \"run\", \"\
+      python\", \"-c\", \"from pathlib import Path; terms=['vectl.orchestration','core.orchestration','orch_app','cli_orchestration'];\
+      \ hits=[]; \nfor root in [Path('src/vectl')]:\n    for p in root.rglob('*.py'):\n\
+      \        s=p.read_text(errors='ignore')\n        for t in terms:\n         \
+      \   if t in s: hits.append(f'{p}:{t}')\nassert not hits, hits; print('no production\
+      \ orchestration imports')\"]\n    covers_claims:\n      - production_orchestration_imports_removed\n\
+      \  - id: decide_targeted_tests\n    command: [\"uv\", \"run\", \"pytest\", \"\
+      tests/test_decide.py\", \"tests/test_decide_state_isolation.py\", \"tests/test_mcp.py\"\
+      , \"-q\"]\n    covers_claims:\n      - decide_surface_preserved\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    refs:
+    - user-request:2026-06-17#source-deletion-targets
+    - src/vectl/orchestration/
+    - src/vectl/core/orchestration/
+    - src/vectl/shell/orchestration/
+    - src/vectl/orch_app.py
+    - src/vectl/cli_orchestration.py
+    - src/vectl/mcp_core_misc_tools.py
+    - src/vectl/mcp_server.py
+    - src/vectl/model_outputs.py
+    - pyproject.toml
+    depends_on:
+    - orch_removal_cli_cutout
+    agent: architectural-demolitionist
+  - id: orch_removal_isolation_schema_delete
+    name: Remove Step.isolation and IsolationMode from core schema and IO
+    status: pending
+    description: "step_type: implementation\nTARGET STATE: `Step` no longer has an\
+      \ `isolation` field, `IsolationMode` no longer exists, IO no longer serializes/deserializes\
+      \ isolation residue, and non-orchestration model/IO tests define the new contract.\n\
+      \nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
+      \ | target_state | evidence_class | required_probe_or_artifact | status |\n\
+      | ISOLATION-SCHEMA-DELETED | user-request:2026-06-17 — delete `Step.isolation`\
+      \ and `IsolationMode` as orchestration execution schema residue | Core model\
+      \ has no isolation enum/field/default migration | source_static | Static absence\
+      \ probe in models.py/io.py | OWNED |\n| IO-BACKCOMPAT-BOUNDARY | discovery evidence\
+      \ — non-orchestration tests with refs: tests/test_io.py, tests/test_models.py,\
+      \ tests/test_runtime_context_vertical_slice.py | Plan IO keeps loading/saving\
+      \ non-orchestration fields; runtime-context vertical slice is retired as orchestration-only\
+      \ if needed | runtime_probe | Targeted model/io pytest | OWNED |\n\nState semantics:\n\
+      - `isolation` was orchestration execution residue; omission should not be migrated\
+      \ to a new replacement field.\n- Preserve non-orchestration Step fields and\
+      \ plan IO compatibility.\n- Out of scope: reintroducing any runner/worktree\
+      \ isolation semantics under a new name.\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; leaving\
+      \ an unused enum/field or compatibility wrapper for orchestration isolation\
+      \ is rejected.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"src/vectl/models.py\"\
+      \n  - \"src/vectl/io.py\"\n  - \"tests/test_io.py\"\n  - \"tests/test_models.py\"\
+      \n  - \"tests/test_runtime_context_vertical_slice.py\"\nblocked_paths:\n  -\
+      \ \"src/vectl/decide.py\"\n  - \"src/vectl/decision_state.py\"\nrequired_claims:\n\
+      \  - isolation_schema_removed\n  - model_io_regression_covered\n  - no_new_orchestration_isolation_alias\n\
+      required_checks:\n  - id: isolation_absence_probe\n    command: [\"uv\", \"\
+      run\", \"python\", \"-c\", \"from pathlib import Path; files=[Path('src/vectl/models.py'),\
+      \ Path('src/vectl/io.py')]; terms=['IsolationMode','Step.isolation','isolation:\
+      \ IsolationMode']; hits=[f'{p}:{t}' for p in files for t in terms if p.exists()\
+      \ and t in p.read_text(errors='ignore')]; assert not hits, hits; print('isolation\
+      \ schema residue absent')\"]\n    covers_claims:\n      - isolation_schema_removed\n\
+      \      - no_new_orchestration_isolation_alias\n  - id: model_io_tests\n    command:\
+      \ [\"uv\", \"run\", \"pytest\", \"tests/test_models.py\", \"tests/test_io.py\"\
+      , \"-q\"]\n    covers_claims:\n      - model_io_regression_covered\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    refs:
+    - user-request:2026-06-17#delete-step-isolation
+    - src/vectl/models.py
+    - src/vectl/io.py
+    - tests/test_io.py
+    - tests/test_models.py
+    - tests/test_runtime_context_vertical_slice.py
+    agent: python-senior
+  - id: orch_removal_runtime_phase_probe
+    name: Verify runtime surface removal and decide preservation
+    status: pending
+    description: 'step_type: verification
+
+      phase-check protecting the runtime-surface phase and downstream docs/tests cleanup.
+      As an independent tester, run real import/CLI/test probes against the modified
+      worktree. Unit tests with mocks alone are insufficient because CLI/MCP are runtime
+      boundaries.
+
+
+      Required behavioral proof register fields: requirement_ref, behavior_claim,
+      runtime_proof_expected, evidence_ref, status, closure_path, gate_decision_basis.'
+    verification: 'Run and paste raw stdout/stderr for: (1) `uv run pytest tests/test_models.py
+      tests/test_io.py tests/test_mcp.py tests/test_decide.py tests/test_decide_state_isolation.py
+      -q`; (2) `uvx --refresh --from . vectl --help`; (3) a Python import probe for
+      `vectl.cli`, `vectl.decide`, `vectl.decision_state`, and `vectl.model_outputs`.
+      Confirm `orch` is absent from CLI help and `vectl_decide` remains supported.'
+    refs:
+    - user-request:2026-06-17#runtime-verification
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    - tests/test_decide.py
+    - tests/test_decide_state_isolation.py
+    - tests/test_mcp.py
+    - tests/test_io.py
+    - tests/test_models.py
+    depends_on:
+    - orch_removal_cli_cutout
+    - orch_removal_runtime_delete
+    - orch_removal_isolation_schema_delete
+    agent: integration-verifier
+  - id: orch_removal_runtime_gate
+    name: Gate runtime and CLI surface removal
+    status: pending
+    description: 'step_type: gate
+
+      phase-check gate. Blocks docs/tests cleanup unless implementation evidence proves
+      built-in orchestration runtime is absent and vectl_decide remains supported.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - phase deletes runtime/CLI public surfaces and core schema residue
+
+      - final correctness depends on not deleting decide advisor surfaces
+
+
+      Gate rejects sampled evidence, handler-only proof, no-op/stub replacements,
+      or any unowned blocker.'
+    verification: Gate OPEN only if all runtime phase implementation steps and `orch_removal_runtime_phase_probe`
+      have specific raw evidence and no unresolved blockers.
+    refs:
+    - user-request:2026-06-17#runtime-removal-gate
+    depends_on:
+    - orch_removal_cli_cutout
+    - orch_removal_runtime_delete
+    - orch_removal_isolation_schema_delete
+    - orch_removal_runtime_phase_probe
+    agent: gate-reviewer
 - id: orch_removal_tests_docs
   name: 'Orchestrator Removal: Tests, Docs, and Decide Wording'
   status: locked

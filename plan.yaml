@@ -113446,6 +113446,204 @@ phases:
     - orch_removal_full_regression_check
     - orch_removal_deep_review
     agent: gate-reviewer
+  - id: orch_removal_fix_final_grep_forbidden_residue
+    name: Fix B2 final grep forbidden residue
+    status: pending
+    description: "step_type: implementation\nwork_type: technical_debt_remediation\n\
+      blocker_family: B2-final-grep-forbidden-residue\nagent_source: suggested\n\n\
+      Demolition fix owner: close the batched final grep forbidden residue family\
+      \ reported by `orch_removal_final_grep_closure`. This is a cleanup/removal step,\
+      \ not a feature step. Clean stale historical artifacts by deletion or narrow\
+      \ rewrite; do NOT weaken the grep command, add allowlists, move residue into\
+      \ another scanned artifact, or introduce replacement abstractions.\n\ntarget_kill_list:\n\
+      - tests/test_models.py stale `IsolationMode` residue only; preserve live model\
+      \ tests unrelated to orchestration removal.\n- docs/invar_guard_remediation/uiux-proof-artifact.md\
+      \ stale orch/runtime path/worktree residue.\n- docs/invar_guard_remediation/guard_all_raw.txt\
+      \ stale raw remediation log residue.\n- docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md\
+      \ stale orch/runtime path residue.\n- docs/invar_guard_remediation/escape_budget_authority_decision.md\
+      \ stale orch/runtime path residue.\n- docs/invar_guard_remediation/failure_inventory.md\
+      \ stale orch/runtime path residue.\n- docs/invar_guard_remediation/post_salvage_residual_classification_register.md\
+      \ stale orch/runtime path residue.\n\nremoval_warrant:\n  source_refs:\n  -\
+      \ orch_removal_final_grep_closure verification failure: exact AssertionError\
+      \ hit list from final grep command.\n  - orch_removal_final_grep_closure description:\
+      \ forbidden general terms, deleted path fragments, legacy driver/worktree terms,\
+      \ and exact deletion closure policy.\n  reverse_dependency_check: Re-run the\
+      \ exact final grep closure command after cleanup; for `tests/test_models.py`,\
+      \ run/import targeted tests to prove live model coverage still exists and no\
+      \ removed isolation surface is referenced.\n  preserved_behavior: Preserve already-green\
+      \ finalization evidence: CLI runtime proof PASS, full regression PASS, wiring\
+      \ audit PASS, and B1 retest PASS. Preserve required decide/MCP tests and docs.\n\
+      \  negative_delta_expectation: Delete stale historical residue or narrowly rewrite\
+      \ it away from forbidden removed-orchestrator identifiers/path fragments; no\
+      \ new production code and no new abstraction replaces removed surfaces.\n\n\
+      Allowed path budget:\n- Allowed: `tests/test_models.py`.\n- Allowed: the exact\
+      \ stale docs under `docs/invar_guard_remediation/` listed in the target_kill_list.\n\
+      - Broader `docs/invar_guard_remediation/**` edits are allowed only if the exact\
+      \ final grep closure command shows an adjacent stale remediation artifact from\
+      \ the same B2 family that was not included in the worker-provided hit list;\
+      \ evidence must cite the new hit and why it belongs to final grep closure.\n\
+      - Forbidden unless a new blocker makes it unavoidable and is documented before\
+      \ edit: `src/**`, `README.md`, `README_zh.md`, `pyproject.toml`, preserved decide/MCP\
+      \ tests (`tests/test_decide.py`, `tests/test_decide_state_isolation.py`, `tests/test_mcp.py`),\
+      \ preserved decide source/docs, packaged CLI wiring, and already-green finalization\
+      \ proof artifacts outside the listed stale files.\n\nExact raw hit inventory\
+      \ to close:\n- `tests/test_models.py`: `IsolationMode`.\n- `docs/invar_guard_remediation/uiux-proof-artifact.md`:\
+      \ `orch_app`, `vectl orch`, `CONTENT_PATH:docs/ORCHESTRATION-`, `CONTENT_PATH:docs/RFC-orch-drive.md`,\
+      \ `LEGACY_DRIVER:.vectl/worktrees`.\n- `docs/invar_guard_remediation/guard_all_raw.txt`:\
+      \ `orch_app`, `cli_orchestration`, `CONTENT_PATH:src/vectl/orchestration`, `CONTENT_PATH:src/vectl/orch_app.py`,\
+      \ `CONTENT_PATH:src/vectl/cli_orchestration`, `CONTENT_PATH:docs/archive/consumer_boundary_conformance_verify.py`.\n\
+      - `docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md`:\
+      \ `orch_app`, `CONTENT_PATH:src/vectl/orchestration`, `CONTENT_PATH:src/vectl/orch_app.py`,\
+      \ `CONTENT_PATH:tests/orchestration`, `CONTENT_PATH:docs/RFC-opencode-orchestration-runner.md`.\n\
+      - `docs/invar_guard_remediation/escape_budget_authority_decision.md`: `orch_app`,\
+      \ `CONTENT_PATH:src/vectl/orchestration`, `CONTENT_PATH:src/vectl/core/orchestration`,\
+      \ `CONTENT_PATH:src/vectl/orch_app.py`.\n- `docs/invar_guard_remediation/failure_inventory.md`:\
+      \ `orch_app`, `cli_orchestration`, `CONTENT_PATH:src/vectl/orchestration`, `CONTENT_PATH:src/vectl/orch_app.py`,\
+      \ `CONTENT_PATH:src/vectl/cli_orchestration`, `CONTENT_PATH:docs/archive/consumer_boundary_conformance_verify.py`.\n\
+      - `docs/invar_guard_remediation/post_salvage_residual_classification_register.md`:\
+      \ `orch_app`, `cli_orchestration`, `vectl orch`, `CONTENT_PATH:src/vectl/orchestration`,\
+      \ `CONTENT_PATH:src/vectl/orch_app.py`, `CONTENT_PATH:src/vectl/cli_orchestration`,\
+      \ `CONTENT_PATH:docs/archive/consumer_boundary_conformance_verify.py`.\n\n<intent_closure_contract>\n\
+      - Intent: close only B2-final-grep-forbidden-residue discovered by the final\
+      \ grep closure, while preserving all already-green finalization proofs.\n- Authorized\
+      \ transformation: delete stale remediation artifacts, or narrowly rewrite stale\
+      \ historical references so the exact final grep command reports zero hits.\n\
+      - Prohibited transformation: changing the final grep command, weakening forbidden\
+      \ terms, creating allowlists, editing production `src/**`, reworking decide/MCP\
+      \ preservation evidence, or touching packaged CLI/runtime behavior.\n- Completion\
+      \ threshold: the exact hit inventory above is absent, no sibling B2 hit remains\
+      \ in the allowed stale remediation scope, targeted tests for any touched test\
+      \ file pass, and downstream retest can rerun the exact final grep command with\
+      \ exit code 0.\n</intent_closure_contract>\n\nRequirement-to-evidence matrix\
+      \ to satisfy in completion evidence:\n| Requirement | Evidence required |\n\
+      | --- | --- |\n| B2 blocker family closed | Before/after hit inventory showing\
+      \ every listed file:term is gone or file deleted. |\n| Scope containment | `git\
+      \ diff --name-only` showing only allowed paths, or explicit justification for\
+      \ any broader `docs/invar_guard_remediation/**` sibling cleanup. |\n| No grep\
+      \ weakening | Confirmation that `orch_removal_final_grep_closure` command text\
+      \ was not edited and no allowlist was added. |\n| Preserved green evidence |\
+      \ Statement that CLI runtime proof PASS, full regression PASS, wiring audit\
+      \ PASS, and B1 retest PASS were not reworked. |\n| Test safety | If `tests/test_models.py`\
+      \ changed, paste targeted pytest command/output for model tests; if not changed\
+      \ because file was already clean, cite the no-change proof. |\n| Negative delta\
+      \ | File deletion/narrow rewrite summary with no replacement abstraction. |\n\
+      \n<side_effect_budget>\nAllowed side effects: remove stale historical remediation\
+      \ residue from the listed files; run local grep/test commands.\nForbidden side\
+      \ effects: production code edits, command weakening, docs outside the stale\
+      \ invar remediation scope without sibling-hit proof, README/pyproject edits,\
+      \ preserved decide/MCP test edits, or rework of already-green finalization evidence.\n\
+      </side_effect_budget>\n\n<risk_probes>\n- Probe for hidden sibling residue under\
+      \ `docs/invar_guard_remediation/**` with the same forbidden terms before finishing.\n\
+      - Probe that `tests/test_models.py` still validates active model behavior and\
+      \ has not been replaced by an empty deletion of meaningful tests.\n- Probe that\
+      \ the final grep command fails only because of real residue, not because plan/worktree\
+      \ artifacts are being scanned.\n</risk_probes>\n\n## Completion Criteria (stub\
+      \ exclusion)\nThis is an IMPLEMENTATION cleanup step. Stub-only completion is\
+      \ not applicable and not acceptable; the residue must actually be removed or\
+      \ narrowly rewritten, and outputs must show the listed hits no longer exist."
+    verification: '- Main path: every raw hit in blocker family `B2-final-grep-forbidden-residue`
+      is absent from the allowed path budget after deletion/narrow rewrite.
+
+      - Failure path: no forbidden residue was moved to another scanned file, no final
+      grep command/allowlist was weakened, and no forbidden paths outside allowed
+      scope were touched.
+
+      - Targeted safety: if `tests/test_models.py` changed, run focused model tests
+      and paste output.
+
+      - Scope proof: paste `git diff --name-only` or equivalent changed-file list
+      demonstrating only allowed paths changed.
+
+      - Preservation proof: explicitly state CLI runtime proof PASS, full regression
+      PASS, wiring audit PASS, and B1 retest PASS were not reworked.'
+    refs:
+    - orch_removal_final_grep_closure
+    - tests/test_models.py
+    - docs/invar_guard_remediation/uiux-proof-artifact.md
+    - docs/invar_guard_remediation/guard_all_raw.txt
+    - docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md
+    - docs/invar_guard_remediation/escape_budget_authority_decision.md
+    - docs/invar_guard_remediation/failure_inventory.md
+    - docs/invar_guard_remediation/post_salvage_residual_classification_register.md
+    depends_on:
+    - orch_removal_final_grep_closure
+    agent: architectural-demolitionist
+  - id: orch_removal_retest_final_grep_closure
+    name: Retest B2 final grep closure
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      full-plan-check final grep retest for blocker family `B2-final-grep-forbidden-residue`.
+
+
+      As an independent integration verifier, rerun the exact final grep closure command
+      from `orch_removal_final_grep_closure` verbatim. Do not simplify it, weaken
+      it, add allowlists, or substitute a narrower grep. Add targeted checks only
+      for files actually touched by the fix: if `tests/test_models.py` changed, run
+      its focused pytest target; for docs cleanup, provide changed-file and targeted
+      residue grep proof.
+
+
+      This retest must preserve already-green finalization evidence and must not rework
+      CLI runtime proof PASS, full regression PASS, wiring audit PASS, or B1 retest
+      PASS.
+
+
+      Decision fields required in evidence: `verdict`, `blockers`, `gate_open_allowed`,
+      and `orchestrator_action_hint`. If the exact grep command exits non-zero or
+      emits any hit, set `verdict: FAIL`, `gate_open_allowed: false`, and `orchestrator_action_hint:
+      DO_NOT_COMPLETE`.
+
+
+      <side_effect_budget>
+
+      Allowed side effects: run verification commands and inspect changed files.
+
+      Forbidden side effects: mutate files, edit the grep command, mark the original
+      failed step complete, or rework already-green finalization evidence.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Confirm the exact command still scans docs/invar remediation artifacts and
+      is not narrowed.
+
+      - Confirm no new forbidden residue appears in sibling docs under `docs/invar_guard_remediation/**`.
+
+      - Confirm downstream `orch_removal_deep_review` and `orch_removal_final_gate`
+      remain blocked unless this retest is green.
+
+      </risk_probes>'
+    verification: '- Run the exact Python heredoc command from `orch_removal_final_grep_closure`
+      verbatim and paste raw stdout, raw stderr, and exit code.
+
+      - Expected green result: exit code 0 and output includes the original success
+      print line for forbidden-term and exact-deletion closure.
+
+      - If `tests/test_models.py` changed, run `uv run pytest tests/test_models.py
+      -q` (or a narrower named target if evidence identifies one) and paste raw output/exit
+      code.
+
+      - For docs cleanup, paste targeted residue grep output for the fixed `docs/invar_guard_remediation/`
+      files or sibling scope if used.
+
+      - Evidence must include machine-readable fields: `verdict`, `blockers`, `gate_open_allowed`,
+      `orchestrator_action_hint`.
+
+      - Retest is green only when `verdict: PASS`, `blockers: []`, `gate_open_allowed:
+      true`, and `orchestrator_action_hint: COMPLETE_ALLOWED`.'
+    refs:
+    - orch_removal_final_grep_closure
+    - orch_removal_fix_final_grep_forbidden_residue
+    depends_on:
+    - orch_removal_fix_final_grep_forbidden_residue
+    agent: integration-verifier
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
   status: done

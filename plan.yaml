@@ -110236,36 +110236,43 @@ phases:
     status: pending
     description: "step_type: implementation\nTARGET STATE: built-in orchestration\
       \ runtime/control/drive/resolver/runner/worktree implementation modules are\
-      \ absent from source, while vectl_decide and normal CLI/MCP imports continue\
-      \ to work.\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref\
-      \ + key passage | target_state | evidence_class | required_probe_or_artifact\
-      \ | status |\n| RUNTIME-SOURCE-DELETED | user-request:2026-06-17 — delete `src/vectl/orchestration/`,\
+      \ absent from source, core facade wording no longer references the deleted orchestration\
+      \ namespace, while vectl_decide and normal CLI/MCP imports continue to work.\n\
+      \nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
+      \ | target_state | evidence_class | required_probe_or_artifact | status |\n\
+      | RUNTIME-SOURCE-DELETED | user-request:2026-06-17 — delete `src/vectl/orchestration/`,\
       \ `src/vectl/core/orchestration/`, `src/vectl/shell/orchestration/`, `orch_app.py`,\
       \ and all `cli_orchestration*.py` | Target runtime packages/files no longer\
       \ exist | source_static | Deletion existence probe over exact paths | OWNED\
-      \ |\n| DECIDE-NO-ORCH-IMPORTS | discovery evidence — decide.py, decision_state.py,\
+      \ |\n| CORE-FACADE-RESIDUE-CLEANED | src/vectl/core/__init__.py current docstring\
+      \ refers to `vectl.core.orchestration` compatibility facade | Core package facade\
+      \ no longer documents or imports the deleted orchestration namespace | source_static\
+      \ | Production import/forbidden-term absence probe covers `src/vectl/core/__init__.py`\
+      \ | OWNED |\n| DECIDE-NO-ORCH-IMPORTS | discovery evidence — decide.py, decision_state.py,\
       \ model_outputs.py do not import orchestration modules | Preserved decide files\
       \ remain importable and do not gain orchestration imports | runtime_probe |\
       \ Import probe and targeted decide tests | OWNED |\n| MCP-WORDING-READY | user-request:2026-06-17\
       \ — modify mcp_server/model_outputs wording from orchestration advisor to core\
       \ automation/dispatch advisor | MCP decide surface survives without built-in\
       \ orch runtime | runtime_probe | test_mcp + decide tests | OWNED |\n\nGate Preview\
-      \ (what the gate WILL reject):\n1. Any residual production import of `vectl.orchestration`,\
-      \ `core.orchestration`, `orch_app`, or `cli_orchestration`.\n2. Any deletion\
-      \ or weakening of `vectl_decide`.\n3. Handler-only proof that does not import\
-      \ the real CLI/MCP modules.\n\n## Completion Criteria (stub exclusion)\nThis\
-      \ is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Private\
-      \ `_Runtime*`, `_Stub*`, or `_Placeholder*` replacements for deleted orchestration\
-      \ are rejected.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"src/vectl/orchestration/**\"\
+      \ (what the gate WILL reject):\n1. Any residual production import or source\
+      \ wording for `vectl.orchestration`, `core.orchestration`, `orch_app`, or `cli_orchestration`,\
+      \ including in `src/vectl/core/__init__.py`.\n2. Any deletion or weakening of\
+      \ `vectl_decide`.\n3. Handler-only proof that does not import the real CLI/MCP\
+      \ modules.\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable. Private `_Runtime*`, `_Stub*`,\
+      \ or `_Placeholder*` replacements for deleted orchestration are rejected.\n\n\
+      <intent_closure_contract>\nallowed_paths:\n  - \"src/vectl/orchestration/**\"\
       \n  - \"src/vectl/core/orchestration/**\"\n  - \"src/vectl/shell/orchestration/**\"\
       \n  - \"src/vectl/orch_app.py\"\n  - \"src/vectl/cli_orchestration*.py\"\n \
-      \ - \"src/vectl/mcp_core_misc_tools.py\"\n  - \"src/vectl/mcp_server.py\"\n\
-      \  - \"src/vectl/model_outputs.py\"\n  - \"pyproject.toml\"\nblocked_paths:\n\
-      \  - \"src/vectl/decide.py\"\n  - \"src/vectl/decision_state.py\"\n  - \"tests/test_decide.py\"\
-      \n  - \"tests/test_decide_state_isolation.py\"\nrequired_claims:\n  - runtime_source_deleted\n\
-      \  - production_orchestration_imports_removed\n  - decide_surface_preserved\n\
-      required_checks:\n  - id: runtime_deletion_probe\n    command: [\"uv\", \"run\"\
-      , \"python\", \"-c\", \"from pathlib import Path; targets=['src/vectl/orchestration','src/vectl/core/orchestration','src/vectl/shell/orchestration','src/vectl/orch_app.py'];\
+      \ - \"src/vectl/core/__init__.py\"\n  - \"src/vectl/mcp_core_misc_tools.py\"\
+      \n  - \"src/vectl/mcp_server.py\"\n  - \"src/vectl/model_outputs.py\"\n  - \"\
+      pyproject.toml\"\nblocked_paths:\n  - \"src/vectl/decide.py\"\n  - \"src/vectl/decision_state.py\"\
+      \n  - \"tests/test_decide.py\"\n  - \"tests/test_decide_state_isolation.py\"\
+      \nrequired_claims:\n  - runtime_source_deleted\n  - production_orchestration_imports_removed\n\
+      \  - core_facade_residue_removed\n  - decide_surface_preserved\nrequired_checks:\n\
+      \  - id: runtime_deletion_probe\n    command: [\"uv\", \"run\", \"python\",\
+      \ \"-c\", \"from pathlib import Path; targets=['src/vectl/orchestration','src/vectl/core/orchestration','src/vectl/shell/orchestration','src/vectl/orch_app.py'];\
       \ targets += [str(p) for p in Path('src/vectl').glob('cli_orchestration*.py')];\
       \ still=[p for p in targets if Path(p).exists()]; assert not still, still; print('deleted\
       \ targets absent')\"]\n    covers_claims:\n      - runtime_source_deleted\n\
@@ -110273,11 +110280,11 @@ phases:
       python\", \"-c\", \"from pathlib import Path; terms=['vectl.orchestration','core.orchestration','orch_app','cli_orchestration'];\
       \ files=list(Path('src/vectl').rglob('*.py')); hits=[f'{p}:{t}' for p in files\
       \ for t in terms if t in p.read_text(errors='ignore')]; assert not hits, hits;\
-      \ print('no production orchestration imports')\"]\n    covers_claims:\n    \
-      \  - production_orchestration_imports_removed\n  - id: decide_targeted_tests\n\
-      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_decide.py\", \"tests/test_decide_state_isolation.py\"\
-      , \"tests/test_mcp.py\", \"-q\"]\n    covers_claims:\n      - decide_surface_preserved\n\
-      </intent_closure_contract>"
+      \ print('no production orchestration imports or facade residue')\"]\n    covers_claims:\n\
+      \      - production_orchestration_imports_removed\n      - core_facade_residue_removed\n\
+      \  - id: decide_targeted_tests\n    command: [\"uv\", \"run\", \"pytest\", \"\
+      tests/test_decide.py\", \"tests/test_decide_state_isolation.py\", \"tests/test_mcp.py\"\
+      , \"-q\"]\n    covers_claims:\n      - decide_surface_preserved\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     refs:
     - user-request:2026-06-17#source-deletion-targets
@@ -110286,6 +110293,7 @@ phases:
     - src/vectl/shell/orchestration/
     - src/vectl/orch_app.py
     - src/vectl/cli_orchestration.py
+    - src/vectl/core/__init__.py
     - src/vectl/mcp_core_misc_tools.py
     - src/vectl/mcp_server.py
     - src/vectl/model_outputs.py

@@ -111527,15 +111527,16 @@ phases:
       \      - readmes_match_runtime_inventory\n      - stale_15_tool_wording_removed\n\
       \  - id: source_comment_inventory_truth_probe\n    command: [\"uv\", \"run\"\
       , \"python\", \"-c\", \"import ast, asyncio, io, re, tokenize\\nfrom pathlib\
-      \ import Path\\nfrom vectl.mcp_server import mcp\\nasync def runtime_inventory():\\\
+      \ import Path\\nfrom vectl.mcp_server import mcp\\nDOCSTRING_NODE_TYPES = (ast.Module,\
+      \ ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)\\nasync def runtime_inventory():\\\
       n    tools = await mcp.list_tools()\\n    names = sorted(getattr(t, 'name',\
       \ str(t)) for t in tools)\\n    assert len(names) == 20, names\\n    assert\
       \ 'vectl_decide' in names, names\\n    return names\\ndef source_doc_comment_lines(path):\\\
       n    text = path.read_text(encoding='utf-8', errors='ignore')\\n    lines =\
       \ []\\n    tree = ast.parse(text, filename=str(path))\\n    for node in ast.walk(tree):\\\
-      n        doc = ast.get_docstring(node, clean=False)\\n        if doc:\\n   \
-      \         lines.extend(f'{path}:doc:{part.strip()}' for part in doc.splitlines()\
-      \ if part.strip())\\n    for tok in tokenize.generate_tokens(io.StringIO(text).readline):\\\
+      n        if isinstance(node, DOCSTRING_NODE_TYPES):\\n            doc = ast.get_docstring(node,\
+      \ clean=False)\\n            if doc:\\n                lines.extend(f'{path}:doc:{part.strip()}'\
+      \ for part in doc.splitlines() if part.strip())\\n    for tok in tokenize.generate_tokens(io.StringIO(text).readline):\\\
       n        if tok.type == tokenize.COMMENT:\\n            value = tok.string.lstrip('#').strip()\\\
       n            if value:\\n                lines.append(f'{path}:comment:{value}')\\\
       n    return lines\\nasync def main():\\n    names = await runtime_inventory()\\\
@@ -111555,21 +111556,28 @@ phases:
       n    print('\\\\n'.join(count_lines))\\n    print('source_comment_inventory_contains_vectl_decide=True')\\\
       nasyncio.run(main())\"]\n    covers_claims:\n      - mcp_source_comments_match_runtime_inventory\n\
       \  - id: stale_mcp_tool_count_wording_probe\n    command: [\"uv\", \"run\",\
-      \ \"python\", \"-c\", \"from pathlib import Path\\npaths = [Path('README.md'),\
+      \ \"python\", \"-c\", \"import re\\nfrom pathlib import Path\\npaths = [Path('README.md'),\
       \ Path('README_zh.md')] + sorted(Path('src/vectl').glob('mcp_*.py')) + [Path('src/vectl/mcp_server.py')]\\\
-      npatterns = ['15 MCP tools', '15 tools', '15 public MCP tools', '15 个工具', 'Tool\
-      \ 16: vectl_decide']\\nhits = []\\nfor p in paths:\\n    if not p.exists():\\\
-      n        hits.append(f'{p}:missing')\\n        continue\\n    text = p.read_text(encoding='utf-8',\
-      \ errors='ignore')\\n    for pattern in patterns:\\n        if pattern in text:\\\
-      n            hits.append(f'{p}:{pattern}')\\nif hits:\\n    raise SystemExit('stale\
-      \ MCP inventory wording remains:\\\\n' + '\\\\n'.join(hits))\\nprint('no stale\
-      \ 15-tool wording or Tool 16 decide numbering remains in active README/MCP source\
-      \ surfaces')\"]\n    covers_claims:\n      - stale_15_tool_wording_removed\n\
-      \      - stale_decide_numbering_removed\n  - id: decide_mcp_targeted_tests\n\
-      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_mcp.py\", \"tests/test_decide.py\"\
-      , \"tests/test_decide_state_isolation.py\", \"-q\"]\n    covers_claims:\n  \
-      \    - decide_mcp_behavior_preserved\n      - runtime_inventory_count_established\n\
-      </intent_closure_contract>"
+      nliteral_patterns = ['15 MCP tools', '15 tools', '15 public MCP tools', '15\
+      \ 个工具']\\nnumbered_decide = re.compile(r'(?i)(?:\\\\btool\\\\s+)?\\\\b\\\\d+\\\
+      \\s*[\\\\).:：-]\\\\s*`?vectl_decide`?\\\\b|\\\\btool\\\\s+\\\\d+\\\\s*[:：-]\\\
+      \\s*`?vectl_decide`?\\\\b')\\nnumbered_inventory_line = re.compile(r'(?i)^\\\
+      \\s*(?:#\\\\s*)?(?:[-*]\\\\s*)?(?:tool\\\\s*)?\\\\d+\\\\s*[\\\\).:：-]\\\\s*`?vectl_[a-z0-9_]+`?\\\
+      \\b')\\nhits = []\\nfor p in paths:\\n    if not p.exists():\\n        hits.append(f'{p}:missing')\\\
+      n        continue\\n    text = p.read_text(encoding='utf-8', errors='ignore')\\\
+      n    for pattern in literal_patterns:\\n        if pattern in text:\\n     \
+      \       hits.append(f'{p}:literal:{pattern}')\\n    for lineno, line in enumerate(text.splitlines(),\
+      \ 1):\\n        if numbered_decide.search(line):\\n            hits.append(f'{p}:{lineno}:stale\
+      \ numbered vectl_decide inventory entry:{line.strip()}')\\n        elif numbered_inventory_line.search(line):\\\
+      n            hits.append(f'{p}:{lineno}:stale numbered MCP inventory entry:{line.strip()}')\\\
+      nif hits:\\n    raise SystemExit('stale MCP inventory wording remains:\\\\n'\
+      \ + '\\\\n'.join(hits))\\nprint('no stale 15-tool wording or numbered MCP inventory\
+      \ entries remain in active README/MCP source surfaces')\"]\n    covers_claims:\n\
+      \      - stale_15_tool_wording_removed\n      - stale_decide_numbering_removed\n\
+      \  - id: decide_mcp_targeted_tests\n    command: [\"uv\", \"run\", \"pytest\"\
+      , \"tests/test_mcp.py\", \"tests/test_decide.py\", \"tests/test_decide_state_isolation.py\"\
+      , \"-q\"]\n    covers_claims:\n      - decide_mcp_behavior_preserved\n     \
+      \ - runtime_inventory_count_established\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     depends_on:
     - orch_removal_readme_zh_decide_parity

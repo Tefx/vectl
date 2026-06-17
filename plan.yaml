@@ -112084,7 +112084,7 @@ phases:
       \ owner/lifecycle or non-intersection.\n        2. Broad code/test cleanup in\
       \ a plan-evidence hygiene step.\n        3. A closure receipt that lacks targeted\
       \ `vectl show`/validate evidence for the offending step.\n        4. Exact substring\
-      \ parsing of wrapped `vectl validate` output.\n\n        <intent_closure_contract>\n\
+      \ parsing of wrapped `vectl validate` output.\n\n<intent_closure_contract>\n\
       allowed_paths:\n  - \"plan.yaml\"\nblocked_paths:\n  - \"src/**\"\n  - \"tests/**\"\
       \n  - \"docs/**\"\nrequired_claims:\n  - group_b_rows_closed_or_row_locally_dispositioned\n\
       \  - scoped_pass_vs_global_fail_classified\n  - gate_intersection_disposition_recorded_row_locally\n\

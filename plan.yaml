@@ -110705,7 +110705,7 @@ phases:
       owned by pending orch_removal_decide_wording_preserve; not final repo readiness.'
 - id: orch_removal_tests_docs
   name: 'Orchestrator Removal: Tests, Docs, and Decide Wording'
-  status: pending
+  status: in_progress
   gate: Tests/docs gate requires orchestration-only tests and docs retired, README/RFC
     wording updated, and vectl_decide documented as supported caller-owned automation
     advisor.
@@ -110935,7 +110935,7 @@ phases:
     agent: architectural-demolitionist
   - id: orch_removal_doc_cleanup
     name: Delete orchestration docs and remove README orch guidance
-    status: pending
+    status: claimed
     description: "step_type: implementation\nTARGET STATE: orchestration documentation\
       \ is deleted rather than archived, existing archived/remediation orchestration\
       \ proof/workflow artifacts are removed when they preserve forbidden runtime\
@@ -111076,6 +111076,8 @@ phases:
     - docs/archive/legacy-proof/independent_architecture_retest_report.md
     - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-06-17T14:56:19.342413+00:00'
   - id: orch_removal_decide_wording_preserve
     name: Reword preserved vectl_decide surfaces as caller-owned automation advisor
     status: pending

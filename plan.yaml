@@ -114267,7 +114267,7 @@ phases:
       orch_removal_* only contextual references.'
   - id: egr_final_validate_gate
     name: Final gate for completed-evidence guard remediation
-    status: pending
+    status: claimed
     description: "DECISION ARTIFACT: final independent gate for the evidence_guard_remediation\
       \ phase.\n\nVerification scope: full-plan-check protecting the final target\
       \ that `uv run vectl validate` reaches 0 errors, or that any remaining completed-evidence\
@@ -114427,6 +114427,8 @@ phases:
     - egr_retest_init_gitattributes_clirunner_compat
     - egr_audit_test_only_exception_disposition
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-17T17:41:12.218954+00:00'
   - id: egr_fix_init_gitattributes_clirunner_compat
     name: Fix CliRunner isolated filesystem compatibility for init gitattributes tests
     status: done

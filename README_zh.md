@@ -75,7 +75,7 @@ uvx vectl init --project my-project
 }
 ```
 
-vectl 通过 MCP 暴露了 15 个工具，agent 可直接调用 `vectl_status`、`vectl_claim`、`vectl_complete`、`vectl_decide` 等；`vectl_decide` 也是支持调用方自有自动化的 advisor 入口点——结构化数据进出，比解析 CLI 文本输出更可靠。
+vectl 通过 MCP 暴露了 20 个工具，agent 可直接调用 `vectl_status`、`vectl_claim`、`vectl_complete`、`vectl_decide` 等；`vectl_decide` 也是支持调用方自有自动化的 advisor 入口点——结构化数据进出，比解析 CLI 文本输出更可靠。
 
 OpenCode 用户，在 `opencode.jsonc` 中添加：
 

@@ -1,23 +1,6 @@
 """MCP server exposing vectl tools to agents.
 
-15 tools (8 consolidated per expert panel dec-001, plus guide, dag, clipboard,
-init, render, check, and decide):
-  1. vectl_status  — plan overview + next steps + mine
-  2. vectl_show    — step/phase detail
-  3. vectl_claim   — claim step (auto-claim supported)
-  4. vectl_complete — complete step with evidence
-  5. vectl_lifecycle — defer/reject/skip/skip-phase
-  6. vectl_search  — search plan
-  7. vectl_mutate  — add-step/edit-step/remove-step/move-step/edit-phase/add-phase
-  8. vectl_review  — plan review + gate check
-  9. vectl_guide   — agent onboarding guide (startup/stuck/review/planning/migration)
-  10. vectl_dag    — dependency graph as Mermaid flowchart
-  11. vectl_clipboard — cross-agent communication (write/read/clear)
-  12. vectl_init   — initialize new vectl project (create plan.yaml + AGENTS.md/CLAUDE.md)
-  13. vectl_render — render plan as Markdown stakeholder report
-  14. vectl_check  — toggle/add checklist items in step descriptions
-  15. vectl_decide — deterministic automation/dispatch advisor (session reuse, status/reason_code)
-
+Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 Tools generally return Markdown-formatted text.
 
 Feature request (2026-02-12): claim-time guidance ("Output guidance when running vectl claim").

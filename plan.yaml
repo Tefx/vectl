@@ -113611,102 +113611,112 @@ phases:
       \ only, with no new class, protocol, helper, command, allowlist, or replacement\
       \ abstraction.\nrequired_checks:\n  - id: b2_forbidden_absence\n    purpose:\
       \ exact/focused forbidden-hit absence over raw terms in allowed docs/test paths\
-      \ and sibling docs scope.\n    command: |-\n      python - <<'PY'\n      from\
-      \ pathlib import Path\n      allowed = ['tests/test_models.py', 'docs/invar_guard_remediation/uiux-proof-artifact.md',\
+      \ and sibling docs scope.\n    covers_claims:\n      - b2_blocker_family_closed\n\
+      \    command:\n      - python\n      - -c\n      - |\n        from pathlib import\
+      \ Path\n        allowed = ['tests/test_models.py', 'docs/invar_guard_remediation/uiux-proof-artifact.md',\
       \ 'docs/invar_guard_remediation/guard_all_raw.txt', 'docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md',\
       \ 'docs/invar_guard_remediation/escape_budget_authority_decision.md', 'docs/invar_guard_remediation/failure_inventory.md',\
       \ 'docs/invar_guard_remediation/post_salvage_residual_classification_register.md']\n\
-      \      terms = ['IsolationMode', 'orch_app', 'cli_orchestration', 'vectl orch',\
+      \        terms = ['IsolationMode', 'orch_app', 'cli_orchestration', 'vectl orch',\
       \ 'CONTENT_PATH:docs/ORCHESTRATION-', 'CONTENT_PATH:docs/RFC-orch-drive.md',\
       \ 'LEGACY_DRIVER:.vectl/worktrees', 'CONTENT_PATH:src/vectl/orchestration',\
       \ 'CONTENT_PATH:src/vectl/orch_app.py', 'CONTENT_PATH:src/vectl/cli_orchestration',\
       \ 'CONTENT_PATH:docs/archive/consumer_boundary_conformance_verify.py', 'CONTENT_PATH:tests/orchestration',\
       \ 'CONTENT_PATH:docs/RFC-opencode-orchestration-runner.md', 'CONTENT_PATH:src/vectl/core/orchestration']\n\
-      \      scan = [Path(p) for p in allowed]\n      root = Path('docs/invar_guard_remediation')\n\
-      \      if root.exists():\n          scan += [p for p in root.rglob('*') if p.is_file()\
-      \ and p.as_posix() not in allowed]\n      fail = []\n      for p in scan:\n\
-      \          if p.as_posix() == 'tests/test_models.py' and not p.exists():\n \
-      \             fail.append('tests/test_models.py missing')\n              continue\n\
-      \          if not p.exists():\n              continue\n          text = p.read_text(encoding='utf-8',\
-      \ errors='ignore')\n          for term in terms:\n              if term in text:\n\
-      \                  fail.append(f'{p.as_posix()}:{term}')\n      if fail:\n \
-      \         print('\\n'.join(fail)); raise SystemExit(1)\n      print('PASS: B2\
-      \ forbidden residue absent from allowed inventory and sibling docs scope')\n\
-      \      PY\n    expected: exit 0 and PASS line printed.\n  - id: changed_path_scope_containment\n\
-      \    purpose: changed paths are a subset of allowed_paths.exact.\n    command:\
-      \ |-\n      python - <<'PY'\n      import os, subprocess\n      allowed = set(['tests/test_models.py',\
-      \ 'docs/invar_guard_remediation/uiux-proof-artifact.md', 'docs/invar_guard_remediation/guard_all_raw.txt',\
-      \ 'docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md',\
+      \        scan = [Path(p) for p in allowed]\n        root = Path('docs/invar_guard_remediation')\n\
+      \        if root.exists():\n            scan += [p for p in root.rglob('*')\
+      \ if p.is_file() and p.as_posix() not in allowed]\n        fail = []\n     \
+      \   for p in scan:\n            if p.as_posix() == 'tests/test_models.py' and\
+      \ not p.exists():\n                fail.append('tests/test_models.py missing')\n\
+      \                continue\n            if not p.exists():\n                continue\n\
+      \            text = p.read_text(encoding='utf-8', errors='ignore')\n       \
+      \     for term in terms:\n                if term in text:\n               \
+      \     fail.append(f'{p.as_posix()}:{term}')\n        if fail:\n            print('\\\
+      n'.join(fail))\n            raise SystemExit(1)\n        print('PASS: B2 forbidden\
+      \ residue absent from allowed inventory and sibling docs scope')\n    expected:\
+      \ exit 0 and PASS line printed.\n  - id: changed_path_scope_containment\n  \
+      \  purpose: changed paths are a subset of allowed_paths.exact.\n    covers_claims:\n\
+      \      - scope_containment\n      - preserve_green_finalization_proofs\n   \
+      \ command:\n      - python\n      - -c\n      - |\n        import os, subprocess\n\
+      \        allowed = set(['tests/test_models.py', 'docs/invar_guard_remediation/uiux-proof-artifact.md',\
+      \ 'docs/invar_guard_remediation/guard_all_raw.txt', 'docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md',\
       \ 'docs/invar_guard_remediation/escape_budget_authority_decision.md', 'docs/invar_guard_remediation/failure_inventory.md',\
       \ 'docs/invar_guard_remediation/post_salvage_residual_classification_register.md'])\n\
-      \      base = os.environ.get('VECTL_DIFF_BASE', 'HEAD')\n      paths = subprocess.check_output(['git',\
-      \ 'diff', '--name-only', base, '--'], text=True).splitlines()\n      bad = [p\
-      \ for p in paths if p not in allowed]\n      if bad:\n          print('FAIL\
-      \ outside allowed_paths'); print('\\n'.join(bad)); raise SystemExit(1)\n   \
-      \   print('PASS: changed paths contained')\n      PY\n    expected: exit 0;\
-      \ no path outside allowed_paths.exact.\n  - id: no_blocked_path_edits\n    purpose:\
-      \ no edits to blocked paths or preserved decide/MCP/finalization proof surfaces.\n\
-      \    command: |-\n      python - <<'PY'\n      import fnmatch, os, subprocess\n\
-      \      blocked = ['plan.yaml', '.vectl/**', 'src/**', 'README.md', 'README_zh.md',\
-      \ 'pyproject.toml', 'tests/test_decide.py', 'tests/test_decide_state_isolation.py',\
+      \        base = os.environ.get('VECTL_DIFF_BASE', 'HEAD')\n        paths = subprocess.check_output(['git',\
+      \ 'diff', '--name-only', base, '--'], text=True).splitlines()\n        bad =\
+      \ [p for p in paths if p not in allowed]\n        if bad:\n            print('FAIL\
+      \ outside allowed_paths')\n            print('\\n'.join(bad))\n            raise\
+      \ SystemExit(1)\n        print('PASS: changed paths contained')\n    expected:\
+      \ exit 0; no path outside allowed_paths.exact.\n  - id: no_blocked_path_edits\n\
+      \    purpose: no edits to blocked paths or preserved decide/MCP/finalization\
+      \ proof surfaces.\n    covers_claims:\n      - scope_containment\n      - preserve_green_finalization_proofs\n\
+      \    command:\n      - python\n      - -c\n      - |\n        import fnmatch,\
+      \ os, subprocess\n        blocked = ['plan.yaml', '.vectl/**', 'src/**', 'README.md',\
+      \ 'README_zh.md', 'pyproject.toml', 'tests/test_decide.py', 'tests/test_decide_state_isolation.py',\
       \ 'tests/test_mcp.py', 'docs/RFC-vectl-decide-advisor-refresh.md', 'docs/**/*decide*.md',\
-      \ 'docs/**/*mcp*.md', 'docs/**/*MCP*.md']\n      base = os.environ.get('VECTL_DIFF_BASE',\
-      \ 'HEAD')\n      paths = subprocess.check_output(['git', 'diff', '--name-only',\
-      \ base, '--'], text=True).splitlines()\n      bad = [p for p in paths if any(fnmatch.fnmatchcase(p,\
-      \ pat) for pat in blocked)]\n      if bad:\n          print('FAIL blocked path\
-      \ edited'); print('\\n'.join(bad)); raise SystemExit(1)\n      print('PASS:\
-      \ blocked paths untouched')\n      PY\n    expected: exit 0; no blocked path\
-      \ reported.\n  - id: no_final_grep_weakening_or_allowlist\n    purpose: no command\
-      \ edit, allowlist, ignored term list, or scan weakening is introduced.\n   \
-      \ command: |-\n      python - <<'PY'\n      import os, subprocess\n      allowed\
-      \ = ['tests/test_models.py', 'docs/invar_guard_remediation/uiux-proof-artifact.md',\
+      \ 'docs/**/*mcp*.md', 'docs/**/*MCP*.md']\n        base = os.environ.get('VECTL_DIFF_BASE',\
+      \ 'HEAD')\n        paths = subprocess.check_output(['git', 'diff', '--name-only',\
+      \ base, '--'], text=True).splitlines()\n        bad = [p for p in paths if any(fnmatch.fnmatchcase(p,\
+      \ pat) for pat in blocked)]\n        if bad:\n            print('FAIL blocked\
+      \ path edited')\n            print('\\n'.join(bad))\n            raise SystemExit(1)\n\
+      \        print('PASS: blocked paths untouched')\n    expected: exit 0; no blocked\
+      \ path reported.\n  - id: no_final_grep_weakening_or_allowlist\n    purpose:\
+      \ no command edit, allowlist, ignored term list, or scan weakening is introduced.\n\
+      \    covers_claims:\n      - no_final_grep_weakening\n      - preserve_green_finalization_proofs\n\
+      \    command:\n      - python\n      - -c\n      - |\n        import os, subprocess\n\
+      \        allowed = ['tests/test_models.py', 'docs/invar_guard_remediation/uiux-proof-artifact.md',\
       \ 'docs/invar_guard_remediation/guard_all_raw.txt', 'docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md',\
       \ 'docs/invar_guard_remediation/escape_budget_authority_decision.md', 'docs/invar_guard_remediation/failure_inventory.md',\
       \ 'docs/invar_guard_remediation/post_salvage_residual_classification_register.md']\n\
-      \      tokens = ['allowlist', 'allow-list', 'allowed_terms', 'allowed terms',\
+      \        tokens = ['allowlist', 'allow-list', 'allowed_terms', 'allowed terms',\
       \ 'ignored forbidden', 'ignore forbidden', 'skip grep', 'skip final grep', 'weaken\
-      \ grep', 'weakened grep']\n      base = os.environ.get('VECTL_DIFF_BASE', 'HEAD')\n\
-      \      changed = subprocess.check_output(['git', 'diff', '--name-only', base,\
-      \ '--'], text=True).splitlines()\n      if 'plan.yaml' in changed:\n       \
-      \   print('FAIL plan.yaml changed in worker diff'); raise SystemExit(1)\n  \
-      \    diff = subprocess.run(['git', 'diff', '--unified=0', base, '--', *allowed],\
-      \ text=True, capture_output=True).stdout.splitlines()\n      bad = [line for\
-      \ line in diff if line.startswith('+') and not line.startswith('+++') and any(tok\
-      \ in line.lower() for tok in tokens)]\n      if bad:\n          print('FAIL\
-      \ grep weakening or allowlist addition'); print('\\n'.join(bad)); raise SystemExit(1)\n\
-      \      print('PASS: no final-grep weakening or allowlist')\n      PY\n    expected:\
-      \ exit 0; no plan diff and no weakening/allowlist additions.\n  - id: targeted_model_test_safety\n\
-      \    purpose: pass if tests/test_models.py untouched; otherwise run focused\
-      \ model tests.\n    command: |-\n      base=${VECTL_DIFF_BASE:-HEAD}\n     \
-      \ if git diff --name-only ${base} -- | grep -qx tests/test_models.py; then\n\
-      \        uv run pytest tests/test_models.py -q\n      else\n        echo PASS:\
-      \ tests/test_models.py not touched\n      fi\n    expected: exit 0; pytest passes\
-      \ when tests/test_models.py changed.\n  - id: negative_delta_no_replacement_abstraction\n\
-      \    purpose: deletion/narrow rewrite only; no replacement abstraction or positive-growth\
-      \ cleanup.\n    command: |-\n      python - <<'PY'\n      import os, subprocess\n\
-      \      allowed = ['tests/test_models.py', 'docs/invar_guard_remediation/uiux-proof-artifact.md',\
+      \ grep', 'weakened grep']\n        base = os.environ.get('VECTL_DIFF_BASE',\
+      \ 'HEAD')\n        changed = subprocess.check_output(['git', 'diff', '--name-only',\
+      \ base, '--'], text=True).splitlines()\n        if 'plan.yaml' in changed:\n\
+      \            print('FAIL plan.yaml changed in worker diff')\n            raise\
+      \ SystemExit(1)\n        diff = subprocess.run(['git', 'diff', '--unified=0',\
+      \ base, '--', *allowed], text=True, capture_output=True).stdout.splitlines()\n\
+      \        bad = [line for line in diff if line.startswith('+') and not line.startswith('+++')\
+      \ and any(tok in line.lower() for tok in tokens)]\n        if bad:\n       \
+      \     print('FAIL grep weakening or allowlist addition')\n            print('\\\
+      n'.join(bad))\n            raise SystemExit(1)\n        print('PASS: no final-grep\
+      \ weakening or allowlist')\n    expected: exit 0; no plan diff and no weakening/allowlist\
+      \ additions.\n  - id: targeted_model_test_safety\n    purpose: pass if tests/test_models.py\
+      \ untouched; otherwise run focused model tests.\n    covers_claims:\n      -\
+      \ test_safety_tests_test_models\n    command:\n      - bash\n      - -lc\n \
+      \     - |\n        base=${VECTL_DIFF_BASE:-HEAD}\n        if git diff --name-only\
+      \ ${base} -- | grep -qx tests/test_models.py; then\n          uv run pytest\
+      \ tests/test_models.py -q\n        else\n          echo PASS: tests/test_models.py\
+      \ not touched\n        fi\n    expected: exit 0; pytest passes when tests/test_models.py\
+      \ changed.\n  - id: negative_delta_no_replacement_abstraction\n    purpose:\
+      \ deletion/narrow rewrite only; no replacement abstraction or positive-growth\
+      \ cleanup.\n    covers_claims:\n      - negative_delta_only\n      - no_final_grep_weakening\n\
+      \    command:\n      - python\n      - -c\n      - |\n        import os, subprocess\n\
+      \        allowed = ['tests/test_models.py', 'docs/invar_guard_remediation/uiux-proof-artifact.md',\
       \ 'docs/invar_guard_remediation/guard_all_raw.txt', 'docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md',\
       \ 'docs/invar_guard_remediation/escape_budget_authority_decision.md', 'docs/invar_guard_remediation/failure_inventory.md',\
       \ 'docs/invar_guard_remediation/post_salvage_residual_classification_register.md']\n\
-      \      base = os.environ.get('VECTL_DIFF_BASE', 'HEAD')\n      adds = dels =\
-      \ 0\n      for line in subprocess.check_output(['git', 'diff', '--numstat',\
-      \ base, '--', *allowed], text=True).splitlines():\n          parts = line.split()\n\
-      \          if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():\
-      \ adds += int(parts[0]); dels += int(parts[1])\n      diff = subprocess.run(['git',\
-      \ 'diff', '--unified=0', base, '--', *allowed], text=True, capture_output=True).stdout.splitlines()\n\
-      \      tokens = ['class ', 'def ', 'Protocol', 'ABC', '@dataclass', 'allowlist']\n\
-      \      bad = [line for line in diff if line.startswith('+') and not line.startswith('+++')\
-      \ and any(tok in line for tok in tokens)]\n      if adds > dels:\n         \
-      \ print(f'FAIL positive line delta adds={adds} dels={dels}'); raise SystemExit(1)\n\
-      \      if bad:\n          print('FAIL replacement abstraction-like addition');\
-      \ print('\\n'.join(bad)); raise SystemExit(1)\n      print(f'PASS negative/non-positive\
-      \ delta adds={adds} dels={dels}')\n      PY\n    expected: exit 0; additions\
-      \ do not exceed deletions and no abstraction tokens added.\n</intent_closure_contract>\n\
-      \n<side_effect_budget>\nAllowed side effects: remove stale historical remediation\
-      \ residue only from allowed_paths.exact; run local grep/test commands.\nForbidden\
-      \ side effects: production code edits, grep command weakening, allowlists, README/pyproject\
-      \ edits, plan/worktree metadata edits, decide/MCP preservation edits, or rework\
-      \ of already-green finalization evidence outside allowed_paths.exact.\n</side_effect_budget>\n\
+      \        base = os.environ.get('VECTL_DIFF_BASE', 'HEAD')\n        adds = dels\
+      \ = 0\n        for line in subprocess.check_output(['git', 'diff', '--numstat',\
+      \ base, '--', *allowed], text=True).splitlines():\n            parts = line.split()\n\
+      \            if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():\n\
+      \                adds += int(parts[0])\n                dels += int(parts[1])\n\
+      \        diff = subprocess.run(['git', 'diff', '--unified=0', base, '--', *allowed],\
+      \ text=True, capture_output=True).stdout.splitlines()\n        tokens = ['class\
+      \ ', 'def ', 'Protocol', 'ABC', '@dataclass', 'allowlist']\n        bad = [line\
+      \ for line in diff if line.startswith('+') and not line.startswith('+++') and\
+      \ any(tok in line for tok in tokens)]\n        if adds > dels:\n           \
+      \ print(f'FAIL positive line delta adds={adds} dels={dels}')\n            raise\
+      \ SystemExit(1)\n        if bad:\n            print('FAIL replacement abstraction-like\
+      \ addition')\n            print('\\n'.join(bad))\n            raise SystemExit(1)\n\
+      \        print(f'PASS negative/non-positive delta adds={adds} dels={dels}')\n\
+      \    expected: exit 0; additions do not exceed deletions and no abstraction\
+      \ tokens added.\n</intent_closure_contract>\n\n<side_effect_budget>\nAllowed\
+      \ side effects: remove stale historical remediation residue only from allowed_paths.exact;\
+      \ run local grep/test commands.\nForbidden side effects: production code edits,\
+      \ grep command weakening, allowlists, README/pyproject edits, plan/worktree\
+      \ metadata edits, decide/MCP preservation edits, or rework of already-green\
+      \ finalization evidence outside allowed_paths.exact.\n</side_effect_budget>\n\
       \n<risk_probes>\n- Probe hidden sibling residue under docs/invar_guard_remediation\
       \ with the same forbidden terms before finishing.\n- Probe tests/test_models.py\
       \ still validates active model behavior if touched.\n- Probe the final grep\

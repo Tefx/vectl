@@ -111719,3 +111719,125 @@ phases:
     violating audit integrity, and no product-code fixes were performed by this stream.
   depends_on:
   - det_check_finalization
+  steps:
+  - id: egr_inventory_classify_43_errors
+    name: Inventory and classify all completed-evidence guard errors
+    status: pending
+    description: 'PROOF ARTIFACT: deterministic inventory for the current completed-evidence
+      guard backlog.
+
+
+      Work type: proof_closure. This is a read-only classification step; do not mutate
+      product code, docs, tests, or historical evidence.
+
+
+      Required inventory source:
+
+      - Run `uv run vectl validate` from `/Users/tefx/Projects/vectl`.
+
+      - Capture every completed-evidence guard error currently reported. The expected
+      starting count from the request is 43; if the count has drifted, explain the
+      drift and still classify every current row.
+
+
+      Classification table columns:
+
+      - error_index
+
+      - offending_step_id
+
+      - offending_phase_id
+
+      - failure_signal (`FAIL`, `failed tests`, `NEEDS_REVISION`, `gate_open_allowed=false`,
+      `runtime non-closure`, or combined)
+
+      - likely_group: A_superseded_by_orchestrator_removal | B_scoped_pass_global_fail
+      | C_repo_regression_full_suite_invar_post_review | D_current_core_failure
+
+      - provenance: historical_failure | expected_red | out_of_step_origin | current_unknown
+
+      - disposition_needed: same_phase_closure | non_blocking_superseded | gate_intersection_disposition
+      | current_green_closure | current_blocker_owner
+
+      - intersects_remaining_gates: yes | no | unknown
+
+      - current_code_verification_required: yes | no
+
+      - planned_owner_step: one of the later `egr_*` steps.
+
+
+      Hard constraints:
+
+      - All plan mutations in later steps must use vectl MCP/CLI mutation tools only;
+      no direct `plan.yaml` edits.
+
+      - Do not falsify, erase, or rewrite historical failure facts to hide guard failures.
+
+      - Do not implement product code fixes in this phase.
+
+      - If an error cannot be safely classified, mark it D_current_core_failure rather
+      than guessing.
+
+
+      Acceptance: the evidence contains a complete 43-row (or drift-adjusted) table,
+      exact validate command output, and a count summary by group.'
+    verification: local-check protecting the evidence_guard_remediation remediation
+      phase. Inventory evidence must include raw `uv run vectl validate` output and
+      a complete classification table before any category-specific remediation runs.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Commands
+
+      ```
+
+      uv run vectl validate
+
+      ```
+
+
+      ## Raw Validation Output
+
+      ```
+
+      <paste full stdout/stderr>
+
+      ```
+
+
+      ## Completed-Evidence Guard Inventory
+
+      | # | offending_step_id | phase | signal | group | provenance | disposition_needed
+      | intersects_remaining_gates | current_code_verification_required | planned_owner_step
+      |
+
+      |---|---|---|---|---|---|---|---|---|---|
+
+
+      ## Count Reconciliation
+
+      - Expected starting rows from request: 43
+
+      - Current rows observed: <N>
+
+      - A_superseded_by_orchestrator_removal: <N>
+
+      - B_scoped_pass_global_fail: <N>
+
+      - C_repo_regression_full_suite_invar_post_review: <N>
+
+      - D_current_core_failure: <N>
+
+      - Drift explanation: <none or details>
+
+
+      ## Policy Confirmation
+
+      - No direct `plan.yaml` edits: YES/NO
+
+      - No historical failure fact erasure/falsification: YES/NO
+
+      - Product code/test/doc modifications performed: NONE (required)'
+    agent: plan-readiness-auditor

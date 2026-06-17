@@ -110587,39 +110587,52 @@ phases:
     status: pending
     description: "step_type: implementation\nTARGET STATE: vectl_decide remains a\
       \ supported core automation/dispatch advisor with caller-owned state language.\
-      \ Preserved decide docs/code must not describe it as a built-in orchestrator/orchestration\
-      \ advisor.\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref\
-      \ + key passage | target_state | evidence_class | required_probe_or_artifact\
-      \ | status |\n| DECIDE-SUPPORTED | user-request:2026-06-17 — keep vectl_decide;\
-      \ preserve decide files/tests/RFC | Decide files/tests/RFC remain present and\
-      \ runnable | runtime_probe | Decide pytest + path-presence probe | OWNED |\n\
-      | DECIDE-WORDING | user-request:2026-06-17 — plan wording cleanup from “orchestrator/orchestration\
-      \ advisor” to “core automation advisor/dispatch advisor/caller-owned” | Preserved\
-      \ decide surfaces use caller-owned automation/dispatch advisor wording | source_static\
-      \ | Forbidden decide wording grep | OWNED |\n\nNon-goals: do not remove `vectl_decide`;\
-      \ do not resurrect built-in `vectl orch`; do not rewrite the decide API for\
-      \ this cleanup.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"docs/RFC-vectl-decide-advisor-refresh.md\"\
-      \n  - \"src/vectl/mcp_server.py\"\n  - \"src/vectl/model_outputs.py\"\n  - \"\
-      README.md\"\n  - \"README_zh.md\"\nblocked_paths:\n  - \"src/vectl/decide.py\"\
-      \n  - \"src/vectl/decision_state.py\"\n  - \"tests/test_decide.py\"\n  - \"\
-      tests/test_decide_state_isolation.py\"\nrequired_claims:\n  - decide_advisor_wording_caller_owned\n\
-      \  - decide_api_and_tests_preserved\n  - no_built_in_orch_wording_in_decide_surfaces\n\
+      \ Preserved decide docs/code/MCP tool-list surfaces must not describe it as\
+      \ a built-in orchestrator/orchestration advisor.\n\nRequirement-to-Evidence\
+      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| DECIDE-SUPPORTED | user-request:2026-06-17\
+      \ — keep vectl_decide; preserve decide files/tests/RFC | Decide files/tests/RFC\
+      \ remain present and runnable | runtime_probe | Decide pytest + path-presence\
+      \ probe | OWNED |\n| DECIDE-WORDING | reviewer evidence — src/vectl/decide.py,\
+      \ src/vectl/mcp_core_misc_tools.py, src/vectl/mcp_core_common.py, src/vectl/mcp_render_tools.py,\
+      \ and src/vectl/mcp_project_tools.py currently contain forbidden deterministic\
+      \ orchestration advisor wording | Preserved decide and MCP decide-list surfaces\
+      \ use caller-owned automation/dispatch advisor wording | source_static | Forbidden\
+      \ decide wording grep over all listed live source/docs surfaces | OWNED |\n\n\
+      Non-goals: do not remove `vectl_decide`; do not resurrect built-in `vectl orch`;\
+      \ do not rewrite the decide API for this cleanup. Edits to `src/vectl/decide.py`\
+      \ and `src/vectl/decision_state.py` are explicitly limited to wording-only docstring/comment\
+      \ cleanup that preserves API, signatures, imports, behavior, and tests.\n\n\
+      <intent_closure_contract>\nallowed_paths:\n  - \"docs/RFC-vectl-decide-advisor-refresh.md\"\
+      \n  - \"src/vectl/decide.py\"\n  - \"src/vectl/decision_state.py\"\n  - \"src/vectl/mcp_server.py\"\
+      \n  - \"src/vectl/mcp_core_misc_tools.py\"\n  - \"src/vectl/mcp_core_common.py\"\
+      \n  - \"src/vectl/mcp_render_tools.py\"\n  - \"src/vectl/mcp_project_tools.py\"\
+      \n  - \"src/vectl/model_outputs.py\"\n  - \"README.md\"\n  - \"README_zh.md\"\
+      \nblocked_paths:\n  - \"tests/test_decide.py\"\n  - \"tests/test_decide_state_isolation.py\"\
+      \nrequired_claims:\n  - decide_advisor_wording_caller_owned\n  - decide_api_and_tests_preserved\n\
+      \  - no_built_in_orch_wording_in_decide_surfaces\n  - live_mcp_decide_surfaces_reworded\n\
       required_checks:\n  - id: decide_wording_probe\n    command: [\"uv\", \"run\"\
-      , \"python\", \"-c\", \"from pathlib import Path; files=[Path('docs/RFC-vectl-decide-advisor-refresh.md'),Path('src/vectl/mcp_server.py'),Path('src/vectl/model_outputs.py'),Path('README.md'),Path('README_zh.md')];\
+      , \"python\", \"-c\", \"from pathlib import Path; files=[Path('docs/RFC-vectl-decide-advisor-refresh.md'),Path('src/vectl/decide.py'),Path('src/vectl/decision_state.py'),Path('src/vectl/mcp_server.py'),Path('src/vectl/mcp_core_misc_tools.py'),Path('src/vectl/mcp_core_common.py'),Path('src/vectl/mcp_render_tools.py'),Path('src/vectl/mcp_project_tools.py'),Path('src/vectl/model_outputs.py'),Path('README.md'),Path('README_zh.md')];\
       \ forbidden=['deterministic orchestration advisor','orchestration advisor','orchestrator\
       \ advisor','external orchestrator agents','orchestrator-visible execution'];\
       \ hits=[f'{p}:{term}' for p in files if p.exists() for term in forbidden if\
       \ term in p.read_text(errors='ignore')]; assert not hits, hits; print('decide\
-      \ wording is caller-owned automation/dispatch advisor')\"]\n    covers_claims:\n\
-      \      - decide_advisor_wording_caller_owned\n      - no_built_in_orch_wording_in_decide_surfaces\n\
-      \  - id: decide_preservation_tests\n    command: [\"uv\", \"run\", \"pytest\"\
-      , \"tests/test_decide.py\", \"tests/test_decide_state_isolation.py\", \"-q\"\
-      ]\n    covers_claims:\n      - decide_api_and_tests_preserved\n</intent_closure_contract>"
+      \ and live MCP wording is caller-owned automation/dispatch advisor')\"]\n  \
+      \  covers_claims:\n      - decide_advisor_wording_caller_owned\n      - no_built_in_orch_wording_in_decide_surfaces\n\
+      \      - live_mcp_decide_surfaces_reworded\n  - id: decide_preservation_tests\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_decide.py\", \"tests/test_decide_state_isolation.py\"\
+      , \"-q\"]\n    covers_claims:\n      - decide_api_and_tests_preserved\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     refs:
     - user-request:2026-06-17#decide-wording-cleanup
     - docs/RFC-vectl-decide-advisor-refresh.md
+    - src/vectl/decide.py
+    - src/vectl/decision_state.py
     - src/vectl/mcp_server.py
+    - src/vectl/mcp_core_misc_tools.py
+    - src/vectl/mcp_core_common.py
+    - src/vectl/mcp_render_tools.py
+    - src/vectl/mcp_project_tools.py
     - src/vectl/model_outputs.py
     - README.md
     - README_zh.md

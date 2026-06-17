@@ -111915,7 +111915,7 @@ phases:
       \ generic \"superseded\" claim without row-local gate-intersection reasoning.\n\
       \        3. Any mutation to `orch_removal_*` steps or product code in this stream.\n\
       \        4. Exact substring parsing of wrapped `vectl validate` output.\n\n\
-      \        <intent_closure_contract>\nallowed_paths:\n  - \"plan.yaml\"\nblocked_paths:\n\
+      <intent_closure_contract>\nallowed_paths:\n  - \"plan.yaml\"\nblocked_paths:\n\
       \  - \"src/**\"\n  - \"tests/**\"\n  - \"docs/**\"\nrequired_claims:\n  - group_a_rows_closed_or_row_locally_dispositioned\n\
       \  - historical_failure_facts_retained\n  - orchestrator_removal_workstream_separate\n\
       \  - gate_intersection_recorded_row_locally\n  - robust_validation_parsing_used\n\

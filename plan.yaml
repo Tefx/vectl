@@ -111062,6 +111062,41 @@ phases:
       \    for package, entries in package_data.items():\n        for entry in entries:\n\
       \            if entry == 'judge_agent_prompt.md':\n                hits.append(f'pyproject.toml:PACKAGE_DATA:{package}:judge_agent_prompt.md')\n\
       \nassert not hits, hits\nprint('forbidden-term closure clean')\nPY\n```"
+    evidence_template: '## Final Grep Closure Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this proof step:
+
+      - <filename> — key passage or NOT READ: <reason>
+
+
+      ### Exact Command Executed
+
+      ```
+
+      <paste exact command>
+
+      ```
+
+
+      ### Raw stdout/stderr/exit code
+
+      ```
+
+      <paste raw output>
+
+      ```
+
+
+      ### Closure Verdict
+
+      - PASS only if the command exits 0 and prints forbidden-term closure clean.
+
+      - FAIL if any path/content/decide/package-data hit is reported.
+
+      '
     refs:
     - user-request:2026-06-17#final-grep-closure
     - src/

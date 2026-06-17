@@ -113782,7 +113782,7 @@ phases:
       exited 0; no product code/tests/docs edited.
   - id: egr_independent_closure_audit
     name: Independent audit of evidence-guard closure/disposition
-    status: pending
+    status: claimed
     description: 'CONFORMANCE ARTIFACT: independently audit that the evidence_guard_remediation
       stream closed, dispositioned, exceptioned, or assigned concrete owners for all
       43 initial completed-evidence guard rows plus every drift/current completed-evidence
@@ -113964,6 +113964,8 @@ phases:
     - egr_close_repo_regression_post_review_rows
     - egr_generate_current_core_owner_path
     agent: plan-readiness-auditor
+    claimed_by: plan-readiness-auditor
+    claimed_at: '2026-06-17T14:46:57.929126+00:00'
   - id: egr_final_validate_gate
     name: Final gate for completed-evidence guard remediation
     status: pending

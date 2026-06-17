@@ -110032,6 +110032,155 @@ phases:
     cleanup policy, and no product-code mutations yet.
   depends_on:
   - det_check_finalization
+  steps:
+  - id: orch_removal_scope_matrix
+    name: Build orchestrator-removal scope and preservation matrix
+    status: pending
+    description: 'step_type: investigation
+
+      PROOF ARTIFACT: deletion/preservation matrix for removing built-in orchestration
+      while preserving vectl_decide. This step is read-only for product/repo files.
+
+
+      Requirement-to-Evidence Matrix:
+
+      | requirement_id | source_ref + key passage | target_state | evidence_class
+      | required_probe_or_artifact | status |
+
+      | ORCH-REMOVE-SCOPE | user-request:2026-06-17 — remove built-in `vectl orch`
+      and orchestration runtime/control/drive/resolver/runner/worktree features |
+      All orchestration-owned source/docs/tests are assigned to delete or cleanup
+      owners | artifact_review | Matrix listing every deletion target and every preserved
+      file | OWNED |
+
+      | DECIDE-PRESERVE | user-request:2026-06-17 — keep `vectl_decide` as core automation/dispatch
+      advisor; preserve decide.py, decision_state.py, model_outputs.py, decide tests,
+      RFC | Decide surfaces remain supported and explicitly caller-owned | artifact_review
+      | Preservation list with expected tests and wording replacements | OWNED |
+
+      | ISOLATION-REMOVE | user-request:2026-06-17 — delete Step.isolation and IsolationMode
+      as orchestration execution schema residue | Core model and IO no longer expose
+      isolation schema | artifact_review | Affected-file map for models.py, io.py,
+      tests/test_io.py, tests/test_models.py | OWNED |
+
+      | FINAL-GREP | user-request:2026-06-17 — final grep closure covers forbidden
+      terms | Closure gate has scoped grep/probe command that excludes plan history
+      but covers product/docs/tests | artifact_review | Exact grep scope and allowed
+      exception policy | OWNED |
+
+
+      Required outputs:
+
+      - deletion_targets_confirmed: source dirs/files, tests, repro/live smoke, docs;
+      include residual orchestration-dependent tests discovered by grep even if not
+      in the initial deletion list.
+
+      - preservation_targets_confirmed: decide.py, decision_state.py, model_outputs.py,
+      tests/test_decide.py, tests/test_decide_state_isolation.py, docs/RFC-vectl-decide-advisor-refresh.md.
+
+      - non_goals: do not remove vectl_decide; do not edit plan.yaml directly; do
+      not manually delete registered .vectl worktrees.
+
+      - dependency map for downstream phases.'
+    verification: Scope artifact names all deletion/preservation owners and final
+      grep scope; no product-code mutation evidence is allowed.
+    refs:
+    - user-request:2026-06-17#remove-built-in-orchestrator-runtime
+    - src/vectl/decide.py
+    - src/vectl/decision_state.py
+    - src/vectl/model_outputs.py
+    - src/vectl/models.py
+    - src/vectl/cli.py
+    - src/vectl/mcp_server.py
+    - docs/RFC-vectl-decide-advisor-refresh.md
+    agent: architectural-demolitionist
+  - id: orch_removal_worktree_policy
+    name: Define safe worktree and artifact cleanup policy
+    status: pending
+    description: 'step_type: investigation
+
+      PROOF ARTIFACT: safe cleanup policy for `.vectl/workspaces` and `.vectl/worktrees`
+      artifacts. This step exists to prevent destructive cleanup while registered
+      git worktrees exist.
+
+
+      Requirement-to-Evidence Matrix:
+
+      | requirement_id | source_ref + key passage | target_state | evidence_class
+      | required_probe_or_artifact | status |
+
+      | WT-SAFE-1 | user-request:2026-06-17 — `.vectl/workspaces` / `.vectl/worktrees`
+      contain registered git worktrees; cleanup must use `git worktree remove/prune`,
+      not `rm -rf` | Cleanup policy forbids direct deletion of registered worktree
+      dirs | runtime_probe | Raw `git worktree list --porcelain` output and policy
+      disposition | OWNED |
+
+      | WT-SAFE-2 | AGENTS.md — do not edit plan.yaml directly; evidence requirements
+      apply | Runtime artifacts are cleaned only through safe commands and recorded
+      evidence | artifact_review | Policy states allowed and forbidden side effects
+      | OWNED |
+
+
+      side_effect_budget:
+
+      - Allowed: `git worktree list --porcelain`, inspection of `.vectl/workspaces`
+      and `.vectl/worktrees`, and (only if a stale registered worktree is intentionally
+      removed) `git worktree remove <registered-path>` followed by `git worktree prune`.
+
+      - Forbidden: `rm -rf .vectl/workspaces`, `rm -rf .vectl/worktrees`, or deleting
+      any registered worktree path outside `git worktree remove`.
+
+      - Forbidden: editing `plan.yaml` directly.
+
+
+      risk_probes:
+
+      - Confirm whether each `.vectl/workspaces/*` or `.vectl/worktrees/*` path is
+      registered in `git worktree list --porcelain`.
+
+      - If any cleanup is deferred, record the exact path and why direct deletion
+      is unsafe.
+
+      - If a path is unregistered, record why it is safe or why cleanup is still deferred.'
+    verification: Provide raw stdout/logs of the worktree probe and a policy disposition.
+      Unit tests or mocked worktree state are insufficient.
+    refs:
+    - user-request:2026-06-17#safe-worktree-cleanup
+    - .vectl/
+    - AGENTS.md
+    agent: software-architect
+  - id: orch_removal_foundation_gate
+    name: Gate orchestrator-removal foundation
+    status: pending
+    description: 'step_type: gate
+
+      local-check gate protecting downstream deletion work. Gate blocks unless the
+      scope matrix and worktree cleanup policy are explicit, evidence-backed, and
+      preserve vectl_decide.
+
+
+      Gate decision basis must review ORCH-REMOVE-SCOPE, DECIDE-PRESERVE, ISOLATION-REMOVE,
+      FINAL-GREP, WT-SAFE-1, and WT-SAFE-2.
+
+
+      review_depth: STANDARD
+
+      cross_cutting_focus:
+
+      - built-in orchestration is removed without deleting vectl_decide
+
+      - direct `rm -rf .vectl/workspaces .vectl/worktrees` remains forbidden while
+      worktrees are registered
+
+      - no downstream implementation step starts from an ambiguous deletion target'
+    verification: Gate OPEN only if the two proof artifacts are complete and no product-code
+      mutation occurred in this phase.
+    refs:
+    - user-request:2026-06-17#remove-built-in-orchestrator-runtime
+    depends_on:
+    - orch_removal_scope_matrix
+    - orch_removal_worktree_policy
+    agent: gate-reviewer
 - id: orch_removal_runtime_surface
   name: 'Orchestrator Removal: Runtime and CLI Surface'
   status: locked

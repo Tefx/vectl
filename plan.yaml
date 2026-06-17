@@ -110267,7 +110267,7 @@ phases:
       FINAL-GREP, WT-SAFE-1, WT-SAFE-2, blockers none, and HEAD changed only .agent/evidence/orch_removal_foundation_gate.md.'
 - id: orch_removal_runtime_surface
   name: 'Orchestrator Removal: Runtime and CLI Surface'
-  status: pending
+  status: in_progress
   gate: Runtime surface gate requires built-in orch CLI removal, orchestration source
     deletion, Step.isolation schema cleanup, preserved vectl_decide support, and targeted
     runtime tests.
@@ -110276,7 +110276,7 @@ phases:
   steps:
   - id: orch_removal_cli_cutout
     name: Remove built-in `vectl orch` CLI surface
-    status: pending
+    status: claimed
     description: "step_type: implementation\nTARGET STATE: the packaged CLI imports\
       \ successfully, `vectl --help` no longer exposes `orch` or orchestration subcommands,\
       \ `vectl orch --help` is not invokable as a hidden/stub command, `cli_plan_common.py`\
@@ -110351,6 +110351,8 @@ phases:
     - src/vectl/cli_plan_common.py
     - tests/test_mcp.py
     agent: architectural-demolitionist
+    claimed_by: architectural-demolitionist
+    claimed_at: '2026-06-17T13:33:12.965167+00:00'
   - id: orch_removal_runtime_delete
     name: Delete orchestration runtime source packages and files
     status: pending

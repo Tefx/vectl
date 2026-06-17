@@ -110541,8 +110541,13 @@ phases:
       \ no longer imports deleted modules | runtime_probe | Delete-target probe +\
       \ pytest collect-only | OWNED |\n| ACTIVE-ORCH-CLI-TESTS-RETIRED | reviewer\
       \ evidence — tests/test_orch_cli_surface.py and tests/test_cli.py TestDriveCLI\
-      \ still exercise `vectl orch` | Active root CLI tests no longer require or advertise\
-      \ the removed `orch` surface | runtime_probe | Recursive test/fixture forbidden-reference\
+      \ still exercise `vectl orch`; retained positive root CLI coverage such as `runner.invoke(app,\
+      \ [\"orch\", ...])`, `assert result.exit_code == 0`, help/advisory strings,\
+      \ or \"supported public surface points users to orch\" can survive superficial\
+      \ wording edits | Active root CLI tests no longer require or advertise the removed\
+      \ `orch` surface; `tests/test_cli.py#TestDriveCLI` may mention or invoke bare\
+      \ `orch` only in explicit negative removal assertions | runtime_probe | Targeted\
+      \ TestDriveCLI positive-orch coverage rejection probe plus recursive forbidden-reference\
       \ probe | OWNED |\n| ORCH-REPRO-FIXTURES-RETIRED | reviewer evidence — tests/repro/test_repair_continuity_black_box.py\
       \ and tests/fixtures/orchestration/replay_events.json preserve orch recovery/runtime\
       \ fixtures | Orchestration-only repro and fixture data are deleted or rewritten\
@@ -110576,7 +110581,11 @@ phases:
       \ `tests/test_io.py`, `tests/test_models.py`, `tests/test_mcp.py`, or `tests/conftest.py`.\
       \ For `tests/test_cli.py`, `tests/repro/vertical_slice_probe.py`, `tests/test_gemini_resume_behavior.py`,\
       \ and `tests/conftest.py`, touch only orchestration/drive surface residue and\
-      \ preserve unrelated coverage. The helper fixtures `tests/fixtures/helpers/continuity_capability_safety.py`\
+      \ preserve unrelated coverage. In `tests/test_cli.py#TestDriveCLI`, any retained\
+      \ bare `orch` mention must be an explicit negative removal assertion; positive\
+      \ root CLI coverage, `exit_code == 0` expectations, help/advisory assertions,\
+      \ and strings that point users to the removed `orch` surface are forbidden.\
+      \ The helper fixtures `tests/fixtures/helpers/continuity_capability_safety.py`\
       \ and `tests/fixtures/helpers/continuity_hygiene.py` are in-scope deletion targets\
       \ because their remaining imports/path literals depend on removed driver/worktree\
       \ runtime.\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
@@ -110597,14 +110606,14 @@ phases:
       \  - 'tests/test_gemini_resume_behavior.py'\nblocked_paths:\n  - 'tests/test_decide.py'\n\
       \  - 'tests/test_decide_state_isolation.py'\n  - 'tests/test_io.py'\n  - 'tests/test_models.py'\n\
       \  - 'tests/test_mcp.py'\nrequired_claims:\n  - orchestration_tests_retired\n\
-      \  - active_orch_cli_tests_retired\n  - orchestration_fixtures_retired\n  -\
-      \ active_residual_tests_rewritten\n  - active_conftest_orchestration_config_removed\n\
-      \  - legacy_driver_worktree_fixture_helpers_retired\n  - test_legacy_workspaces_and_worktrees_references_removed\n\
-      \  - test_collection_no_deleted_runtime_imports\n  - decide_tests_preserved\n\
-      required_checks:\n  - id: orch_test_deletion_probe\n    command:\n      - uv\n\
-      \      - run\n      - python\n      - -c\n      - |\n        from pathlib import\
-      \ Path\n        targets = [\n            Path('tests/orchestration'),\n    \
-      \        Path('tests/fixtures/orchestration'),\n            Path('tests/fixtures/helpers/continuity_capability_safety.py'),\n\
+      \  - active_orch_cli_tests_retired\n  - root_cli_positive_orch_test_coverage_removed\n\
+      \  - orchestration_fixtures_retired\n  - active_residual_tests_rewritten\n \
+      \ - active_conftest_orchestration_config_removed\n  - legacy_driver_worktree_fixture_helpers_retired\n\
+      \  - test_legacy_workspaces_and_worktrees_references_removed\n  - test_collection_no_deleted_runtime_imports\n\
+      \  - decide_tests_preserved\nrequired_checks:\n  - id: orch_test_deletion_probe\n\
+      \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
+      \ |\n        from pathlib import Path\n        targets = [\n            Path('tests/orchestration'),\n\
+      \            Path('tests/fixtures/orchestration'),\n            Path('tests/fixtures/helpers/continuity_capability_safety.py'),\n\
       \            Path('tests/fixtures/helpers/continuity_hygiene.py'),\n       \
       \     Path('tests/test_runtime_context_vertical_slice.py'),\n            Path('tests/test_runtime_lifecycle.py'),\n\
       \            Path('tests/test_extended_runner_protocol.py'),\n            Path('tests/test_orch_cli_surface.py'),\n\
@@ -110619,7 +110628,45 @@ phases:
       \ assert not still, still\n        print('orchestration tests, fixtures, and\
       \ legacy driver/worktree helper delete targets absent')\n    covers_claims:\n\
       \      - orchestration_tests_retired\n      - orchestration_fixtures_retired\n\
-      \      - legacy_driver_worktree_fixture_helpers_retired\n  - id: active_residual_test_rewrite_probe\n\
+      \      - legacy_driver_worktree_fixture_helpers_retired\n  - id: testdrivecli_orch_positive_coverage_absence\n\
+      \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
+      \ |\n        from pathlib import Path\n        import ast\n        import re\n\
+      \        p = Path('tests/test_cli.py')\n        assert p.exists(), 'tests/test_cli.py\
+      \ missing; rewrite orch residue without deleting root CLI tests wholesale'\n\
+      \        source = p.read_text(errors='ignore')\n        tree = ast.parse(source)\n\
+      \        classes = [node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)\
+      \ and node.name == 'TestDriveCLI']\n        assert classes, 'tests/test_cli.py#TestDriveCLI\
+      \ missing; preserve non-orch CLI coverage while retiring orch residue'\n   \
+      \     bad = []\n        methods_with_orch = []\n        negative_regexes = [\n\
+      \            r'exit_code\\s*!=\\s*0',\n            r'exit_code\\s*==\\s*(1|2)',\n\
+      \            r'exit_code\\s*>\\s*0',\n            r'no such command',\n    \
+      \        r'remov(ed|al)',\n            r'unsupported',\n            r'not\\\
+      s+support',\n            r'does not exist',\n            r'not\\s+in\\s+result\\\
+      .output',\n        ]\n        advertising_terms = ['supported public surface',\
+      \ 'points users to orch', 'advertis', 'listed in help', 'shows orch command']\n\
+      \        for node in classes[0].body:\n            if not isinstance(node, (ast.FunctionDef,\
+      \ ast.AsyncFunctionDef)):\n                continue\n            segment = ast.get_source_segment(source,\
+      \ node) or ''\n            lower = segment.lower()\n            if 'orch' not\
+      \ in lower:\n                continue\n            methods_with_orch.append(node.name)\n\
+      \            if re.search(r'assert\\s+[^\\n]*exit_code\\s*==\\s*0', segment)\
+      \ or re.search(r'assert\\s+0\\s*==\\s*[^\\n]*exit_code', segment):\n       \
+      \         bad.append(f'{p}#TestDriveCLI.{node.name}: positive exit_code == 0\
+      \ assertion remains with orch coverage')\n            for line_no, line in enumerate(segment.splitlines(),\
+      \ start=getattr(node, 'lineno', 1)):\n                line_lower = line.lower()\n\
+      \                if 'orch' not in line_lower:\n                    continue\n\
+      \                if any(term in line_lower for term in advertising_terms):\n\
+      \                    bad.append(f'{p}:{line_no}: advertising/pointing users\
+      \ to removed orch surface: {line.strip()}')\n                if 'result.output'\
+      \ in line_lower and ' in ' in line_lower and not any(re.search(rx, line_lower)\
+      \ for rx in negative_regexes):\n                    bad.append(f'{p}:{line_no}:\
+      \ result.output orch assertion is not explicitly negative removal coverage:\
+      \ {line.strip()}')\n            if not any(re.search(rx, lower) for rx in negative_regexes):\n\
+      \                bad.append(f'{p}#TestDriveCLI.{node.name}: mentions/invokes\
+      \ orch without explicit negative removal assertion')\n        assert not bad,\
+      \ bad\n        print(f'TestDriveCLI has no positive orch CLI coverage; explicit\
+      \ negative removal methods allowed: {methods_with_orch}')\n    covers_claims:\n\
+      \      - active_orch_cli_tests_retired\n      - root_cli_positive_orch_test_coverage_removed\n\
+      \      - test_collection_no_deleted_runtime_imports\n  - id: active_residual_test_rewrite_probe\n\
       \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
       \ |\n        from pathlib import Path\n        files = [Path('tests/repro/vertical_slice_probe.py'),\
       \ Path('tests/test_gemini_resume_behavior.py')]\n        terms = ['vectl.orchestration',\

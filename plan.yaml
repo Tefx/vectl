@@ -110968,11 +110968,27 @@ phases:
     status: pending
     description: 'step_type: gate
 
-      full-plan-check final gate. The gate may open only when built-in orchestration
-      runtime/control/drive/resolver/runner/worktree features are removed, `vectl_decide`
-      remains supported as a caller-owned core automation/dispatch advisor, forbidden
-      grep closure is clean, full regression commands are green, and no unresolved
+      full-plan-check final gate for orchestrator-removal scope. The gate may open
+      only when built-in orchestration runtime/control/drive/resolver/runner/worktree
+      features are removed, `vectl_decide` remains supported as a caller-owned core
+      automation/dispatch advisor, recursive forbidden grep closure is clean, full
+      regression commands are green, plan-validation disposition shows no new/intersecting
+      orchestrator-removal validation errors, and no unresolved orchestrator-removal
       blocker remains.
+
+
+      Scope exception policy for pre-existing validation debt:
+
+      - This gate does NOT claim repo-wide `vectl_vectl_validate` green while the
+      known pre-existing completed-evidence guard errors remain.
+
+      - Those errors are non-blocking for this local removal only when the deep-review
+      disposition proves they predate these phases, do not mention `orch_removal_*`,
+      and do not intersect final grep, full pytest, packaged CLI help, invar guard,
+      deleted-runtime cleanup, or decide-preservation evidence.
+
+      - Any new validation error in orchestrator-removal phases/steps, or any historical
+      error that intersects this gate''s proof obligations, is blocker-class.
 
 
       review_depth: THOROUGH
@@ -110980,21 +110996,30 @@ phases:
       cross_cutting_focus:
 
       - final grep closure covers `vectl.orchestration`, `core.orchestration`, `orch_app`,
-      `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`, and forbidden
-      decide wording
+      `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`, deleted
+      path fragments, `.yaml/.yml/.json` docs/test artifacts, and forbidden decide
+      wording across all `src/vectl/**/*.py` decide/MCP surfaces
 
       - final commands include `uv run pytest`, `uvx --refresh --from . vectl --help`,
       and `uvx invar-tools guard --all`
 
       - decide support is positive proof, not absence-only
 
-      - worktree cleanup policy did not use direct `rm -rf` on registered worktrees'
-    verification: Gate OPEN only with positive evidence for every requirement row
-      and all final commands green. Gate BLOCKED if any forbidden-term hit, failing
-      regression command, missing decide proof, unsafe worktree cleanup, or unresolved
-      blocker appears.
+      - worktree cleanup policy did not use direct `rm -rf` on registered worktrees
+
+      - plan-validation debt disposition is explicit and does not overclaim repository
+      readiness'
+    verification: Gate OPEN only with positive evidence for every orchestrator-removal
+      requirement row, all final commands green, recursive grep closure clean, deep-review
+      validation disposition complete, and no unresolved orchestrator-removal blocker.
+      Gate BLOCKED if any forbidden-term hit, failing regression command, missing
+      decide proof, unsafe worktree cleanup, missing validation disposition, new/intersecting
+      validation error, or unresolved orchestrator-removal blocker appears. Do not
+      open the gate by claiming repo-wide plan validation clean unless `vectl_vectl_validate`
+      is actually clean.
     refs:
     - user-request:2026-06-17#final-gate
+    - MCP:vectl_vectl_validate#pre-existing-completed-evidence-guard-errors
     depends_on:
     - orch_removal_cli_runtime_proof
     - orch_removal_wiring_audit

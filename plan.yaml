@@ -110040,3 +110040,11 @@ phases:
     runtime tests.
   depends_on:
   - orchestrator-removal-foundation-and-safety-policy
+- id: orch_removal_tests_docs
+  name: 'Orchestrator Removal: Tests, Docs, and Decide Wording'
+  status: locked
+  gate: Tests/docs gate requires orchestration-only tests and docs retired, README/RFC
+    wording updated, and vectl_decide documented as supported caller-owned automation
+    advisor.
+  depends_on:
+  - orch_removal_runtime_surface

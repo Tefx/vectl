@@ -110979,59 +110979,89 @@ phases:
     description: 'step_type: verification
 
       full-plan-check final grep closure. This step proves product source, tests,
-      docs (including archived `.yaml/.yml/.json` artifacts), READMEs, and packaging
-      metadata no longer contain deleted runtime identifiers or forbidden decide wording.
-      Scope intentionally excludes plan.yaml/plan history and .git/.venv/.vectl artifacts
-      so the plan itself does not make the probe self-failing.
+      docs including archived yaml/yml/json artifacts, READMEs, and packaging metadata
+      no longer contain deleted runtime identifiers, deleted path fragments, stale
+      driver package metadata, helper fixture worktree residue, or forbidden decide
+      wording. Scope intentionally excludes plan.yaml/plan history and .git/.venv/.vectl
+      artifacts so the plan itself and orchestrator-owned runtime workspaces do not
+      make the probe self-failing.
 
 
       Forbidden general terms: `vectl.orchestration`, `core.orchestration`, `orch_app`,
       `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`.
 
-      Forbidden deleted path fragments: `src/vectl/orchestration`, `src/vectl/core/orchestration`,
-      `src/vectl/shell/orchestration`, `src/vectl/orch_app.py`, `src/vectl/cli_orchestration`,
-      `tests/orchestration`, `tests/fixtures/orchestration`, `tests/test_orch_cli_surface.py`,
-      `docs/archive/orch_workflow_validation.yaml`, `docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml`,
-      `docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md`.
+      Forbidden deleted path fragments checked against BOTH file paths and file contents:
+      `src/vectl/orchestration`, `src/vectl/core/orchestration`, `src/vectl/shell/orchestration`,
+      `src/vectl/orch_app.py`, `src/vectl/cli_orchestration`, `tests/orchestration`,
+      `tests/fixtures/orchestration`, `tests/test_orch_cli_surface.py`, `tests/fixtures/helpers/continuity_capability_safety.py`,
+      `tests/fixtures/helpers/continuity_hygiene.py`, `docs/archive/orch_workflow_validation.yaml`,
+      `docs/archive/verification_report.yaml`, `docs/archive/consumer_boundary_conformance_report.yaml`,
+      `docs/archive/consumer_boundary_conformance_verify.py`, `docs/archive/independent_verification_report.md`,
+      `docs/archive/legacy-proof/black_box_upstream_validation.yaml`, `docs/archive/legacy-proof/independent_architecture_retest_report.md`,
+      `docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml`, `docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md`.
 
-      Forbidden decide wording in preserved decide/MCP/doc/test surfaces: `Decision
-      logic for vectl orchestration`, `deterministic orchestration advisor`, `orchestration
-      advisor`, `orchestrator advisor`, `external orchestrator agents`, `orchestrator-visible
-      execution`.
+      Forbidden legacy driver/worktree content terms: `python -m vectl.driver`, `src.vectl.driver`,
+      `from vectl.driver`, `.vectl/worktrees`, `runner/orchestration`, `judge_agent_prompt.md`.
+
+      Forbidden packaging metadata: `pyproject.toml` package-data must not contain
+      key `vectl.driver` or entry `judge_agent_prompt.md`.
+
+      Forbidden decide wording in preserved decide/MCP/doc/test surfaces is case-insensitive
+      and includes: `Decision logic for vectl orchestration`, `deterministic orchestration
+      advisor`, `orchestration advisor`, `orchestrator advisor`, `external orchestrator
+      agent`, `orchestrator-visible`, `orchestrator authors`, `agent/orchestrator`,
+      `orchestrator consumer`, `orchestration-plane runtime`, `orchestration plane`,
+      and `external orchestration`.
 
 
       Decide wording scope includes every `src/vectl/**/*.py` file plus README/RFC
-      decide docs and preserved decide tests, so live MCP surfaces and test assertion
-      strings cannot be missed. Any hit is blocker-class unless explicitly proven
-      to be in an excluded non-product artifact.
-
-      '
-    verification: 'Run the exact Python grep closure below and paste raw stdout/stderr/exit
-      code:
-
-
-      ```
-
-      uv run python -c "from pathlib import Path; roots=[Path(''src''),Path(''tests''),Path(''docs''),Path(''README.md''),Path(''README_zh.md''),Path(''pyproject.toml'')];
-      suffixes={''.py'',''.md'',''.toml'',''.txt'',''.yaml'',''.yml'',''.json''};
-      general=[''vectl.orchestration'',''core.orchestration'',''orch_app'',''cli_orchestration'',''vectl
-      orch'',''IsolationMode'',''Step.isolation'']; decide_forbidden=[''Decision logic
-      for vectl orchestration'',''deterministic orchestration advisor'',''orchestration
-      advisor'',''orchestrator advisor'',''external orchestrator agents'',''orchestrator-visible
-      execution'']; files=[]; [files.extend([p] if p.is_file() else [q for q in p.rglob(''*'')
-      if q.is_file() and q.suffix in suffixes]) for p in roots if p.exists()]; decide_files=[p
-      for p in Path(''src/vectl'').rglob(''*.py'') if p.exists()] + [Path(''docs/RFC-vectl-decide-advisor-refresh.md''),Path(''README.md''),Path(''README_zh.md''),Path(''tests/test_decide.py''),Path(''tests/test_decide_state_isolation.py'')];
-      path_terms=[''src/vectl/orchestration'',''src/vectl/core/orchestration'',''src/vectl/shell/orchestration'',''src/vectl/orch_app.py'',''src/vectl/cli_orchestration'',''tests/orchestration'',''tests/fixtures/orchestration'',''tests/test_orch_cli_surface.py'',''docs/archive/orch_workflow_validation.yaml'',''docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml'',''docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md''];
-      hits=[]; [hits.append(f''{p}:{term}'') for p in files for term in general if
-      term in p.read_text(errors=''ignore'')]; [hits.append(f''{p}:PATH:{term}'')
-      for p in files for term in path_terms if term in str(p)]; [hits.append(f''{p}:DECIDE:{term}'')
-      for p in decide_files if p.exists() for term in decide_forbidden if term in
-      p.read_text(errors=''ignore'')]; assert not hits, ''\n''.join(hits); print(''forbidden-term
-      closure clean'')"
-
-      ```
-
-      '
+      decide docs and preserved decide tests, so live MCP surfaces, model-output strings,
+      RFC text, and test assertion strings cannot be missed. Any hit is blocker-class
+      unless explicitly proven to be in an excluded non-product artifact.'
+    verification: "Run the exact Python grep closure below and paste raw stdout/stderr/exit\
+      \ code:\n\n```\nuv run python - <<'PY'\nfrom pathlib import Path\nimport tomllib\n\
+      \nroots = [Path('src'), Path('tests'), Path('docs'), Path('README.md'), Path('README_zh.md'),\
+      \ Path('pyproject.toml')]\nsuffixes = {'.py', '.md', '.toml', '.txt', '.yaml',\
+      \ '.yml', '.json'}\nfiles = []\nfor root in roots:\n    if not root.exists():\n\
+      \        continue\n    if root.is_file():\n        files.append(root)\n    else:\n\
+      \        files.extend(p for p in root.rglob('*') if p.is_file() and p.suffix\
+      \ in suffixes)\n\ngeneral = ['vectl.orchestration', 'core.orchestration', 'orch_app',\
+      \ 'cli_orchestration', 'vectl orch', 'IsolationMode', 'Step.isolation']\npath_fragments\
+      \ = [\n    'src/vectl/orchestration',\n    'src/vectl/core/orchestration',\n\
+      \    'src/vectl/shell/orchestration',\n    'src/vectl/orch_app.py',\n    'src/vectl/cli_orchestration',\n\
+      \    'tests/orchestration',\n    'tests/fixtures/orchestration',\n    'tests/test_orch_cli_surface.py',\n\
+      \    'tests/fixtures/helpers/continuity_capability_safety.py',\n    'tests/fixtures/helpers/continuity_hygiene.py',\n\
+      \    'docs/archive/orch_workflow_validation.yaml',\n    'docs/archive/verification_report.yaml',\n\
+      \    'docs/archive/consumer_boundary_conformance_report.yaml',\n    'docs/archive/consumer_boundary_conformance_verify.py',\n\
+      \    'docs/archive/independent_verification_report.md',\n    'docs/archive/legacy-proof/black_box_upstream_validation.yaml',\n\
+      \    'docs/archive/legacy-proof/independent_architecture_retest_report.md',\n\
+      \    'docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml',\n\
+      \    'docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md',\n\
+      ]\nlegacy_driver_terms = ['python -m vectl.driver', 'src.vectl.driver', 'from\
+      \ vectl.driver', '.vectl/worktrees', 'runner/orchestration', 'judge_agent_prompt.md']\n\
+      decide_forbidden = [\n    'decision logic for vectl orchestration',\n    'deterministic\
+      \ orchestration advisor',\n    'orchestration advisor',\n    'orchestrator advisor',\n\
+      \    'external orchestrator agent',\n    'orchestrator-visible',\n    'orchestrator\
+      \ authors',\n    'agent/orchestrator',\n    'orchestrator consumer',\n    'orchestration-plane\
+      \ runtime',\n    'orchestration plane',\n    'external orchestration',\n]\n\
+      decide_files = [p for p in Path('src/vectl').rglob('*.py') if p.exists()] +\
+      \ [Path('docs/RFC-vectl-decide-advisor-refresh.md'), Path('README.md'), Path('README_zh.md'),\
+      \ Path('tests/test_decide.py'), Path('tests/test_decide_state_isolation.py')]\n\
+      \nhits = []\nfor p in files:\n    text = p.read_text(errors='ignore')\n    lower\
+      \ = text.lower()\n    hits.extend(f'{p}:{term}' for term in general if term\
+      \ in text)\n    hits.extend(f'{p}:PATH:{term}' for term in path_fragments if\
+      \ term in str(p))\n    hits.extend(f'{p}:CONTENT_PATH:{term}' for term in path_fragments\
+      \ if term in text)\n    hits.extend(f'{p}:LEGACY_DRIVER:{term}' for term in\
+      \ legacy_driver_terms if term in text)\n\nfor p in decide_files:\n    if not\
+      \ p.exists():\n        continue\n    lower = p.read_text(errors='ignore').lower()\n\
+      \    hits.extend(f'{p}:DECIDE:{term}' for term in decide_forbidden if term in\
+      \ lower)\n\npyproject = Path('pyproject.toml')\nif pyproject.exists():\n   \
+      \ data = tomllib.loads(pyproject.read_text())\n    package_data = data.get('tool',\
+      \ {}).get('hatch', {}).get('build', {}).get('targets', {}).get('wheel', {}).get('package-data',\
+      \ {})\n    if 'vectl.driver' in package_data:\n        hits.append('pyproject.toml:PACKAGE_DATA:vectl.driver')\n\
+      \    for package, entries in package_data.items():\n        for entry in entries:\n\
+      \            if entry == 'judge_agent_prompt.md':\n                hits.append(f'pyproject.toml:PACKAGE_DATA:{package}:judge_agent_prompt.md')\n\
+      \nassert not hits, hits\nprint('forbidden-term closure clean')\nPY\n```"
     refs:
     - user-request:2026-06-17#final-grep-closure
     - src/

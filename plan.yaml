@@ -111085,6 +111085,14 @@ phases:
     - docs/ARCHITECTURAL-DEMOLITION-REMEDIATION-PLAN.md
     - docs/full-suite-failure-inventory-2026-04-10.md
     - docs/repo_regression_failure_dispositions.yaml
+    - tests/fixtures/helpers/continuity_capability_safety.py
+    - tests/fixtures/helpers/continuity_hygiene.py
+    - docs/archive/verification_report.yaml
+    - docs/archive/consumer_boundary_conformance_report.yaml
+    - docs/archive/consumer_boundary_conformance_verify.py
+    - docs/archive/independent_verification_report.md
+    - docs/archive/legacy-proof/black_box_upstream_validation.yaml
+    - docs/archive/legacy-proof/independent_architecture_retest_report.md
     agent: integration-verifier
   - id: orch_removal_full_regression_check
     name: Run full regression, packaged help, and invar guard

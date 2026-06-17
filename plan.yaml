@@ -110364,7 +110364,7 @@ phases:
       decide.py/decision_state.py/model_outputs.py/MCP decide surface.'
   - id: orch_removal_runtime_delete
     name: Delete orchestration runtime source packages and files
-    status: pending
+    status: claimed
     description: "step_type: implementation\nTARGET STATE: built-in orchestration\
       \ runtime/control/drive/resolver/runner/worktree implementation modules are\
       \ absent from source, core facade wording no longer references the deleted orchestration\
@@ -110455,6 +110455,8 @@ phases:
     depends_on:
     - orch_removal_cli_cutout
     agent: architectural-demolitionist
+    claimed_by: architectural-demolitionist
+    claimed_at: '2026-06-17T13:42:46.029331+00:00'
   - id: orch_removal_isolation_schema_delete
     name: Remove Step.isolation and IsolationMode from core schema and IO
     status: done

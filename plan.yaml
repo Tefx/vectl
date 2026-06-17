@@ -112472,70 +112472,157 @@ phases:
     description: "TARGET STATE: after A/B/C remediation, any remaining completed-evidence\
       \ guard error is no longer an unowned historical residue. It is either closed\
       \ by green/OPEN evidence, covered by an explicit exception policy, or has a\
-      \ bounded current-blocker owner path with verification/retest steps.\n\nScope:\n\
-      - This step handles D_current_core_failure rows from the inventory and any drift\
-      \ rows still emitted by `uv run vectl validate` after A/B/C steps.\n- Do not\
-      \ implement product code here. If product code is truly required, create explicit\
-      \ pending owner/fix/retest steps with narrow scope and independent retest, then\
-      \ leave final validation blocked until those owners complete.\n\nRequired owner-path\
-      \ semantics:\n- Each still-reported row must be named exactly.\n- Each row must\
-      \ have one of: `closed_by`, `exception_policy`, or `current_blocker_owner`.\n\
-      - `current_blocker_owner` must name a pending or later closure step, required\
-      \ commands, and why code verification is required.\n- Exception policy is allowed\
-      \ only when closing the guard would require falsifying/erasing historical failure\
-      \ evidence; the exception must explain lifecycle, owner, and gate-intersection\
-      \ status.\n\n## Gate Preview (what the gate WILL reject)\n1. Remaining guard\
-      \ errors with no exact owner/exception row.\n2. Product code modifications hidden\
-      \ inside evidence hygiene.\n3. Exception policy used for convenience rather\
-      \ than audit integrity.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"\
-      plan.yaml\"\nblocked_paths:\n  - \"src/**\"\n  - \"tests/**\"\n  - \"docs/**\"\
-      \nrequired_claims:\n  - remaining_guard_errors_have_owner_or_exception\n  -\
-      \ current_core_failures_not_hidden\n  - product_code_fixes_deferred_to_explicit_owner_steps\n\
-      required_checks:\n  - id: remaining_initial_rows_owned_or_absent\n    command:\n\
-      \      - \"uv\"\n      - \"run\"\n      - \"python\"\n      - \"-c\"\n     \
-      \ - |\n        import subprocess, sys\n        ids = [\n            'claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix',\n\
-      \            'claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest',\n\
-      \            'step-id-resolver-hardening.retest-gate-blockers',\n          \
-      \  'driver-execution-infra.retest-gate-blockers',\n            'driver-judgment-expansion-replan.expected-red-decide',\n\
-      \            'driver-debt-system-wiring.full-plan-check',\n            'driver-evolution-action-registry.verify-planner-dispatch',\n\
-      \            'driver-enhancement-observability.design-and-test',\n         \
-      \   'driver-enhancement-streaming-progress.design-and-test',\n            'driver-enhancement-runner-recovery.design-and-test',\n\
-      \            'driver-prompt-foundation.design-and-test',\n            'driver-judge-hardening-foundation.gate',\n\
-      \            'driver-judge-hardening-foundation.fix-contract-ambiguities',\n\
-      \            'driver-judge-hardening-foundation.retest-gate',\n            'driver-judge-hardening-structured-output.gate',\n\
-      \            'driver-judge-hardening-recovery-policy.design-and-test',\n   \
-      \         'driver-continuity-capability-safety.design-and-test',\n         \
-      \   'driver-live-smoke-foundation.ratify-live-smoke-policy',\n            'driver-continuity-hygiene-deep-review.gate',\n\
-      \            'driver-agent-selection-contract.gate',\n            'driver-agent-selection-implementation.fix-judge-runner-test-defaults',\n\
-      \            'driver-agent-selection-implementation.retest-judge-runner-test-defaults',\n\
-      \            'driver-agent-selection-deep-review.gate',\n            'orch_foundation.contract_tests',\n\
-      \            'orch_foundation.gate',\n            'orch_operator_recovery_cutover.fix_recovery_contract_conformance',\n\
-      \            'orch_operator_recovery_cutover.reverify_recovery_contract_conformance',\n\
-      \            'repo_regression_full_suite_gate.run-full-pytest-regression-gate',\n\
-      \            'repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics',\n\
-      \            'repo_regression_triage.capture-full-suite-failure-inventory',\n\
-      \            'repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces',\n\
-      \            'repo_regression_contract_alignment.audit-other-tight-locks-in-failing-scope',\n\
-      \            'cli_blackbox_finalization.full-plan-check',\n            'opencode_runner_verification.live-smoke',\n\
-      \            'opencode_runner_verification.final-gate',\n            'arch-demolition-wave-1.dem-002-extract-shared-next-step-helper',\n\
-      \            'arch-demolition-wave-6.dem-017-collapse-duplicate-step-id-leaf-wrappers-without-breaking-outputs',\n\
-      \            'post_review_remediation.implement-completed-step-failure-evidence-guard',\n\
-      \            'post_review_remediation.reverify-completed-step-failure-evidence-guard',\n\
-      \            'post_review_remediation.gate',\n            'post_review_remediation.backfill-missing-gate-evidence',\n\
-      \            'invar_guard_remediation.final-regate-durable-uiux-artifact',\n\
-      \            'det_check_tests_gate',\n        ]\n        validate = subprocess.run(['uv',\
-      \ 'run', 'vectl', 'validate'], text=True, capture_output=True)\n        out\
-      \ = validate.stdout + validate.stderr\n        print(out)\n        offenders\
-      \ = [i for i in ids if f\"ERROR: Completed evidence guard: step '{i}'\" in out]\n\
-      \        if not offenders:\n            sys.exit(0)\n        show = subprocess.run(['uv',\
-      \ 'run', 'vectl', 'show', 'evidence_guard_remediation'], text=True, capture_output=True)\n\
-      \        phase_text = show.stdout + show.stderr\n        missing = [i for i\
-      \ in offenders if i not in phase_text or ('current_blocker_owner' not in phase_text\
-      \ and 'exception_policy' not in phase_text)]\n        if missing:\n        \
-      \    print('Remaining guard rows lack current_blocker_owner/exception_policy\
-      \ in evidence_guard_remediation:', missing)\n            sys.exit(1)\n    covers_claims:\n\
-      \      - remaining_guard_errors_have_owner_or_exception\n      - current_core_failures_not_hidden\n\
-      \      - product_code_fixes_deferred_to_explicit_owner_steps\n</intent_closure_contract>"
+      \ bounded current-blocker owner path with verification/retest steps.\n\n   \
+      \     Scope:\n        - This step handles D_current_core_failure rows from the\
+      \ inventory and any drift rows still emitted by `uv run vectl validate` after\
+      \ A/B/C steps.\n        - Do not implement product code here. If product code\
+      \ is truly required, create explicit pending owner/fix/retest steps with narrow\
+      \ scope and independent retest, then leave final validation blocked until those\
+      \ owners complete.\n\n        Required owner-path semantics:\n        - Each\
+      \ still-reported row must be named exactly by `offending_step_id` in a row-local\
+      \ `closure_register` entry.\n        - Each remaining offender must have one\
+      \ row-local `closed_by`, `exception_policy`, or `current_blocker_owner` field\
+      \ tied to that exact offending_step_id. Static target lists, phase descriptions,\
+      \ or global mentions of `current_blocker_owner`/`exception_policy` must not\
+      \ satisfy ownership.\n        - `current_blocker_owner` must name a pending\
+      \ or later closure step, required commands, and why code verification is required.\n\
+      \        - Exception policy is allowed only when closing the guard would require\
+      \ falsifying/erasing historical failure evidence; the exception must explain\
+      \ lifecycle, owner, and gate-intersection status.\n        - The check must\
+      \ inspect A/B/C/D closure records row-by-row and must include any new drift\
+      \ offender currently emitted by `vectl validate`, not only the initial 43 rows.\n\
+      \        - Validation parsing must use a machine-readable/unwrapped source if\
+      \ available, or robust regex extraction across wrapped `uv run vectl validate`\
+      \ output. Exact human-line substring matching for long IDs is prohibited.\n\n\
+      \        Required `closure_register` record shape for rows owned by this step:\n\
+      \        - offending_step_id: \"<exact row id>\"\n        - original_phase:\
+      \ \"<phase id from validate output>\"\n        - group: \"D_current_core_failure\"\
+      \ or \"drift_current_guard_offender\"\n        - status: current_blocker_owner\
+      \ | exception_policy | closed_by_green_same_phase | non-blocking_disposition\n\
+      \        - owner: \"<pending/later owner step>\"\n        - lifecycle_disposition:\
+      \ \"<must include lifecycle, disposition, or tracked wording>\"\n        - gate_intersection:\
+      \ \"gate-intersection=true with current_blocker_owner, or gate-intersection=false\
+      \ / non-intersection\"\n        - closed_by_step: \"egr_generate_current_core_owner_path\"\
+      \n        - closed_by: \"<green/OPEN/gate_open_allowed=true evidence ref when\
+      \ applicable>\"\n        - current_blocker_owner: \"<pending/later owner step\
+      \ when still current>\"\n        - exception_policy: \"<audit-integrity exception\
+      \ only when applicable>\"\n        - validator_status: absent | still_reported\
+      \ | not_checked\n\n        ## Gate Preview (what the gate WILL reject)\n   \
+      \     1. Remaining guard errors with no exact row-local owner/exception/closed_by\
+      \ record.\n        2. Product code modifications hidden inside evidence hygiene.\n\
+      \        3. Exception policy used for convenience rather than audit integrity.\n\
+      \        4. Passing the check because row IDs or ownership words appear only\
+      \ in static descriptions.\n\n        <intent_closure_contract>\n  allowed_paths:\n\
+      \    - \"plan.yaml\"\n  blocked_paths:\n    - \"src/**\"\n    - \"tests/**\"\
+      \n    - \"docs/**\"\n  required_claims:\n    - remaining_guard_errors_have_row_local_owner_or_exception\n\
+      - current_core_failures_not_hidden\n- product_code_fixes_deferred_to_explicit_owner_steps\n\
+      - static_target_lists_do_not_satisfy_ownership\n- robust_validation_parsing_used\n\
+      \  required_checks:\n    - id: remaining_initial_or_drift_rows_owned_exceptioned_or_absent\n\
+      \      command:\n        - \"uv\"\n        - \"run\"\n        - \"python\"\n\
+      \        - \"-c\"\n        - |\n      import re\n  import subprocess\n  import\
+      \ sys\n\n  IDS = ['claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix',\
+      \ 'claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest', 'step-id-resolver-hardening.retest-gate-blockers',\
+      \ 'driver-execution-infra.retest-gate-blockers', 'driver-judgment-expansion-replan.expected-red-decide',\
+      \ 'driver-debt-system-wiring.full-plan-check', 'driver-evolution-action-registry.verify-planner-dispatch',\
+      \ 'driver-enhancement-observability.design-and-test', 'driver-enhancement-streaming-progress.design-and-test',\
+      \ 'driver-enhancement-runner-recovery.design-and-test', 'driver-prompt-foundation.design-and-test',\
+      \ 'driver-judge-hardening-foundation.gate', 'driver-judge-hardening-foundation.fix-contract-ambiguities',\
+      \ 'driver-judge-hardening-foundation.retest-gate', 'driver-judge-hardening-structured-output.gate',\
+      \ 'driver-judge-hardening-recovery-policy.design-and-test', 'driver-continuity-capability-safety.design-and-test',\
+      \ 'driver-live-smoke-foundation.ratify-live-smoke-policy', 'driver-continuity-hygiene-deep-review.gate',\
+      \ 'driver-agent-selection-contract.gate', 'driver-agent-selection-implementation.fix-judge-runner-test-defaults',\
+      \ 'driver-agent-selection-implementation.retest-judge-runner-test-defaults',\
+      \ 'driver-agent-selection-deep-review.gate', 'orch_foundation.contract_tests',\
+      \ 'orch_foundation.gate', 'orch_operator_recovery_cutover.fix_recovery_contract_conformance',\
+      \ 'orch_operator_recovery_cutover.reverify_recovery_contract_conformance', 'cli_blackbox_finalization.full-plan-check',\
+      \ 'repo_regression_full_suite_gate.run-full-pytest-regression-gate', 'repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics',\
+      \ 'repo_regression_triage.capture-full-suite-failure-inventory', 'repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces',\
+      \ 'repo_regression_contract_alignment.audit-other-tight-locks-in-failing-scope',\
+      \ 'opencode_runner_verification.live-smoke', 'opencode_runner_verification.final-gate',\
+      \ 'arch-demolition-wave-1.dem-002-extract-shared-next-step-helper', 'arch-demolition-wave-6.dem-017-collapse-duplicate-step-id-leaf-wrappers-without-breaking-outputs',\
+      \ 'post_review_remediation.implement-completed-step-failure-evidence-guard',\
+      \ 'post_review_remediation.reverify-completed-step-failure-evidence-guard',\
+      \ 'post_review_remediation.gate', 'post_review_remediation.backfill-missing-gate-evidence',\
+      \ 'invar_guard_remediation.final-regate-durable-uiux-artifact', 'det_check_tests_gate']\n\
+      \  CLOSURE_STEPS = ['egr_dispose_superseded_orchestrator_removal_rows', 'egr_dispose_scoped_pass_global_fail_rows',\
+      \ 'egr_close_repo_regression_post_review_rows', 'egr_generate_current_core_owner_path']\n\
+      \  THIS_STEP = 'egr_generate_current_core_owner_path'\n  REQUIRE_THIS_CLOSED_BY_STEP\
+      \ = False\n  INCLUDE_EXTRA_CURRENT_OFFENDERS = True\n  ALLOWED_STATUSES = ['closed_by_validator_absence',\
+      \ 'closed_by_green_same_phase', 'non-blocking_disposition', 'current_blocker_owner',\
+      \ 'exception_policy', 'reclassified_to_d_current_core_failure']\n  CURRENT_ALLOWED_STATUSES\
+      \ = ['non-blocking_disposition', 'current_blocker_owner', 'exception_policy',\
+      \ 'reclassified_to_d_current_core_failure']\n\n  def run_vectl(args):\n    \
+      \  proc = subprocess.run(['uv', 'run', 'vectl', *args], text=True, capture_output=True)\n\
+      \      text = proc.stdout + proc.stderr\n      print('$ uv run vectl ' + ' '.join(args))\n\
+      \      print(text)\n      return text\n\n  def completed_guard_offenders(validate_output):\n\
+      \      # Robust parser: tolerate terminal wrapping by matching across whitespace\
+      \ and normalizing any\n      # whitespace inserted inside long step ids. Do\
+      \ not use exact human-line substring matching.\n      collapsed = re.sub(r'\\\
+      s+', ' ', validate_output)\n      offenders = set()\n      pattern = re.compile(\n\
+      \          r\"ERROR:\\s*Completed evidence guard:\\s*step\\s*'(?P<step>.*?)'\\\
+      s+in\\s+phase\\s*'(?P<phase>.*?)'\\s+has unclosed failure evidence\",\n    \
+      \      re.IGNORECASE | re.DOTALL,\n      )\n      for match in pattern.finditer(collapsed):\n\
+      \          offenders.add(re.sub(r'\\s+', '', match.group('step')))\n      return\
+      \ offenders\n\n  def flexible_id_pattern(step_id):\n      return r'\\s*'.join(re.escape(ch)\
+      \ for ch in step_id)\n\n  def record_text():\n      parts = []\n      for step_id\
+      \ in CLOSURE_STEPS:\n          parts.append(run_vectl(['show', step_id]))\n\
+      \      return '\\n'.join(parts)\n\n  def entry_for(text, step_id):\n      marker\
+      \ = re.compile(\n          r\"offending_step_id\\s*[:=]\\s*['\\\"]?\" + flexible_id_pattern(step_id)\
+      \ + r\"['\\\"]?\",\n          re.IGNORECASE | re.DOTALL,\n      )\n      matches\
+      \ = list(marker.finditer(text))\n      if not matches:\n          return ''\n\
+      \      match = matches[-1]\n      tail = text[match.start():]\n      next_marker\
+      \ = re.search(\n          r\"\\n\\s*-\\s+offending_step_id\\s*[:=]|\\n\\s*offending_step_id\\\
+      s*[:=]\",\n          tail[len(match.group(0)):],\n          re.IGNORECASE,\n\
+      \      )\n      end = len(tail) if next_marker is None else len(match.group(0))\
+      \ + next_marker.start()\n      return tail[: min(end, 2500)]\n\n  def status_for(entry):\n\
+      \      match = re.search(r\"status\\s*[:=]\\s*['\\\"]?([a-z0-9_\\-]+)\", entry,\
+      \ re.IGNORECASE)\n      return match.group(1).lower() if match else ''\n\n \
+      \ def has_owner(entry):\n      return bool(re.search(r\"\\bowner\\s*[:=]\\s*['\\\
+      \"]?[^'\\\"\\n]+\", entry, re.IGNORECASE))\n\n  def row_problem(step_id, entry,\
+      \ currently_reported):\n      if not entry:\n          return 'missing row-local\
+      \ closure_register entry with offending_step_id'\n      low = entry.lower()\n\
+      \      status = status_for(entry)\n      if status not in ALLOWED_STATUSES:\n\
+      \          return 'missing/invalid row-local status'\n      if currently_reported\
+      \ and status not in CURRENT_ALLOWED_STATUSES:\n          return 'validator still\
+      \ reports row but status is not an allowed owned/dispositioned current status'\n\
+      \      if REQUIRE_THIS_CLOSED_BY_STEP:\n          expected_a = f\"closed_by_step:\
+      \ {THIS_STEP}\".lower()\n          expected_b = f\"closed_by_step={THIS_STEP}\"\
+      .lower()\n          if expected_a not in low and expected_b not in low:\n  \
+      \            return 'row entry is not tied to this exact step by closed_by_step'\n\
+      \      elif 'closed_by_step' not in low:\n          return 'row entry lacks\
+      \ closed_by_step tying the record to an egr closure step'\n      needs_mechanical_disposition\
+      \ = status in {\n          'non-blocking_disposition',\n          'current_blocker_owner',\n\
+      \          'exception_policy',\n          'reclassified_to_d_current_core_failure',\n\
+      \      }\n      if needs_mechanical_disposition:\n          if not has_owner(entry):\n\
+      \              return 'missing row-local owner'\n          if not any(token\
+      \ in low for token in ['lifecycle', 'disposition', 'tracked']):\n          \
+      \    return 'missing lifecycle/disposition/tracked wording'\n          if not\
+      \ any(token in low for token in ['gate-intersection', 'gate_intersection', 'non-intersection']):\n\
+      \              return 'missing gate-intersection/non-intersection wording'\n\
+      \      if status == 'non-blocking_disposition':\n          if 'non-blocking'\
+      \ not in low and 'not blocking' not in low:\n              return 'missing exact\
+      \ validator-recognized non-blocking/not blocking phrase'\n      if status in\
+      \ {'current_blocker_owner', 'reclassified_to_d_current_core_failure'}:\n   \
+      \       if 'current_blocker_owner' not in low:\n              return 'missing\
+      \ current_blocker_owner field for current/reclassified row'\n      if status\
+      \ == 'exception_policy' and 'exception_policy' not in low:\n          return\
+      \ 'missing exception_policy field for exception row'\n      if currently_reported\
+      \ and not any(token in low for token in ['closed_by:', 'closed_by=', 'exception_policy',\
+      \ 'current_blocker_owner']):\n          return 'remaining validator offender\
+      \ lacks row-local closed_by/exception_policy/current_blocker_owner field'\n\
+      \      return ''\n\n  validate_output = run_vectl(['validate'])\n  offenders\
+      \ = completed_guard_offenders(validate_output)\n  text = record_text()\n  to_check\
+      \ = list(IDS)\n  if INCLUDE_EXTRA_CURRENT_OFFENDERS:\n      for offender in\
+      \ sorted(offenders):\n          if offender not in to_check:\n             \
+      \ to_check.append(offender)\n  problems = {}\n  for step_id in to_check:\n \
+      \     entry = entry_for(text, step_id)\n      problem = row_problem(step_id,\
+      \ entry, step_id in offenders)\n      if problem:\n          problems[step_id]\
+      \ = problem\n  if problems:\n      print('Rows lacking row-local closure/owner/exception\
+      \ records:')\n      for step_id, problem in problems.items():\n          print(f'-\
+      \ {step_id}: {problem}')\n      sys.exit(1)\n      covers_claims:\n        -\
+      \ remaining_guard_errors_have_row_local_owner_or_exception\n    - current_core_failures_not_hidden\n\
+      \    - product_code_fixes_deferred_to_explicit_owner_steps\n    - static_target_lists_do_not_satisfy_ownership\n\
+      \    - robust_validation_parsing_used\n  </intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     depends_on:
     - egr_close_repo_regression_post_review_rows

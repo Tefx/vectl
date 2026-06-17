@@ -110311,32 +110311,38 @@ phases:
       \ | target_state | evidence_class | required_probe_or_artifact | status |\n\
       | ISOLATION-SCHEMA-DELETED | user-request:2026-06-17 — delete `Step.isolation`\
       \ and `IsolationMode` as orchestration execution schema residue | Core model\
-      \ has no isolation enum/field/default migration | source_static | Static absence\
-      \ probe in models.py/io.py | OWNED |\n| IO-BACKCOMPAT-BOUNDARY | discovery evidence\
-      \ — non-orchestration tests with refs: tests/test_io.py, tests/test_models.py,\
-      \ tests/test_runtime_context_vertical_slice.py | Plan IO keeps loading/saving\
-      \ non-orchestration fields; runtime-context vertical slice is retired as orchestration-only\
-      \ if needed | runtime_probe | Targeted model/io pytest | OWNED |\n\nState semantics:\n\
-      - `isolation` was orchestration execution residue; omission should not be migrated\
-      \ to a new replacement field.\n- Preserve non-orchestration Step fields and\
-      \ plan IO compatibility.\n- Out of scope: reintroducing any runner/worktree\
-      \ isolation semantics under a new name.\n\n## Completion Criteria (stub exclusion)\n\
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; leaving\
-      \ an unused enum/field or compatibility wrapper for orchestration isolation\
-      \ is rejected.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"src/vectl/models.py\"\
-      \n  - \"src/vectl/io.py\"\n  - \"tests/test_io.py\"\n  - \"tests/test_models.py\"\
-      \n  - \"tests/test_runtime_context_vertical_slice.py\"\nblocked_paths:\n  -\
-      \ \"src/vectl/decide.py\"\n  - \"src/vectl/decision_state.py\"\nrequired_claims:\n\
-      \  - isolation_schema_removed\n  - model_io_regression_covered\n  - no_new_orchestration_isolation_alias\n\
+      \ has no isolation enum/field/default migration | source_static + runtime_probe\
+      \ | Static absence probe plus runtime introspection proving `'isolation' not\
+      \ in Step.model_fields` and `IsolationMode` is not exported | OWNED |\n| IO-BACKCOMPAT-BOUNDARY\
+      \ | discovery evidence — non-orchestration tests with refs: tests/test_io.py,\
+      \ tests/test_models.py, tests/test_runtime_context_vertical_slice.py | Plan\
+      \ IO keeps loading/saving non-orchestration fields; runtime-context vertical\
+      \ slice is retired as orchestration-only if needed | runtime_probe | Targeted\
+      \ model/io pytest | OWNED |\n\nState semantics:\n- `isolation` was orchestration\
+      \ execution residue; omission should not be migrated to a new replacement field.\n\
+      - Preserve non-orchestration Step fields and plan IO compatibility.\n- Out of\
+      \ scope: reintroducing any runner/worktree isolation semantics under a new name.\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable; leaving an unused enum/field or compatibility\
+      \ wrapper for orchestration isolation is rejected.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \"src/vectl/models.py\"\n  - \"src/vectl/io.py\"\n  - \"\
+      tests/test_io.py\"\n  - \"tests/test_models.py\"\n  - \"tests/test_runtime_context_vertical_slice.py\"\
+      \nblocked_paths:\n  - \"src/vectl/decide.py\"\n  - \"src/vectl/decision_state.py\"\
+      \nrequired_claims:\n  - isolation_schema_removed\n  - isolation_model_fields_introspection_clean\n\
+      \  - model_io_regression_covered\n  - no_new_orchestration_isolation_alias\n\
       required_checks:\n  - id: isolation_absence_probe\n    command: [\"uv\", \"\
       run\", \"python\", \"-c\", \"from pathlib import Path; files=[Path('src/vectl/models.py'),\
       \ Path('src/vectl/io.py')]; terms=['IsolationMode','Step.isolation','isolation:\
       \ IsolationMode']; hits=[f'{p}:{t}' for p in files for t in terms if p.exists()\
-      \ and t in p.read_text(errors='ignore')]; assert not hits, hits; print('isolation\
-      \ schema residue absent')\"]\n    covers_claims:\n      - isolation_schema_removed\n\
-      \      - no_new_orchestration_isolation_alias\n  - id: model_io_tests\n    command:\
-      \ [\"uv\", \"run\", \"pytest\", \"tests/test_models.py\", \"tests/test_io.py\"\
-      , \"-q\"]\n    covers_claims:\n      - model_io_regression_covered\n</intent_closure_contract>"
+      \ and t in p.read_text(errors='ignore')]; assert not hits, hits; from vectl.models\
+      \ import Step; import vectl.models as models; assert 'isolation' not in Step.model_fields,\
+      \ Step.model_fields; assert not hasattr(models, 'IsolationMode'), 'IsolationMode\
+      \ still exported'; print('isolation schema residue absent and Step.model_fields\
+      \ clean')\"]\n    covers_claims:\n      - isolation_schema_removed\n      -\
+      \ isolation_model_fields_introspection_clean\n      - no_new_orchestration_isolation_alias\n\
+      \  - id: model_io_tests\n    command: [\"uv\", \"run\", \"pytest\", \"tests/test_models.py\"\
+      , \"tests/test_io.py\", \"-q\"]\n    covers_claims:\n      - model_io_regression_covered\n\
+      </intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     refs:
     - user-request:2026-06-17#delete-step-isolation

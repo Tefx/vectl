@@ -110387,20 +110387,25 @@ phases:
     status: pending
     description: "step_type: implementation\nTARGET STATE: `Step` no longer has an\
       \ `isolation` field, `IsolationMode` no longer exists, IO no longer serializes/deserializes\
-      \ isolation residue, lowercase IO compatibility residue such as `field_name\
-      \ == \"isolation\"` is absent, and non-orchestration model/IO tests define the\
-      \ new contract.\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref\
-      \ + key passage | target_state | evidence_class | required_probe_or_artifact\
+      \ isolation residue, lowercase IO/model compatibility residue such as `field_name\
+      \ == \"isolation\"` and plain word-boundary comment/docstring residue such as\
+      \ \"step isolation default\" is absent, and non-orchestration model/IO tests\
+      \ define the new contract.\n\nRequirement-to-Evidence Matrix:\n| requirement_id\
+      \ | source_ref + key passage | target_state | evidence_class | required_probe_or_artifact\
       \ | status |\n| ISOLATION-SCHEMA-DELETED | user-request:2026-06-17 — delete\
       \ `Step.isolation` and `IsolationMode` as orchestration execution schema residue\
       \ | Core model has no isolation enum/field/default migration | source_static\
       \ + runtime_probe | Static absence probe plus runtime introspection proving\
       \ `'isolation' not in Step.model_fields` and `IsolationMode` is not exported\
       \ | OWNED |\n| IO-LOWERCASE-ISOLATION-RESIDUE-DELETED | reviewer evidence —\
-      \ `src/vectl/io.py` can retain lowercase compatibility residue such as `field_name\
-      \ == \"isolation\"` even after enum/annotation cleanup | IO has no lowercase\
-      \ isolation serialization/deserialization branch, special-case field, string\
-      \ key, or compatibility alias | source_static | Explicit lowercase IO/model\
+      \ `src/vectl/io.py`/`src/vectl/models.py` can retain lowercase compatibility\
+      \ residue such as `field_name == \"isolation\"` or plain comment/docstring text\
+      \ such as \"step isolation default\" even after enum/annotation cleanup | IO/model\
+      \ files have no lowercase word-boundary `isolation` residue, no serialization/deserialization\
+      \ branch, no special-case field, no string key, no compatibility alias, and\
+      \ no comments/docstrings preserving Step-isolation semantics; allowlist is intentionally\
+      \ empty unless a future legitimate non-Step-isolation exception is explicitly\
+      \ added to the probe | source_static | Explicit lowercase word-boundary IO/model\
       \ forbidden-term probe over `src/vectl/models.py` and `src/vectl/io.py` | OWNED\
       \ |\n| IO-BACKCOMPAT-BOUNDARY | discovery evidence — non-orchestration tests\
       \ with refs: tests/test_io.py, tests/test_models.py, tests/test_runtime_context_vertical_slice.py\
@@ -110412,34 +110417,44 @@ phases:
       \ scope: reintroducing any runner/worktree isolation semantics under a new name.\n\
       - Deleted isolation documentation references, especially `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`,\
       \ are owned by the docs/final grep cleanup steps and must be covered there;\
-      \ this step owns product IO/model residue.\n\n## Completion Criteria (stub exclusion)\n\
+      \ this step owns product IO/model residue.\n- Word-boundary lowercase `isolation`\
+      \ exceptions in `src/vectl/models.py` or `src/vectl/io.py` are not allowed for\
+      \ this deletion step unless the probe is updated with an explicit non-Step-isolation\
+      \ allowlist entry and rationale.\n\n## Completion Criteria (stub exclusion)\n\
       This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; leaving\
-      \ an unused enum/field, lowercase IO special case, or compatibility wrapper\
-      \ for orchestration isolation is rejected.\n\n<intent_closure_contract>\nallowed_paths:\n\
-      \  - \"src/vectl/models.py\"\n  - \"src/vectl/io.py\"\n  - \"tests/test_io.py\"\
-      \n  - \"tests/test_models.py\"\n  - \"tests/test_runtime_context_vertical_slice.py\"\
+      \ an unused enum/field, lowercase IO special case, compatibility wrapper, or\
+      \ comment/docstring residue for orchestration isolation is rejected.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \"src/vectl/models.py\"\n  - \"src/vectl/io.py\"\n  - \"\
+      tests/test_io.py\"\n  - \"tests/test_models.py\"\n  - \"tests/test_runtime_context_vertical_slice.py\"\
       \nblocked_paths:\n  - \"src/vectl/decide.py\"\n  - \"src/vectl/decision_state.py\"\
       \nrequired_claims:\n  - isolation_schema_removed\n  - lowercase_io_isolation_residue_removed\n\
-      \  - isolation_model_fields_introspection_clean\n  - model_io_regression_covered\n\
-      \  - no_new_orchestration_isolation_alias\nrequired_checks:\n  - id: isolation_absence_probe\n\
-      \    command:\n      - \"uv\"\n      - \"run\"\n      - \"python\"\n      -\
-      \ \"-c\"\n      - |\n        from pathlib import Path\n        files = [Path('src/vectl/models.py'),\
+      \  - lowercase_word_boundary_isolation_residue_removed\n  - isolation_model_fields_introspection_clean\n\
+      \  - model_io_regression_covered\n  - no_new_orchestration_isolation_alias\n\
+      required_checks:\n  - id: isolation_absence_probe\n    command:\n      - \"\
+      uv\"\n      - \"run\"\n      - \"python\"\n      - \"-c\"\n      - |\n     \
+      \   from pathlib import Path\n        import re\n        files = [Path('src/vectl/models.py'),\
       \ Path('src/vectl/io.py')]\n        terms = [\n            'IsolationMode',\n\
       \            'Step.isolation',\n            'isolation: IsolationMode',\n  \
       \          'field_name == \"isolation\"',\n            \"field_name == 'isolation'\"\
       ,\n            'field_name != \"isolation\"',\n            \"field_name != 'isolation'\"\
       ,\n            '\"isolation\"',\n            \"'isolation'\",\n        ]\n \
-      \       hits = [f'{p}:{t}' for p in files for t in terms if p.exists() and t\
-      \ in p.read_text(errors='ignore')]\n        assert not hits, hits\n        from\
-      \ vectl.models import Step\n        import vectl.models as models\n        assert\
-      \ 'isolation' not in Step.model_fields, Step.model_fields\n        assert not\
-      \ hasattr(models, 'IsolationMode'), 'IsolationMode still exported'\n       \
-      \ print('isolation schema residue absent, lowercase IO residue absent, and Step.model_fields\
-      \ clean')\n    covers_claims:\n      - isolation_schema_removed\n      - lowercase_io_isolation_residue_removed\n\
-      \      - isolation_model_fields_introspection_clean\n      - no_new_orchestration_isolation_alias\n\
-      \  - id: model_io_tests\n    command: [\"uv\", \"run\", \"pytest\", \"tests/test_models.py\"\
-      , \"tests/test_io.py\", \"-q\"]\n    covers_claims:\n      - model_io_regression_covered\n\
-      </intent_closure_contract>"
+      \       word_boundary_allowlist = {}\n        hits = []\n        for p in files:\n\
+      \            if not p.exists():\n                continue\n            text\
+      \ = p.read_text(errors='ignore')\n            hits.extend(f'{p}:{t}' for t in\
+      \ terms if t in text)\n            allowed_lines = set(word_boundary_allowlist.get(str(p),\
+      \ []))\n            for line_no, line in enumerate(text.splitlines(), start=1):\n\
+      \                if re.search(r'\\bisolation\\b', line) and line_no not in allowed_lines:\n\
+      \                    hits.append(f'{p}:{line_no}:LOWERCASE_WORD_BOUNDARY_ISOLATION:{line.strip()}')\n\
+      \        assert not hits, hits\n        from vectl.models import Step\n    \
+      \    import vectl.models as models\n        assert 'isolation' not in Step.model_fields,\
+      \ Step.model_fields\n        assert not hasattr(models, 'IsolationMode'), 'IsolationMode\
+      \ still exported'\n        print('isolation schema residue absent, lowercase\
+      \ IO/model word-boundary residue absent, and Step.model_fields clean')\n   \
+      \ covers_claims:\n      - isolation_schema_removed\n      - lowercase_io_isolation_residue_removed\n\
+      \      - lowercase_word_boundary_isolation_residue_removed\n      - isolation_model_fields_introspection_clean\n\
+      \      - no_new_orchestration_isolation_alias\n  - id: model_io_tests\n    command:\
+      \ [\"uv\", \"run\", \"pytest\", \"tests/test_models.py\", \"tests/test_io.py\"\
+      , \"-q\"]\n    covers_claims:\n      - model_io_regression_covered\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     refs:
     - user-request:2026-06-17#delete-step-isolation

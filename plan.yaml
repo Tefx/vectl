@@ -112383,9 +112383,9 @@ phases:
       \ from the triage step.\n        2. Marking still-failing current code as non-blocking\
       \ without row-local owner/lifecycle and gate-intersection reasoning.\n     \
       \   3. Product code/test/doc changes in this plan-evidence hygiene step.\n \
-      \       4. Exact substring parsing of wrapped `vectl validate` output.\n\n \
-      \       <intent_closure_contract>\nallowed_paths:\n  - \"plan.yaml\"\nblocked_paths:\n\
-      \  - \"src/**\"\n  - \"tests/**\"\n  - \"docs/**\"\nrequired_claims:\n  - group_c_rows_closed_owned_or_exceptioned_row_locally\n\
+      \       4. Exact substring parsing of wrapped `vectl validate` output.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \"plan.yaml\"\nblocked_paths:\n  - \"src/**\"\n  - \"tests/**\"\
+      \n  - \"docs/**\"\nrequired_claims:\n  - group_c_rows_closed_owned_or_exceptioned_row_locally\n\
       \  - current_code_probe_evidence_preserved\n  - exception_policy_used_only_when_audit_safe\n\
       \  - no_product_code_fixes_performed\n  - robust_validation_parsing_used\nrequired_checks:\n\
       \  - id: group_c_absent_owned_or_exceptioned_row_locally\n    command:\n   \

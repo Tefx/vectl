@@ -112262,7 +112262,7 @@ phases:
       '
   - id: orch_removal_live_smoke_dispatch_b1_retest
     name: Retest B1 live-smoke dispatch retirement and gate reopening proof
-    status: pending
+    status: claimed
     description: "step_type: verification\nstep_intent: retest_green\nexpected_result:\
       \ green\nagent_source: default\nphase-check / regate companion for the blocker\
       \ found by `orch_removal_tests_docs_gate`: `B1-active-live-smoke-dispatch-runtime-tests-remain`.\
@@ -112356,6 +112356,8 @@ phases:
     depends_on:
     - orch_removal_live_smoke_dispatch_b1_fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-17T18:55:46.214332+00:00'
 - id: orch_removal_finalization
   name: 'Orchestrator Removal: Closure and Full Regression'
   status: locked

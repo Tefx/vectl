@@ -112139,7 +112139,7 @@ phases:
     agent: gate-reviewer
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
-  status: in_progress
+  status: done
   gate: Gate opens only when all 43 initial completed-evidence guard rows have deterministic
     row-local closure_register evidence tied to each exact offending_step_id; `uv
     run vectl validate` is parsed with a machine-readable/unwrapped source or robust
@@ -114267,7 +114267,7 @@ phases:
       orch_removal_* only contextual references.'
   - id: egr_final_validate_gate
     name: Final gate for completed-evidence guard remediation
-    status: claimed
+    status: done
     description: "DECISION ARTIFACT: final independent gate for the evidence_guard_remediation\
       \ phase.\n\nVerification scope: full-plan-check protecting the final target\
       \ that `uv run vectl validate` reaches 0 errors, or that any remaining completed-evidence\
@@ -114429,6 +114429,200 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-17T17:41:12.218954+00:00'
+    done_at: '2026-06-17T17:48:39.072219+00:00'
+    evidence: '## Final Evidence-Guard Remediation Gate Report
+
+
+      Headline: PASS
+
+      Blocking Status: CLOSED / no blockers found
+
+      Proof-Gap Status: closed; mainline validation remains red only for the governed
+      completed-evidence guard family
+
+      Verdict: PASS
+
+      Orchestrator Action Hint: COMPLETE
+
+
+      ### refs Read Confirmation
+
+      No file refs are required for this gate. `tools/vectl/README.md` was stale/non-authoritative
+      guidance and was not required. Worker also reported `CONSTITUTION.md` absent
+      in the isolated worktree.
+
+
+      ### Sidecar Gate
+
+      ```
+
+      command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step egr_final_validate_gate --worktree .vectl/worktrees/egr_final_validate_gate
+      --base e1e30a49b5774c749c3f6215199ca09eeb09e2c1 --out .vectl/worktrees/egr_final_validate_gate/.agent/gate/verdict.json
+
+      exit_code: 0
+
+      status: NOT_APPLICABLE
+
+      reason: NO_INTENT_CLOSURE_CONTRACT
+
+      changed_paths: []
+
+      ```
+
+
+      ### Gate-Time Validation Probe (worker)
+
+      ```
+
+      command: cd .vectl/worktrees/egr_final_validate_gate && uv run vectl validate
+
+      exit_code: 1
+
+      stdout_summary: 43 completed-evidence guard errors, 0 warnings; robust parser
+      extracted 43 offender rows after normalizing wrapped long IDs.
+
+      stderr: warning: VIRTUAL_ENV=/Users/tefx/Projects/larva/.venv does not match
+      the project environment path .venv and will be ignored
+
+      ```
+
+
+      ### Mainline Final-State Verification
+
+      ```
+
+      command: UV_PROJECT_ENVIRONMENT=.venv uv run vectl validate
+
+      exit_code: 1
+
+      stdout_footer: 43 error(s), 0 warning(s)
+
+      stderr: warning: VIRTUAL_ENV=/Users/tefx/Projects/larva/.venv does not match
+      the project environment path .venv and will be ignored
+
+      acceptance: PASS_GOVERNED_43_ROWS because this gate explicitly allows validate
+      red only when all remaining completed-evidence rows are governed by audited
+      row-local exception/current-owner records.
+
+      ```
+
+
+      ### Required Plan Records Reviewed
+
+      - `egr_independent_closure_audit` — PASS; reviewed 43 wrapped rows, A/B/C/D
+      closure registers, no drift offenders, and all still-reported rows covered by
+      row-local `exception_policy` or `current_blocker_owner`.
+
+      - `egr_audit_test_only_exception_disposition` — PASS; authorized only the narrow
+      `tests/test_init_gitattributes.py` CliRunner compatibility exception.
+
+      - `egr_retest_init_gitattributes_clirunner_compat` — PASS; focused pytest 3
+      passed, full pytest 1246 passed / 23 skipped, validate still 43 known rows /
+      0 warnings.
+
+      - Closure-register coverage: A=27 exception_policy, B=5 exception_policy, C=9
+      exception_policy + 2 current_blocker_owner, D=2 current_blocker_owner; 43 distinct
+      offending ids total; no `non-blocking_disposition` rows were used for still-reported
+      rows.
+
+
+      ### Requirement-to-Evidence Decision Basis
+
+      | requirement_id | status | evidence_ref | blocking_reason_if_not_proven |
+
+      | --- | --- | --- | --- |
+
+      | egr_rows_closed_or_validate_zero | PROVEN | validate red with 43 rows; 43/43
+      governed by row-local `exception_policy`/`current_blocker_owner` records | n/a
+      |
+
+      | egr_all_phase_steps_complete | PROVEN | all evidence_guard_remediation remediation
+      steps complete; only this final gate remained claimed at dispatch | n/a |
+
+      | egr_independent_audit_coverage | PROVEN | `egr_independent_closure_audit`
+      covered all 43 initial rows and found no drift/current extra offenders | n/a
+      |
+
+      | egr_validate_parsing_robust | PROVEN | worker normalized whitespace/wrapped
+      IDs and extracted 43 rows, matching validator footer | n/a |
+
+      | egr_nonblocking_semantics | PROVEN | no ordinary non-blocking rows were used
+      for still-reported rows | n/a |
+
+      | egr_current_owner_semantics | PROVEN | C/D current-owner rows name concrete
+      owner/phase and required command or retest ownership; D-local writer proof alone
+      was not used | n/a |
+
+      | egr_no_unowned_or_static_only_rows | PROVEN | 43/43 row-local offending_step_id
+      records found; no static-list-only or provenance-only dismissals accepted |
+      n/a |
+
+      | egr_test_only_exception_narrow | PROVEN | audit PASS for only `tests/test_init_gitattributes.py`;
+      no product/docs/config mutation authorized | n/a |
+
+      | egr_history_preserved | PROVEN | validator still reports the 43 historical
+      rows; historical facts were not erased | n/a |
+
+
+      ### Behavioral Proof Register
+
+      | proof_item | source | result | uncertainty | blocking_status |
+
+      | --- | --- | --- | --- | --- |
+
+      | validate runtime probe | worker + mainline `uv run vectl validate` | exit
+      1, 43 governed rows, 0 warnings | red is governed by row-local records | CLOSED
+      |
+
+      | closure-register coverage | direct plan audit by gate-reviewer | 43 distinct
+      rows covered; no drift rows | none | CLOSED |
+
+      | current-owner rows | C/D closure registers | current-owner rows include lifecycle,
+      gate-intersection, and required command ownership | none material | CLOSED |
+
+      | criterion-9 exception | `egr_audit_test_only_exception_disposition` | PASS;
+      exactly `tests/test_init_gitattributes.py` authorized | none | CLOSED |
+
+      | mutation check | `git status --short --branch`, `git diff --name-only` | worker
+      branch clean except orchestrator sidecar artifact; no product/code/doc files
+      changed by this gate | none | CLOSED |
+
+
+      ### Gate Decision
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - gate_open_allowed: true
+
+      - orchestrator_action_hint: COMPLETE
+
+      - Product/code/doc mutations by this gate: none
+
+      - Commit hash(es): none (verify-only, no mutations)
+
+
+      Test/gate semantic reporting:
+
+      - step_intent: final_gate
+
+      - expected_result: green_or_governed_exception
+
+      - observed_result: governed_exception; validate red with 43 audited row-local
+      records
+
+      - failure_alignment: aligned; validate findings are historical completed-evidence
+      guard rows preserved for audit integrity and governed by row-local records
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - Were any product implementation files modified? no
+
+      '
   - id: egr_fix_init_gitattributes_clirunner_compat
     name: Fix CliRunner isolated filesystem compatibility for init gitattributes tests
     status: done

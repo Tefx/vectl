@@ -110937,7 +110937,7 @@ phases:
     claimed_at: '2026-06-17T14:56:26.471689+00:00'
   - id: orch_removal_doc_cleanup
     name: Delete orchestration docs and remove README orch guidance
-    status: claimed
+    status: done
     description: "step_type: implementation\nTARGET STATE: orchestration documentation\
       \ is deleted rather than archived, existing archived/remediation orchestration\
       \ proof/workflow artifacts are removed when they preserve forbidden runtime\
@@ -111093,6 +111093,18 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-06-17T14:56:19.342413+00:00'
+    done_at: '2026-06-17T15:14:30.125197+00:00'
+    evidence: 'status SUCCESS; worker commits 52660199 and e408a170 merged to main
+      as ecdcfdd3. Sidecar verdict CONFORMANT after planner contract repair; changed
+      paths limited to README/README_zh, deleted orchestration docs/archive artifacts/current
+      doc cleanup, and exact docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md.
+      Mainline verification passed after removing untracked docs/archive __pycache__
+      residue: docs deletion probe OK (orchestration docs, isolation doc, exact remediation
+      artifact, docs/archive files absent); recursive docs forbidden-reference probe
+      OK excluding RFC-vectl-decide-advisor-refresh.md and broader docs/invar_guard_remediation;
+      current docs residue probe OK; README orch guidance probe OK. Blocked path docs/RFC-vectl-decide-advisor-refresh.md
+      not touched; broader docs/invar_guard_remediation files restored and not part
+      of final delta except exact orchestration artifact.'
   - id: orch_removal_decide_wording_preserve
     name: Reword preserved vectl_decide surfaces as caller-owned automation advisor
     status: pending

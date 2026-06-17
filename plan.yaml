@@ -112517,7 +112517,7 @@ phases:
       '
 - id: orch_removal_finalization
   name: 'Orchestrator Removal: Closure and Full Regression'
-  status: pending
+  status: in_progress
   gate: Final gate requires forbidden-term grep closure, full pytest, packaged CLI
     help, invar guard full scan, and independent release-blocking review.
   depends_on:
@@ -112525,7 +112525,7 @@ phases:
   steps:
   - id: orch_removal_cli_runtime_proof
     name: Prove packaged CLI runtime surface after orch removal
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       full-plan-check companion for the user-facing CLI surface. Launch the packaged
@@ -112564,6 +112564,8 @@ phases:
     - README.md
     - README_zh.md
     agent: client-runtime-verifier
+    claimed_by: client-runtime-verifier
+    claimed_at: '2026-06-17T19:03:37.286657+00:00'
   - id: orch_removal_wiring_audit
     name: Audit wiring after orchestration source deletion
     status: pending

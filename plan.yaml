@@ -110457,7 +110457,7 @@ phases:
     agent: architectural-demolitionist
   - id: orch_removal_isolation_schema_delete
     name: Remove Step.isolation and IsolationMode from core schema and IO
-    status: claimed
+    status: done
     description: "step_type: implementation\nTARGET STATE: `Step` no longer has an\
       \ `isolation` field, `IsolationMode` no longer exists, IO no longer serializes/deserializes\
       \ isolation residue, lowercase IO/model compatibility residue such as `field_name\
@@ -110539,6 +110539,14 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-06-17T13:33:20.507142+00:00'
+    done_at: '2026-06-17T13:42:16.416829+00:00'
+    evidence: 'status SUCCESS; worker commit d1a259768f0d35064efa3377a99f59972437900d
+      merged to main as 3e960f4; sidecar verdict CONFORMANT; files changed src/vectl/models.py,
+      src/vectl/io.py, tests/test_models.py, tests/test_io.py. Mainline verification
+      passed: isolation absence probe found no IsolationMode, Step.isolation, string/key/word-boundary
+      isolation residue in models/io; runtime asserts ''isolation'' not in Step.model_fields
+      and IsolationMode not exported; uv run pytest tests/test_models.py tests/test_io.py
+      -q: 83 passed.'
   - id: orch_removal_runtime_phase_probe
     name: Verify runtime surface removal and decide preservation
     status: pending

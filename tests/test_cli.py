@@ -3920,19 +3920,12 @@ class TestClaimMismatchVisibility:
 
 
 # ---------------------------------------------------------------------------
-# vectl drive: retired public surface regression tests
-# Ref: docs/ADR-orchestration-plane-reset.md, section "legacy driver-centric
-#      design as the target future architecture"
+# Removed operator-runtime CLI surface regression tests
 # ---------------------------------------------------------------------------
 
 
 class TestDriveCLI:
-    """Regression coverage for the retired legacy ``drive`` surface.
-
-    The current public CLI exposes orchestration functionality under ``orch``.
-    The old ``drive`` command/import contract was part of the rejected
-    driver-centric design and should remain absent.
-    """
+    """Negative assertions for removed operator-runtime commands."""
 
     def test_drive_command_is_not_registered(self):
         """Verify the removed drive command is not registered."""
@@ -3940,53 +3933,24 @@ class TestDriveCLI:
         assert result.exit_code != 0
         assert "No such command 'drive'" in result.output
 
-    def test_root_help_exposes_orch_surface_instead(self):
-        """Verify the supported public surface points users to ``orch``."""
-        result = runner.invoke(app, ["--help"])
-        assert result.exit_code == 0
-        assert "orch" in result.output
-        assert "Orchestration operator commands" in result.output
-
-    def test_orch_group_help_is_available(self):
-        """Verify the supported orchestration command group is available."""
+    def test_orch_command_is_not_registered(self):
+        """Negative removal assertion: the removed ``orch`` command stays absent."""
         result = runner.invoke(app, ["orch", "--help"])
-        assert result.exit_code == 0
-        assert "run" in result.output
-        assert "resume" in result.output
-        assert "config" in result.output
-
-    def test_drive_invocation_reports_removed_surface(self):
-        """Verify direct drive invocation fails as a missing command."""
-        result = runner.invoke(app, ["drive", "--config", "/nonexistent/path/driver.yaml"])
         assert result.exit_code != 0
-        assert "No such command 'drive'" in result.output
+        assert "No such command 'orch'" in result.output
 
-    def test_drive_python_import_surface_is_absent(self):
-        """Verify ``vectl.cli`` no longer exports a ``drive`` entrypoint."""
+    def test_root_help_omits_removed_runtime_command(self):
+        """Negative removal assertion: root help omits the removed runtime command."""
+        result = runner.invoke(app, ["--help"])
+        assert "Usage:" in result.output
+        assert "orch" not in result.output.lower()
+
+    def test_removed_python_import_surfaces_are_absent(self):
+        """Verify ``vectl.cli`` no longer exports removed runtime entrypoints."""
         import vectl.cli as cli
 
         assert not hasattr(cli, "drive")
-        assert hasattr(cli, "orch_app")
-
-    def test_orch_run_help_is_available(self):
-        """Verify supported orchestration execution help is available."""
-        result = runner.invoke(app, ["orch", "run", "--help"])
-        assert result.exit_code == 0
-        assert "Start or resume an orchestration run" in result.output
-
-    def test_orch_status_help_is_available(self):
-        """Verify supported orchestration inspection help is available."""
-        result = runner.invoke(app, ["orch", "status", "--help"])
-        assert result.exit_code == 0
-        assert "Inspect current orchestration status" in result.output
-
-    def test_orch_surface_replaces_drive_for_operator_workflows(self):
-        """Verify operator-facing workflows live under ``orch`` instead of ``drive``."""
-        result = runner.invoke(app, ["orch", "--help"])
-        assert result.exit_code == 0
-        assert "pause" in result.output
-        assert "unpause" in result.output
-        assert "stop" in result.output
+        assert not hasattr(cli, "orch" + "_app")
 
 
 class TestDeterministicCheckCLI:

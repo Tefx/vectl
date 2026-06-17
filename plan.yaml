@@ -110195,14 +110195,19 @@ phases:
     status: pending
     description: "step_type: implementation\nTARGET STATE: the packaged CLI imports\
       \ successfully, `vectl --help` no longer exposes `orch` or orchestration subcommands,\
+      \ `cli_plan_common.py` no longer imports or wires deleted orch runtime helpers,\
       \ and non-orchestration CLI/MCP surfaces remain reachable.\n\nRequirement-to-Evidence\
       \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
       \ | required_probe_or_artifact | status |\n| CLI-ORCH-REMOVED | user-request:2026-06-17\
       \ — current CLI imports fine but still exposes `orch`; remove built-in `vectl\
       \ orch` | `vectl --help` has no orch command or orchestration help text | runtime_probe\
-      \ | Packaged CLI help probe with stdout | OWNED |\n| DECIDE-STILL-IMPORTS |\
-      \ user-request:2026-06-17 — keep vectl_decide as core automation advisor, not\
-      \ orch | CLI and decide modules import without orchestration runtime | runtime_probe\
+      \ | Packaged CLI help probe with stdout | OWNED |\n| CLI-PLAN-COMMON-ORCH-WIRING-REMOVED\
+      \ | reviewer evidence — src/vectl/cli_plan_common.py:93-94 and 421-437 contain\
+      \ deleted-runtime imports/`orch_app` wiring | `cli_plan_common.py` contains\
+      \ no imports, references, or factories for deleted orch runtime modules | source_static\
+      \ | Explicit cli_plan_common deleted-runtime probe | OWNED |\n| DECIDE-STILL-IMPORTS\
+      \ | user-request:2026-06-17 — keep vectl_decide as core automation advisor,\
+      \ not orch | CLI and decide modules import without orchestration runtime | runtime_probe\
       \ | Python import probe for vectl.cli and vectl.decide | OWNED |\n\nNon-goals:\
       \ do not delete `src/vectl/decide.py`, `src/vectl/decision_state.py`, or `src/vectl/model_outputs.py`;\
       \ do not remove MCP `vectl_decide`.\n\n## Completion Criteria (stub exclusion)\n\
@@ -110211,19 +110216,29 @@ phases:
       allowed_paths:\n  - \"src/vectl/cli.py\"\n  - \"src/vectl/cli_plan_common.py\"\
       \n  - \"tests/test_mcp.py\"\nblocked_paths:\n  - \"src/vectl/decide.py\"\n \
       \ - \"src/vectl/decision_state.py\"\n  - \"src/vectl/model_outputs.py\"\nrequired_claims:\n\
-      \  - cli_orch_surface_removed\n  - cli_imports_without_orchestration_runtime\n\
-      \  - decide_surface_preserved\nrequired_checks:\n  - id: cli_import_probe\n\
-      \    command: [\"uv\", \"run\", \"python\", \"-c\", \"import vectl.cli; import\
-      \ vectl.decide; import vectl.decision_state; import vectl.model_outputs; print('cli+decide\
-      \ imports ok')\"]\n    covers_claims:\n      - cli_imports_without_orchestration_runtime\n\
-      \      - decide_surface_preserved\n  - id: cli_help_no_orch_probe\n    command:\
-      \ [\"uv\", \"run\", \"python\", \"-c\", \"import subprocess, sys; cp=subprocess.run(['uvx','--refresh','--from','.','vectl','--help'],\
+      \  - cli_orch_surface_removed\n  - cli_plan_common_orch_wiring_removed\n  -\
+      \ cli_imports_without_orchestration_runtime\n  - decide_surface_preserved\n\
+      required_checks:\n  - id: cli_import_probe\n    command: [\"uv\", \"run\", \"\
+      python\", \"-c\", \"import vectl.cli; import vectl.decide; import vectl.decision_state;\
+      \ import vectl.model_outputs; print('cli+decide imports ok')\"]\n    covers_claims:\n\
+      \      - cli_imports_without_orchestration_runtime\n      - decide_surface_preserved\n\
+      \  - id: cli_plan_common_no_orch_wiring_probe\n    command:\n      - \"uv\"\n\
+      \      - \"run\"\n      - \"python\"\n      - \"-c\"\n      - |\n        from\
+      \ pathlib import Path\n        p = Path('src/vectl/cli_plan_common.py')\n  \
+      \      terms = ['orch_app', 'cli_orchestration', 'vectl.orchestration', 'core.orchestration',\
+      \ 'vectl orch', 'src/vectl/orchestration', 'src/vectl/core/orchestration', 'src/vectl/shell/orchestration']\n\
+      \        text = p.read_text(errors='ignore') if p.exists() else ''\n       \
+      \ hits = [f'{p}:{term}' for term in terms if term in text]\n        assert not\
+      \ hits, hits\n        print('cli_plan_common deleted-runtime wiring absent')\n\
+      \    covers_claims:\n      - cli_plan_common_orch_wiring_removed\n      - cli_imports_without_orchestration_runtime\n\
+      \  - id: cli_help_no_orch_probe\n    command: [\"uv\", \"run\", \"python\",\
+      \ \"-c\", \"import subprocess, sys; cp=subprocess.run(['uvx','--refresh','--from','.','vectl','--help'],\
       \ text=True, capture_output=True); print(cp.stdout); print(cp.stderr, file=sys.stderr);\
       \ assert cp.returncode == 0; bad=[t for t in ['vectl orch',' orch ','Orchestration','orchestration\
       \ runtime'] if t in cp.stdout]; assert not bad, bad\"]\n    covers_claims:\n\
       \      - cli_orch_surface_removed\n      - cli_imports_without_orchestration_runtime\n\
       \  - id: mcp_surface_smoke\n    command: [\"uv\", \"run\", \"pytest\", \"tests/test_mcp.py\"\
-      , \"-q\"]\n    covers_claims:\n      - decide_surface_preserved\n</intent_closure_contract>"
+      , \"-q\"]\n    covers_claims:\n      - decide_surface_preserved\n</intent_closure_contract>\n"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     refs:
     - user-request:2026-06-17#remove-built-in-vectl-orch

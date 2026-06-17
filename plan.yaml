@@ -113784,7 +113784,7 @@ phases:
       exited 0; no product code/tests/docs edited.
   - id: egr_independent_closure_audit
     name: Independent audit of evidence-guard closure/disposition
-    status: claimed
+    status: done
     description: 'CONFORMANCE ARTIFACT: independently audit that the evidence_guard_remediation
       stream closed, dispositioned, exceptioned, or assigned concrete owners for all
       43 initial completed-evidence guard rows plus every drift/current completed-evidence
@@ -113968,6 +113968,24 @@ phases:
     agent: plan-readiness-auditor
     claimed_by: plan-readiness-auditor
     claimed_at: '2026-06-17T14:46:57.929126+00:00'
+    done_at: '2026-06-17T14:54:48.902173+00:00'
+    evidence: 'status SUCCESS; verdict PASS; blockers []; gate_open_allowed true;
+      orchestrator_action_hint COMPLETE. Sidecar verdict NOT_APPLICABLE with no changed
+      paths. Commands: uv run vectl validate exit 1 with 43 completed-evidence guard
+      errors, 0 warnings; robust regex parser extracted 43 offender rows across wrapped
+      output; uv run vectl show egr_dispose_superseded_orchestrator_removal_rows read
+      27 A rows; uv run vectl show egr_dispose_scoped_pass_global_fail_rows read 5
+      B rows; uv run vectl show egr_close_repo_regression_post_review_rows read 11
+      C rows; uv run vectl show egr_generate_current_core_owner_path read D owner
+      rows for 2 still-current non-exception blockers; uv run vectl show evidence_guard_remediation
+      read phase. Decision artifact covers 43 rows; no extra drift offenders; every
+      still-reported row has row-local exception_policy or current_blocker_owner;
+      2 non-exception current blockers have D-local current_blocker_owner values not
+      equal to egr_generate_current_core_owner_path and include verification/retest/required-command
+      ownership; no row relies on ordinary non-blocking_disposition while still reported;
+      historical failure evidence preserved because validate still reports the 43
+      rows; audit worktree clean; no product code/test/doc/plan mutations by auditor;
+      orch_removal_* only contextual references.'
   - id: egr_final_validate_gate
     name: Final gate for completed-evidence guard remediation
     status: pending

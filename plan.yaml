@@ -111403,7 +111403,7 @@ phases:
     agent: gate-reviewer
   - id: orch_removal_readme_zh_decide_parity
     name: Update README_zh MCP decide parity
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: project\n\nTARGET STATE:\n\
       README_zh.md matches the live README/RFC wording for this narrow issue only:\
       \ the MCP tools sentence says vectl exposes 15 MCP tools and includes `vectl_decide`\
@@ -111446,6 +111446,14 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-06-17T15:43:41.042032+00:00'
+    done_at: '2026-06-17T15:46:14.201646+00:00'
+    evidence: 'status SUCCESS; worker commit 3d1724c merged to main as f1ec96b. Sidecar
+      verdict CONFORMANT; changed only README_zh.md; readme_zh_decide_parity_probe
+      passed covering readme_zh_mcp_count_updated, readme_zh_vectl_decide_documented,
+      readme_zh_matches_caller_owned_decide_authority. Mainline verification: README_zh
+      MCP decide parity probe printed `README_zh MCP decide parity verified`; README_zh
+      now says 15 MCP tools and includes vectl_decide; README.md and RFC source passages
+      verified by probe. No source/tests/RFC/README.md changes.'
 - id: orch_removal_finalization
   name: 'Orchestrator Removal: Closure and Full Regression'
   status: locked

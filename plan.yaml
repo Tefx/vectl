@@ -112283,7 +112283,93 @@ phases:
       \          print(f'- {step_id}: {problem}')\n            sys.exit(1)\n    covers_claims:\n\
       \      - group_b_rows_closed_or_row_locally_dispositioned\n      - scoped_pass_vs_global_fail_classified\n\
       \      - gate_intersection_disposition_recorded_row_locally\n      - no_broad_code_cleanup_performed\n\
-      \      - robust_validation_parsing_used\n</intent_closure_contract>"
+      \      - robust_validation_parsing_used\n</intent_closure_contract>\n\n```closure_register\n\
+      - offending_step_id: \"claim-consistency-recovery.retest-gate-lint-and-type-blockers-fix\"\
+      \n  original_phase: \"claim-consistency-recovery\"\n  group: \"B_scoped_pass_global_fail\"\
+      \n  status: \"exception_policy\"\n  owner: \"egr_dispose_scoped_pass_global_fail_rows\"\
+      \n  lifecycle_disposition: \"lifecycle disposition: historical FAIL evidence\
+      \ is retained for audit integrity; scoped claim-consistency lint remediation\
+      \ is tracked as closed for the bounded phase objective while unrelated global\
+      \ lint debt is not erased here.\"\n  gate_intersection: \"gate-intersection=false\
+      \ / non-intersection: scoped ruff command for claim-consistency files passed;\
+      \ global ruff failures were explicitly outside the bounded phase surface and\
+      \ do not block this row-local evidence-guard closure.\"\n  closed_by_step: \"\
+      egr_dispose_scoped_pass_global_fail_rows\"\n  closed_by: \"Scoped PASS evidence\
+      \ in the offending step: uv run ruff check src/vectl/cli.py src/vectl/core.py\
+      \ src/vectl/lifecycle.py tests/test_claims.py tests/test_cli.py tests/test_io.py\
+      \ tests/test_mcp.py -> PASS; global uv run ruff check src tests -> FAIL only\
+      \ on out-of-scope legacy debt.\"\n  exception_policy: \"audit-integrity exception:\
+      \ current validate still reports this row because the retained historical evidence\
+      \ contains FAIL; the plan must preserve that failure fact rather than falsify\
+      \ or erase it, so this row is closed by explicit scoped-pass/global-fail exception\
+      \ semantics.\"\n  validator_status: \"still_reported\"\n- offending_step_id:\
+      \ \"claim-consistency-recovery.retest-gate-lint-and-type-blockers-retest\"\n\
+      \  original_phase: \"claim-consistency-recovery\"\n  group: \"B_scoped_pass_global_fail\"\
+      \n  status: \"exception_policy\"\n  owner: \"egr_dispose_scoped_pass_global_fail_rows\"\
+      \n  lifecycle_disposition: \"lifecycle disposition: historical attribution-only\
+      \ global FAIL evidence is retained; scoped claim-consistency mypy and lint proof\
+      \ is tracked as closed for the phase objective.\"\n  gate_intersection: \"gate-intersection=false\
+      \ / non-intersection: uv run mypy src/vectl and the scoped claim-consistency\
+      \ ruff command passed; residual global lint failure was documented as outside\
+      \ phase scope and does not block this row-local closure.\"\n  closed_by_step:\
+      \ \"egr_dispose_scoped_pass_global_fail_rows\"\n  closed_by: \"Scoped PASS evidence\
+      \ in the offending step: uv run mypy src/vectl -> PASS; scoped uv run ruff check\
+      \ for claim-consistency files -> PASS; global uv run ruff check src tests ->\
+      \ FAIL only on out-of-scope legacy files.\"\n  exception_policy: \"audit-integrity\
+      \ exception: current validate still reports this row because the retained historical\
+      \ evidence includes FAIL; closure is by row-local scoped-pass/global-fail exception,\
+      \ not by deleting evidence.\"\n  validator_status: \"still_reported\"\n- offending_step_id:\
+      \ \"step-id-resolver-hardening.retest-gate-blockers\"\n  original_phase: \"\
+      step-id-resolver-hardening\"\n  group: \"B_scoped_pass_global_fail\"\n  status:\
+      \ \"exception_policy\"\n  owner: \"egr_dispose_scoped_pass_global_fail_rows\"\
+      \n  lifecycle_disposition: \"lifecycle disposition: the original verifier's\
+      \ ISSUES_FOUND/FAIL row is retained; follow-up mypy blocker ownership and green\
+      \ closure are tracked in the same phase.\"\n  gate_intersection: \"gate-intersection=false\
+      \ / non-intersection for this historical row: resolver contract and ruff checks\
+      \ passed in the original retest, and the reported global mypy blocker was subsequently\
+      \ closed by the dedicated retest-mypy owner path.\"\n  closed_by_step: \"egr_dispose_scoped_pass_global_fail_rows\"\
+      \n  closed_by: \"Later green evidence: step-id-resolver-hardening.retest-mypy-gate-blockers\
+      \ reports uv run mypy src tests -> Success, uv run ruff check . -> All checks\
+      \ passed, resolver suites -> PASS.\"\n  exception_policy: \"audit-integrity\
+      \ exception: current validate still reports the earlier retest because its historical\
+      \ evidence correctly says ISSUES_FOUND/FAIL; the closure register preserves\
+      \ that fact and points to the later green owner-path evidence instead of rewriting\
+      \ history.\"\n  validator_status: \"still_reported\"\n- offending_step_id: \"\
+      arch-demolition-wave-1.dem-002-extract-shared-next-step-helper\"\n  original_phase:\
+      \ \"arch-demolition-wave-1\"\n  group: \"B_scoped_pass_global_fail\"\n  status:\
+      \ \"exception_policy\"\n  owner: \"egr_dispose_scoped_pass_global_fail_rows\"\
+      \n  lifecycle_disposition: \"lifecycle disposition: DEM-002 local extraction\
+      \ success and the unrelated full-suite failed-test fact are both retained; row-local\
+      \ evidence hygiene closes only the scoped-pass/global-fail guard issue.\"\n\
+      \  gate_intersection: \"gate-intersection=false / non-intersection: focused\
+      \ CLI/MCP and DEM-002 characterization surfaces passed, CLI help exited 0, and\
+      \ the full-suite failure was confirmed pre-existing/unrelated to the extracted\
+      \ helper.\"\n  closed_by_step: \"egr_dispose_scoped_pass_global_fail_rows\"\n\
+      \  closed_by: \"Scoped PASS evidence in the offending step: focused tests tests/test_cli.py\
+      \ tests/test_mcp.py -> 414 passed; DEM-002 characterization -> 3 passed and\
+      \ 1 pre-existing unrelated failure; uv run vectl --help exits 0; sibling search\
+      \ found no duplicate helper copies.\"\n  exception_policy: \"audit-integrity\
+      \ exception: current validate still reports failed tests from retained historical\
+      \ evidence; deleting that old full-suite failure would corrupt provenance, so\
+      \ the row is closed by scoped-pass/global-fail exception semantics.\"\n  validator_status:\
+      \ \"still_reported\"\n- offending_step_id: \"arch-demolition-wave-6.dem-017-collapse-duplicate-step-id-leaf-wrappers-without-breaking-outputs\"\
+      \n  original_phase: \"arch-demolition-wave-6\"\n  group: \"B_scoped_pass_global_fail\"\
+      \n  status: \"exception_policy\"\n  owner: \"egr_dispose_scoped_pass_global_fail_rows\"\
+      \n  lifecycle_disposition: \"lifecycle disposition: the no-op/pre-flight-blocked\
+      \ FAIL evidence remains a historical audit fact; any future DEM-017 product\
+      \ implementation must be owned by a separate scoped implementation path, not\
+      \ by this evidence-hygiene step.\"\n  gate_intersection: \"gate-intersection=false\
+      \ / non-intersection for this evidence-hygiene closure: no product files were\
+      \ modified by the historical worker, so this step records the row-local exception\
+      \ without claiming DEM-017 product completion or broad cleanup.\"\n  closed_by_step:\
+      \ \"egr_dispose_scoped_pass_global_fail_rows\"\n  closed_by: \"Historical no-op\
+      \ evidence in the offending step: pre-flight static verification failed before\
+      \ refactoring, invar full scan remained deferred, and no files were modified;\
+      \ this row is preserved rather than falsified.\"\n  exception_policy: \"audit-integrity\
+      \ exception: current validate still reports FAIL because the historical evidence\
+      \ truthfully records a blocked no-op; closure here is limited to row-local guard\
+      \ disposition and does not erase or convert that product-work fact.\"\n  validator_status:\
+      \ \"still_reported\"\n```\n"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     depends_on:
     - egr_inventory_classify_43_errors

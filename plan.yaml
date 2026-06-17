@@ -111712,7 +111712,7 @@ phases:
     agent: gate-reviewer
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
-  status: pending
+  status: in_progress
   gate: Gate opens only when all 43 initial completed-evidence guard rows have deterministic
     row-local closure_register evidence tied to each exact offending_step_id; `uv
     run vectl validate` is parsed with a machine-readable/unwrapped source or robust
@@ -111727,7 +111727,7 @@ phases:
   steps:
   - id: egr_inventory_classify_43_errors
     name: Inventory and classify all completed-evidence guard errors
-    status: pending
+    status: claimed
     description: 'PROOF ARTIFACT: deterministic inventory for the current completed-evidence
       guard backlog.
 
@@ -111846,6 +111846,8 @@ phases:
 
       - Product code/test/doc modifications performed: NONE (required)'
     agent: plan-readiness-auditor
+    claimed_by: plan-readiness-auditor
+    claimed_at: '2026-06-17T12:54:13.182409+00:00'
   - id: egr_dispose_superseded_orchestrator_removal_rows
     name: Close or disposition superseded driver/orchestrator/runtime evidence rows
     status: pending

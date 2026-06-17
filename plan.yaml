@@ -112906,7 +112906,7 @@ phases:
     claimed_at: '2026-06-17T19:04:01.619190+00:00'
   - id: orch_removal_full_regression_check
     name: Run full regression, packaged help, and invar guard
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       full-plan-check final regression. This step is the hard runtime/static gate
@@ -112941,6 +112941,8 @@ phases:
     - INVAR.md
     - MCP:vectl_vectl_validate#pre-existing-completed-evidence-guard-errors
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-17T19:04:07.542314+00:00'
   - id: orch_removal_deep_review
     name: Independent deep review of orchestrator removal closure
     status: pending

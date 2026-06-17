@@ -114170,3 +114170,100 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-17T14:55:59.240903+00:00'
+  - id: egr_fix_init_gitattributes_clirunner_compat
+    name: Fix CliRunner isolated filesystem compatibility for init gitattributes tests
+    status: pending
+    description: "[REQUIRES_SKILL: ponytail-coder]\nTARGET STATE: `tests/test_init_gitattributes.py`\
+      \ no longer calls a `CliRunner.isolated_filesystem` member that is absent in\
+      \ the installed Typer/Click test runner. The test still exercises the real `vectl\
+      \ init` CLI behavior in an isolated temporary directory and preserves the .gitattributes\
+      \ assertions exactly: creation, idempotency, and preservation of existing content.\n\
+      \nNON-GOALS / PROTECTED HISTORY:\n- Do NOT edit `plan.yaml` directly.\n- Do\
+      \ NOT erase, falsify, or rewrite any historical completed evidence rows or the\
+      \ 43 validation rows.\n- Do NOT weaken or delete the three gitattributes behavioral\
+      \ assertions.\n- Do NOT modify product code under `src/**`; this remediation\
+      \ is limited to test compatibility or adjacent test utility usage.\n\nRequirement-to-Evidence\
+      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| egr_cli_runner_compat | gate result:\
+      \ `uv run pytest tests/test_init_gitattributes.py -q` fails with `AttributeError:\
+      \ CliRunner has no attribute isolated_filesystem` | Tests use an installed-version-compatible\
+      \ isolation approach | runtime_probe | `uv run pytest tests/test_init_gitattributes.py\
+      \ -q` exits 0 | OWNED |\n| egr_behavior_preserved | `tests/test_init_gitattributes.py`\
+      \ asserts .gitattributes creation, idempotency, and preservation | Existing\
+      \ init-flow assertions remain behaviorally equivalent | runtime_probe | focused\
+      \ test file plus full/targeted regression command | OWNED |\n| egr_validate_gate_unblocked\
+      \ | final gate requires current-owner command ownership for pytest and validate\
+      \ | Remediation evidence includes pytest focused, pytest suite/justified sequence,\
+      \ and validate outputs | runtime_probe | required commands in contract | OWNED\
+      \ |\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step.\
+      \ Stub-only completion is NOT acceptable. The test compatibility fix must run\
+      \ the real Typer CLI invocation and produce outputs based on real init behavior,\
+      \ not hardcoded assertions that bypass the CLI.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \"tests/test_init_gitattributes.py\"\n  - \"tests/conftest.py\"\
+      \nblocked_paths:\n  - \"src/**\"\n  - \"docs/**\"\n  - \"plan.yaml\"\nrequired_claims:\n\
+      \  - clirunner_compatibility_fixed\n  - init_gitattributes_behavior_preserved\n\
+      \  - full_gate_required_commands_owned\nrequired_checks:\n  - id: focused_init_gitattributes_tests\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_init_gitattributes.py\"\
+      , \"-q\"]\n    covers_claims:\n      - clirunner_compatibility_fixed\n     \
+      \ - init_gitattributes_behavior_preserved\n  - id: full_pytest_regression\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"-q\"]\n    covers_claims:\n  \
+      \    - init_gitattributes_behavior_preserved\n      - full_gate_required_commands_owned\n\
+      \  - id: vectl_validate_guard\n    command: [\"uv\", \"run\", \"vectl\", \"\
+      validate\"]\n    covers_claims:\n      - full_gate_required_commands_owned\n\
+      </intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    refs:
+    - tests/test_init_gitattributes.py
+    depends_on:
+    - egr_independent_closure_audit
+    agent: python-executor
+  - id: egr_retest_init_gitattributes_clirunner_compat
+    name: Retest init gitattributes compatibility and final validation commands
+    status: pending
+    description: 'PROOF ARTIFACT: independently retest the CliRunner compatibility
+      remediation and the final-gate command family from a clean checkout/worktree
+      state.
+
+
+      Verification scope: full-plan-check protecting `egr_final_validate_gate`. This
+      retest owns the current blocker command failure reported by the failed gate:
+      `uv run pytest tests/test_init_gitattributes.py -q` exit 1 with `AttributeError:
+      CliRunner has no attribute isolated_filesystem`.
+
+
+      Required behavioral proof register:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | gate-current-blocker | Focused init gitattributes tests no longer fail on
+      missing CliRunner member | raw stdout/stderr for `uv run pytest tests/test_init_gitattributes.py
+      -q` | retest evidence | PROVEN or BLOCKED | if BLOCKED, keep egr_final_validate_gate
+      blocked and create follow-up owner | final gate may open only if PROVEN or row-local
+      current_blocker_owner remains explicit |
+
+      | gate-regression | Broader pytest command is green, or any remaining failures
+      are explicitly justified as unrelated with owner/disposition | raw stdout/stderr
+      for `uv run pytest -q` or a justified targeted/full sequence | retest evidence
+      | PROVEN or BLOCKED | if BLOCKED and intersects final gate, create owner | final
+      gate reviews this as current required command ownership |
+
+      | gate-validate | `uv run vectl validate` is run after the fix without erasing
+      historical evidence rows | raw stdout/stderr for `uv run vectl validate` | retest
+      evidence | PROVEN or BLOCKED | if BLOCKED, row-local exception/current-owner
+      evidence must remain | final gate reviews validate output plus row-local ownership
+      |'
+    verification: 'Run and capture raw stdout/stderr plus exit codes for: (1) `uv
+      run pytest tests/test_init_gitattributes.py -q`; (2) `uv run pytest -q` unless
+      a justified targeted/full sequence is required by environment limits; (3) `uv
+      run vectl validate`. Do not treat mock-only/unit-only proof or narrative summaries
+      as sufficient. PASS requires the focused command to pass and validate output
+      to preserve historical completed-evidence rows rather than erase them; any remaining
+      blocking failure must name a concrete owner before egr_final_validate_gate can
+      open.'
+    refs:
+    - tests/test_init_gitattributes.py
+    - egr_final_validate_gate
+    depends_on:
+    - egr_fix_init_gitattributes_clirunner_compat
+    agent: integration-verifier

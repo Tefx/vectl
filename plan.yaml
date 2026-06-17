@@ -110120,7 +110120,7 @@ phases:
     claimed_at: '2026-06-17T12:54:21.759306+00:00'
   - id: orch_removal_worktree_policy
     name: Define safe worktree and artifact cleanup policy
-    status: pending
+    status: claimed
     description: 'step_type: investigation
 
       PROOF ARTIFACT: safe cleanup policy for `.vectl/workspaces` and `.vectl/worktrees`
@@ -110173,6 +110173,8 @@ phases:
     - .vectl/
     - AGENTS.md
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-06-17T12:54:27.947023+00:00'
   - id: orch_removal_foundation_gate
     name: Gate orchestrator-removal foundation
     status: pending

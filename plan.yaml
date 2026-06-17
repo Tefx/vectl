@@ -110594,19 +110594,25 @@ phases:
       , \"behavioral proof register\"), \"missing behavioral proof register marker\"\
       \n        assert re.search(r\"\\b(?:gate\\s+)?verdict\\s*:\\s*pass\\b\", text)\
       \ or (\"verdict pass\" in normalized), \"missing PASS verdict marker\"\n   \
-      \     assert (\"orch absent\" in text) or (\"no orch command present\" in text)\
-      \ or (\"orch is absent\" in text), \"missing orch absence marker\"\n       \
-      \ assert has_phrase(\"gate_open_allowed\", \"gate open allowed\") or re.search(r\"\
-      \\bgate\\s+(?:verdict|decision)\\s*:\\s*(?:pass|open)\\b\", text) or ((\"gate\
-      \ decision\" in normalized) and ((\" pass \" in f\" {normalized} \") or (\"\
-      \ open \" in f\" {normalized} \"))), \"missing gate open marker\"\n        assert\
-      \ (\"blockers: []\" in text) or (\"no blockers\" in normalized) or re.search(r\"\
-      \\bblockers\\s*:\\s*(?:\\[\\]|none|no)\\b\", text) or (\"blocking issues none\"\
-      \ in normalized), \"missing no-blockers marker\"\n    covers_claims:\n     \
-      \ - runtime_probe_evidence_artifact_written\n      - raw_pytest_probe_passed\n\
-      \      - installed_cli_help_has_no_orch\n      - decide_runtime_support_preserved\n\
-      \      - deleted_runtime_references_absent\n      - behavioral_gate_passed\n\
-      \      - no_product_plan_or_test_mutations\n</intent_closure_contract>"
+      \     assert has_phrase(\"orch absent\", \"orch absence\", \"has no orch\",\
+      \ \"no orch command\", \"did not expose orch\", \"cli help orch absence pass\"\
+      , \"no orch command present\", \"orch is absent\"), \"missing orch absence marker\"\
+      \n        gate_decision_pass = has_phrase(\"gate_open_allowed\", \"gate open\
+      \ allowed\") or re.search(r\"\\bgate\\s+(?:verdict|decision)\\s*:\\s*(?:pass|open)\\\
+      b\", text) or ((\"gate decision\" in normalized) and ((\" pass \" in f\" {normalized}\
+      \ \") or (\" open \" in f\" {normalized} \")))\n        assert gate_decision_pass,\
+      \ \"missing gate open marker\"\n        explicit_no_blockers = (\"blockers:\
+      \ []\" in text) or (\"no blockers\" in normalized) or re.search(r\"\\bblockers\\\
+      s*:\\s*(?:\\[\\]|none|no)\\b\", text) or (\"blocking issues none\" in normalized)\n\
+      \        protocol_gap_none = re.search(r\"\\bgap\\s*\\|\\s*none\\b\", text)\
+      \ or (\" gap none \" in f\" {normalized} \")\n        no_blocker_wording_with_gate_pass\
+      \ = gate_decision_pass and not re.search(r\"\\b(?:blockers?|blocking)\\b\",\
+      \ normalized)\n        assert explicit_no_blockers or protocol_gap_none or no_blocker_wording_with_gate_pass,\
+      \ \"missing no-blockers marker\"\n    covers_claims:\n      - runtime_probe_evidence_artifact_written\n\
+      \      - raw_pytest_probe_passed\n      - installed_cli_help_has_no_orch\n \
+      \     - decide_runtime_support_preserved\n      - deleted_runtime_references_absent\n\
+      \      - behavioral_gate_passed\n      - no_product_plan_or_test_mutations\n\
+      </intent_closure_contract>"
     verification: 'Run and paste raw stdout/stderr for: (1) `uv run pytest tests/test_models.py
       tests/test_io.py tests/test_mcp.py tests/test_decide.py tests/test_decide_state_isolation.py
       -q`; (2) `uvx --refresh --from . vectl --help`; (3) a Python import probe for

@@ -114167,6 +114167,7 @@ phases:
     - egr_close_repo_regression_post_review_rows
     - egr_generate_current_core_owner_path
     - egr_independent_closure_audit
+    - egr_retest_init_gitattributes_clirunner_compat
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-17T14:55:59.240903+00:00'

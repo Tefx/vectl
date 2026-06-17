@@ -114582,7 +114582,7 @@ phases:
       status left for final gate.'
   - id: egr_audit_test_only_exception_disposition
     name: Audit test-only exception disposition for init gitattributes remediation
-    status: claimed
+    status: done
     description: 'CONFORMANCE ARTIFACT: focused audit/disposition for the completed
       test-only remediation that changed `tests/test_init_gitattributes.py` inside
       the evidence_guard_remediation stream.
@@ -114747,3 +114747,144 @@ phases:
     agent: plan-readiness-auditor
     claimed_by: plan-readiness-auditor
     claimed_at: '2026-06-17T17:03:45.770199+00:00'
+    done_at: '2026-06-17T17:10:32.755821+00:00'
+    evidence: 'status SUCCESS; verdict PASS; blockers []; gate_open_allowed true;
+      orchestrator_action_hint COMPLETE.
+
+
+      ## Criterion-9 Test-Only Exception Audit
+
+      step_intent: focused audit/disposition for the completed test-only remediation
+      changing `tests/test_init_gitattributes.py`.
+
+      expected_result: PASS only if the exception is narrow, current-blocker-owned,
+      behavior-preserving, retested, and non-generalizing.
+
+      observed_result: PASS.
+
+      failure_alignment: validate remains expected-red only for the known 43 historical
+      completed-evidence guard rows; no evidence of hiding/erasure.
+
+      product_implementation_files_modified: false
+
+      checklist_receipt: NOT_APPLICABLE
+
+
+      ### refs Read Confirmation
+
+      No file refs required. `tools/vectl/README.md` was not required/read; probe
+      result: ABSENT_NON_AUTHORITATIVE.
+
+
+      ### Plan Records Reviewed
+
+      - `egr_fix_init_gitattributes_clirunner_compat`: evidence says only `tests/test_init_gitattributes.py`
+      changed; fix replaced `runner.isolated_filesystem` with `tmp_path + monkeypatch.chdir`;
+      preserved real Typer CLI invocations and .gitattributes assertions; focused/full
+      pytest passed; validate classifier passed known-43-only.
+
+      - `egr_retest_init_gitattributes_clirunner_compat`: evidence says verification-only
+      clean worktree; focused pytest exit 0 / 3 passed; full pytest exit 0 / 1246
+      passed / 23 skipped; `uv run vectl validate` exit 1 with exactly 43 completed-evidence
+      guard errors, 0 warnings, no new error class.
+
+      - `egr_independent_closure_audit`: useful historical 43-row preservation evidence,
+      but insufficient alone because it ran before this test-only exception was introduced.
+
+
+      ### Raw / Equivalent Probes
+
+      ```text
+
+      git show --name-only --format=oneline 75b532b8
+
+      75b532b8d8baa3495753523f014003ccf7f42e18 tests: fix init gitattributes cli runner
+      isolation
+
+      tests/test_init_gitattributes.py
+
+
+      git show --name-only --format=oneline f09f75b
+
+      f09f75bae895153b12114cad59a2e260c3bda55d [vectl] step-egr_fix_init_gitattributes_clirunner_compat
+      completed
+
+      tests/test_init_gitattributes.py
+
+
+      git diff --name-status 75b532b8^ 75b532b8 -> M tests/test_init_gitattributes.py
+
+      git diff --name-status f09f75b^ f09f75b -> M tests/test_init_gitattributes.py
+
+      grep isolated_filesystem tests/test_init_gitattributes.py -> NO_MATCH
+
+      .venv/bin/python -m pytest tests/test_init_gitattributes.py -q -> 3 passed in
+      0.99s
+
+      .venv/bin/python -m pytest -q -> 1246 passed, 23 skipped in 21.75s
+
+      git status --short; git diff --name-only; git ls-files --others --exclude-standard
+      -> all empty
+
+      ```
+
+
+      ### Behavioral Proof Register
+
+      - R1 changed-path scope: PROVEN. Both relevant commits modify only `tests/test_init_gitattributes.py`;
+      no `src/**`, `docs/**`, README, config/lock, `plan.yaml`, or runtime path appears.
+
+      - R2 current-blocker ownership: PROVEN. Diff removes unavailable `runner.isolated_filesystem`
+      use and substitutes pytest `tmp_path` plus `monkeypatch.chdir`; retest confirms
+      no CliRunner AttributeError.
+
+      - R3 real CLI behavior/assertion preservation: PROVEN. Test still imports `vectl.cli.app`
+      and calls `runner.invoke(app, ["init", ...])`; assertions preserve .gitattributes
+      creation, idempotency, and existing-content preservation.
+
+      - R4 retest/validate proof: PROVEN. Auditor reran focused/full pytest successfully;
+      retest record supplies exact `uv run pytest ...`, `uv run pytest -q`, and `uv
+      run vectl validate` receipts with 43 known guard rows preserved.
+
+      - R5 ordinary-change rule: PROVEN. This disposition authorizes only the named
+      test-only current-blocker exception; all other product code/test/doc mutations
+      remain blocking unless separately audited/dispositioned.
+
+
+      ### Disposition Register
+
+      authorized_exception: PASS
+
+      exception_id: egr_init_gitattributes_clirunner_test_only_current_blocker
+
+      allowed_changed_paths: PASS — exactly `tests/test_init_gitattributes.py`.
+
+      forbidden_changed_paths: PASS — no `src/**`, `docs/**`, README*, direct `plan.yaml`,
+      config/lock, or product runtime path changes found.
+
+      owner_lifecycle: PASS — owner path is `egr_fix_init_gitattributes_clirunner_compat`
+      plus `egr_retest_init_gitattributes_clirunner_compat`; fix/retest evidence and
+      local pytest reruns show complete closure for this current blocker.
+
+      gate_intersection: PASS — intersects final validation criterion 9 only as a
+      narrow allowed exception for the gate-time `CliRunner.isolated_filesystem` blocker;
+      does not authorize broader test/product/doc changes.
+
+      historical_failure_erasure: PASS — validate evidence still reports exactly the
+      known 43 completed-evidence guard rows, 0 warnings, and no new class; historical
+      failures remain visible.
+
+      ordinary_change_rule_preserved: PASS — ordinary product code/test/doc changes
+      remain blocking without their own explicit audit/disposition.
+
+
+      ### Orchestrator sidecar / mainline verification
+
+      Intent-Closure sidecar from main: NOT_APPLICABLE (no contract; changed_paths=[]).
+
+      Mainline targeted verification: `uv run pytest tests/test_init_gitattributes.py
+      -q` -> exit 0, 3 passed.
+
+      uncertainty_sources: none material; validate command was not rerun by auditor
+      because vectl CLI use was prohibited, so audit relies on MCP-derived retest/closure
+      records for validate receipts.'

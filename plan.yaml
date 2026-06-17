@@ -112379,56 +112379,64 @@ phases:
   - id: egr_triage_repo_regression_post_review_current_state
     name: Triage repo-regression, invar, post-review, and deterministic-check rows
     status: claimed
-    description: 'PROOF ARTIFACT: determine whether repo-regression/full-suite/invar/post-review/deterministic-check
-      guard rows are already current-green evidence hygiene issues, non-blocking legacy
-      debt with owner/lifecycle, or still-current blocker-class failures.
-
-
-      Group C initial target rows from the starting validation output:
-
-      - repo_regression_full_suite_gate.run-full-pytest-regression-gate
-
-      - repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics
-
-      - repo_regression_triage.capture-full-suite-failure-inventory
-
-      - repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces
-
-      - repo_regression_contract_alignment.audit-other-tight-locks-in-failing-scope
-
-      - post_review_remediation.implement-completed-step-failure-evidence-guard
-
-      - post_review_remediation.reverify-completed-step-failure-evidence-guard
-
-      - post_review_remediation.gate
-
-      - post_review_remediation.backfill-missing-gate-evidence
-
-      - invar_guard_remediation.final-regate-durable-uiux-artifact
-
-      - det_check_tests_gate
-
-
-      Required probes:
-
-      - Run `uv run vectl validate` and capture the current completed-evidence guard
-      output.
-
-      - Run targeted `uv run vectl show <step_id>` for each Group C row, or a scripted
-      equivalent that captures the evidence/disposition context.
-
-      - Run `uv run pytest` because this group includes repo-regression/full-suite
-      claims. If pytest is not required for a particular row, explain why in that
-      row; do not generalize.
-
-      - Run invar verification only if the inventory shows the invar row still depends
-      on current invar state; otherwise cite the later current-green evidence that
-      makes it plan-evidence hygiene only.
-
-
-      This step is read-only. It must not modify product code or plan state except
-      its own completion evidence. The next step performs closure/disposition mutations
-      based on this triage.'
+    description: "PROOF ARTIFACT: determine whether repo-regression/full-suite/invar/post-review/deterministic-check\
+      \ guard rows are already current-green evidence hygiene issues, non-blocking\
+      \ legacy debt with owner/lifecycle, or still-current blocker-class failures.\n\
+      \nGroup C initial target rows from the starting validation output:\n- repo_regression_full_suite_gate.run-full-pytest-regression-gate\n\
+      - repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics\n\
+      - repo_regression_triage.capture-full-suite-failure-inventory\n- repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces\n\
+      - repo_regression_contract_alignment.audit-other-tight-locks-in-failing-scope\n\
+      - post_review_remediation.implement-completed-step-failure-evidence-guard\n\
+      - post_review_remediation.reverify-completed-step-failure-evidence-guard\n-\
+      \ post_review_remediation.gate\n- post_review_remediation.backfill-missing-gate-evidence\n\
+      - invar_guard_remediation.final-regate-durable-uiux-artifact\n- det_check_tests_gate\n\
+      \nRequired probes:\n- Run `uv run vectl validate` and capture the current completed-evidence\
+      \ guard output.\n- Run targeted `uv run vectl show <step_id>` for each Group\
+      \ C row, or a scripted equivalent that captures the evidence/disposition context.\n\
+      - Run `uv run pytest` because this group includes repo-regression/full-suite\
+      \ claims. If pytest is not required for a particular row, explain why in that\
+      \ row; do not generalize.\n- Run invar verification only if the inventory shows\
+      \ the invar row still depends on current invar state; otherwise cite the later\
+      \ current-green evidence that makes it plan-evidence hygiene only.\n\nThis step\
+      \ is read-only. It must not modify product code or plan state except its own\
+      \ completion evidence. The next step performs closure/disposition mutations\
+      \ based on this triage. Repo pytest is allowed to be red evidence here because\
+      \ this is triage, not a final green gate.\n\n<intent_closure_contract>\nallowed_paths:\n\
+      \  - \".agent/evidence/egr_triage_repo_regression_post_review_current_state.md\"\
+      \n  - \"agent/evidence/egr_triage_repo_regression_post_review_current_state.md\"\
+      \nblocked_paths:\n  - \"src/**\"\n  - \"tests/**\"\n  - \"test_*.py\"\n  - \"\
+      docs/**\"\n  - \"README*\"\n  - \"BACKLOG.md\"\n  - \"CLAUDE.md\"\n  - \"GEMINI.md\"\
+      \n  - \"INVAR.md\"\n  - \"AGENTS.md\"\n  - \"plan.yaml\"\n  - \"plan.yaml.lock\"\
+      \n  - \"pyproject.toml\"\n  - \"pyrightconfig.json\"\n  - \"uv.lock\"\n  - \"\
+      .github/**\"\nrequired_claims:\n  - evidence_artifact_exists\n  - refs_confirmation_recorded\n\
+      \  - vectl_validate_probe_recorded\n  - vectl_show_probe_recorded\n  - pytest_probe_recorded_red_allowed\n\
+      \  - invar_probe_or_rationale_recorded\n  - group_c_triage_statuses_recorded\n\
+      \  - no_product_or_plan_mutations\nrequired_checks:\n  - id: evidence_artifact_markers\n\
+      \    command:\n      - \"python\"\n      - \"-c\"\n      - |\n        from pathlib\
+      \ import Path\n        paths = [Path('.agent/evidence/egr_triage_repo_regression_post_review_current_state.md'),\
+      \ Path('agent/evidence/egr_triage_repo_regression_post_review_current_state.md')]\n\
+      \        artifact = next((p for p in paths if p.exists()), None)\n        assert\
+      \ artifact is not None, 'missing evidence artifact in .agent/evidence or agent/evidence'\n\
+      \        text = artifact.read_text(encoding='utf-8')\n        lower = text.lower()\n\
+      \        def require(label, ok):\n            assert ok, f'missing marker: {label}'\n\
+      \        require('refs confirmation', 'refs' in lower and 'confirmation' in\
+      \ lower)\n        require('uv run vectl validate', 'uv run vectl validate' in\
+      \ text)\n        require('uv run vectl show', 'uv run vectl show' in text or\
+      \ 'vectl show ' in text)\n        require('uv run pytest', 'uv run pytest' in\
+      \ text)\n        require('invar guard or rationale', 'uv run invar guard --all'\
+      \ in text or ('invar' in lower and 'rationale' in lower))\n        require('Group\
+      \ C triage', 'group c' in lower and ('triage' in lower or 'table' in lower))\n\
+      \        require('current status taxonomy', any(s in text for s in ['current_green_closure',\
+      \ 'non_blocking_legacy_debt_with_owner', 'current_blocker_owner_required']))\n\
+      \        require('no product/plan mutations', (('product' in lower or 'source'\
+      \ in lower) and 'plan' in lower and ('no ' in lower or 'not ' in lower) and\
+      \ ('mutation' in lower or 'mutat' in lower or 'modified' in lower)))\n     \
+      \   print(f'OK evidence artifact markers: {artifact}')\n    covers_claims:\n\
+      \      - evidence_artifact_exists\n      - refs_confirmation_recorded\n    \
+      \  - vectl_validate_probe_recorded\n      - vectl_show_probe_recorded\n    \
+      \  - pytest_probe_recorded_red_allowed\n      - invar_probe_or_rationale_recorded\n\
+      \      - group_c_triage_statuses_recorded\n      - no_product_or_plan_mutations\n\
+      </intent_closure_contract>"
     verification: phase-check protecting evidence_guard_remediation gate. The proof
       artifact must contain raw runtime command output and classify each Group C row
       into current_green_closure, non_blocking_legacy_debt_with_owner, or current_blocker_owner_required.

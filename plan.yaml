@@ -113251,7 +113251,176 @@ phases:
       \          print(f'- {step_id}: {problem}')\n            sys.exit(1)\n    covers_claims:\n\
       \      - group_c_rows_closed_owned_or_exceptioned_row_locally\n      - current_code_probe_evidence_preserved\n\
       \      - exception_policy_used_only_when_audit_safe\n      - no_product_code_fixes_performed\n\
-      \      - robust_validation_parsing_used\n</intent_closure_contract>"
+      \      - robust_validation_parsing_used\n</intent_closure_contract>\n\n```closure_register\n\
+      closure_register:\n  - offending_step_id: \"repo_regression_full_suite_gate.run-full-pytest-regression-gate\"\
+      \n    original_phase: \"repo_regression_full_suite_gate\"\n    group: \"C_repo_regression_full_suite_invar_post_review\"\
+      \n    status: current_blocker_owner\n    owner: \"egr_generate_current_core_owner_path\"\
+      \n    lifecycle_disposition: \"tracked disposition: current_blocker_owner_required\
+      \ from triage; historical failed-tests evidence is preserved and the current\
+      \ repo-wide pytest blocker remains open until a later owner closes the init\
+      \ CLI compatibility failure.\"\n    gate_intersection: \"gate-intersection=true\
+      \ with current_blocker_owner; this intersects repo-wide regression/final validation\
+      \ because uv run pytest is currently red.\"\n    closed_by_step: \"egr_close_repo_regression_post_review_rows\"\
+      \n    closed_by: \"Triage Raw Outputs C1 and C13: uv run vectl validate still\
+      \ reports this row; uv run pytest exit 1 with 3 tests/test_init_gitattributes.py\
+      \ failures and 3027 passed/43 skipped.\"\n    current_blocker_owner: \"pending\
+      \ later owner step egr_generate_current_core_owner_path must create or bind\
+      \ the concrete pytest-regression owner for tests/test_init_gitattributes.py\
+      \ / init CLI compatibility; required commands: uv run pytest tests/test_init_gitattributes.py\
+      \ -q; uv run pytest -q; uv run vectl validate.\"\n    exception_policy: \"\"\
+      \n    validator_status: still_reported\n  - offending_step_id: \"repo_regression_full_suite_gate.fix-recovery-contract-conformance-semantics\"\
+      \n    original_phase: \"repo_regression_full_suite_gate\"\n    group: \"C_repo_regression_full_suite_invar_post_review\"\
+      \n    status: exception_policy\n    owner: \"egr_independent_closure_audit\"\
+      \n    lifecycle_disposition: \"tracked disposition: current_green_closure from\
+      \ triage; historical gate_open_allowed=false evidence is preserved, while current\
+      \ suite evidence shows the recovery contract failure family is no longer in\
+      \ the current failing set.\"\n    gate_intersection: \"gate-intersection=false\
+      \ / non-intersection for current code; validator intersection is evidence-hygiene\
+      \ only because current pytest failures are limited to tests/test_init_gitattributes.py.\"\
+      \n    closed_by_step: \"egr_close_repo_regression_post_review_rows\"\n    closed_by:\
+      \ \"Triage Raw Outputs C3 and C13: focused recovery contract evidence was 22\
+      \ passed; current uv run pytest exit 1 only for 3 tests/test_init_gitattributes.py\
+      \ failures, not recovery contract tests.\"\n    current_blocker_owner: \"\"\n\
+      \    exception_policy: \"audit-integrity exception: do not erase or falsify\
+      \ historical gate_open_allowed=false evidence; row is closed by current_green_closure\
+      \ and must be audited by egr_independent_closure_audit.\"\n    validator_status:\
+      \ still_reported\n  - offending_step_id: \"repo_regression_triage.capture-full-suite-failure-inventory\"\
+      \n    original_phase: \"repo_regression_test_intent_alignment\"\n    group:\
+      \ \"C_repo_regression_full_suite_invar_post_review\"\n    status: current_blocker_owner\n\
+      \    owner: \"egr_generate_current_core_owner_path\"\n    lifecycle_disposition:\
+      \ \"tracked disposition: current_blocker_owner_required from triage; the old\
+      \ inventory recorded 31 failures but the current full-suite probe records 3\
+      \ different failures, so inventory currency remains open until refreshed or\
+      \ tied to the current failing set.\"\n    gate_intersection: \"gate-intersection=true\
+      \ with current_blocker_owner; stale inventory intersects repo-wide regression/final\
+      \ validation because uv run pytest is currently red and the failure inventory\
+      \ must match the current red set.\"\n    closed_by_step: \"egr_close_repo_regression_post_review_rows\"\
+      \n    closed_by: \"Triage Raw Outputs C4 and C13: old inventory evidence says\
+      \ 31 failed; current uv run pytest exits 1 with only 3 tests/test_init_gitattributes.py\
+      \ failures.\"\n    current_blocker_owner: \"pending later owner step egr_generate_current_core_owner_path\
+      \ must bind or create the repo-regression inventory refresh owner; required\
+      \ commands: uv run pytest -q; uv run pytest tests/test_init_gitattributes.py\
+      \ -q; uv run vectl validate; uv run vectl show repo_regression_triage.capture-full-suite-failure-inventory.\"\
+      \n    exception_policy: \"\"\n    validator_status: still_reported\n  - offending_step_id:\
+      \ \"repo_regression_expected_red_cleanup.realign-observability-red-tests-with-implemented-surfaces\"\
+      \n    original_phase: \"repo_regression_test_intent_alignment\"\n    group:\
+      \ \"C_repo_regression_full_suite_invar_post_review\"\n    status: exception_policy\n\
+      \    owner: \"egr_independent_closure_audit\"\n    lifecycle_disposition: \"\
+      tracked disposition: current_green_closure from triage; historical failed-tests\
+      \ evidence is preserved, while current full-suite evidence no longer reports\
+      \ observability-red failures for this surface.\"\n    gate_intersection: \"\
+      gate-intersection=false / non-intersection for current code; current repo-wide\
+      \ pytest failures are unrelated init gitattributes failures.\"\n    closed_by_step:\
+      \ \"egr_close_repo_regression_post_review_rows\"\n    closed_by: \"Triage Raw\
+      \ Outputs C5 and C13: observability repro suite evidence was 43 passed/5 xfailed\
+      \ after cleanup; current uv run pytest exit 1 only for tests/test_init_gitattributes.py.\"\
+      \n    current_blocker_owner: \"\"\n    exception_policy: \"audit-integrity exception:\
+      \ preserve historical expected-red cleanup failure facts; row is closed by current_green_closure\
+      \ and remains subject to egr_independent_closure_audit.\"\n    validator_status:\
+      \ still_reported\n  - offending_step_id: \"repo_regression_contract_alignment.audit-other-tight-locks-in-failing-scope\"\
+      \n    original_phase: \"repo_regression_semantic_alignment\"\n    group: \"\
+      C_repo_regression_full_suite_invar_post_review\"\n    status: exception_policy\n\
+      \    owner: \"egr_independent_closure_audit\"\n    lifecycle_disposition: \"\
+      tracked disposition: current_green_closure from triage; historical failed-tests\
+      \ evidence is preserved, while current full-suite evidence no longer reports\
+      \ tight-lock/import-boundary failures.\"\n    gate_intersection: \"gate-intersection=false\
+      \ / non-intersection for current code; current repo-wide pytest failures are\
+      \ unrelated init gitattributes failures.\"\n    closed_by_step: \"egr_close_repo_regression_post_review_rows\"\
+      \n    closed_by: \"Triage Raw Outputs C6 and C13: tight-lock focused command\
+      \ was 23 passed; current uv run pytest exit 1 only for 3 tests/test_init_gitattributes.py\
+      \ failures.\"\n    current_blocker_owner: \"\"\n    exception_policy: \"audit-integrity\
+      \ exception: preserve historical lock-alignment failure facts; row is closed\
+      \ by current_green_closure and remains subject to egr_independent_closure_audit.\"\
+      \n    validator_status: still_reported\n  - offending_step_id: \"post_review_remediation.implement-completed-step-failure-evidence-guard\"\
+      \n    original_phase: \"post_review_remediation\"\n    group: \"C_repo_regression_full_suite_invar_post_review\"\
+      \n    status: exception_policy\n    owner: \"egr_independent_closure_audit\"\
+      \n    lifecycle_disposition: \"tracked disposition: current_green_closure from\
+      \ triage; guard implementation tests are green in the current full suite, while\
+      \ validate reports historical tokens that the guard intentionally detects.\"\
+      \n    gate_intersection: \"gate-intersection=false / non-intersection as product-code\
+      \ blocker; remaining intersection is plan evidence hygiene handled by this closure\
+      \ register and audit.\"\n    closed_by_step: \"egr_close_repo_regression_post_review_rows\"\
+      \n    closed_by: \"Triage Raw Outputs C1, C7, and C13: validate red because\
+      \ guard detects historical evidence; current uv run pytest includes guard tests\
+      \ passing and only init gitattributes failures remain.\"\n    current_blocker_owner:\
+      \ \"\"\n    exception_policy: \"audit-integrity exception: do not erase historical\
+      \ NEEDS_REVISION/FAIL/gate_open_allowed=false evidence from the guard implementation\
+      \ row; row is closed by current_green_closure and audited by egr_independent_closure_audit.\"\
+      \n    validator_status: still_reported\n  - offending_step_id: \"post_review_remediation.reverify-completed-step-failure-evidence-guard\"\
+      \n    original_phase: \"post_review_remediation\"\n    group: \"C_repo_regression_full_suite_invar_post_review\"\
+      \n    status: exception_policy\n    owner: \"egr_independent_closure_audit\"\
+      \n    lifecycle_disposition: \"tracked disposition: current_green_closure from\
+      \ triage; reverify evidence reports PASS/BLOCKING CLOSED and focused guard tests\
+      \ are green, while validate reports preserved historical failure tokens.\"\n\
+      \    gate_intersection: \"gate-intersection=false / non-intersection as product-code\
+      \ blocker; remaining intersection is plan evidence hygiene handled by this closure\
+      \ register and audit.\"\n    closed_by_step: \"egr_close_repo_regression_post_review_rows\"\
+      \n    closed_by: \"Triage Raw Outputs C1, C8, and C13: reverify guard tests\
+      \ 3 passed/1 passed/94 passed; current full suite fails only tests/test_init_gitattributes.py.\"\
+      \n    current_blocker_owner: \"\"\n    exception_policy: \"audit-integrity exception:\
+      \ preserve historical runtime non-closure / gate_open_allowed=false tokens;\
+      \ row is closed by current_green_closure and audited by egr_independent_closure_audit.\"\
+      \n    validator_status: still_reported\n  - offending_step_id: \"post_review_remediation.gate\"\
+      \n    original_phase: \"post_review_remediation\"\n    group: \"C_repo_regression_full_suite_invar_post_review\"\
+      \n    status: exception_policy\n    owner: \"egr_independent_closure_audit\"\
+      \n    lifecycle_disposition: \"tracked disposition: current_green_closure from\
+      \ triage; gate evidence reports OPEN for post-review non-invar remediation,\
+      \ while validate reports preserved historical runtime non-closure text.\"\n\
+      \    gate_intersection: \"gate-intersection=false / non-intersection as current\
+      \ product-code blocker; current remaining repo-wide failure is unrelated init\
+      \ gitattributes and this row is plan-evidence hygiene.\"\n    closed_by_step:\
+      \ \"egr_close_repo_regression_post_review_rows\"\n    closed_by: \"Triage Raw\
+      \ Outputs C1, C9, and C13: post-review gate evidence OPEN; current uv run pytest\
+      \ fails only tests/test_init_gitattributes.py.\"\n    current_blocker_owner:\
+      \ \"\"\n    exception_policy: \"audit-integrity exception: preserve historical\
+      \ runtime non-closure text in completed gate evidence; row is closed by current_green_closure\
+      \ and audited by egr_independent_closure_audit.\"\n    validator_status: still_reported\n\
+      \  - offending_step_id: \"post_review_remediation.backfill-missing-gate-evidence\"\
+      \n    original_phase: \"post_review_remediation\"\n    group: \"C_repo_regression_full_suite_invar_post_review\"\
+      \n    status: exception_policy\n    owner: \"egr_independent_closure_audit\"\
+      \n    lifecycle_disposition: \"tracked disposition: current_green_closure from\
+      \ triage; backfill row exists specifically for evidence closure and reports\
+      \ OPEN/no blocking-now, while validate reports preserved historical token text.\"\
+      \n    gate_intersection: \"gate-intersection=false / non-intersection as current\
+      \ product-code blocker; remaining validator interaction is evidence-hygiene\
+      \ closure syntax.\"\n    closed_by_step: \"egr_close_repo_regression_post_review_rows\"\
+      \n    closed_by: \"Triage Raw Outputs C1, C10, and C13: backfill row reports\
+      \ OPEN/no blocking-now; current uv run pytest fails only tests/test_init_gitattributes.py.\"\
+      \n    current_blocker_owner: \"\"\n    exception_policy: \"audit-integrity exception:\
+      \ preserve historical runtime non-closure text while recording current_green_closure;\
+      \ row is audited by egr_independent_closure_audit.\"\n    validator_status:\
+      \ still_reported\n  - offending_step_id: \"invar_guard_remediation.final-regate-durable-uiux-artifact\"\
+      \n    original_phase: \"invar_guard_remediation\"\n    group: \"C_repo_regression_full_suite_invar_post_review\"\
+      \n    status: exception_policy\n    owner: \"egr_independent_closure_audit\"\
+      \n    lifecycle_disposition: \"tracked disposition: current_green_closure from\
+      \ triage; invar guard is currently green with warnings/infos, and residual warning\
+      \ debt is non-blocking guard-budget debt rather than a current blocker.\"\n\
+      \    gate_intersection: \"gate-intersection=false / non-intersection for invar\
+      \ final gate because uv run invar guard --all exits 0; pytest's unrelated init\
+      \ gitattributes failures do not make this invar row a current blocker.\"\n \
+      \   closed_by_step: \"egr_close_repo_regression_post_review_rows\"\n    closed_by:\
+      \ \"Triage Raw Outputs C11 and C14: uv run invar guard --all exit 0, status\
+      \ passed, static passed true, errors 0, warnings 60, infos 4.\"\n    current_blocker_owner:\
+      \ \"\"\n    exception_policy: \"audit-integrity exception: preserve historical\
+      \ FAIL text while recording current invar green closure; egr_independent_closure_audit\
+      \ must verify the exception remains audit-safe.\"\n    validator_status: still_reported\n\
+      \  - offending_step_id: \"det_check_tests_gate\"\n    original_phase: \"det_check_tests\"\
+      \n    group: \"C_repo_regression_full_suite_invar_post_review\"\n    status:\
+      \ exception_policy\n    owner: \"det_check_impl\"\n    lifecycle_disposition:\
+      \ \"non-blocking legacy debt with owner: lifecycle/disposition is tracked by\
+      \ det_check_impl; expected-red gate evidence is historical test-anchor evidence\
+      \ and must not be rewritten as a product failure.\"\n    gate_intersection:\
+      \ \"gate-intersection=false / non-intersection for deterministic checklist behavior;\
+      \ current full pytest has no deterministic-checklist failures, while unrelated\
+      \ init gitattributes failures remain under repo-regression ownership.\"\n  \
+      \  closed_by_step: \"egr_close_repo_regression_post_review_rows\"\n    closed_by:\
+      \ \"Triage Raw Outputs C12 and C13: deterministic expected-red gate is explicitly\
+      \ non-blocking with lifecycle delegated to det_check_impl; current uv run pytest\
+      \ has no deterministic-checklist failures.\"\n    current_blocker_owner: \"\"\
+      \n    exception_policy: \"audit-integrity exception for non-blocking legacy\
+      \ debt with owner det_check_impl; preserve historical failed-tests wording but\
+      \ treat it as not blocking current gates due to explicit lifecycle and non-intersection.\"\
+      \n    validator_status: still_reported\n```"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     depends_on:
     - egr_triage_repo_regression_post_review_current_state

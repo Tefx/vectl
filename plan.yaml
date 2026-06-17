@@ -111468,7 +111468,7 @@ phases:
       verified by probe. No source/tests/RFC/README.md changes.'
   - id: orch_removal_mcp_tool_inventory_doc_truth
     name: Align MCP tool inventory wording with runtime
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: project\n\nTARGET STATE:\n\
       README.md, README_zh.md, and active MCP source docstrings/comments state the\
       \ runtime MCP tool inventory truthfully. The runtime probe authority is `vectl.mcp_server.mcp.list_tools()`:\
@@ -111584,6 +111584,165 @@ phases:
     agent: doc-reviewer
     claimed_by: blocked-case-coordinator
     claimed_at: '2026-06-17T18:09:33.052952+00:00'
+    done_at: '2026-06-17T18:20:14.623931+00:00'
+    evidence: 'Artifact:
+
+      - Worker commit: 181710c44f77f5a3328bde3a4776f331ff910eb5
+
+      - Mainline squash commit: ec05548b5d0f5d7d95abc3d00dc2e7f24d3c1f9b
+
+
+      Files changed:
+
+      - README.md
+
+      - README_zh.md
+
+      - src/vectl/mcp_core_common.py
+
+      - src/vectl/mcp_core_lifecycle_tools.py
+
+      - src/vectl/mcp_core_misc_tools.py
+
+      - src/vectl/mcp_core_mutation_tools.py
+
+      - src/vectl/mcp_core_read_tools.py
+
+      - src/vectl/mcp_core_tools.py
+
+      - src/vectl/mcp_project_tools.py
+
+      - src/vectl/mcp_render_tools.py
+
+      - src/vectl/mcp_server.py
+
+
+      Requirement-to-Evidence Decision Basis:
+
+      | requirement_id / claim | status | evidence_ref |
+
+      | --- | --- | --- |
+
+      | MCP-RUNTIME-COUNT / runtime_inventory_count_established | PROVEN | worker
+      runtime probe exit 0; sidecar check `runtime_mcp_inventory_count_list` pass;
+      mainline `runtime_mcp_inventory_count_list` exit 0 reports 20 tools including
+      `vectl_decide` |
+
+      | README-COUNT-PARITY / readmes_match_runtime_inventory | PROVEN | worker README
+      parity exit 0; sidecar `readme_mcp_inventory_parity_probe` pass; mainline parity
+      probe exit 0 verifies README.md has `20 MCP tools`, README_zh.md has `20 个工具`,
+      and both include `vectl_decide` |
+
+      | SOURCE-COMMENT-COUNT / mcp_source_comments_match_runtime_inventory | PROVEN
+      | worker source docstring probe exit 0; sidecar `source_comment_inventory_truth_probe`
+      pass; mainline source-comment probe exit 0 lists active MCP module docstrings
+      with `20-tool MCP inventory` and `vectl_decide` |
+
+      | stale_15_tool_wording_removed | PROVEN | worker stale-wording probe exit 0;
+      sidecar `stale_mcp_tool_count_wording_probe` pass; mainline stale-wording probe
+      exit 0 |
+
+      | stale_decide_numbering_removed | PROVEN | stale-wording probe rejects numbered
+      MCP inventory / numbered `vectl_decide` entries; worker, sidecar, and mainline
+      all passed |
+
+      | MCP-DECIDE-PRESERVED / decide_mcp_behavior_preserved | PROVEN | worker targeted
+      pytest exit 0 with 217 passed; sidecar `decide_mcp_targeted_tests` pass; mainline
+      targeted pytest exit 0 with 217 passed |
+
+
+      Intent-Closure sidecar gate:
+
+      ```
+
+      command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_mcp_tool_inventory_doc_truth --worktree .vectl/worktrees/orch_removal_mcp_tool_inventory_doc_truth
+      --base a811f83c688bf86c8cbfc20d9f2d9caa58c828d3 --out .vectl/worktrees/orch_removal_mcp_tool_inventory_doc_truth/.agent/gate/verdict.json
+
+      exit_code: 0
+
+      status: CONFORMANT
+
+      changed_paths: README.md, README_zh.md, src/vectl/mcp_core_common.py, src/vectl/mcp_core_lifecycle_tools.py,
+      src/vectl/mcp_core_misc_tools.py, src/vectl/mcp_core_mutation_tools.py, src/vectl/mcp_core_read_tools.py,
+      src/vectl/mcp_core_tools.py, src/vectl/mcp_project_tools.py, src/vectl/mcp_render_tools.py,
+      src/vectl/mcp_server.py
+
+      checked_claims: runtime_inventory_count_established, readmes_match_runtime_inventory,
+      mcp_source_comments_match_runtime_inventory, stale_15_tool_wording_removed,
+      stale_decide_numbering_removed, decide_mcp_behavior_preserved
+
+      check_results: all five required checks passed
+
+      ```
+
+
+      Mainline final-state verification:
+
+      ```
+
+      command: UV_PROJECT_ENVIRONMENT=.venv uv run python <runtime_mcp_inventory_count_list>
+
+      exit_code: 0
+
+      stdout: runtime_mcp_tool_count=20; runtime tool list includes vectl_decide
+
+      stderr: empty
+
+
+      command: UV_PROJECT_ENVIRONMENT=.venv uv run python <readme_mcp_inventory_parity_probe>
+
+      exit_code: 0
+
+      stdout: README MCP inventory parity verified: 20 tools including vectl_decide
+
+      stderr: empty
+
+
+      command: UV_PROJECT_ENVIRONMENT=.venv uv run python <source_comment_inventory_truth_probe>
+
+      exit_code: 0
+
+      stdout: runtime_mcp_tool_count=20; source_comment_inventory_count_lines list
+      active MCP module docstrings with `20-tool MCP inventory`; source_comment_inventory_contains_vectl_decide=True
+
+      stderr: empty
+
+
+      command: UV_PROJECT_ENVIRONMENT=.venv uv run python <stale_mcp_tool_count_wording_probe>
+
+      exit_code: 0
+
+      stdout: no stale 15-tool wording or numbered MCP inventory entries remain in
+      active README/MCP source surfaces
+
+      stderr: empty
+
+
+      command: UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/test_mcp.py tests/test_decide.py
+      tests/test_decide_state_isolation.py -q
+
+      exit_code: 0
+
+      stdout: 217 passed in 3.95s
+
+      stderr: empty
+
+      ```
+
+
+      Scope/deviation notes:
+
+      - Only allowed README and `src/vectl/mcp_*.py` / `src/vectl/mcp_server.py` docstring/comment
+      surfaces changed.
+
+      - Diff review showed source changes limited to module docstrings and comment
+      headings; no runtime behavior, public signatures, tests, archived docs, or blocked
+      decide/core files changed.
+
+      - No deviations or gaps.
+
+      '
 - id: orch_removal_finalization
   name: 'Orchestrator Removal: Closure and Full Regression'
   status: locked

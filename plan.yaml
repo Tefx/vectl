@@ -114287,7 +114287,7 @@ phases:
       by implementation branch.'
   - id: egr_retest_init_gitattributes_clirunner_compat
     name: Retest init gitattributes compatibility and final validation commands
-    status: claimed
+    status: done
     description: 'PROOF ARTIFACT: independently retest the CliRunner compatibility
       remediation and the final-gate command family from a clean checkout/worktree
       state.
@@ -114337,3 +114337,15 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-17T15:25:42.930422+00:00'
+    done_at: '2026-06-17T15:31:55.610441+00:00'
+    evidence: 'status SUCCESS; verdict PASS; blockers []; gate_open_allowed true;
+      orchestrator_action_hint COMPLETE. Verification-only worktree clean; sidecar
+      verdict NOT_APPLICABLE with no changed paths. Refs: tests/test_init_gitattributes.py
+      read; egr_final_validate_gate read via uv run vectl show; tools/vectl/README.md
+      absent recorded. Raw commands: uv run pytest tests/test_init_gitattributes.py
+      -q exit 0, 3 passed, no CliRunner isolated_filesystem AttributeError; uv run
+      pytest -q exit 0, collected 1269, 1246 passed and 23 skipped; uv run vectl validate
+      exit 1 with exactly 43 Completed evidence guard errors, 0 warnings, no new error
+      class observed, historical evidence not erased. Behavioral proof register: gate-current-blocker
+      PROVEN; gate-regression PROVEN; gate-validate PROVEN with row-local ownership
+      status left for final gate.'

@@ -111861,7 +111861,7 @@ phases:
       '
   - id: orch_removal_live_smoke_dispatch_b1_fix
     name: Fix B1 active live-smoke dispatch runtime tests remain
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: project\n\nFix the blocker\
       \ found by `orch_removal_tests_docs_gate`: `B1-active-live-smoke-dispatch-runtime-tests-remain`.\
       \ This is a batched demolition remediation owner step; close the finding without\
@@ -112076,6 +112076,8 @@ phases:
     depends_on:
     - orch_removal_tests_docs_gate
     agent: architectural-demolitionist
+    claimed_by: architectural-demolitionist
+    claimed_at: '2026-06-17T18:48:41.762556+00:00'
   - id: orch_removal_live_smoke_dispatch_b1_retest
     name: Retest B1 live-smoke dispatch retirement and gate reopening proof
     status: pending

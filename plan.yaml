@@ -113060,7 +113060,7 @@ phases:
       proof step.'
   - id: egr_close_repo_regression_post_review_rows
     name: Apply closure/disposition for repo-regression and post-review rows
-    status: pending
+    status: claimed
     description: "TARGET STATE: all Group C rows identified by `egr_triage_repo_regression_post_review_current_state`\
       \ have durable row-local closure, owner, or exception-policy evidence. This\
       \ step mutates plan state only through vectl tools and must not implement code\
@@ -113256,6 +113256,8 @@ phases:
     - egr_dispose_superseded_orchestrator_removal_rows
     - egr_dispose_scoped_pass_global_fail_rows
     agent: vectl-planner
+    claimed_by: vectl-planner
+    claimed_at: '2026-06-17T13:42:38.425853+00:00'
   - id: egr_generate_current_core_owner_path
     name: Generate owner path for any still-current core guard failures
     status: pending

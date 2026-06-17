@@ -114556,3 +114556,168 @@ phases:
       class observed, historical evidence not erased. Behavioral proof register: gate-current-blocker
       PROVEN; gate-regression PROVEN; gate-validate PROVEN with row-local ownership
       status left for final gate.'
+  - id: egr_audit_test_only_exception_disposition
+    name: Audit test-only exception disposition for init gitattributes remediation
+    status: pending
+    description: 'CONFORMANCE ARTIFACT: focused audit/disposition for the completed
+      test-only remediation that changed `tests/test_init_gitattributes.py` inside
+      the evidence_guard_remediation stream.
+
+
+      Verification scope: full-plan-check protecting `egr_final_validate_gate` criterion
+      9 and the phase rule that ordinary product code/test/doc changes remain out
+      of scope.
+
+
+      No file refs are required for this step. Do NOT require or read `tools/vectl/README.md`;
+      that path is absent and non-authoritative for this disposition. If general repository
+      context is needed, use the plan records and existing root-level docs only as
+      optional context, not as mandatory refs.
+
+
+      Audit target:
+
+      - `egr_fix_init_gitattributes_clirunner_compat` changed `tests/test_init_gitattributes.py`
+      only, per worker evidence and commits `75b532b8` / `f09f75b` when available.
+
+      - `egr_retest_init_gitattributes_clirunner_compat` independently proved the
+      focused pytest, full pytest, and validate command family after the test-only
+      change.
+
+      - `egr_independent_closure_audit` previously ran before the test-only exception
+      was introduced and therefore does not by itself authorize criterion-9 acceptance.
+
+
+      Required audit questions:
+
+      1. Was the mutation limited to `tests/test_init_gitattributes.py`, with no `src/**`,
+      `docs/**`, README, config, or plan direct-file edits in the completed fix/retest
+      branches?
+
+      2. Was the change current-blocker owner work for the gate-time failure (`CliRunner.isolated_filesystem`
+      missing), rather than product/runtime behavior cleanup or historical evidence
+      erasure?
+
+      3. Did the test still exercise real `vectl init` CLI behavior and preserve .gitattributes
+      creation, idempotency, and existing-content preservation assertions?
+
+      4. Did retest evidence prove `uv run pytest tests/test_init_gitattributes.py
+      -q`, `uv run pytest -q`, and `uv run vectl validate` outcomes without hiding
+      the 43 historical completed-evidence guard rows?
+
+      5. Does accepting this exact test-only remediation leave ordinary product code/test/doc
+      changes blocking unless they receive their own explicit audit/disposition step?
+
+
+      Required disposition artifact:
+
+      - authorized_exception: PASS | BLOCKED
+
+      - exception_id: egr_init_gitattributes_clirunner_test_only_current_blocker
+
+      - allowed_changed_paths: exactly `tests/test_init_gitattributes.py` unless audited
+      evidence proves an equivalent adjacent test-helper-only path already named in
+      the fix contract
+
+      - forbidden_changed_paths: `src/**`, `docs/**`, README*, `plan.yaml` direct
+      edits, config/lock files, and any product runtime path
+
+      - owner_lifecycle: name the current blocker owner path (`egr_fix_init_gitattributes_clirunner_compat`
+      + `egr_retest_init_gitattributes_clirunner_compat`) and why it is complete or
+      still blocked
+
+      - gate_intersection: state whether this exception intersects final validation
+      and why it is allowed or blocked
+
+      - historical_failure_erasure: PASS only if historical failure facts remain preserved
+
+      - ordinary_change_rule_preserved: PASS only if all other product code/test/doc
+      mutations remain blocking without their own audit
+
+
+      Gate Preview (what the final gate WILL reject):
+
+      1. Treating all test changes as allowed because this one test-only remediation
+      was audited.
+
+      2. Accepting a source/doc/runtime product change under this exception.
+
+      3. Opening the gate if the audit cannot prove the changed path set or current-blocker
+      ownership.
+
+      4. Requiring nonexistent `tools/vectl/README.md` as a mandatory ref.'
+    verification: Produce a focused criterion-9 disposition report. PASS requires
+      raw/equivalent evidence for changed-path scope, current-blocker ownership, preserved
+      test assertions, green focused/full pytest receipts, validate output preserving
+      the known 43 completed-evidence guard rows, and an explicit statement that ordinary
+      product code/test/doc changes remain blocking unless separately audited.
+    evidence_template: '## Criterion-9 Test-Only Exception Audit
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      No file refs for this step. Do NOT require `tools/vectl/README.md`; if that
+      path appears in stale guidance, record it as ABSENT/NON-AUTHORITATIVE and continue
+      with plan records.
+
+
+      ### Plan Records Reviewed
+
+      - `egr_fix_init_gitattributes_clirunner_compat` — key evidence quoted:
+
+      - `egr_retest_init_gitattributes_clirunner_compat` — key evidence quoted:
+
+      - `egr_independent_closure_audit` — key evidence quoted / why insufficient for
+      this later exception:
+
+
+      ### Raw / Equivalent Probes
+
+      ```
+
+      <git show --name-only --format=oneline 75b532b8 or recorded equivalent>
+
+      <git show --name-only --format=oneline f09f75b or recorded equivalent>
+
+      <uv run vectl show egr_fix_init_gitattributes_clirunner_compat or MCP equivalent>
+
+      <uv run vectl show egr_retest_init_gitattributes_clirunner_compat or MCP equivalent>
+
+      ```
+
+
+      ### Disposition Register
+
+      - authorized_exception: PASS | BLOCKED
+
+      - exception_id: egr_init_gitattributes_clirunner_test_only_current_blocker
+
+      - changed_paths_verified: <exact paths>
+
+      - current_blocker_owner_work: PASS | BLOCKED
+
+      - non_product_runtime_behavior: PASS | BLOCKED
+
+      - assertions_preserved: PASS | BLOCKED
+
+      - command_evidence: focused_pytest=<PASS/BLOCKED>, full_pytest=<PASS/BLOCKED>,
+      validate=<PASS/BLOCKED with 43-row preservation status>
+
+      - historical_failure_erasure: PASS | BLOCKED
+
+      - ordinary_change_rule_preserved: PASS | BLOCKED
+
+      - gate_intersection: <reasoning>
+
+
+      ### Headline
+
+      PASS only if every field above is PASS and the exception is limited to the named
+      completed test-only remediation; otherwise BLOCKED.'
+    depends_on:
+    - egr_close_repo_regression_post_review_rows
+    - egr_generate_current_core_owner_path
+    - egr_independent_closure_audit
+    - egr_fix_init_gitattributes_clirunner_compat
+    - egr_retest_init_gitattributes_clirunner_compat
+    agent: plan-readiness-auditor

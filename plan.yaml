@@ -110816,21 +110816,27 @@ phases:
     description: 'step_type: verification
 
       full-plan-check final grep closure. This step proves product source, tests,
-      docs, READMEs, and packaging metadata no longer contain deleted runtime identifiers
-      or forbidden decide wording. Scope intentionally excludes plan.yaml/plan history
-      and .git/.venv/.vectl artifacts so the plan itself does not make the probe self-failing.
+      docs (including archived `.yaml/.yml/.json` artifacts), READMEs, and packaging
+      metadata no longer contain deleted runtime identifiers or forbidden decide wording.
+      Scope intentionally excludes plan.yaml/plan history and .git/.venv/.vectl artifacts
+      so the plan itself does not make the probe self-failing.
 
 
       Forbidden general terms: `vectl.orchestration`, `core.orchestration`, `orch_app`,
       `cli_orchestration`, `vectl orch`, `IsolationMode`, `Step.isolation`.
 
-      Forbidden decide wording in preserved decide surfaces: `deterministic orchestration
-      advisor`, `orchestration advisor`, `orchestrator advisor`, `external orchestrator
-      agents`, `orchestrator-visible execution`.
+      Forbidden deleted path fragments: `src/vectl/orchestration`, `src/vectl/core/orchestration`,
+      `src/vectl/shell/orchestration`, `src/vectl/orch_app.py`, `src/vectl/cli_orchestration`,
+      `tests/orchestration`, `tests/fixtures/orchestration`, `tests/test_orch_cli_surface.py`.
+
+      Forbidden decide wording in preserved decide/MCP/doc surfaces: `deterministic
+      orchestration advisor`, `orchestration advisor`, `orchestrator advisor`, `external
+      orchestrator agents`, `orchestrator-visible execution`.
 
 
-      Any hit is blocker-class unless explicitly proven to be in an excluded non-product
-      artifact.'
+      Decide wording scope includes every `src/vectl/**/*.py` file plus README/RFC
+      decide docs, so live MCP surfaces cannot be missed. Any hit is blocker-class
+      unless explicitly proven to be in an excluded non-product artifact.'
     verification: 'Run the exact Python grep closure below and paste raw stdout/stderr/exit
       code:
 
@@ -110838,14 +110844,18 @@ phases:
       ```
 
       uv run python -c "from pathlib import Path; roots=[Path(''src''),Path(''tests''),Path(''docs''),Path(''README.md''),Path(''README_zh.md''),Path(''pyproject.toml'')];
+      suffixes={''.py'',''.md'',''.toml'',''.txt'',''.yaml'',''.yml'',''.json''};
       general=[''vectl.orchestration'',''core.orchestration'',''orch_app'',''cli_orchestration'',''vectl
-      orch'',''IsolationMode'',''Step.isolation'']; decide_files=[Path(''src/vectl/decide.py''),Path(''src/vectl/decision_state.py''),Path(''src/vectl/model_outputs.py''),Path(''docs/RFC-vectl-decide-advisor-refresh.md''),Path(''README.md''),Path(''README_zh.md''),Path(''src/vectl/mcp_server.py'')];
-      decide_forbidden=[''deterministic orchestration advisor'',''orchestration advisor'',''orchestrator
-      advisor'',''external orchestrator agents'',''orchestrator-visible execution''];
-      files=[]; [files.extend([p] if p.is_file() else [q for q in p.rglob(''*'') if
-      q.is_file() and q.suffix in {''.py'',''.md'',''.toml'',''.txt''}]) for p in
-      roots if p.exists()]; hits=[]; [hits.append(f''{p}:{term}'') for p in files
-      for term in general if term in p.read_text(errors=''ignore'')]; [hits.append(f''{p}:DECIDE:{term}'')
+      orch'',''IsolationMode'',''Step.isolation'']; decide_forbidden=[''deterministic
+      orchestration advisor'',''orchestration advisor'',''orchestrator advisor'',''external
+      orchestrator agents'',''orchestrator-visible execution'']; files=[]; [files.extend([p]
+      if p.is_file() else [q for q in p.rglob(''*'') if q.is_file() and q.suffix in
+      suffixes]) for p in roots if p.exists()]; decide_files=[p for p in Path(''src/vectl'').rglob(''*.py'')
+      if p.exists()] + [Path(''docs/RFC-vectl-decide-advisor-refresh.md''),Path(''README.md''),Path(''README_zh.md'')];
+      path_terms=[''src/vectl/orchestration'',''src/vectl/core/orchestration'',''src/vectl/shell/orchestration'',''src/vectl/orch_app.py'',''src/vectl/cli_orchestration'',''tests/orchestration'',''tests/fixtures/orchestration'',''tests/test_orch_cli_surface.py''];
+      hits=[]; [hits.append(f''{p}:{term}'') for p in files for term in general if
+      term in p.read_text(errors=''ignore'')]; [hits.append(f''{p}:PATH:{term}'')
+      for p in files for term in path_terms if term in str(p)]; [hits.append(f''{p}:DECIDE:{term}'')
       for p in decide_files if p.exists() for term in decide_forbidden if term in
       p.read_text(errors=''ignore'')]; assert not hits, ''\n''.join(hits); print(''forbidden-term
       closure clean'')"
@@ -110859,6 +110869,12 @@ phases:
     - README.md
     - README_zh.md
     - pyproject.toml
+    - src/vectl/mcp_core_misc_tools.py
+    - src/vectl/mcp_core_common.py
+    - src/vectl/mcp_render_tools.py
+    - src/vectl/mcp_project_tools.py
+    - docs/archive/orch_workflow_validation.yaml
+    - docs/archive/legacy-proof/orchestration_behavioral_proof_register.yaml
     agent: integration-verifier
   - id: orch_removal_full_regression_check
     name: Run full regression, packaged help, and invar guard

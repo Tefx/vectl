@@ -111745,6 +111745,245 @@ phases:
       - No deviations or gaps.
 
       '
+  - id: orch_removal_live_smoke_dispatch_b1_fix
+    name: Fix B1 active live-smoke dispatch runtime tests remain
+    status: pending
+    description: "step_type: implementation\nagent_source: project\n\nFix the blocker\
+      \ found by `orch_removal_tests_docs_gate`: `B1-active-live-smoke-dispatch-runtime-tests-remain`.\
+      \ This is a batched demolition remediation owner step; close the finding without\
+      \ reworking the already-passed docs/decide/MCP evidence.\n\nGate failure to\
+      \ close exactly:\n- `tests/live_smoke/helpers.py` remains active and references\
+      \ driver live-smoke policy / live dispatch markers.\n- `tests/live_smoke/test_codex_dispatch_live.py`\
+      \ remains active; header claims `driver.yaml codex runner contract -> dispatch\
+      \ integration -> real codex subprocess`.\n- `tests/live_smoke/test_opencode_dispatch_live.py`\
+      \ remains active; header claims `driver.yaml opencode runner contract -> dispatch\
+      \ integration -> real opencode subprocess`.\n- Active tests/fixtures probe reported\
+      \ filename matches for those three files and `tests/test_cli.py: test_orch_`\
+      \ content hit.\n- `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest\
+      \ tests/live_smoke --collect-only -q` collected 36 tests from the live_smoke\
+      \ dispatch files.\n\ntarget_kill_list:\n  - `tests/live_smoke/test_codex_dispatch_live.py`\
+      \ active real-runner dispatch/orchestration runtime test surface\n  - `tests/live_smoke/test_opencode_dispatch_live.py`\
+      \ active real-runner dispatch/orchestration runtime test surface\n  - `tests/live_smoke/helpers.py`\
+      \ driver live-smoke policy / live dispatch helper semantics, unless narrowly\
+      \ retained with proof it no longer supports deleted orchestration/operator-runtime\
+      \ behavior\n  - `tests/test_cli.py` stale `test_orch_` residue only if needed\
+      \ to close the active probe hit\n\nremoval_warrant:\n  source_refs:\n    - `orch_removal_tests_docs_gate#B1-active-live-smoke-dispatch-runtime-tests-remain`\
+      \ — gate requires active orchestration/runtime tests and live-smoke orch tests\
+      \ to be deleted or re-scoped away from deleted runtime behavior.\n    - `orch_removal_test_retirement`\
+      \ — target state already retired orchestration-only live-smoke probes and preserved\
+      \ decide/model/io/MCP tests.\n  reverse_dependency_check: `pytest tests/live_smoke\
+      \ --collect-only -q`, active tests/fixtures forbidden-marker probe, and any\
+      \ import/search proof used to identify consumers of the helper.\n  preserved_behavior:\
+      \ `vectl_decide` and MCP behavior, non-orchestration CLI coverage, and any genuinely\
+      \ non-orchestration live-smoke helper behavior that can be proved not to assert\
+      \ deleted dispatch/operator-runtime semantics.\n  negative_delta_expectation:\
+      \ remove active forbidden live-smoke dispatch tests and delete or shrink helper/runtime-marker\
+      \ code; do not replace them with skip/xfail shells or new orchestration abstractions.\n\
+      \nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
+      \ | target_state | evidence_class | required_probe_or_artifact | status |\n\
+      | B1-LIVE-SMOKE-DISPATCH-TESTS-RETIRED | `orch_removal_tests_docs_gate` B1 —\
+      \ pytest collects dispatch files and headers assert real codex/opencode subprocess\
+      \ dispatch integration | Forbidden dispatch runtime tests are deleted or explicitly\
+      \ re-scoped so collection no longer includes deleted orchestration/operator-runtime\
+      \ behavior | runtime_probe | active live-smoke/orchestration retirement probe\
+      \ + `pytest tests/live_smoke --collect-only -q` | OWNED |\n| B1-HELPER-POLICY-RESCOPED\
+      \ | Gate B1 — `tests/live_smoke/helpers.py` references driver live-smoke policy/live\
+      \ dispatch markers | Helper is absent or contains no driver live-smoke policy,\
+      \ live dispatch, deleted runtime, or real runner orchestration markers | static_probe\
+      \ | active helper marker probe | OWNED |\n| B1-CLI-STALE-TEST-ORCH-CLOSED |\
+      \ Gate B1 — active probe hit `tests/test_cli.py: test_orch_` | Any retained\
+      \ `test_orch_` content is removed or rewritten as explicit negative removal\
+      \ coverage that does not advertise/execute deleted orchestration runtime | static_or_targeted_probe\
+      \ | active probe over `tests/test_cli.py`; `tests/test_cli.py::TestDriveCLI`\
+      \ if touched | OWNED |\n| DECIDE-MCP-PRESERVED | Prior gate evidence passed\
+      \ — decide/MCP targeted tests 217 passed | Remediation does not regress preserved\
+      \ decide/MCP behavior | runtime_probe | `pytest tests/test_mcp.py tests/test_decide.py\
+      \ tests/test_decide_state_isolation.py -q` in retest step | PRESERVE |\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - `tests/live_smoke/helpers.py`\n  - `tests/live_smoke/test_codex_dispatch_live.py`\n\
+      \  - `tests/live_smoke/test_opencode_dispatch_live.py`\n  - `tests/test_cli.py`\
+      \ # only if needed to remove/re-scope stale `test_orch_` content hit\nblocked_paths:\n\
+      \  - `src/**`\n  - `docs/**`\n  - `README.md`\n  - `README_zh.md`\n  - `tests/test_decide.py`\n\
+      \  - `tests/test_decide_state_isolation.py`\n  - `tests/test_mcp.py`\n  - `tests/test_io.py`\n\
+      \  - `tests/test_models.py`\nrequired_claims:\n  - B1-active-live-smoke-dispatch-runtime-tests-remain\
+      \ closed\n  - active live-smoke dispatch tests deleted or non-blockingly re-scoped\
+      \ away from deleted orchestration/operator-runtime behavior\n  - live-smoke\
+      \ helper no longer encodes driver live-smoke policy/live dispatch markers for\
+      \ deleted runtime behavior\n  - `tests/test_cli.py` stale `test_orch_` hit closed\
+      \ if still present\n  - no product runtime code or documentation changed\n \
+      \ - decide/MCP preservation delegated to retest and remains green\nrequired_checks:\n\
+      \  - active_live_smoke_orch_retirement_probe\n  - live_smoke_collect_only_no_forbidden_dispatch_runtime_tests\n\
+      \  - targeted_decide_mcp_preservation_tests\n</intent_closure_contract>\n\n\
+      <side_effect_budget>\nAllowed: delete or narrowly rewrite active test/helper\
+      \ files listed under allowed_paths to remove deleted dispatch/operator-runtime\
+      \ assertions.\nForbidden: product runtime edits under `src/**`, docs/README\
+      \ edits, new runtime abstractions, new skip/xfail shells that hide the deleted\
+      \ behavior, or broad unrelated test rewrites.\n</side_effect_budget>\n\n<risk_probes>\n\
+      - Verify `pytest --collect-only` no longer collects forbidden codex/opencode\
+      \ real-dispatch runtime tests; file deletion alone is insufficient if equivalent\
+      \ renamed tests remain.\n- Verify helper cleanup did not leave live dispatch\
+      \ policy markers that a later test can import.\n- Verify decide/MCP preservation\
+      \ tests remain green; do not repeat or disturb the previously passed docs/MCP\
+      \ inventory remediation.\n</risk_probes>\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION demolition step. Stub-only completion is NOT acceptable;\
+      \ replacing live-smoke dispatch tests with vacuous skip/xfail shells is rejected.\
+      \ No new abstraction may replace the deleted runtime tests."
+    verification: '- B1 owner evidence lists exact changed paths and confirms they
+      are within the intent_closure_contract allowed paths.
+
+      - Active live-smoke/orchestration retirement probe exits 0.
+
+      - `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/live_smoke
+      --collect-only -q` no longer collects forbidden dispatch/runtime tests or includes
+      explicit documented non-blocking re-scope proof.
+
+      - No product runtime code or docs were changed.
+
+      - Removed symbols/files have no live callers/importers for deleted orchestration/operator-runtime
+      behavior.
+
+      - No new abstraction, skip shell, or xfail shell replaces the deleted tests.'
+    evidence_template: '## B1 Fix Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename/ref> — key passage or "NOT READ: <reason>"
+
+
+      ### Changed Paths
+
+      - <path> — <delete/rescope reason>
+
+
+      ### Requirement-to-Evidence Matrix
+
+      | requirement_id | status | evidence_ref |
+
+      | --- | --- | --- |
+
+      | B1-LIVE-SMOKE-DISPATCH-TESTS-RETIRED | PROVEN/OPEN | <probe/output> |
+
+      | B1-HELPER-POLICY-RESCOPED | PROVEN/OPEN | <probe/output> |
+
+      | B1-CLI-STALE-TEST-ORCH-CLOSED | PROVEN/NOT_APPLICABLE/OPEN | <probe/output>
+      |
+
+      | DECIDE-MCP-PRESERVED | DELEGATED_TO_RETEST | orch_removal_live_smoke_dispatch_b1_retest
+      |
+
+
+      ### Scope Guard
+
+      - Product runtime/docs changed: YES/NO (must be NO unless deviation explained)
+
+      - New abstraction/skip/xfail shell introduced: YES/NO (must be NO)
+
+
+      ### Closure Claim
+
+      `B1-active-live-smoke-dispatch-runtime-tests-remain` found by `orch_removal_tests_docs_gate`
+      is closed by this fix and ready for independent retest.'
+    depends_on:
+    - orch_removal_tests_docs_gate
+    agent: architectural-demolitionist
+  - id: orch_removal_live_smoke_dispatch_b1_retest
+    name: Retest B1 live-smoke dispatch retirement and gate reopening proof
+    status: pending
+    description: "step_type: verification\nstep_intent: retest_green\nexpected_result:\
+      \ green\nagent_source: default\nphase-check / regate companion for the blocker\
+      \ found by `orch_removal_tests_docs_gate`: `B1-active-live-smoke-dispatch-runtime-tests-remain`.\
+      \ This step independently proves the new owner step closed B1 while preserving\
+      \ the previously green decide/MCP evidence.\n\nAs an INDEPENDENT TESTER, verify\
+      \ the active live-smoke/orchestration tests/fixtures retirement proof from a\
+      \ fresh perspective. Finding any remaining active dispatch/runtime test is a\
+      \ blocker and must keep `gate_open_allowed: false`.\n\nRequired exact commands/probes\
+      \ to run and paste with raw stdout/stderr and exit codes:\n\n1. Active live-smoke/orchestration\
+      \ retirement probe (must exit 0):\n```bash\nenv -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv\
+      \ uv run python - <<'PY'\nfrom pathlib import Path\nforbidden_paths = [\n  \
+      \  Path('tests/live_smoke/test_codex_dispatch_live.py'),\n    Path('tests/live_smoke/test_opencode_dispatch_live.py'),\n\
+      ]\nmarkers = [\n    'driver live-smoke policy',\n    'driver.yaml codex runner\
+      \ contract',\n    'driver.yaml opencode runner contract',\n    'dispatch integration',\n\
+      \    'real codex subprocess',\n    'real opencode subprocess',\n    'live dispatch',\n\
+      \    'orchestration/operator-runtime',\n]\nhits = []\nfor path in [Path('tests/live_smoke/helpers.py'),\
+      \ *forbidden_paths, Path('tests/test_cli.py')]:\n    if not path.exists():\n\
+      \        continue\n    text = path.read_text(encoding='utf-8', errors='ignore')\n\
+      \    lower = text.lower()\n    for marker in markers:\n        if marker.lower()\
+      \ in lower:\n            hits.append(f'{path}:marker:{marker}')\n    if path.name\
+      \ == 'test_cli.py' and 'test_orch_' in text:\n        hits.append(f'{path}:marker:test_orch_')\n\
+      for path in forbidden_paths:\n    if path.exists():\n        hits.append(f'{path}:active\
+      \ forbidden live-smoke dispatch test file remains')\nfixture_root = Path('tests/fixtures/orchestration')\n\
+      if fixture_root.exists():\n    hits.append(f'{fixture_root}:active orchestration\
+      \ fixture root remains')\nif hits:\n    print('B1_ACTIVE_LIVE_SMOKE_DISPATCH_RUNTIME_TESTS_REMAIN')\n\
+      \    print('\\n'.join(hits))\n    raise SystemExit(1)\nprint('B1 active live-smoke/orchestration\
+      \ retirement probe passed')\nPY\n```\n\n2. Live-smoke collection proof (paste\
+      \ raw output and exit code):\n```bash\nenv -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv\
+      \ uv run pytest tests/live_smoke --collect-only -q\n```\nThis must no longer\
+      \ collect forbidden `test_codex_dispatch_live.py` / `test_opencode_dispatch_live.py`\
+      \ dispatch-runtime tests. If `tests/live_smoke` intentionally has no active\
+      \ tests and pytest exits with no-tests status, document why that is non-blocking\
+      \ and cross-reference command 1.\n\n3. Targeted decide/MCP preservation tests\
+      \ (must remain green):\n```bash\nenv -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv\
+      \ uv run pytest tests/test_mcp.py tests/test_decide.py tests/test_decide_state_isolation.py\
+      \ -q\n```\n\n4. If `tests/test_cli.py` changed, run and paste:\n```bash\nenv\
+      \ -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/test_cli.py::TestDriveCLI\
+      \ -q\n```\n\nRequirement-to-Evidence Matrix:\n| requirement_id | target_state\
+      \ | required_evidence | gate decision effect |\n| B1-LIVE-SMOKE-DISPATCH-TESTS-RETIRED\
+      \ | forbidden codex/opencode real dispatch runtime tests absent or non-blockingly\
+      \ re-scoped | command 1 + command 2 raw output | OPEN only if PROVEN |\n| B1-HELPER-POLICY-RESCOPED\
+      \ | helper has no driver live-smoke policy/live dispatch markers for deleted\
+      \ runtime behavior | command 1 raw output | OPEN only if PROVEN |\n| B1-CLI-STALE-TEST-ORCH-CLOSED\
+      \ | stale `tests/test_cli.py: test_orch_` hit removed/re-scoped | command 1\
+      \ and optional command 4 | OPEN only if PROVEN/NOT_APPLICABLE |\n| DECIDE-MCP-PRESERVED\
+      \ | targeted decide/MCP preservation tests remain green | command 3 raw output\
+      \ | OPEN only if PROVEN |\n\nDecision basis rules:\n- `verdict: PASS` only when\
+      \ all B1 requirements are PROVEN and decide/MCP tests pass.\n- `gate_open_allowed:\
+      \ true` only when `blockers: []`.\n- If any command cannot run, classify as\
+      \ blocker unless there is explicit infrastructure ownership and non-intersection\
+      \ proof.\n- This retest closes only `B1-active-live-smoke-dispatch-runtime-tests-remain`;\
+      \ do not reopen already passed docs/archive/conftest/MCP inventory evidence\
+      \ unless the fix touched those surfaces."
+    verification: '- Active live-smoke/orchestration retirement probe exits 0 with
+      raw stdout/stderr pasted.
+
+      - `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/live_smoke
+      --collect-only -q` output shows no forbidden dispatch/runtime tests collected,
+      or documented non-blocking re-scope/no-tests disposition.
+
+      - `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/test_mcp.py
+      tests/test_decide.py tests/test_decide_state_isolation.py -q` exits 0.
+
+      - Evidence includes verdict, blockers, gate_open_allowed, and orchestrator_action_hint.
+
+      - Evidence explicitly states this retest closes `B1-active-live-smoke-dispatch-runtime-tests-remain`
+      found by `orch_removal_tests_docs_gate`.'
+    evidence_template: "## B1 Retest / Regate Evidence\n\n### refs Read Confirmation\
+      \ (MANDATORY)\nFor each ref in this step:\n- <filename/ref> — key passage or\
+      \ \"NOT READ: <reason>\"\n\n### Requirement-to-Evidence Matrix\n| requirement_id\
+      \ | status | evidence_ref |\n| --- | --- | --- |\n| B1-LIVE-SMOKE-DISPATCH-TESTS-RETIRED\
+      \ | PROVEN/OPEN | command 1 + command 2 |\n| B1-HELPER-POLICY-RESCOPED | PROVEN/OPEN\
+      \ | command 1 |\n| B1-CLI-STALE-TEST-ORCH-CLOSED | PROVEN/NOT_APPLICABLE/OPEN\
+      \ | command 1 + optional command 4 |\n| DECIDE-MCP-PRESERVED | PROVEN/OPEN |\
+      \ command 3 |\n\n### Raw Commands and Outputs\ncommand_1: active_live_smoke_orch_retirement_probe\n\
+      exit_code: <int>\nstdout: |\n  <paste raw stdout>\nstderr: |\n  <paste raw stderr>\n\
+      \ncommand_2: env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/live_smoke\
+      \ --collect-only -q\nexit_code: <int>\nstdout: |\n  <paste raw stdout>\nstderr:\
+      \ |\n  <paste raw stderr>\ncollection_disposition: <no forbidden tests collected\
+      \ | documented non-blocking no-tests/rescope>\n\ncommand_3: env -u VIRTUAL_ENV\
+      \ UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/test_mcp.py tests/test_decide.py\
+      \ tests/test_decide_state_isolation.py -q\nexit_code: <int>\nstdout: |\n  <paste\
+      \ raw stdout>\nstderr: |\n  <paste raw stderr>\n\ncommand_4_if_tests_test_cli_changed:\
+      \ env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/test_cli.py::TestDriveCLI\
+      \ -q\nexit_code: <int or NOT_RUN_NOT_TOUCHED>\nstdout: |\n  <paste raw stdout\
+      \ or NOT_RUN_NOT_TOUCHED>\nstderr: |\n  <paste raw stderr or NOT_RUN_NOT_TOUCHED>\n\
+      \n### Decision\nverdict: PASS|FAIL\nblockers:\n  - <empty list when PASS>\n\
+      gate_open_allowed: true|false\norchestrator_action_hint: COMPLETE_ORIGINAL_GATE_AND_CONTINUE\
+      \ | KEEP_GATE_BLOCKED_CREATE_FOLLOWUP\nclosed_finding: B1-active-live-smoke-dispatch-runtime-tests-remain\
+      \ from orch_removal_tests_docs_gate\n"
+    depends_on:
+    - orch_removal_live_smoke_dispatch_b1_fix
+    agent: integration-verifier
 - id: orch_removal_finalization
   name: 'Orchestrator Removal: Closure and Full Regression'
   status: locked

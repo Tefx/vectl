@@ -110714,7 +110714,7 @@ phases:
   steps:
   - id: orch_removal_test_retirement
     name: Retire orchestration-only tests and repro/live-smoke probes
-    status: claimed
+    status: done
     description: "step_type: implementation\nTARGET STATE: tests and fixtures that\
       \ exist only to validate the deleted built-in orchestration runtime are removed\
       \ or narrowly rewritten to assert removal, while decide/model/io/MCP non-orchestration\
@@ -110935,6 +110935,17 @@ phases:
     agent: architectural-demolitionist
     claimed_by: architectural-demolitionist
     claimed_at: '2026-06-17T14:56:26.471689+00:00'
+    done_at: '2026-06-17T15:16:17.279446+00:00'
+    evidence: 'status SUCCESS; worker commits 34e7849d and c4c749b8 merged to main
+      as 66858c09. Sidecar verdict CONFORMANT after same-branch fix for TestDriveCLI
+      wording/orch_app residue. Mainline verification passed after removing untracked
+      stale tests/**/__pycache__ residue: orchestration test/fixture/helper deletion
+      probe OK; TestDriveCLI AST/content probe OK with no positive orch coverage;
+      active residual tests rewrite probe OK; tests/conftest.py orchestration residue
+      probe OK; recursive tests forbidden-reference probe OK; uv run pytest --collect-only
+      -q collected 1269 tests; uv run pytest tests/test_decide.py tests/test_decide_state_isolation.py
+      -q -> 38 passed. Blocked tests/test_decide.py, tests/test_decide_state_isolation.py,
+      tests/test_io.py, tests/test_models.py, tests/test_mcp.py preserved.'
   - id: orch_removal_doc_cleanup
     name: Delete orchestration docs and remove README orch guidance
     status: done

@@ -112220,3 +112220,126 @@ phases:
     depends_on:
     - egr_close_repo_regression_post_review_rows
     agent: vectl-planner
+  - id: egr_independent_closure_audit
+    name: Independent audit of evidence-guard closure/disposition
+    status: pending
+    description: 'CONFORMANCE ARTIFACT: independently audit that the evidence_guard_remediation
+      stream closed or dispositioned all 43 initial completed-evidence guard rows
+      without hiding historical failure evidence.
+
+
+      Verification scope: full-plan-check protecting `egr_final_validate_gate` and
+      the overall validation objective.
+
+
+      Audit requirements:
+
+      - Run `uv run vectl validate` and record whether completed-evidence guard errors
+      remain.
+
+      - Run targeted `uv run vectl show` or scripted equivalents proving each initially
+      failing step now has same-phase closure/disposition, explicit current owner,
+      or exception-policy lifecycle.
+
+      - Confirm no `orch_removal_*` step was edited by this stream except as an untouched
+      contextual reference.
+
+      - Confirm no product code/test/doc files were modified by this stream.
+
+      - Confirm historical failure evidence still exists and was not rewritten away.
+
+
+      The audit may PASS only if each initial row is PROVEN closed/dispositioned/owned,
+      or if an explicit exception policy is present and justified by audit-integrity
+      constraints.'
+    verification: full-plan-check. The audit must provide raw command output and a
+      43-row decision artifact before the final gate can open.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Commands
+
+      ```
+
+      uv run vectl validate
+
+      uv run vectl show evidence_guard_remediation
+
+      uv run vectl show <each originally failing phase or step as needed>
+
+      ```
+
+
+      ## Raw Validation Output
+
+      ```
+
+      <paste stdout/stderr>
+
+      ```
+
+
+      ## Requirement-to-Evidence Matrix
+
+      | requirement_id | source_ref + key passage | target_state | evidence_class
+      | required_probe_or_artifact | status |
+
+      |---|---|---|---|---|---|
+
+      | EGR-001 | user request: 43 completed-evidence guard rows require closure/disposition
+      | all initial rows classified | runtime_probe | `uv run vectl validate` raw
+      output + inventory table | PROVEN/UNPROVEN |
+
+      | EGR-002 | user request: do not falsify or erase historical failure evidence
+      | historical FAIL facts retained | artifact_review | targeted `vectl show` receipts
+      for closure/disposition records | PROVEN/UNPROVEN |
+
+      | EGR-003 | user request: separate from orchestrator removal | no `orch_removal_*`
+      merge/edit | artifact_review | plan diff/phase show evidence | PROVEN/UNPROVEN
+      |
+
+      | EGR-004 | user request: no product code fixes | only plan-state mutations
+      | source_static | changed-path summary | PROVEN/UNPROVEN |
+
+      | EGR-005 | user request: final validate 0 or explicit exception policy | validation
+      closure or exception | runtime_probe | `uv run vectl validate` plus exception-policy
+      rows if any | PROVEN/UNPROVEN |
+
+
+      ## 43-Row Closure Register
+
+      | offending_step_id | original_signal | closure_evidence_ref | disposition |
+      current_owner_if_any | audit_status |
+
+      |---|---|---|---|---|---|
+
+
+      Allowed audit_status values: PROVEN_CLOSED | PROVEN_NON_BLOCKING | OWNED_BLOCKER
+      | EXCEPTION_POLICY | UNPROVEN.
+
+
+      ## Guardrails
+
+      - Historical failure evidence retained: YES/NO
+
+      - Direct `plan.yaml` edits avoided: YES/NO
+
+      - Product code/test/doc changes avoided: YES/NO
+
+      - `orch_removal_*` workstream separate: YES/NO
+
+
+      ## Headline
+
+      PASS | BLOCKED
+
+
+      If BLOCKED, list exact blocker-owner steps required before final gate.'
+    depends_on:
+    - egr_dispose_superseded_orchestrator_removal_rows
+    - egr_dispose_scoped_pass_global_fail_rows
+    - egr_close_repo_regression_post_review_rows
+    - egr_generate_current_core_owner_path
+    agent: plan-readiness-auditor

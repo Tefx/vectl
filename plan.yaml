@@ -112798,13 +112798,16 @@ phases:
       evidence, closed_by_step, validator_status, and audit verdict.
 
       - For any row still reported by `vectl validate`, confirm the exact row has
-      row-local `closed_by`, `exception_policy`, or `current_blocker_owner` evidence.
-      Global keywords or static target lists do not count.
+      row-local `exception_policy` or `current_blocker_owner` evidence. `closed_by`
+      or ordinary `non-blocking_disposition` alone does not satisfy a still-reported
+      row. Global keywords or static target lists do not count.
 
       - Confirm non-blocking dispositions use validator-recognized wording: `non-blocking`
       or `not blocking`, explicit owner, lifecycle/disposition/tracked language, and
-      gate-intersection=false/non-intersection wording; otherwise require a same-phase
-      `gate_open_allowed=true` closure or exception-policy record.
+      gate-intersection=false/non-intersection wording; non-blocking disposition can
+      close only rows absent from current validator output or covered by same-phase
+      `gate_open_allowed=true` closure evidence, while still-reported rows require
+      `exception_policy` or `current_blocker_owner`.
 
       - Confirm no `orch_removal_*` step was edited by this stream except as an untouched
       contextual reference.

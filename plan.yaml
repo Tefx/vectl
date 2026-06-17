@@ -110055,17 +110055,22 @@ phases:
 
       | DECIDE-PRESERVE | user-request:2026-06-17 — keep `vectl_decide` as core automation/dispatch
       advisor; preserve decide.py, decision_state.py, model_outputs.py, decide tests,
-      RFC | Decide surfaces remain supported and explicitly caller-owned | artifact_review
-      | Preservation list with expected tests and wording replacements | OWNED |
+      RFC | Decide surfaces remain supported and explicitly caller-owned; required
+      preserved paths are protected by path-presence probes that fail on missing files
+      | artifact_review | Preservation list with expected tests, wording replacements,
+      and exact required path-presence checks | OWNED |
 
       | ISOLATION-REMOVE | user-request:2026-06-17 — delete Step.isolation and IsolationMode
       as orchestration execution schema residue | Core model and IO no longer expose
-      isolation schema | artifact_review | Affected-file map for models.py, io.py,
-      tests/test_io.py, tests/test_models.py | OWNED |
+      isolation schema, lowercase IO isolation residue, or deleted isolation-doc references
+      | artifact_review | Affected-file map for models.py, io.py, tests/test_io.py,
+      tests/test_models.py, and docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md |
+      OWNED |
 
       | FINAL-GREP | user-request:2026-06-17 — final grep closure covers forbidden
       terms | Closure gate has scoped grep/probe command that excludes plan history
-      but covers product/docs/tests | artifact_review | Exact grep scope and allowed
+      but covers product/docs/tests and exact deletion-target paths | artifact_review
+      | Exact grep scope, exact absence list, preserved-path presence list, and allowed
       exception policy | OWNED |
 
 
@@ -110075,8 +110080,24 @@ phases:
       include residual orchestration-dependent tests discovered by grep even if not
       in the initial deletion list.
 
-      - preservation_targets_confirmed: decide.py, decision_state.py, model_outputs.py,
-      tests/test_decide.py, tests/test_decide_state_isolation.py, docs/RFC-vectl-decide-advisor-refresh.md.
+      - exact_test_deletion_targets_confirmed: `tests/test_runtime_context_vertical_slice.py`,
+      `tests/test_runtime_lifecycle.py`, `tests/test_extended_runner_protocol.py`,
+      `tests/test_orch_cli_surface.py`, `tests/repro/test_repair_continuity_black_box.py`,
+      `tests/repro/test_orch_*.py`, `tests/repro/orch_liveness_probe.py`, `tests/repro/liveness_drive.py`,
+      and orch live-smoke tests.
+
+      - exact_doc_deletion_targets_confirmed: `docs/ORCHESTRATION-*.md`, `docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md`,
+      `docs/RFC-orch-drive.md`, `docs/RFC-opencode-orchestration-runner.md`, `docs/ADR-orchestration-*.md`,
+      `docs/ORCH-*.md`, `docs/RFC-role-profile-overrides.md`, archive proof artifacts,
+      and `docs/invar_guard_remediation/orch_app_driver_budget_closure_receipt.md`.
+
+      - active_cleanup_targets_confirmed: `tests/conftest.py` remains present but
+      its active `orchestration` config block/token residue is removed.
+
+      - preservation_targets_confirmed: `src/vectl/decide.py`, `src/vectl/decision_state.py`,
+      `src/vectl/model_outputs.py`, `tests/test_decide.py`, `tests/test_decide_state_isolation.py`,
+      `tests/test_mcp.py`, and `docs/RFC-vectl-decide-advisor-refresh.md` must remain
+      present; downstream wording/final probes must fail on missing paths.
 
       - non_goals: do not remove vectl_decide; do not edit plan.yaml directly; do
       not manually delete registered .vectl worktrees.
@@ -110093,6 +110114,7 @@ phases:
     - src/vectl/cli.py
     - src/vectl/mcp_server.py
     - docs/RFC-vectl-decide-advisor-refresh.md
+    - docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md
     agent: architectural-demolitionist
   - id: orch_removal_worktree_policy
     name: Define safe worktree and artifact cleanup policy

@@ -110562,7 +110562,7 @@ phases:
       -q: 83 passed.'
   - id: orch_removal_runtime_phase_probe
     name: Verify runtime surface removal and decide preservation
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       phase-check protecting the runtime-surface phase and downstream docs/tests cleanup.
@@ -110595,6 +110595,8 @@ phases:
     - orch_removal_runtime_delete
     - orch_removal_isolation_schema_delete
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-17T13:52:52.175804+00:00'
   - id: orch_removal_runtime_gate
     name: Gate runtime and CLI surface removal
     status: pending

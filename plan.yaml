@@ -115138,40 +115138,48 @@ phases:
       \ runner fixture residue remains under tests after deletion.\n  - Confirm pytest\
       \ collection/imports do not rely on the removed helper.\n  - Confirm the fix\
       \ is deletion-only and does not weaken the already-proven final-gate checks.\n\
-      \nintent_closure_contract:\n  id: B5-exact-deletion-target-extended-runner-gaps\n\
-      \  allowed_paths:\n    - tests/fixtures/helpers/extended_runner_gaps.py\n  conditional_adjacent_paths_policy:\
-      \ Exact importing test files may be touched only when an import-break proof\
-      \ from pytest collection or rg output is recorded before the edit.\n  blocked_paths:\n\
-      \    - src/**\n    - README.md\n    - pyproject.toml\n    - plan.yaml\n    -\
-      \ docs/**\n    - .agent/evidence/**\n  required_claims:\n    - id: B5.file_absent\n\
-      \      claim: tests/fixtures/helpers/extended_runner_gaps.py is absent from\
-      \ the working tree.\n    - id: B5.no_live_refs\n      claim: live code/test/doc/config\
-      \ surfaces contain no references to extended_runner_gaps or stale test_extended_runner_protocol\
-      \ residue.\n    - id: B5.scope_contained\n      claim: changed paths are limited\
-      \ to the allowed file plus any justified exact adjacent importing test file.\n\
-      \    - id: B5.no_replacement_abstraction\n      claim: no new fixture/helper/abstraction\
-      \ replaces the deleted target.\n  required_checks:\n    - id: check.file_absent\n\
-      \      covers_claims: [B5.file_absent]\n      command: [\"test\", \"!\", \"\
-      -e\", \"tests/fixtures/helpers/extended_runner_gaps.py\"]\n    - id: check.no_live_references\n\
-      \      covers_claims: [B5.no_live_refs]\n      command: [\"bash\", \"-lc\",\
-      \ \"! rg -n 'extended_runner_gaps|get_expected_gaps_summary|test_extended_runner_protocol'\
-      \ tests src docs README.md pyproject.toml\"]\n    - id: check.pytest_collection\n\
-      \      covers_claims: [B5.no_live_refs]\n      command: [\"uv\", \"run\", \"\
-      pytest\", \"--collect-only\", \"-q\", \"tests\"]\n    - id: check.scope_containment\n\
-      \      covers_claims: [B5.scope_contained]\n      command: [\"bash\", \"-lc\"\
-      , \"git diff --name-only HEAD -- | python -c 'import sys; allowed={\\\"tests/fixtures/helpers/extended_runner_gaps.py\\\
-      \"}; changed={p.strip() for p in sys.stdin if p.strip()}; bad=[p for p in changed\
-      \ if p not in allowed and not p.startswith(\\\"tests/\\\")]; print(sorted(changed));\
-      \ assert not bad, bad'\"]\n    - id: check.blocked_paths_untouched\n      covers_claims:\
-      \ [B5.scope_contained]\n      command: [\"bash\", \"-lc\", \"! git diff --name-only\
-      \ HEAD -- src README.md pyproject.toml plan.yaml docs .agent/evidence | grep\
-      \ .\"]\n    - id: check.no_replacement_abstraction\n      covers_claims: [B5.no_replacement_abstraction]\n\
-      \      command: [\"bash\", \"-lc\", \"! rg -n 'EXPECTED_RUNNER_GAPS|EXPECTED_PARSER_GAPS|CODEX_SUCCESS_SINGLE_ITEM|GEMINI_SUCCESS_SIMPLE|Expected-RED\
+      \n<intent_closure_contract>\nid: B5-exact-deletion-target-extended-runner-gaps\n\
+      allowed_paths:\n  - tests/fixtures/helpers/extended_runner_gaps.py\nconditional_adjacent_paths_policy:\
+      \ \"Exact importing test files may be touched only when an import-break proof\
+      \ from pytest collection or rg output is recorded before the edit.\"\nblocked_paths:\n\
+      \  - src/**\n  - README.md\n  - pyproject.toml\n  - plan.yaml\n  - docs/**\n\
+      \  - .agent/evidence/**\nrequired_claims:\n  - id: B5.file_absent\n    claim:\
+      \ \"tests/fixtures/helpers/extended_runner_gaps.py is absent from the working\
+      \ tree.\"\n  - id: B5.no_live_refs\n    claim: \"Live code/test/doc/config surfaces\
+      \ contain no references to extended_runner_gaps or stale test_extended_runner_protocol\
+      \ residue.\"\n  - id: B5.scope_contained\n    claim: \"Changed paths are limited\
+      \ to the allowed file plus any justified exact adjacent importing test file.\"\
+      \n  - id: B5.no_replacement_abstraction\n    claim: \"No new fixture/helper/abstraction\
+      \ replaces the deleted target.\"\nrequired_checks:\n  - id: check.file_absent\n\
+      \    covers_claims:\n      - B5.file_absent\n    command:\n      - test\n  \
+      \    - \"!\"\n      - -e\n      - tests/fixtures/helpers/extended_runner_gaps.py\n\
+      \  - id: check.no_live_references\n    covers_claims:\n      - B5.no_live_refs\n\
+      \    command:\n      - bash\n      - -lc\n      - \"! rg -n 'extended_runner_gaps|get_expected_gaps_summary|test_extended_runner_protocol'\
+      \ tests src docs README.md pyproject.toml\"\n  - id: check.pytest_collection\n\
+      \    covers_claims:\n      - B5.no_live_refs\n    command:\n      - uv\n   \
+      \   - run\n      - pytest\n      - --collect-only\n      - -q\n      - tests\n\
+      \  - id: check.scope_containment\n    covers_claims:\n      - B5.scope_contained\n\
+      \    command:\n      - bash\n      - -lc\n      - |\n        python - <<'PY'\n\
+      \        import subprocess\n\n        allowed = {\"tests/fixtures/helpers/extended_runner_gaps.py\"\
+      }\n        checks = (\n            (\"unstaged\", [\"git\", \"diff\", \"--name-only\"\
+      , \"--\"]),\n            (\"cached\", [\"git\", \"diff\", \"--cached\", \"--name-only\"\
+      , \"--\"]),\n        )\n        for label, args in checks:\n            out\
+      \ = subprocess.check_output(args, text=True)\n            changed = {p.strip()\
+      \ for p in out.splitlines() if p.strip()}\n            bad = [p for p in changed\
+      \ if p not in allowed and not p.startswith(\"tests/\")]\n            print(f\"\
+      {label}: {sorted(changed)}\")\n            assert not bad, (label, bad)\n  \
+      \      PY\n  - id: check.blocked_paths_untouched\n    covers_claims:\n     \
+      \ - B5.scope_contained\n    command:\n      - bash\n      - -lc\n      - \"\
+      if { git diff --name-only -- src README.md pyproject.toml plan.yaml docs .agent/evidence;\
+      \ git diff --cached --name-only -- src README.md pyproject.toml plan.yaml docs\
+      \ .agent/evidence; } | grep .; then exit 1; fi\"\n  - id: check.no_replacement_abstraction\n\
+      \    covers_claims:\n      - B5.no_replacement_abstraction\n    command:\n \
+      \     - bash\n      - -lc\n      - \"! rg -n 'EXPECTED_RUNNER_GAPS|EXPECTED_PARSER_GAPS|CODEX_SUCCESS_SINGLE_ITEM|GEMINI_SUCCESS_SIMPLE|Expected-RED\
       \ Gaps for driver-multi-runner-hardening' tests src docs README.md pyproject.toml\"\
-      ]\n\n## Completion Criteria (stub/replacement exclusion)\nThis is a DEMOLITION\
-      \ fix. Completion requires deletion with negative line delta. Creating a replacement\
-      \ helper, wrapper, shim, placeholder, or new abstraction does NOT satisfy this\
-      \ step."
+      \n</intent_closure_contract>\n\n## Completion Criteria (stub/replacement exclusion)\n\
+      This is a DEMOLITION fix. Completion requires deletion with negative line delta.\
+      \ Creating a replacement helper, wrapper, shim, placeholder, or new abstraction\
+      \ does NOT satisfy this step."
     verification: '- Required B5 file-absent check passes.
 
       - Required no-live-reference check passes for tests/src/docs/README/pyproject

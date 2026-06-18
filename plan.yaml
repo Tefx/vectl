@@ -114211,7 +114211,7 @@ phases:
       '
   - id: orch_removal_fix_b3_final_forbidden_grep_nonreproducible
     name: Fix B3 deep-review final forbidden grep non-reproducible residues
-    status: claimed
+    status: done
     description: "step_type: implementation\nblocker_family_id: B3-deep-review-final-forbidden-grep-nonreproducible\n\
       \nBatched fix owner for deep-review blocker B1_FINAL_FORBIDDEN_GREP_NON_REPRODUCIBLE.\
       \ Remove ONLY the two non-reproducible final-forbidden residue hits found by\
@@ -114319,6 +114319,148 @@ phases:
     agent: architectural-demolitionist
     claimed_by: architectural-demolitionist
     claimed_at: '2026-06-18T06:02:43.610215+00:00'
+    done_at: '2026-06-18T06:17:45.256102+00:00'
+    evidence: 'status: SUCCESS
+
+
+      Artifact:
+
+      - Worker commit hash: 57b7a4090eff2c85d2154d41b5fbef1316e31f7f
+
+      - Main squash commit: bdcba0159761252089006173f88598a0d004830b
+
+
+      ## refs Read Confirmation
+
+      - .agent/evidence/orch_removal_scope_matrix.md#FINAL-GREP closure gate: READ.
+      Key insight: final gate forbids active runtime residue across src/tests/docs
+      while excluding plan/orchestrator history; `driver.yaml` and lowercase isolation
+      field syntax are forbidden terms.
+
+      - docs/repo_regression_remediation_execution_sequence.md: READ. Key insight:
+      Bucket E line contained legacy `driver.yaml`/`drive` wording residue.
+
+      - tests/test_io.py: READ. Key insight: legacy deleted step field test contained
+      exact YAML payload residue `isolation: independent`.
+
+      - orch_removal_deep_review#B1_FINAL_FORBIDDEN_GREP_NON_REPRODUCIBLE: NOT READ
+      as file; non-file ref unavailable. Worker used assigned prompt context identifying
+      the two residue hits.
+
+      - tools/vectl/README.md: NOT READ; absent.
+
+      - CONSTITUTION.md: NOT READ; absent.
+
+
+      Checklist receipt applied by orchestrator:
+
+      - description:0: checked true — Read `.agent/evidence/orch_removal_scope_matrix.md#FINAL-GREP
+      closure gate` and the deep-review blocker text.
+
+      - description:1: checked true — Edit only `docs/repo_regression_remediation_execution_sequence.md`
+      and `tests/test_io.py`.
+
+      - description:2: checked true — Run every command listed under `<intent_closure_contract>.required_checks`
+      without weakening, allowlists, `|| true`, or substitutions.
+
+      - description:3: checked true — Paste command outputs and diff-scope evidence
+      in completion evidence.
+
+
+      Sidecar gate:
+
+      - command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_fix_b3_final_forbidden_grep_nonreproducible --worktree .vectl/worktrees/orch_removal_fix_b3_final_forbidden_grep_nonreproducible
+      --base bb3861f601d195269ffe8c28cb7ebb1fc7c5557e --out /tmp/orch_removal_fix_b3_final_forbidden_grep_nonreproducible_verdict6.json
+
+      - exit_code: 0
+
+      - status: CONFORMANT
+
+      - changed_paths: docs/repo_regression_remediation_execution_sequence.md; tests/test_io.py
+
+      - checked_claims: b3_blocker_family_closed, exact_docs_residue_removed_without_allowlist,
+      exact_test_io_isolation_residue_removed_without_behavior_loss, negative_narrow_rewrite_no_new_abstraction,
+      only_allowed_paths_changed, preserved_decide_mcp_and_completed_b2_evidence_untouched
+
+      - all required_checks passed: docs_reported_line_residue_absent, test_io_lowercase_isolation_residue_absent,
+      changed_path_scope_allowed_only, blocked_paths_untouched, targeted_test_io_green,
+      no_command_weakening_or_allowlist_changes, negative_narrow_rewrite_diff_stat
+
+
+      Requirement-to-evidence matrix:
+
+      - Remove docs line 33 driver.yaml/drive residue: worker docs_reported_line_residue_absent
+      passed; sidecar docs_reported_line_residue_absent passed; mainline B3 residue
+      absence passed.
+
+      - Remove lowercase `isolation: independent` residue from tests/test_io.py: worker
+      test_io_lowercase_isolation_residue_absent passed; sidecar same passed; mainline
+      B3 residue absence passed.
+
+      - Edit only allowed paths: worker changed_path_scope_allowed_only, blocked_paths_untouched,
+      final clean branch status; sidecar changed_paths exactly two allowed files;
+      main squash changed exactly two files.
+
+      - Preserve test behavior: worker `uv run pytest tests/test_io.py -q` passed
+      30 passed; mainline same passed 30 passed in 0.68s.
+
+      - Avoid allowlist/exclude/waiver weakening: worker no_command_weakening_or_allowlist_changes
+      passed; sidecar same passed.
+
+      - Negative/narrow rewrite: worker diff stat 1 insertion/1 deletion in each allowed
+      file; main squash 2 insertions/2 deletions; no new abstraction.
+
+
+      Worker raw verification receipts:
+
+      - docs_reported_line_residue_absent: exit_code 0; no output.
+
+      - test_io_lowercase_isolation_residue_absent: exit_code 0; no output.
+
+      - changed_path_scope_allowed_only: exit_code 0; output changed_paths=[docs/repo_regression_remediation_execution_sequence.md,
+      tests/test_io.py].
+
+      - blocked_paths_untouched: exit_code 0; no output.
+
+      - targeted_test_io_green: exit_code 0; 30 passed in 1.47s.
+
+      - no_command_weakening_or_allowlist_changes: exit_code 0; no output.
+
+      - negative_narrow_rewrite_diff_stat: exit_code 0; `1 1 docs/repo_regression_remediation_execution_sequence.md`
+      and `1 1 tests/test_io.py`.
+
+      - commit/status: commit 57b7a4090eff2c85d2154d41b5fbef1316e31f7f; branch clean.
+
+
+      Mainline final-state verification:
+
+      - `python` residue absence for docs line 33 and tests/test_io.py lowercase payload:
+      exit_code 0; `MAINLINE_B3_RESIDUE_ABSENCE=PASS`.
+
+      - `UV_PROJECT_ENVIRONMENT=.venv env -u VIRTUAL_ENV uv run pytest tests/test_io.py
+      -q`: exit_code 0; 30 passed in 0.68s.
+
+
+      Files changed:
+
+      - docs/repo_regression_remediation_execution_sequence.md
+
+      - tests/test_io.py
+
+
+      Deviation records:
+
+      - Worker noted a read-only grep for non-file deep-review ref unintentionally
+      matched plan.yaml; no plan state was modified and no vectl CLI/MCP tools were
+      used.
+
+
+      Gaps/notes: Sidecar contract required multiple planner schema repairs before
+      conforming; final conformant sidecar verdict is authoritative for local Intent-Closure
+      proof.
+
+      '
   - id: orch_removal_retest_b3_final_forbidden_grep_nonreproducible
     name: Retest B3 deep-review final forbidden grep closure
     status: pending

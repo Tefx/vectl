@@ -113566,7 +113566,7 @@ phases:
     agent: gate-reviewer
   - id: orch_removal_fix_final_grep_forbidden_residue
     name: Fix B2 final grep forbidden residue
-    status: claimed
+    status: done
     description: "step_type: implementation\nwork_type: technical_debt_remediation\n\
       blocker_family: B2-final-grep-forbidden-residue\nagent_source: suggested\n\n\
       Demolition fix owner: close only the B2 final grep forbidden residue family\
@@ -113751,6 +113751,182 @@ phases:
     agent: architectural-demolitionist
     claimed_by: architectural-demolitionist
     claimed_at: '2026-06-18T03:46:03.439486+00:00'
+    done_at: '2026-06-18T05:45:42.380376+00:00'
+    evidence: 'status: SUCCESS
+
+
+      Artifact:
+
+      - Worker commit hash: 4afd3ab749ada042f6b0b5e1399f041ce4b5ab94
+
+      - Main squash commit: d434589b14888281ae070663826f3a76085920c0
+
+
+      ## refs Read Confirmation
+
+      - orch_removal_final_grep_closure — NOT READ as file: no file named this existed
+      in worker worktree and plan tooling was prohibited; worker used assigned step
+      text as blocker summary.
+
+      - tests/test_models.py — READ; key insight: active model tests assert `isolation`
+      is not model state; only stale exported-mode assertion contained forbidden residue.
+
+      - docs/invar_guard_remediation/uiux-proof-artifact.md — READ; stale UI/UX transcript
+      contained retired operator command/path residue.
+
+      - docs/invar_guard_remediation/guard_all_raw.txt — READ; stale raw guard log
+      embedded old source path findings, not current authoritative evidence.
+
+      - docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md
+      — READ; historical residual table named retired source/test paths.
+
+      - docs/invar_guard_remediation/escape_budget_authority_decision.md — READ; historical
+      adjudication included obsolete source path and follow-up owner references.
+
+      - docs/invar_guard_remediation/failure_inventory.md — READ; old guard inventory
+      embedded broad stale failure-face paths/counts.
+
+      - docs/invar_guard_remediation/post_salvage_residual_classification_register.md
+      — READ; stale classification prose contained retired path residues.
+
+      - tools/vectl/README.md — NOT READ: absent in worktree.
+
+      - CONSTITUTION.md — NOT READ: absent in worktree.
+
+
+      Sidecar gate:
+
+      - command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_fix_final_grep_forbidden_residue --worktree .vectl/worktrees/orch_removal_fix_final_grep_forbidden_residue
+      --base b9aef0d77f73908919aab3d54155c6227117fe7f --out /tmp/orch_removal_fix_final_grep_forbidden_residue_verdict4.json
+
+      - exit_code: 0
+
+      - status: CONFORMANT
+
+      - changed_paths: docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md;
+      docs/invar_guard_remediation/escape_budget_authority_decision.md; docs/invar_guard_remediation/failure_inventory.md;
+      docs/invar_guard_remediation/guard_all_raw.txt; docs/invar_guard_remediation/post_salvage_residual_classification_register.md;
+      docs/invar_guard_remediation/uiux-proof-artifact.md; tests/test_models.py
+
+      - checked_claims: b2_blocker_family_closed, negative_delta_only, no_final_grep_weakening,
+      preserve_green_finalization_proofs, scope_containment, test_safety_tests_test_models
+
+      - all required_checks passed: b2_forbidden_absence, changed_path_scope_containment,
+      no_blocked_path_edits, no_final_grep_weakening_or_allowlist, targeted_model_test_safety,
+      negative_delta_no_replacement_abstraction
+
+
+      Requirement-to-evidence matrix:
+
+      | Requirement | Evidence |
+
+      | --- | --- |
+
+      | B2 blocker family closed | Worker focused B2 absence scan over tests/test_models.py
+      plus docs/invar_guard_remediation/* passed with hits=0; sidecar b2_forbidden_absence
+      passed; mainline B2 absence scan passed hits=0. |
+
+      | Scope containment | Worker diff listed only 7 allowed files; sidecar changed_path_scope_containment
+      and no_blocked_path_edits passed; main squash changed same 7 files. |
+
+      | No grep weakening | No production source, README, pyproject, plan/orchestrator
+      state, scan command, or allowlist changed; sidecar no_final_grep_weakening_or_allowlist
+      passed. |
+
+      | Preserved green evidence not reworked | Worker only retired stale historical
+      docs and one stale model-test assertion; CLI runtime proof PASS, full regression
+      PASS, wiring audit PASS, and B1 retest PASS were not reworked. |
+
+      | Test safety | Worker `uv run pytest tests/test_models.py -q` passed 52 passed;
+      mainline same command passed 52 passed in 0.16s. |
+
+      | Negative delta only | Worker commit stats: 19 insertions, 15706 deletions;
+      sidecar negative_delta_no_replacement_abstraction passed; no replacement abstraction
+      introduced. |
+
+
+      Before/after hit inventory:
+
+      - Terms checked: IsolationMode, orch_app, cli_orchestration, vectl orch, docs/ORCHESTRATION-,
+      docs/RFC-orch-drive.md, .vectl/worktrees, src/vectl/orchestration, src/vectl/orch_app.py,
+      src/vectl/cli_orchestration, docs/archive/consumer_boundary_conformance_verify.py,
+      tests/orchestration, docs/RFC-opencode-orchestration-runner.md, src/vectl/core/orchestration.
+
+      - tests/test_models.py: before IsolationMode=1, after all terms 0.
+
+      - docs/invar_guard_remediation/uiux-proof-artifact.md: before orch_app=2, vectl
+      orch=23, docs/ORCHESTRATION-=1, docs/RFC-orch-drive.md=1, .vectl/worktrees=1;
+      after all terms 0.
+
+      - docs/invar_guard_remediation/guard_all_raw.txt: before orch_app=37, cli_orchestration=76,
+      src/vectl/orchestration=267, src/vectl/orch_app.py=37, src/vectl/cli_orchestration=76,
+      docs/archive/consumer_boundary_conformance_verify.py=1; after all terms 0.
+
+      - docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md:
+      before orch_app=2, src/vectl/orchestration=7, src/vectl/orch_app.py=1, tests/orchestration=8,
+      docs/RFC-opencode-orchestration-runner.md=1; after all terms 0.
+
+      - docs/invar_guard_remediation/escape_budget_authority_decision.md: before orch_app=5,
+      src/vectl/orchestration=38, src/vectl/orch_app.py=4, src/vectl/core/orchestration=12;
+      after all terms 0.
+
+      - docs/invar_guard_remediation/failure_inventory.md: before orch_app=2, cli_orchestration=2,
+      src/vectl/orchestration=21, src/vectl/orch_app.py=2, src/vectl/cli_orchestration=2,
+      docs/archive/consumer_boundary_conformance_verify.py=3; after all terms 0.
+
+      - docs/invar_guard_remediation/post_salvage_residual_classification_register.md:
+      before orch_app=6, cli_orchestration=5, vectl orch=2, src/vectl/orchestration=20,
+      src/vectl/orch_app.py=5, src/vectl/cli_orchestration=5, docs/archive/consumer_boundary_conformance_verify.py=2;
+      after all terms 0.
+
+
+      Worker raw verification receipts:
+
+      - Focused B2 absence scan over tests/test_models.py plus docs/invar_guard_remediation/*:
+      exit_code 0; output included result=PASS hits=0.
+
+      - `uv run pytest tests/test_models.py -q`: exit_code 0; 52 passed in 0.68s.
+
+      - `git diff --name-only HEAD --` plus scope proof: exit_code 0; changed_count=7;
+      blocked_changes=[]; grep_weakening_risk=none.
+
+      - `git commit -m "Remove final forbidden grep residues" && git rev-parse HEAD`:
+      exit_code 0; commit 4afd3ab749ada042f6b0b5e1399f041ce4b5ab94.
+
+
+      Mainline final-state verification:
+
+      - `python` B2 absence scan over allowed files plus sibling docs/invar_guard_remediation
+      scope: exit_code 0; `MAINLINE_B2_ABSENCE_SCAN=PASS hits=0`.
+
+      - `UV_PROJECT_ENVIRONMENT=.venv env -u VIRTUAL_ENV uv run pytest tests/test_models.py
+      -q`: exit_code 0; 52 passed in 0.16s.
+
+
+      Files changed:
+
+      - docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md
+
+      - docs/invar_guard_remediation/escape_budget_authority_decision.md
+
+      - docs/invar_guard_remediation/failure_inventory.md
+
+      - docs/invar_guard_remediation/guard_all_raw.txt
+
+      - docs/invar_guard_remediation/post_salvage_residual_classification_register.md
+
+      - docs/invar_guard_remediation/uiux-proof-artifact.md
+
+      - tests/test_models.py
+
+
+      Deviation records: []
+
+      Gaps/notes: No vectl CLI/MCP lifecycle tools used by worker. Untracked main-worktree
+      files `.codex/`, `test_mod.py`, `test_mod_2.py` remain unrelated and untouched.
+
+      '
   - id: orch_removal_retest_final_grep_closure
     name: Retest B2 final grep closure
     status: pending

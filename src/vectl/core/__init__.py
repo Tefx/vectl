@@ -1,9 +1,7 @@
-"""Compatibility facade plus pure extraction namespace for vectl core.
+"""Compatibility facade for vectl core plan operations.
 
-The orchestration Core extraction introduced ``vectl.core.orchestration`` as a
-package namespace.  Python packages take precedence over the legacy
-``vectl/core.py`` module, so this package must also preserve the historical
-``from vectl import core`` facade used by the orchestration shell adapter.
+Python packages take precedence over the legacy ``vectl/core.py`` module, so
+this package preserves the historical ``from vectl import core`` facade.
 """
 
 from __future__ import annotations

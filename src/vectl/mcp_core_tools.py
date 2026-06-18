@@ -1,5 +1,6 @@
 """Public compatibility facade for split implementation modules.
 
+Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 Preserves the original import path while keeping cohesive implementation slices internal.
 """
 

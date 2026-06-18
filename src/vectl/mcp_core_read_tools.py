@@ -1,4 +1,7 @@
-"""Internal implementation slice split from mcp_core_tools.py."""
+"""Internal implementation slice split from mcp_core_tools.py.
+
+Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
+"""
 
 from __future__ import annotations
 
@@ -62,7 +65,7 @@ def vectl_status(agent: str | None = None) -> Result[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Tool 2: vectl_show
+# vectl_show
 # ---------------------------------------------------------------------------
 
 
@@ -141,7 +144,7 @@ def vectl_show(target: str) -> Result[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Tool 3: vectl_claim
+# vectl_claim
 # ---------------------------------------------------------------------------
 
 

@@ -158,7 +158,7 @@ class InitResult(BaseModel):
 
 
 class RunningTask(BaseModel):
-    """A running task tracked by the orchestrator.
+    """A running task tracked by caller-owned automation.
 
     RFC: docs/RFC-vectl-decide-advisor-refresh.md
     Used by vectl_decide to track in-flight work for session reuse decisions.
@@ -166,7 +166,7 @@ class RunningTask(BaseModel):
     Attributes:
         step_id: Step identifier.
         agent: Agent name.
-        task_id: Orchestrator-visible execution/task identifier (NOT a reuse handle).
+        task_id: Caller-visible execution/task identifier (NOT a reuse handle).
         runner: Runner namespace/source that owns any reuse semantics attached
             to that task. Required; allowed values at rollout are "claude" and "task".
         dispatched_at: time.time() when dispatched.
@@ -234,7 +234,7 @@ class Decision(BaseModel):
 
 
 class Action(BaseModel):
-    """A single action to be executed by the orchestrator.
+    """A single action to be applied by the caller.
 
     RFC: docs/RFC-vectl-decide-advisor-refresh.md
     Deterministic action output from vectl_decide. Action payloads should behave
@@ -274,7 +274,7 @@ class DecideOutput(BaseModel):
     """Structured output from vectl_decide.
 
     RFC: docs/RFC-vectl-decide-advisor-refresh.md
-    Contains deterministic orchestration advisor output: top-level status summary,
+    Contains deterministic automation/dispatch advisor output: top-level status summary,
     actions to execute, next caller-owned state, and policy metadata.
 
     Attributes:

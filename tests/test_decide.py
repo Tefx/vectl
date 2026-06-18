@@ -124,7 +124,7 @@ class TestRunnerProvenance:
 
 
 class TestTaskIdSemantics:
-    """task_id is orchestrator-visible execution identity, NOT a reuse handle.
+    """task_id is caller-visible execution identity, NOT a reuse handle.
 
     RFC: docs/RFC-vectl-decide-advisor-refresh.md section 6.1
     Gap: Old tests asserted action.task_id == reuse_token. That is wrong.

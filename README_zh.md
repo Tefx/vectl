@@ -75,7 +75,7 @@ uvx vectl init --project my-project
 }
 ```
 
-vectl 通过 MCP 暴露了 14 个工具，agent 直接调用 `vectl_status`、`vectl_claim`、`vectl_complete` 等——结构化数据进出，比解析 CLI 文本输出更可靠。
+vectl 通过 MCP 暴露了 20 个工具，agent 可直接调用 `vectl_status`、`vectl_claim`、`vectl_complete`、`vectl_decide` 等；`vectl_decide` 也是支持调用方自有自动化的 advisor 入口点——结构化数据进出，比解析 CLI 文本输出更可靠。
 
 OpenCode 用户，在 `opencode.jsonc` 中添加：
 
@@ -230,35 +230,6 @@ phases:
 如果你在 vectl 之外直接编辑了 `plan.yaml`，运行 `uvx vectl recalc-lock` 来诊断和修复锁状态不一致。
 
 ---
-
-## Continuity Recovery（`vectl orch recover`）
-
-`vectl repair continuity` 已退役。现在支持的恢复入口是：
-
-```bash
-uv run vectl orch recover [RUN_ID|--latest]
-```
-
-排查启动/恢复状态时，建议先用 dry-run JSON 诊断：
-
-```bash
-uv run vectl orch recover --latest --dry-run --json
-```
-
-**恢复语义（硬化后的行为）**：
-
-- `--dry-run`：只做诊断，不修改状态
-- 非 `--dry-run`：执行实际恢复动作，包括修复和状态迁移
-- **无静默删除不变性**：恢复流程不会静默删除 run 数据；任何破坏性动作都需要明确确认语义（例如 `--yes` 或 `--force`）
-- `--latest` 选择器安全：如果没有匹配 run，会以错误码 2 显式失败；不会隐式回退，也不会新建 run
-
-如果你要修复 claim/plan 一致性，请使用独立命令：
-
-```bash
-uv run vectl repair claims --dry-run
-```
-
-恢复行为、隔离/隔离区语义、operator 处理逻辑，由 orchestration-plane recovery contract 和实现定义（`src/vectl/orchestration/recovery.py`、`src/vectl/orch_app.py`）。
 
 ## 技术细节
 

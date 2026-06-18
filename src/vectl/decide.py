@@ -1,4 +1,4 @@
-"""Decision logic for vectl orchestration."""
+"""Decision logic for vectl automation/dispatch advice."""
 
 from __future__ import annotations
 
@@ -191,7 +191,7 @@ def _final_status(plan: Plan, running_count: int, max_parallelism: int, repeated
 
 
 def decide(running_tasks: list[RunningTask], completed_results: list[CompletedResult] | None, max_parallelism: int, advisor_state: dict[str, object] | None = None) -> DecideOutput:
-    """Return deterministic orchestration advisor actions and replacement state."""
+    """Return deterministic automation/dispatch advisor actions and replacement state."""
     plan, _ = load_plan_definition(resolve_plan_path())
     step_ids = _plan_step_ids(plan)
     state = _state_from_advisor(advisor_state, step_ids)

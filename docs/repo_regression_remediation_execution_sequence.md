@@ -30,7 +30,7 @@ This sequence translates the classified failure buckets into a dependency-safe e
 | B | stale contract lock drift + CLI export-surface drift | `contract-lock-realignment/resolution-case-and-runtime-locks` | Re-lock `ResolutionCase` and bounded export expectations to current docs/implementation before downstream semantic fixes. |
 | C | likely behavior regression in recovery semantics | `semantic-runtime-drift-resolution/recovery-surface-conformance` | Implementation-focused repair step; keep isolated from test-only churn. |
 | D | runtime reconcile lifecycle drift | `contract-lock-realignment/resolution-case-and-runtime-locks` | Validate and fix lifecycle contract immediately after lock realignment so runtime semantics are stable before recovery/CLI follow-ons. |
-| E | missing fixture / CLI public surface mismatch | `fixture-cli-surface-repair/driver-entrypoint-and-help-contract` | Handle repo-root `driver.yaml`/`drive` surface issues only after live runtime semantics stop moving. |
+| E | missing fixture / CLI public surface mismatch | `fixture-cli-surface-repair/legacy-entrypoint-and-help-contract` | Handle repo-root legacy entrypoint/help surface issues only after live runtime semantics stop moving. |
 | F | observability stale probes + schema/helper backlog | `observability-debt-triage/event-probe-rebaseline-and-schema-backlog-split` | First separate stale expected-red probes from genuine implementation debt, then queue any remaining behavior work without contaminating the earlier behavioral phases. |
 
 ## Dependency guardrails

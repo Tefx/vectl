@@ -2971,7 +2971,7 @@ class TestVectlRecover:
 class TestVectlDecide:
     """Tests for vectl_decide MCP tool.
 
-    vectl_decide makes orchestration decisions deterministic:
+    vectl_decide makes automation/dispatch decisions deterministic:
     - Computes claimable steps respecting DAG ordering
     - Returns status/reason_code for top-level control summary
     - Decides session reuse via reuse_token/reuse_runner with TTL awareness

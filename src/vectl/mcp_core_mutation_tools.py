@@ -1,4 +1,7 @@
-"""Internal implementation slice split from mcp_core_tools.py."""
+"""Internal implementation slice split from mcp_core_tools.py.
+
+Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
+"""
 
 from __future__ import annotations
 
@@ -36,7 +39,7 @@ def vectl_search(
 
 
 # ---------------------------------------------------------------------------
-# Tool 7: vectl_mutate
+# vectl_mutate
 # ---------------------------------------------------------------------------
 
 
@@ -397,7 +400,7 @@ def vectl_migrate_step_id(
 
 
 # ---------------------------------------------------------------------------
-# Tool 9: vectl_guide
+# vectl_guide
 # ---------------------------------------------------------------------------
 
 

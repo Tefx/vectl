@@ -1,4 +1,7 @@
-"""Internal implementation slice split from mcp_core_tools.py."""
+"""Internal implementation slice split from mcp_core_tools.py.
+
+Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
+"""
 
 from __future__ import annotations
 
@@ -97,7 +100,7 @@ def vectl_check(
     return f"**Updated checklist:** {step_id}"
 
 
-# @shell_orchestration: Loads/saves plan through shared shell helpers and adapts JSON-serializable FastMCP payloads.
+# @shell_adapter: Loads/saves plan through shared shell helpers and adapts JSON-serializable FastMCP payloads.
 # @shell_complexity: Deterministic checklist surface must preserve inventory, mutation, and structured error branches.
 def _vectl_check_deterministic(
     *,
@@ -186,7 +189,7 @@ def _vectl_check_deterministic(
 
 
 # ---------------------------------------------------------------------------
-# Tool 15: vectl_recover
+# vectl_recover
 # ---------------------------------------------------------------------------
 
 
@@ -197,10 +200,10 @@ def vectl_decide(
     advisor_state: dict[str, object] | None = None,
     max_parallelism: int = 5,
 ) -> Result[dict[str, Any], str]:
-    """Deterministic orchestration advisor.
+    """Deterministic automation/dispatch advisor.
 
     Analyzes running tasks and completed results to determine what actions
-    the orchestrator should take next. Supports session reuse decisions
+    caller-owned automation should take next. Supports session reuse decisions
     for efficient agent workflow continuation.
 
     RFC: docs/RFC-vectl-decide-advisor-refresh.md

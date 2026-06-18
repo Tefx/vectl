@@ -113423,7 +113423,7 @@ phases:
       '
   - id: orch_removal_deep_review
     name: Independent deep review of orchestrator removal closure
-    status: pending
+    status: claimed
     description: 'step_type: review
 
       full-plan-check independent deep review. Review closure evidence for deletion
@@ -113473,6 +113473,8 @@ phases:
     - orch_removal_fix_final_grep_forbidden_residue
     - orch_removal_retest_final_grep_closure
     agent: plan-readiness-auditor
+    claimed_by: plan-readiness-auditor
+    claimed_at: '2026-06-18T05:53:12.538813+00:00'
   - id: orch_removal_final_gate
     name: Final gate for orchestrator removal
     status: pending

@@ -115138,10 +115138,10 @@ phases:
       \ runner fixture residue remains under tests after deletion.\n  - Confirm pytest\
       \ collection/imports do not rely on the removed helper.\n  - Confirm the fix\
       \ is deletion-only and does not weaken the already-proven final-gate checks.\n\
-      \n<intent_closure_contract>\nid: B5-exact-deletion-target-extended-runner-gaps\n\
-      allowed_paths:\n  - tests/fixtures/helpers/extended_runner_gaps.py\nconditional_adjacent_paths_policy:\
-      \ \"Exact importing test files may be touched only when an import-break proof\
-      \ from pytest collection or rg output is recorded before the edit.\"\nblocked_paths:\n\
+      \nconditional_adjacent_paths_policy: \"Exact importing test files may be touched\
+      \ only when an import-break proof from pytest collection or rg output is recorded\
+      \ before the edit.\"\n\n<intent_closure_contract>\nid: B5-exact-deletion-target-extended-runner-gaps\n\
+      allowed_paths:\n  - tests/fixtures/helpers/extended_runner_gaps.py\nblocked_paths:\n\
       \  - src/**\n  - README.md\n  - pyproject.toml\n  - plan.yaml\n  - docs/**\n\
       \  - .agent/evidence/**\nrequired_claims:\n  - id: B5.file_absent\n    claim:\
       \ \"tests/fixtures/helpers/extended_runner_gaps.py is absent from the working\

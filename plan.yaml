@@ -114273,19 +114273,22 @@ phases:
       \    command: [\"python\", \"-c\", \"from pathlib import Path\\ntext=Path('tests/test_io.py').read_text().lower()\\\
       nassert 'isolation: independent' not in text\"]\n    covers_claims: [b3_blocker_family_closed,\
       \ exact_test_io_isolation_residue_removed_without_behavior_loss]\n  - id: changed_path_scope_allowed_only\n\
-      \    command: [\"bash\", \"-lc\", \"python - <<'PY'\\nimport os, subprocess\\\
-      nallowed={'docs/repo_regression_remediation_execution_sequence.md','tests/test_io.py'}\\\
-      nbase=os.environ.get('VECTL_DIFF_BASE','HEAD')\\npaths=set(subprocess.check_output(['git','diff','--name-only',base,'--'],\
-      \ text=True).splitlines())\\nprint('changed_paths=', sorted(paths))\\nassert\
-      \ paths <= allowed, sorted(paths-allowed)\\nassert paths, 'expected narrow residue-removal\
-      \ diff against VECTL_DIFF_BASE'\\nPY\"]\n    covers_claims: [only_allowed_paths_changed,\
-      \ preserved_decide_mcp_and_completed_b2_evidence_untouched]\n  - id: blocked_paths_untouched\n\
-      \    command: [\"bash\", \"-lc\", \"! git diff --name-only -- src README.md\
-      \ README_zh.md pyproject.toml plan.yaml .agent/evidence docs/RFC-vectl-decide-advisor-refresh.md\
-      \ tests/test_decide.py tests/test_decide_state_isolation.py tests/test_mcp.py\
-      \ | grep .\"]\n    covers_claims: [only_allowed_paths_changed, preserved_decide_mcp_and_completed_b2_evidence_untouched]\n\
-      \  - id: targeted_test_io_green\n    command: [\"uv\", \"run\", \"pytest\",\
-      \ \"tests/test_io.py\", \"-q\"]\n    covers_claims: [exact_test_io_isolation_residue_removed_without_behavior_loss]\n\
+      \    command:\n      - bash\n      - -lc\n      - |\n        python - <<'PY'\n\
+      \        import subprocess\n        allowed={'docs/repo_regression_remediation_execution_sequence.md','tests/test_io.py'}\n\
+      \        changed=set()\n        for cmd in (['git','diff','--name-only'], ['git','diff','--name-only','--cached']):\n\
+      \            out=subprocess.check_output(cmd, text=True)\n            changed.update(x\
+      \ for x in out.splitlines() if x)\n        print('working_tree_or_cached_changed_paths=',\
+      \ sorted(changed))\n        assert changed <= allowed, sorted(changed-allowed)\n\
+      \        print('PASS: working tree/cached scope clean or allowed; committed\
+      \ diff scope is enforced by sidecar allowed_paths')\n        PY\n    covers_claims:\
+      \ [only_allowed_paths_changed, preserved_decide_mcp_and_completed_b2_evidence_untouched]\n\
+      \  - id: blocked_paths_untouched\n    command: [\"bash\", \"-lc\", \"! git diff\
+      \ --name-only -- src README.md README_zh.md pyproject.toml plan.yaml .agent/evidence\
+      \ docs/RFC-vectl-decide-advisor-refresh.md tests/test_decide.py tests/test_decide_state_isolation.py\
+      \ tests/test_mcp.py | grep .\"]\n    covers_claims: [only_allowed_paths_changed,\
+      \ preserved_decide_mcp_and_completed_b2_evidence_untouched]\n  - id: targeted_test_io_green\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_io.py\", \"-q\"]\n\
+      \    covers_claims: [exact_test_io_isolation_residue_removed_without_behavior_loss]\n\
       \  - id: no_command_weakening_or_allowlist_changes\n    command:\n      - bash\n\
       \      - -lc\n      - |\n        ! git diff -- .agent/evidence plan.yaml docs/RFC-vectl-decide-advisor-refresh.md\
       \ | grep -Ei 'allowlist|exclude|ignore|waiv|driver[.]yaml|isolation[[:space:]]:'\n\

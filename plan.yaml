@@ -114211,7 +114211,7 @@ phases:
       '
   - id: orch_removal_fix_b3_final_forbidden_grep_nonreproducible
     name: Fix B3 deep-review final forbidden grep non-reproducible residues
-    status: pending
+    status: claimed
     description: "step_type: implementation\nblocker_family_id: B3-deep-review-final-forbidden-grep-nonreproducible\n\
       \nBatched fix owner for deep-review blocker B1_FINAL_FORBIDDEN_GREP_NON_REPRODUCIBLE.\
       \ Remove ONLY the two non-reproducible final-forbidden residue hits found by\
@@ -114307,6 +114307,8 @@ phases:
     depends_on:
     - orch_removal_deep_review
     agent: architectural-demolitionist
+    claimed_by: architectural-demolitionist
+    claimed_at: '2026-06-18T06:02:43.610215+00:00'
   - id: orch_removal_retest_b3_final_forbidden_grep_nonreproducible
     name: Retest B3 deep-review final forbidden grep closure
     status: pending

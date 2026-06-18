@@ -112517,7 +112517,7 @@ phases:
       '
 - id: orch_removal_finalization
   name: 'Orchestrator Removal: Closure and Full Regression'
-  status: in_progress
+  status: done
   gate: Final gate requires forbidden-term grep closure, full pytest, packaged CLI
     help, invar guard full scan, and independent release-blocking review.
   depends_on:
@@ -115422,7 +115422,7 @@ phases:
       '
   - id: orch_removal_retest_b5_exact_deletion_target_extended_runner_gaps
     name: Retest/final gate retry for B5 exact deletion target extended_runner_gaps
-    status: claimed
+    status: done
     description: "step_type: gate\nstep_intent: retest_green\nexpected_result: green\n\
       blocker_family_id: B5-exact-deletion-target-extended-runner-gaps\nverification_scope:\
       \ full-plan-check retry scoped to the failed exact-deletion-target obligation;\
@@ -115595,6 +115595,45 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-18T07:04:48.118075+00:00'
+    done_at: '2026-06-18T07:08:17.639009+00:00'
+    evidence: "headline: PASS\nverdict: PASS\nblockers: []\ngate_open_allowed: true\n\
+      orchestrator_action_hint: COMPLETE_ALLOWED\n\n## refs Read Confirmation\n- .agent/evidence/orch_removal_scope_matrix.md:\
+      \ READ; confirms `tests/fixtures/helpers/extended_runner_gaps.py` as exact orchestration-owned\
+      \ fixture deletion target.\n- tests/fixtures/helpers/extended_runner_gaps.py:\
+      \ ABSENT.\n- tools/vectl/README.md: ABSENT.\n- user-request:2026-06-18#B5_EXACT_DELETION_TARGET_PRESENT:\
+      \ NOT READ; non-file context used from assigned prompt.\n- CONSTITUTION.md:\
+      \ ABSENT by workspace search.\n\nB5_requirement_matrix:\n- requirement: file\
+      \ absent\n  status: PROVEN\n  evidence: `test ! -e tests/fixtures/helpers/extended_runner_gaps.py`\
+      \ exited 0.\n- requirement: no live references\n  status: PROVEN\n  evidence:\
+      \ `! rg -n 'extended_runner_gaps|get_expected_gaps_summary|test_extended_runner_protocol'\
+      \ tests src docs README.md pyproject.toml` exited 0 with no output.\n- requirement:\
+      \ import/collection safe\n  status: PROVEN\n  evidence: `PYTHONDONTWRITEBYTECODE=1\
+      \ PYTEST_ADDOPTS='-p no:cacheprovider' uv run pytest --collect-only -q tests`\
+      \ collected 1232 tests successfully.\n- requirement: scope contained\n  status:\
+      \ PROVEN\n  evidence: fix commit 6fadcf490c310e70448a3e7a8badae1d7a5ad151 diff\
+      \ is only `D tests/fixtures/helpers/extended_runner_gaps.py`.\n- requirement:\
+      \ blocked paths untouched\n  status: PROVEN\n  evidence: diff-tree path filter\
+      \ over src/README/pyproject/plan/docs/.agent/evidence returned no touched paths.\n\
+      - requirement: no replacement abstraction\n  status: PROVEN\n  evidence: `!\
+      \ rg -n 'EXPECTED_RUNNER_GAPS|EXPECTED_PARSER_GAPS|CODEX_SUCCESS_SINGLE_ITEM|GEMINI_SUCCESS_SIMPLE|Expected-RED\
+      \ Gaps for driver-multi-runner-hardening' tests src docs README.md pyproject.toml`\
+      \ exited 0 with no output.\n\nraw_receipts:\n- command: `test ! -e tests/fixtures/helpers/extended_runner_gaps.py`;\
+      \ exit_code: 0; stdout/stderr empty.\n- command: `! rg -n 'extended_runner_gaps|get_expected_gaps_summary|test_extended_runner_protocol'\
+      \ tests src docs README.md pyproject.toml`; exit_code: 0; stdout/stderr empty.\n\
+      - command: `PYTHONDONTWRITEBYTECODE=1 PYTEST_ADDOPTS='-p no:cacheprovider' uv\
+      \ run pytest --collect-only -q tests`; exit_code: 0; stdout `1232 tests collected\
+      \ in 3.26s`; stderr empty.\n- command: `git diff-tree --no-commit-id --name-status\
+      \ -r 6fadcf490c310e70448a3e7a8badae1d7a5ad151`; exit_code: 0; stdout `D tests/fixtures/helpers/extended_runner_gaps.py`.\n\
+      - command: blocked-path diff-tree filter for commit 6fadcf... over src README.md\
+      \ README_zh.md pyproject.toml plan.yaml docs .agent/evidence; exit_code: 0;\
+      \ stdout `no blocked paths touched`; stderr empty.\n- command: `! rg -n 'EXPECTED_RUNNER_GAPS|EXPECTED_PARSER_GAPS|CODEX_SUCCESS_SINGLE_ITEM|GEMINI_SUCCESS_SIMPLE|Expected-RED\
+      \ Gaps for driver-multi-runner-hardening' tests src docs README.md pyproject.toml`;\
+      \ exit_code: 0; stdout/stderr empty.\n- command: `git status --short --untracked-files=all`;\
+      \ exit_code: 0; stdout/stderr empty.\n\nbehavioral_proof_register:\n- B5_exact_deletion_target_closed:\
+      \ PROVEN\n- verify_only_no_mutation: PROVEN\n- no_unresolved_orch_removal_blockers_from_B5:\
+      \ PROVEN\n\nWorktree:\n- final_git_status: clean\n- product_code_doc_mutations:\
+      \ none\n- commit_hashes: none\n\nDisposition: B5 exact deletion target is closed;\
+      \ previous final-gate blocker is resolved.\n"
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
   status: done

@@ -114279,10 +114279,10 @@ phases:
       \ preserved_decide_mcp_and_completed_b2_evidence_untouched]\n  - name: targeted_test_io_green\n\
       \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_io.py\", \"-q\"]\n\
       \    covers_claims: [exact_test_io_isolation_residue_removed_without_behavior_loss]\n\
-      \  - name: no_command_weakening_or_allowlist_changes\n    command: [\"bash\"\
-      , \"-lc\", \"! git diff -- .agent/evidence plan.yaml docs/RFC-vectl-decide-advisor-refresh.md\
-      \ | grep -Ei 'allowlist|exclude|ignore|waiv|driver\\.yaml|isolation\\\\s\\*:'\"\
-      ]\n    covers_claims: [exact_docs_residue_removed_without_allowlist, preserved_decide_mcp_and_completed_b2_evidence_untouched]\n\
+      \  - name: no_command_weakening_or_allowlist_changes\n    command:\n      -\
+      \ bash\n      - -lc\n      - |\n        ! git diff -- .agent/evidence plan.yaml\
+      \ docs/RFC-vectl-decide-advisor-refresh.md | grep -Ei 'allowlist|exclude|ignore|waiv|driver[.]yaml|isolation[[:space:]]*:'\n\
+      \    covers_claims: [exact_docs_residue_removed_without_allowlist, preserved_decide_mcp_and_completed_b2_evidence_untouched]\n\
       \  - name: negative_narrow_rewrite_diff_stat\n    command: [\"bash\", \"-lc\"\
       , \"git diff --numstat -- docs/repo_regression_remediation_execution_sequence.md\
       \ tests/test_io.py\"]\n    covers_claims: [negative_narrow_rewrite_no_new_abstraction]\n\

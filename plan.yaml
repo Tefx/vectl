@@ -114486,10 +114486,10 @@ phases:
       \ if the full final grep closure probe still finds residue.\n- A full pytest\
       \ pass is insufficient if the exact two B3 residue probes fail.\n- Any blocked-path\
       \ diff means the fix scope escaped and final gate must remain blocked.\n</risk_probes>\n\
-      \nChecklist:\n- [ ] Read refs and cite the FINAL-GREP closure command.\n- [\
-      \ ] Run the focused B3 residue checks.\n- [ ] Run `uv run pytest tests/test_io.py\
-      \ -q`.\n- [ ] Run the full final forbidden-term closure probe from the scope\
-      \ matrix without weakening.\n- [ ] Confirm final gate dependency can remain\
+      \nChecklist:\n- [x] Read refs and cite the FINAL-GREP closure command.\n- [x]\
+      \ Run the focused B3 residue checks.\n- [x] Run `uv run pytest tests/test_io.py\
+      \ -q`.\n- [x] Run the full final forbidden-term closure probe from the scope\
+      \ matrix without weakening.\n- [x] Confirm final gate dependency can remain\
       \ closed until this retest is PASS."
     verification: Expected green. PASS only if focused B3 residue checks are clean,
       `uv run pytest tests/test_io.py -q` passes, the full final forbidden-term closure

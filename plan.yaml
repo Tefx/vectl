@@ -113548,7 +113548,7 @@ phases:
       \ clean\n- product_code_doc_mutations: none\n- commit_hashes: none\n"
   - id: orch_removal_final_gate
     name: Final gate for orchestrator removal
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       full-plan-check final gate for orchestrator-removal scope. The gate may open
@@ -113641,6 +113641,8 @@ phases:
     - orch_removal_fix_b4_test_io_lowercase_isolation_literal_residue
     - orch_removal_retest_b4_test_io_lowercase_isolation_literal_residue
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-18T06:41:26.237836+00:00'
   - id: orch_removal_fix_final_grep_forbidden_residue
     name: Fix B2 final grep forbidden residue
     status: done

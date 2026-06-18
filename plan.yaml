@@ -115110,7 +115110,7 @@ phases:
       '
   - id: orch_removal_fix_b5_exact_deletion_target_extended_runner_gaps
     name: Fix B5 exact deletion target extended_runner_gaps
-    status: claimed
+    status: done
     description: "step_type: implementation\nblocker_family_id: B5-exact-deletion-target-extended-runner-gaps\n\
       \nDemolition fix owner for blocker B5_EXACT_DELETION_TARGET_PRESENT. Delete\
       \ the remaining orchestration-owned expected-red fixture residue at tests/fixtures/helpers/extended_runner_gaps.py.\
@@ -115288,6 +115288,138 @@ phases:
     agent: architectural-demolitionist
     claimed_by: architectural-demolitionist
     claimed_at: '2026-06-18T06:57:25.945085+00:00'
+    done_at: '2026-06-18T07:04:27.241802+00:00'
+    evidence: 'status: SUCCESS
+
+
+      <demolition_warrant>
+
+      1. Scale Anchor: isolated test fixture cleanup in vectl worktree; no runtime
+      product path touched.
+
+      2. Dumbest Baseline: no helper file; no shim; no replacement.
+
+      3. Falsification: deleting the fixture did not break collection or leave forbidden
+      references.
+
+      4. Minimum Remnant: none.
+
+      </demolition_warrant>
+
+
+      Artifact:
+
+      - Worker commit hash: 050c4aadf01b4a2ab0f99cc6d8d84b593e7591eb
+
+      - Main squash commit: 6fadcf490c310e70448a3e7a8badae1d7a5ad151
+
+
+      refs_read_confirmation:
+
+      - tests/fixtures/helpers/extended_runner_gaps.py: READ. It was the exact deletion-target
+      helper fixture containing expected-red Codex/Gemini runner gaps.
+
+      - .agent/evidence/orch_removal_scope_matrix.md relevant test deletion section:
+      READ; contains tests/fixtures/helpers/extended_runner_gaps.py as additional
+      orchestration-owned runner fixture deletion target.
+
+      - tools/vectl/README.md: ABSENT.
+
+      - user-request:2026-06-18#B5_EXACT_DELETION_TARGET_PRESENT: NOT READ as file;
+      worker used assigned context.
+
+
+      Sidecar gate:
+
+      - command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_fix_b5_exact_deletion_target_extended_runner_gaps --worktree
+      .vectl/worktrees/orch_removal_fix_b5_exact_deletion_target_extended_runner_gaps
+      --base 1766eff5151e22e600712d878781281c531ab7a7 --out /tmp/orch_removal_fix_b5_exact_deletion_target_extended_runner_gaps_verdict2.json
+
+      - exit_code: 0
+
+      - status: CONFORMANT
+
+      - changed_paths: tests/fixtures/helpers/extended_runner_gaps.py
+
+      - checked_claims: B5.file_absent, B5.no_live_refs, B5.no_replacement_abstraction,
+      B5.scope_contained
+
+      - all required_checks passed: check.file_absent, check.no_live_references, check.pytest_collection,
+      check.scope_containment, check.blocked_paths_untouched, check.no_replacement_abstraction
+
+
+      Requirement-to-evidence matrix:
+
+      - B5 file absent: worker `test ! -e tests/fixtures/helpers/extended_runner_gaps.py`
+      exit 0; sidecar check.file_absent passed; mainline `test ! -e` passed.
+
+      - No live refs: worker `! rg -n ''extended_runner_gaps|get_expected_gaps_summary|test_extended_runner_protocol''
+      tests src docs README.md pyproject.toml` exit 0; sidecar check.no_live_references
+      passed; mainline same rg passed.
+
+      - Pytest collection/imports: worker `uv run pytest --collect-only -q tests`
+      exit 0 with 1232 tests collected; sidecar check.pytest_collection passed; mainline
+      collection also 1232 tests collected.
+
+      - Scope contained: worker changed_paths only D tests/fixtures/helpers/extended_runner_gaps.py;
+      sidecar changed_paths same; main squash deleted same file only.
+
+      - Blocked paths untouched: worker status over plan.yaml/src/README/README_zh/pyproject/docs/.agent/evidence/.git/vectl/claims.json
+      empty; sidecar check.blocked_paths_untouched passed.
+
+      - No replacement abstraction: worker no replacement residue rg passed; sidecar
+      check.no_replacement_abstraction passed; no helper/shim introduced.
+
+
+      Raw command receipts:
+
+      - `test ! -e tests/fixtures/helpers/extended_runner_gaps.py`: exit 0.
+
+      - `! rg -n ''extended_runner_gaps|get_expected_gaps_summary|test_extended_runner_protocol''
+      tests src docs README.md pyproject.toml`: exit 0.
+
+      - `uv run pytest --collect-only -q tests`: exit 0; worker output `1232 tests
+      collected in 0.62s`; mainline output `1232 tests collected in 0.65s`.
+
+      - `git diff --name-status HEAD^..HEAD`: worker output `D tests/fixtures/helpers/extended_runner_gaps.py`;
+      exit 0.
+
+      - `git status --short -- plan.yaml src README.md README_zh.md pyproject.toml
+      docs .agent/evidence .git/vectl/claims.json`: empty; exit 0.
+
+      - `! rg -n ''EXPECTED_RUNNER_GAPS|EXPECTED_PARSER_GAPS|CODEX_SUCCESS_SINGLE_ITEM|GEMINI_SUCCESS_SIMPLE|Expected-RED
+      Gaps for driver-multi-runner-hardening'' tests src docs README.md pyproject.toml`:
+      exit 0.
+
+      - worker final `git status --short`: empty; exit 0.
+
+
+      adjacent_reference_justification:
+
+      - No adjacent import cleanup was needed. Pre-deletion rg only found references
+      inside the deleted fixture itself.
+
+
+      Files changed:
+
+      - deleted tests/fixtures/helpers/extended_runner_gaps.py
+
+
+      blocked_paths_untouched:
+
+      - plan.yaml, src, README.md, README_zh.md, pyproject.toml, docs, .agent/evidence,
+      .git/vectl/claims.json showed no worker status changes.
+
+
+      Deviations/gaps:
+
+      - No vectl CLI/MCP lifecycle/mutation/check/claim/complete used by worker.
+
+      - Requested exact evidence anchor absent; worker read nearest present section
+      listing the assigned fixture target.
+
+      '
   - id: orch_removal_retest_b5_exact_deletion_target_extended_runner_gaps
     name: Retest/final gate retry for B5 exact deletion target extended_runner_gaps
     status: pending

@@ -113610,19 +113610,17 @@ phases:
       \  - id: negative_delta_only\n    claim: Cleanup is deletion or narrow rewrite\
       \ only, with no new class, protocol, helper, command, allowlist, or replacement\
       \ abstraction.\nrequired_checks:\n  - id: b2_forbidden_absence\n    purpose:\
-      \ exact/focused forbidden-hit absence over raw terms in allowed docs/test paths\
-      \ and sibling docs scope.\n    covers_claims:\n      - b2_blocker_family_closed\n\
+      \ exact/focused forbidden-hit absence over bare raw terms in allowed docs/test\
+      \ paths and sibling docs scope.\n    covers_claims:\n      - b2_blocker_family_closed\n\
       \    command:\n      - python\n      - -c\n      - |\n        from pathlib import\
       \ Path\n        allowed = ['tests/test_models.py', 'docs/invar_guard_remediation/uiux-proof-artifact.md',\
       \ 'docs/invar_guard_remediation/guard_all_raw.txt', 'docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md',\
       \ 'docs/invar_guard_remediation/escape_budget_authority_decision.md', 'docs/invar_guard_remediation/failure_inventory.md',\
       \ 'docs/invar_guard_remediation/post_salvage_residual_classification_register.md']\n\
       \        terms = ['IsolationMode', 'orch_app', 'cli_orchestration', 'vectl orch',\
-      \ 'CONTENT_PATH:docs/ORCHESTRATION-', 'CONTENT_PATH:docs/RFC-orch-drive.md',\
-      \ 'LEGACY_DRIVER:.vectl/worktrees', 'CONTENT_PATH:src/vectl/orchestration',\
-      \ 'CONTENT_PATH:src/vectl/orch_app.py', 'CONTENT_PATH:src/vectl/cli_orchestration',\
-      \ 'CONTENT_PATH:docs/archive/consumer_boundary_conformance_verify.py', 'CONTENT_PATH:tests/orchestration',\
-      \ 'CONTENT_PATH:docs/RFC-opencode-orchestration-runner.md', 'CONTENT_PATH:src/vectl/core/orchestration']\n\
+      \ 'docs/ORCHESTRATION-', 'docs/RFC-orch-drive.md', '.vectl/worktrees', 'src/vectl/orchestration',\
+      \ 'src/vectl/orch_app.py', 'src/vectl/cli_orchestration', 'docs/archive/consumer_boundary_conformance_verify.py',\
+      \ 'tests/orchestration', 'docs/RFC-opencode-orchestration-runner.md', 'src/vectl/core/orchestration']\n\
       \        scan = [Path(p) for p in allowed]\n        root = Path('docs/invar_guard_remediation')\n\
       \        if root.exists():\n            scan += [p for p in root.rglob('*')\
       \ if p.is_file() and p.as_posix() not in allowed]\n        fail = []\n     \
@@ -113632,10 +113630,10 @@ phases:
       \            text = p.read_text(encoding='utf-8', errors='ignore')\n       \
       \     for term in terms:\n                if term in text:\n               \
       \     fail.append(f'{p.as_posix()}:{term}')\n        if fail:\n            print('\\\
-      n'.join(fail))\n            raise SystemExit(1)\n        print('PASS: B2 forbidden\
-      \ residue absent from allowed inventory and sibling docs scope')\n    expected:\
-      \ exit 0 and PASS line printed.\n  - id: changed_path_scope_containment\n  \
-      \  purpose: changed paths are a subset of allowed_paths.exact.\n    covers_claims:\n\
+      n'.join(fail))\n            raise SystemExit(1)\n        print('PASS: bare B2\
+      \ forbidden residue absent from allowed inventory and sibling docs scope')\n\
+      \    expected: exit 0 and PASS line printed.\n  - id: changed_path_scope_containment\n\
+      \    purpose: changed paths are a subset of allowed_paths.exact.\n    covers_claims:\n\
       \      - scope_containment\n      - preserve_green_finalization_proofs\n   \
       \ command:\n      - python\n      - -c\n      - |\n        import os, subprocess\n\
       \        allowed = set(['tests/test_models.py', 'docs/invar_guard_remediation/uiux-proof-artifact.md',\

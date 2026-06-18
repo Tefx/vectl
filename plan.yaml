@@ -114289,11 +114289,11 @@ phases:
       </intent_closure_contract>\n\n## Completion Criteria (stub exclusion)\nThis\
       \ is an IMPLEMENTATION cleanup step. Stub-only completion is not applicable\
       \ and not acceptable. Completion requires actual narrow text/test cleanup that\
-      \ removes the forbidden residues and preserves behavior.\n\nChecklist:\n- [\
-      \ ] Read `.agent/evidence/orch_removal_scope_matrix.md#FINAL-GREP closure gate`\
-      \ and the deep-review blocker text.\n- [ ] Edit only `docs/repo_regression_remediation_execution_sequence.md`\
-      \ and `tests/test_io.py`.\n- [ ] Run every command listed under `<intent_closure_contract>.required_checks`\
-      \ without weakening, allowlists, `|| true`, or substitutions.\n- [ ] Paste command\
+      \ removes the forbidden residues and preserves behavior.\n\nChecklist:\n- [x]\
+      \ Read `.agent/evidence/orch_removal_scope_matrix.md#FINAL-GREP closure gate`\
+      \ and the deep-review blocker text.\n- [x] Edit only `docs/repo_regression_remediation_execution_sequence.md`\
+      \ and `tests/test_io.py`.\n- [x] Run every command listed under `<intent_closure_contract>.required_checks`\
+      \ without weakening, allowlists, `|| true`, or substitutions.\n- [x] Paste command\
       \ outputs and diff-scope evidence in completion evidence."
     verification: All intent_closure_contract.required_checks pass exactly as listed;
       diff scope is limited to the two allowed paths; targeted tests/test_io.py passes;

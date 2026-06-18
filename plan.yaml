@@ -115110,7 +115110,7 @@ phases:
       '
   - id: orch_removal_fix_b5_exact_deletion_target_extended_runner_gaps
     name: Fix B5 exact deletion target extended_runner_gaps
-    status: pending
+    status: claimed
     description: "step_type: implementation\nblocker_family_id: B5-exact-deletion-target-extended-runner-gaps\n\
       \nDemolition fix owner for blocker B5_EXACT_DELETION_TARGET_PRESENT. Delete\
       \ the remaining orchestration-owned expected-red fixture residue at tests/fixtures/helpers/extended_runner_gaps.py.\
@@ -115278,6 +115278,8 @@ phases:
     depends_on:
     - orch_removal_final_gate
     agent: architectural-demolitionist
+    claimed_by: architectural-demolitionist
+    claimed_at: '2026-06-18T06:57:25.945085+00:00'
   - id: orch_removal_retest_b5_exact_deletion_target_extended_runner_gaps
     name: Retest/final gate retry for B5 exact deletion target extended_runner_gaps
     status: pending

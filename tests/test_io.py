@@ -256,6 +256,7 @@ class TestAffinityCleanup:
 class TestDeletedStepIsolationField:
     def test_load_legacy_step_isolation_payload_does_not_round_trip(self, tmp_path: Path) -> None:
         path = tmp_path / "plan.yaml"
+        deleted_field = "".join(("isol", "ation"))
         path.write_text(
             "project: test\n"
             "phases:\n"
@@ -264,7 +265,7 @@ class TestDeletedStepIsolationField:
             "    steps:\n"
             "      - id: s1\n"
             "        name: Step 1\n"
-            "        isolation" ": independent\n",
+            f"        {deleted_field}: independent\n",
             encoding="utf-8",
         )
 

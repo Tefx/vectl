@@ -114136,6 +114136,146 @@ phases:
       - No blockers remain for downstream deep review/final gate from this retest.
 
       '
+  - id: orch_removal_fix_b3_final_forbidden_grep_nonreproducible
+    name: Fix B3 deep-review final forbidden grep non-reproducible residues
+    status: pending
+    description: "step_type: implementation\nblocker_family_id: B3-deep-review-final-forbidden-grep-nonreproducible\n\
+      \nBatched fix owner for deep-review blocker B1_FINAL_FORBIDDEN_GREP_NON_REPRODUCIBLE.\
+      \ Remove ONLY the two non-reproducible final-forbidden residue hits found by\
+      \ orch_removal_deep_review:\n1. docs/repo_regression_remediation_execution_sequence.md:33\
+      \ contains driver.yaml / drive surface residue.\n2. tests/test_io.py:267 contains\
+      \ lowercase model/IO isolation residue `isolation: independent`.\n\nThis is\
+      \ a narrow demolition cleanup step. Preserve already completed B2 fix/retest\
+      \ and all finalization evidence. Do not alter completed steps, src/**, README,\
+      \ pyproject, plan state, preserved decide/MCP surfaces, or already-green evidence\
+      \ unless a newly discovered blocker is explicitly documented and a new owner\
+      \ step is requested.\n\ntarget_kill_list:\n  - docs/repo_regression_remediation_execution_sequence.md:\
+      \ final forbidden `driver.yaml` / `drive` wording residue at the reported line/context\n\
+      \  - tests/test_io.py: lowercase model/IO `isolation: independent` residue\n\
+      removal_warrant:\n  source_refs:\n    - .agent/evidence/orch_removal_scope_matrix.md#FINAL-GREP-closure-gate\n\
+      \    - orch_removal_deep_review#B1_FINAL_FORBIDDEN_GREP_NON_REPRODUCIBLE\n \
+      \ reverse_dependency_check: Use focused grep/Python checks over the two allowed\
+      \ files plus diff-scope checks; do not infer or edit callers.\n  preserved_behavior:\
+      \ Preserve vectl_decide support, MCP decide registration, packaged CLI/help\
+      \ evidence, pytest green status, B2 closure evidence, and non-orchestrator IO\
+      \ behavior.\n  negative_delta_expectation: Negative/narrow text rewrite only;\
+      \ delete or rephrase forbidden residue without adding replacement abstraction,\
+      \ allowlist, command weakening, or new orchestration terminology.\nverification:\n\
+      \  - characterization/deep-review evidence proves only two residual strings\
+      \ remain to own\n  - removed strings have no live requirement and are forbidden\
+      \ by final closure probe\n  - no new abstraction, allowlist, or weakened probe\
+      \ replaces the deleted residue\n\n<side_effect_budget>\nallowed:\n  - Edit only\
+      \ the two allowed files listed in intent_closure_contract.allowed_paths.\n \
+      \ - Delete or reword the exact forbidden residue while preserving local test/doc\
+      \ intent.\nforbidden:\n  - Any src/**, README*, pyproject.toml, plan.yaml, .agent/evidence/**,\
+      \ decide/MCP surfaces, or finalization evidence edits.\n  - Any allowlist/exclude/grep\
+      \ weakening, command narrowing, or new exception policy.\n  - Any resurrection\
+      \ of orchestration/drive/isolation model surfaces.\n</side_effect_budget>\n\n\
+      <risk_probes>\n- The docs edit must not create replacement drive/orch wording\
+      \ elsewhere in the same section.\n- The tests edit must preserve test_io behavioral\
+      \ assertion value while removing lowercase isolation schema text.\n- The fix\
+      \ must not mask the final forbidden-term probe by changing evidence, plan text,\
+      \ or allowlists.\n</risk_probes>\n\n<intent_closure_contract>\nallowed_paths:\n\
+      \  - docs/repo_regression_remediation_execution_sequence.md\n  - tests/test_io.py\n\
+      blocked_paths:\n  - src/**\n  - README.md\n  - README_zh.md\n  - pyproject.toml\n\
+      \  - plan.yaml\n  - .agent/evidence/**\n  - docs/RFC-vectl-decide-advisor-refresh.md\n\
+      \  - tests/test_decide.py\n  - tests/test_decide_state_isolation.py\n  - tests/test_mcp.py\n\
+      required_claims:\n  - blocker_family_id: B3-deep-review-final-forbidden-grep-nonreproducible\n\
+      \  - only_allowed_paths_changed\n  - exact_docs_residue_removed_without_allowlist\n\
+      \  - exact_test_io_isolation_residue_removed_without_behavior_loss\n  - negative_narrow_rewrite_no_new_abstraction\n\
+      \  - preserved_decide_mcp_and_completed_b2_evidence_untouched\nrequired_checks:\n\
+      \  - name: docs_reported_line_residue_absent\n    command: [\"python\", \"-c\"\
+      , \"from pathlib import Path\\np=Path('docs/repo_regression_remediation_execution_sequence.md')\\\
+      nline=p.read_text().splitlines()[32]\\nassert 'driver.yaml' not in line, line\\\
+      nassert 'drive' not in line.lower(), line\"]\n    covers_claims: [exact_docs_residue_removed_without_allowlist]\n\
+      \  - name: test_io_lowercase_isolation_residue_absent\n    command: [\"python\"\
+      , \"-c\", \"from pathlib import Path\\ntext=Path('tests/test_io.py').read_text().lower()\\\
+      nassert 'isolation: independent' not in text\"]\n    covers_claims: [exact_test_io_isolation_residue_removed_without_behavior_loss]\n\
+      \  - name: changed_path_scope_allowed_only\n    command: [\"bash\", \"-lc\"\
+      , \"python - <<'PY'\\nimport subprocess\\nallowed={'docs/repo_regression_remediation_execution_sequence.md','tests/test_io.py'}\\\
+      ncmds=[['git','diff','--name-only'],['git','diff','--name-only','--cached']]\\\
+      nchanged=set()\\nfor cmd in cmds:\\n    out=subprocess.check_output(cmd, text=True)\\\
+      n    changed.update(x for x in out.splitlines() if x)\\nprint('changed_paths=',\
+      \ sorted(changed))\\nassert changed <= allowed, sorted(changed-allowed)\\nassert\
+      \ changed, 'expected a narrow residue-removal diff before completion'\\nPY\"\
+      ]\n    covers_claims: [only_allowed_paths_changed, preserved_decide_mcp_and_completed_b2_evidence_untouched]\n\
+      \  - name: blocked_paths_untouched\n    command: [\"bash\", \"-lc\", \"! git\
+      \ diff --name-only -- src README.md README_zh.md pyproject.toml plan.yaml .agent/evidence\
+      \ docs/RFC-vectl-decide-advisor-refresh.md tests/test_decide.py tests/test_decide_state_isolation.py\
+      \ tests/test_mcp.py | grep .\"]\n    covers_claims: [only_allowed_paths_changed,\
+      \ preserved_decide_mcp_and_completed_b2_evidence_untouched]\n  - name: targeted_test_io_green\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_io.py\", \"-q\"]\n\
+      \    covers_claims: [exact_test_io_isolation_residue_removed_without_behavior_loss]\n\
+      \  - name: no_command_weakening_or_allowlist_changes\n    command: [\"bash\"\
+      , \"-lc\", \"! git diff -- .agent/evidence plan.yaml docs/RFC-vectl-decide-advisor-refresh.md\
+      \ | grep -Ei 'allowlist|exclude|ignore|waiv|driver\\.yaml|isolation\\\\s\\*:'\"\
+      ]\n    covers_claims: [exact_docs_residue_removed_without_allowlist, preserved_decide_mcp_and_completed_b2_evidence_untouched]\n\
+      \  - name: negative_narrow_rewrite_diff_stat\n    command: [\"bash\", \"-lc\"\
+      , \"git diff --numstat -- docs/repo_regression_remediation_execution_sequence.md\
+      \ tests/test_io.py\"]\n    covers_claims: [negative_narrow_rewrite_no_new_abstraction]\n\
+      </intent_closure_contract>\n\n## Completion Criteria (stub exclusion)\nThis\
+      \ is an IMPLEMENTATION cleanup step. Stub-only completion is not applicable\
+      \ and not acceptable. Completion requires actual narrow text/test cleanup that\
+      \ removes the forbidden residues and preserves behavior.\n\nChecklist:\n- [\
+      \ ] Read `.agent/evidence/orch_removal_scope_matrix.md#FINAL-GREP closure gate`\
+      \ and the deep-review blocker text.\n- [ ] Edit only `docs/repo_regression_remediation_execution_sequence.md`\
+      \ and `tests/test_io.py`.\n- [ ] Run every command listed under `<intent_closure_contract>.required_checks`\
+      \ without weakening, allowlists, `|| true`, or substitutions.\n- [ ] Paste command\
+      \ outputs and diff-scope evidence in completion evidence."
+    verification: All intent_closure_contract.required_checks pass exactly as listed;
+      diff scope is limited to the two allowed paths; targeted tests/test_io.py passes;
+      no blocked path changes; evidence proves no command weakening/allowlist and
+      a negative/narrow rewrite only.
+    refs:
+    - .agent/evidence/orch_removal_scope_matrix.md#FINAL-GREP-closure-gate
+    - docs/repo_regression_remediation_execution_sequence.md
+    - tests/test_io.py
+    - orch_removal_deep_review#B1_FINAL_FORBIDDEN_GREP_NON_REPRODUCIBLE
+    depends_on:
+    - orch_removal_deep_review
+    agent: architectural-demolitionist
+  - id: orch_removal_retest_b3_final_forbidden_grep_nonreproducible
+    name: Retest B3 deep-review final forbidden grep closure
+    status: pending
+    description: "step_type: test\nstep_intent: retest_green\nexpected_result: green\n\
+      blocker_family_id: B3-deep-review-final-forbidden-grep-nonreproducible\n\nIndependent\
+      \ retest for the B3 fix. Rerun the same final forbidden-term/deep-review closure\
+      \ probe from `.agent/evidence/orch_removal_scope_matrix.md#FINAL-GREP closure\
+      \ gate` without weakening, plus the focused checks for the two touched files.\
+      \ This retest is the owner that must be green before `orch_removal_final_gate`\
+      \ can open.\n\nRequired retest scope:\n- Verify docs reported-line residue is\
+      \ absent: no `driver.yaml` and no lowercase `drive` on the reported docs line/context.\n\
+      - Verify `tests/test_io.py` no longer contains `isolation: independent` lowercase\
+      \ model/IO residue.\n- Rerun targeted `uv run pytest tests/test_io.py -q`.\n\
+      - Rerun the final forbidden active runtime terms probe exactly from the scope\
+      \ matrix, preserving its glob exclusions and no extra allowlists.\n- Confirm\
+      \ no blocked paths were changed by the B3 fix and completed B2/finalization\
+      \ evidence remains untouched.\n\n<side_effect_budget>\nallowed:\n  - Read files\
+      \ and run verification commands only.\nforbidden:\n  - Product/source/docs/test\
+      \ edits.\n  - Any command weakening, extra allowlist, or evidence rewrite.\n\
+      </side_effect_budget>\n\n<risk_probes>\n- A green targeted check is insufficient\
+      \ if the full final grep closure probe still finds residue.\n- A full pytest\
+      \ pass is insufficient if the exact two B3 residue probes fail.\n- Any blocked-path\
+      \ diff means the fix scope escaped and final gate must remain blocked.\n</risk_probes>\n\
+      \nChecklist:\n- [ ] Read refs and cite the FINAL-GREP closure command.\n- [\
+      \ ] Run the focused B3 residue checks.\n- [ ] Run `uv run pytest tests/test_io.py\
+      \ -q`.\n- [ ] Run the full final forbidden-term closure probe from the scope\
+      \ matrix without weakening.\n- [ ] Confirm final gate dependency can remain\
+      \ closed until this retest is PASS."
+    verification: Expected green. PASS only if focused B3 residue checks are clean,
+      `uv run pytest tests/test_io.py -q` passes, the full final forbidden-term closure
+      probe from the scope matrix passes without added allowlists/weakening, blocked
+      paths are untouched, and no unresolved orchestrator-removal blocker remains.
+      FAIL/BLOCK if any forbidden hit, command weakening, blocked-path change, missing
+      output, or test failure remains.
+    refs:
+    - .agent/evidence/orch_removal_scope_matrix.md#FINAL-GREP-closure-gate
+    - docs/repo_regression_remediation_execution_sequence.md
+    - tests/test_io.py
+    - orch_removal_fix_b3_final_forbidden_grep_nonreproducible
+    depends_on:
+    - orch_removal_fix_b3_final_forbidden_grep_nonreproducible
+    agent: plan-readiness-auditor
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
   status: done

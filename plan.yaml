@@ -114658,62 +114658,61 @@ phases:
       \ `tests/test_io.py` tests remain green and the fixture/test still exercises\
       \ the same IO/model behavior without the lowercase forbidden literal.\n  negative_delta_expectation:\
       \ Remove or narrowly rephrase one forbidden lowercase YAML fixture literal;\
-      \ no replacement abstraction, no allowlist, no broad rewrite.\n\nintent_closure_contract:\n\
-      \  allowed_paths:\n    - tests/test_io.py\n  blocked_paths:\n    - src/**\n\
-      \    - docs/**\n    - README.md\n    - pyproject.toml\n    - plan.yaml\n   \
-      \ - .agent/evidence/**\n    - .vectl/**\n  required_claims:\n    - id: C1-focused-residue-removed\n\
-      \      claim: The exact lowercase literal `isolation: independent` is absent\
-      \ from `tests/test_io.py`.\n    - id: C2-test-intent-preserved\n      claim:\
-      \ The local `tests/test_io.py` behavior covered by the rewritten fixture remains\
-      \ equivalent and all tests in that file pass.\n    - id: C3-scope-contained\n\
-      \      claim: The fix touched only `tests/test_io.py`; blocked paths remained\
-      \ untouched.\n    - id: C4-no-probe-weakening\n      claim: No grep/probe command,\
-      \ allowlist, exception, or evidence gate was weakened or added.\n    - id: C5-negative-narrow-rewrite\n\
-      \      claim: The change is a narrow deletion/rephrase of forbidden test literal\
-      \ residue and introduces no replacement abstraction.\n  required_checks:\n \
-      \   - id: CHK1-absence-focused-literal\n      covers_claims:\n        - C1-focused-residue-removed\n\
-      \      command: [\"python\", \"-c\", \"from pathlib import Path; p=Path('tests/test_io.py');\
-      \ s=p.read_text(); raise SystemExit(1 if 'isolation: independent' in s else\
-      \ 0)\"]\n    - id: CHK2-test-io-green\n      covers_claims:\n        - C2-test-intent-preserved\n\
-      \      command: [\"uv\", \"run\", \"pytest\", \"tests/test_io.py\", \"-q\"]\n\
-      \    - id: CHK3-scope-containment\n      covers_claims:\n        - C3-scope-contained\n\
-      \      command:\n        - bash\n        - -lc\n        - |\n          python\
-      \ - <<'PY'\n          import subprocess\n          allowed={'tests/test_io.py'}\n\
-      \          changed=set()\n          for cmd in (['git','diff','--name-only'],\
-      \ ['git','diff','--name-only','--cached']):\n              out=subprocess.check_output(cmd,\
-      \ text=True)\n              changed.update(x for x in out.splitlines() if x)\n\
-      \          print('working_tree_or_cached_changed_paths=', sorted(changed))\n\
-      \          assert changed <= allowed, sorted(changed-allowed)\n          print('PASS:\
-      \ working tree/cached scope clean or allowed; committed diff scope is enforced\
-      \ by sidecar allowed_paths')\n          PY\n    - id: CHK4-blocked-paths-untouched\n\
-      \      covers_claims:\n        - C3-scope-contained\n      command:\n      \
-      \  - bash\n        - -lc\n        - |\n          python - <<'PY'\n         \
-      \ import subprocess, fnmatch, sys\n          blocked=['src/**','docs/**','README.md','pyproject.toml','plan.yaml','.agent/evidence/**','.vectl/**']\n\
-      \          changed=set()\n          for cmd in (['git','diff','--name-only'],\
-      \ ['git','diff','--name-only','--cached']):\n              out=subprocess.check_output(cmd,\
-      \ text=True)\n              changed.update(x for x in out.splitlines() if x)\n\
-      \          bad=[p for p in sorted(changed) if any(fnmatch.fnmatch(p,b) for b\
-      \ in blocked)]\n          print('working_tree_or_cached_blocked_path_changes:',\
-      \ bad)\n          print('committed diff scope is enforced by sidecar allowed_paths')\n\
-      \          sys.exit(1 if bad else 0)\n          PY\n    - id: CHK5-no-allowlist-or-weakening\n\
-      \      covers_claims:\n        - C4-no-probe-weakening\n      command: [\"git\"\
-      , \"diff\", \"--\", \"tests/test_io.py\"]\n    - id: CHK6-negative-narrow-rewrite\n\
-      \      covers_claims:\n        - C5-negative-narrow-rewrite\n      command:\
-      \ [\"git\", \"diff\", \"--stat\", \"--\", \"tests/test_io.py\"]\n\n<side_effect_budget>\n\
-      allowed:\n  - Modify only `tests/test_io.py`.\n  - Run focused literal probe\
-      \ and `uv run pytest tests/test_io.py -q`.\nforbidden:\n  - Docs/source/README/pyproject/plan/evidence\
-      \ changes.\n  - Any command weakening, allowlist, exception, or proof-gate relaxation.\n\
-      \  - Broad rewrites or new abstractions.\n</side_effect_budget>\n\n<risk_probes>\n\
-      - AST/string-literal residue matters even if the broader final grep passed.\n\
-      - Preserving green tests is insufficient if the forbidden literal remains.\n\
-      - A scope escape into docs/source/evidence is blocker-class even if tests pass.\n\
-      </risk_probes>\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
-      \ demolition step. Stub-only or evidence-only completion is NOT acceptable;\
-      \ the forbidden literal residue must actually be removed or rephrased in the\
-      \ allowed file.\n\nChecklist:\n- [x] Read `tests/test_io.py` around the reported\
-      \ fixture and cite the local behavior being preserved.\n- [x] Remove or rephrase\
-      \ only the forbidden lowercase YAML fixture literal residue.\n- [x] Run the\
-      \ required checks from `intent_closure_contract`.\n- [x] Confirm no allowlist/weakening\
+      \ no replacement abstraction, no allowlist, no broad rewrite.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - tests/test_io.py\nblocked_paths:\n  - src/**\n  - docs/**\n\
+      \  - README.md\n  - pyproject.toml\n  - plan.yaml\n  - .agent/evidence/**\n\
+      \  - .vectl/**\nrequired_claims:\n  - id: C1-focused-residue-removed\n    claim:\
+      \ The exact lowercase literal `isolation: independent` is absent from `tests/test_io.py`.\n\
+      \  - id: C2-test-intent-preserved\n    claim: The local `tests/test_io.py` behavior\
+      \ covered by the rewritten fixture remains equivalent and all tests in that\
+      \ file pass.\n  - id: C3-scope-contained\n    claim: The fix touched only `tests/test_io.py`;\
+      \ blocked paths remained untouched.\n  - id: C4-no-probe-weakening\n    claim:\
+      \ No grep/probe command, allowlist, exception, or evidence gate was weakened\
+      \ or added.\n  - id: C5-negative-narrow-rewrite\n    claim: The change is a\
+      \ narrow deletion/rephrase of forbidden test literal residue and introduces\
+      \ no replacement abstraction.\nrequired_checks:\n  - id: CHK1-absence-focused-literal\n\
+      \    covers_claims:\n      - C1-focused-residue-removed\n    command: [\"python\"\
+      , \"-c\", \"from pathlib import Path; p=Path('tests/test_io.py'); s=p.read_text();\
+      \ raise SystemExit(1 if 'isolation: independent' in s else 0)\"]\n  - id: CHK2-test-io-green\n\
+      \    covers_claims:\n      - C2-test-intent-preserved\n    command: [\"uv\"\
+      , \"run\", \"pytest\", \"tests/test_io.py\", \"-q\"]\n  - id: CHK3-scope-containment\n\
+      \    covers_claims:\n      - C3-scope-contained\n    command:\n      - bash\n\
+      \      - -lc\n      - |\n        python - <<'PY'\n        import subprocess\n\
+      \        allowed={'tests/test_io.py'}\n        changed=set()\n        for cmd\
+      \ in (['git','diff','--name-only'], ['git','diff','--name-only','--cached']):\n\
+      \            out=subprocess.check_output(cmd, text=True)\n            changed.update(x\
+      \ for x in out.splitlines() if x)\n        print('working_tree_or_cached_changed_paths=',\
+      \ sorted(changed))\n        assert changed <= allowed, sorted(changed-allowed)\n\
+      \        print('PASS: working tree/cached scope clean or allowed; committed\
+      \ diff scope is enforced by sidecar allowed_paths')\n        PY\n  - id: CHK4-blocked-paths-untouched\n\
+      \    covers_claims:\n      - C3-scope-contained\n    command:\n      - bash\n\
+      \      - -lc\n      - |\n        python - <<'PY'\n        import subprocess,\
+      \ fnmatch, sys\n        blocked=['src/**','docs/**','README.md','pyproject.toml','plan.yaml','.agent/evidence/**','.vectl/**']\n\
+      \        changed=set()\n        for cmd in (['git','diff','--name-only'], ['git','diff','--name-only','--cached']):\n\
+      \            out=subprocess.check_output(cmd, text=True)\n            changed.update(x\
+      \ for x in out.splitlines() if x)\n        bad=[p for p in sorted(changed) if\
+      \ any(fnmatch.fnmatch(p,b) for b in blocked)]\n        print('working_tree_or_cached_blocked_path_changes:',\
+      \ bad)\n        print('committed diff scope is enforced by sidecar allowed_paths')\n\
+      \        sys.exit(1 if bad else 0)\n        PY\n  - id: CHK5-no-allowlist-or-weakening\n\
+      \    covers_claims:\n      - C4-no-probe-weakening\n    command: [\"git\", \"\
+      diff\", \"--\", \"tests/test_io.py\"]\n  - id: CHK6-negative-narrow-rewrite\n\
+      \    covers_claims:\n      - C5-negative-narrow-rewrite\n    command: [\"git\"\
+      , \"diff\", \"--stat\", \"--\", \"tests/test_io.py\"]\n</intent_closure_contract>\n\
+      \n<side_effect_budget>\nallowed:\n  - Modify only `tests/test_io.py`.\n  - Run\
+      \ focused literal probe and `uv run pytest tests/test_io.py -q`.\nforbidden:\n\
+      \  - Docs/source/README/pyproject/plan/evidence changes.\n  - Any command weakening,\
+      \ allowlist, exception, or proof-gate relaxation.\n  - Broad rewrites or new\
+      \ abstractions.\n</side_effect_budget>\n\n<risk_probes>\n- AST/string-literal\
+      \ residue matters even if the broader final grep passed.\n- Preserving green\
+      \ tests is insufficient if the forbidden literal remains.\n- A scope escape\
+      \ into docs/source/evidence is blocker-class even if tests pass.\n</risk_probes>\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION demolition\
+      \ step. Stub-only or evidence-only completion is NOT acceptable; the forbidden\
+      \ literal residue must actually be removed or rephrased in the allowed file.\n\
+      \nChecklist:\n- [x] Read `tests/test_io.py` around the reported fixture and\
+      \ cite the local behavior being preserved.\n- [x] Remove or rephrase only the\
+      \ forbidden lowercase YAML fixture literal residue.\n- [x] Run the required\
+      \ checks from `intent_closure_contract`.\n- [x] Confirm no allowlist/weakening\
       \ and no blocked-path changes."
     verification: 'PASS only if `tests/test_io.py` no longer contains `isolation:
       independent`, `uv run pytest tests/test_io.py -q` passes, `git diff --name-only`

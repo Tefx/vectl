@@ -114662,15 +114662,15 @@ phases:
       allowed_paths:\n  - tests/test_io.py\nblocked_paths:\n  - src/**\n  - docs/**\n\
       \  - README.md\n  - pyproject.toml\n  - plan.yaml\n  - .agent/evidence/**\n\
       \  - .vectl/**\nrequired_claims:\n  - id: C1-focused-residue-removed\n    claim:\
-      \ The exact lowercase literal `isolation: independent` is absent from `tests/test_io.py`.\n\
-      \  - id: C2-test-intent-preserved\n    claim: The local `tests/test_io.py` behavior\
-      \ covered by the rewritten fixture remains equivalent and all tests in that\
-      \ file pass.\n  - id: C3-scope-contained\n    claim: The fix touched only `tests/test_io.py`;\
-      \ blocked paths remained untouched.\n  - id: C4-no-probe-weakening\n    claim:\
-      \ No grep/probe command, allowlist, exception, or evidence gate was weakened\
-      \ or added.\n  - id: C5-negative-narrow-rewrite\n    claim: The change is a\
-      \ narrow deletion/rephrase of forbidden test literal residue and introduces\
-      \ no replacement abstraction.\nrequired_checks:\n  - id: CHK1-absence-focused-literal\n\
+      \ \"The exact lowercase literal 'isolation: independent' is absent from tests/test_io.py.\"\
+      \n  - id: C2-test-intent-preserved\n    claim: \"The local tests/test_io.py\
+      \ behavior covered by the rewritten fixture remains equivalent and all tests\
+      \ in that file pass.\"\n  - id: C3-scope-contained\n    claim: \"The fix touched\
+      \ only tests/test_io.py; blocked paths remained untouched.\"\n  - id: C4-no-probe-weakening\n\
+      \    claim: \"No grep/probe command, allowlist, exception, or evidence gate\
+      \ was weakened or added.\"\n  - id: C5-negative-narrow-rewrite\n    claim: \"\
+      The change is a narrow deletion/rephrase of forbidden test literal residue and\
+      \ introduces no replacement abstraction.\"\nrequired_checks:\n  - id: CHK1-absence-focused-literal\n\
       \    covers_claims:\n      - C1-focused-residue-removed\n    command: [\"python\"\
       , \"-c\", \"from pathlib import Path; p=Path('tests/test_io.py'); s=p.read_text();\
       \ raise SystemExit(1 if 'isolation: independent' in s else 0)\"]\n  - id: CHK2-test-io-green\n\

@@ -113929,7 +113929,7 @@ phases:
       '
   - id: orch_removal_retest_final_grep_closure
     name: Retest B2 final grep closure
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -114003,6 +114003,8 @@ phases:
     depends_on:
     - orch_removal_fix_final_grep_forbidden_residue
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-18T05:45:57.019440+00:00'
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
   status: done

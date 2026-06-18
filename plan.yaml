@@ -113423,7 +113423,7 @@ phases:
       '
   - id: orch_removal_deep_review
     name: Independent deep review of orchestrator removal closure
-    status: claimed
+    status: done
     description: 'step_type: review
 
       full-plan-check independent deep review. Review closure evidence for deletion
@@ -113475,6 +113475,77 @@ phases:
     agent: plan-readiness-auditor
     claimed_by: plan-readiness-auditor
     claimed_at: '2026-06-18T05:53:12.538813+00:00'
+    done_at: '2026-06-18T06:02:14.784984+00:00'
+    evidence: "headline: FAIL\nverdict: BLOCKED\nblockers:\n- B1_FINAL_FORBIDDEN_GREP_NON_REPRODUCIBLE\
+      \ / B3-deep-review-final-forbidden-grep-nonreproducible\ngate_open_allowed:\
+      \ false\norchestrator_action_hint: COMPLETE_AS_BLOCKER_FINDING_AFTER_OWNER_CREATED\n\
+      \n## refs Read Confirmation\n- user-request:2026-06-17#closure-review: NOT READ\
+      \ as file; worker used supplied task context. Key requirement: independent deep\
+      \ review must block on unresolved orchestrator-removal blocker-class findings\
+      \ and validate plan disposition.\n- docs/RFC-vectl-decide-advisor-refresh.md:\
+      \ READ. Key passage: `vectl_decide` remains a deterministic caller-owned automation/dispatch\
+      \ advisor, not a built-in execution runtime.\n- README.md: READ. Key passage:\
+      \ vectl is a plan.yaml control plane, exposes MCP tools including `vectl_decide`,\
+      \ and forbids hand-editing `plan.yaml`.\n- README_zh.md: READ. Key passage:\
+      \ MCP exposes `vectl_decide` as an advisor entry point; plan edits should go\
+      \ through vectl tools, not manual plan.yaml edits.\n- MCP:vectl_vectl_validate#pre-existing-completed-evidence-guard-errors:\
+      \ VALIDATED via permitted worktree-local equivalent `uv run vectl validate`;\
+      \ command exited 1 with 43 completed-evidence guard errors, 0 referencing `orch_removal_*`.\n\
+      - tools/vectl/README.md: NOT READ; path absent in isolated worktree.\n- CONSTITUTION.md:\
+      \ NOT READ; absent in isolated worktree.\n\nSidecar gate:\n- command: python\
+      \ ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml --step orch_removal_deep_review\
+      \ --worktree .vectl/worktrees/orch_removal_deep_review --base 8d42d2f31b8fd88f8114a2462077f911e7c58e55\
+      \ --out /tmp/orch_removal_deep_review_verdict.json\n- exit_code: 0\n- status:\
+      \ NOT_APPLICABLE\n- reason: NO_INTENT_CLOSURE_CONTRACT\n- changed_paths: []\n\
+      \ndecision_artifact:\n  recommendation: BLOCK\n  requirement_matrix:\n  - requirement:\
+      \ deletion completeness\n    status: BLOCKED\n    evidence: exact deletion target\
+      \ absence probe passed for 15 named source/test/doc paths, but final forbidden-term\
+      \ closure from scope artifact failed on current worktree.\n  - requirement:\
+      \ preserved vectl_decide support\n    status: PROVEN\n    evidence: `uv run\
+      \ python` probe imported `vectl.mcp_server.vectl_decide` and returned status=dispatch,\
+      \ reason_code=dispatch_available, action claim_and_dispatch, has_next_state=True.\n\
+      \  - requirement: safe worktree policy adherence\n    status: PROVEN\n    evidence:\
+      \ review-only commands ran from isolated worktree; no lifecycle/mutation/checkpoint/claim/complete\
+      \ commands used; final git status clean.\n  - requirement: test/doc cleanup\n\
+      \    status: BLOCKED\n    evidence: forbidden closure grep found `docs/repo_regression_remediation_execution_sequence.md:33`\
+      \ containing `driver.yaml`/`drive` and `tests/test_io.py:267` containing `isolation:\
+      \ independent`.\n  - requirement: recursive archive/test fixture probes\n  \
+      \  status: BLOCKED\n    evidence: recursive scoped grep over src/tests/docs/README/pyproject\
+      \ failed; exact deleted runtime dirs absent, but active docs/tests contain forbidden\
+      \ residue under declared closure regex.\n  - requirement: final regression proof\n\
+      \    status: PROVEN\n    evidence: `uv run pytest -q` passed: 1217 passed, 15\
+      \ skipped in 20.06s; does not override forbidden-grep blocker.\n  - requirement:\
+      \ plan-validation disposition\n    status: NON_BLOCKING\n    evidence: `uv run\
+      \ vectl validate` exited 1 with 43 pre-existing completed-evidence guard errors;\
+      \ none reference `orch_removal_*`; review does not claim repo-wide plan validation\
+      \ green.\n  defect_ledger:\n  - id: B3-deep-review-final-forbidden-grep-nonreproducible\n\
+      \    severity: BLOCKER\n    finding: declared final forbidden-term closure is\
+      \ not reproducible in isolated deep-review worktree.\n    evidence: docs/repo_regression_remediation_execution_sequence.md:33\
+      \ contains `driver.yaml`/`drive`; tests/test_io.py:267 contains `isolation:\
+      \ independent`.\n    owner_if_blocking: `orch_removal_fix_b3_final_forbidden_grep_nonreproducible`\
+      \ with retest `orch_removal_retest_b3_final_forbidden_grep_nonreproducible`.\n\
+      \  plan_validation_disposition:\n    validation_command: `uv run vectl validate`\n\
+      \    validation_output_ref: raw_receipts[validate]\n    pre_existing_error_count:\
+      \ 43\n    orch_removal_error_count: 0\n    gate_intersection: false\n    disposition:\
+      \ NON_BLOCKING\n    owner_if_blocking: \"\"\n\nRaw receipts:\n- `uv run vectl\
+      \ validate`: exit_code 1; stdout reports 43 completed-evidence guard errors,\
+      \ 0 warning(s); none reference `orch_removal_*`; stderr only VIRTUAL_ENV mismatch\
+      \ warning.\n- final forbidden-term grep/path gate from orch_removal_scope_matrix:\
+      \ exit_code 1; stdout hits docs/repo_regression_remediation_execution_sequence.md:33\
+      \ with `driver.yaml`/`drive`, and tests/test_io.py:267 with `isolation: independent`;\
+      \ stderr empty.\n- exact deletion target absence probe: exit_code 0; missing_count=15\
+      \ present_count=0 PASS.\n- `uv run python` vectl_decide support probe: exit_code\
+      \ 0; VECTL_DECIDE_SUPPORT PASS; status=dispatch; reason_code=dispatch_available;\
+      \ actions=[('claim_and_dispatch','p1.s1')]; has_next_state=True.\n- `uv run\
+      \ pytest -q`: exit_code 0; 1217 passed, 15 skipped in 20.06s.\n- `git status\
+      \ --short --branch && git diff --stat`: exit_code 0; stdout `## vectl/step-orch_removal_deep_review`;\
+      \ clean no diff.\n\nbehavioral_proof_register:\n- no_unresolved_orch_removal_blockers:\
+      \ DISPROVEN until B3 fix/retest close.\n- gate_open_allowed: false\n\nDisposition\
+      \ / owner creation:\n- Planner created `orch_removal_fix_b3_final_forbidden_grep_nonreproducible`\
+      \ to own B3 blocker.\n- Planner created `orch_removal_retest_b3_final_forbidden_grep_nonreproducible`\
+      \ to rerun closure after fix.\n- Final gate now depends on deep review plus\
+      \ B3 fix/retest; it cannot open before B3 retest is green.\n\nWorktree:\n- final_git_status:\
+      \ clean\n- product_code_doc_mutations: none\n- commit_hashes: none\n"
   - id: orch_removal_final_gate
     name: Final gate for orchestrator removal
     status: pending

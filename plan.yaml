@@ -114463,7 +114463,7 @@ phases:
       '
   - id: orch_removal_retest_b3_final_forbidden_grep_nonreproducible
     name: Retest B3 deep-review final forbidden grep closure
-    status: pending
+    status: claimed
     description: "step_type: test\nstep_intent: retest_green\nexpected_result: green\n\
       blocker_family_id: B3-deep-review-final-forbidden-grep-nonreproducible\n\nIndependent\
       \ retest for the B3 fix. Rerun the same final forbidden-term/deep-review closure\
@@ -114503,6 +114503,8 @@ phases:
     depends_on:
     - orch_removal_fix_b3_final_forbidden_grep_nonreproducible
     agent: plan-readiness-auditor
+    claimed_by: plan-readiness-auditor
+    claimed_at: '2026-06-18T06:18:10.328449+00:00'
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
   status: done

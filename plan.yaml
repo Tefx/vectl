@@ -113548,7 +113548,7 @@ phases:
       \ clean\n- product_code_doc_mutations: none\n- commit_hashes: none\n"
   - id: orch_removal_final_gate
     name: Final gate for orchestrator removal
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       full-plan-check final gate for orchestrator-removal scope. The gate may open
@@ -113643,6 +113643,73 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-18T06:41:26.237836+00:00'
+    done_at: '2026-06-18T06:56:00.144986+00:00'
+    evidence: "headline: FAIL\nverdict: FAIL\nblocking_status: BLOCKED\nproof_gap_status:\
+      \ CLEAR except unavailable non-file refs marked NOT READ\nblockers:\n- id: B5-exact-deletion-target-extended-runner-gaps\n\
+      \  severity: BLOCKER\n  evidence: tests/fixtures/helpers/extended_runner_gaps.py\
+      \ still exists and contains Codex/Gemini runner expected-red fixture residue\
+      \ plus test_extended_runner_protocol references.\n  why_it_matters: Scope matrix\
+      \ names this file as an additional orchestration-owned runner fixture deletion\
+      \ target; exact deletion-target closure is required for gate OPEN.\n  remediation:\
+      \ Delete/close this target in scoped implementation step and rerun exact deletion-target\
+      \ closure plus final commands.\ngate_open_allowed: false\norchestrator_action_hint:\
+      \ COMPLETE_AS_BLOCKER_FINDING_AFTER_OWNER_CREATED\n\n## refs Read Confirmation\n\
+      - user-request:2026-06-17#final-gate: NOT READ as non-file anchor; prompt and\
+      \ read-only plan step text used.\n- MCP:vectl_vectl_validate#pre-existing-completed-evidence-guard-errors:\
+      \ validated via `uv run vectl validate`; exit 1, 43 completed-evidence guard\
+      \ errors, 0 `orch_removal_` hits.\n- docs/ORCHESTRATION-PLANE-ISOLATION-SEMANTICS.md:\
+      \ absent.\n- tools/vectl/README.md: absent.\n- CONSTITUTION.md: absent.\n- docs/RFC-vectl-decide-advisor-refresh.md:\
+      \ READ; confirms `vectl_decide` remains caller-owned automation/dispatch advisor.\n\
+      \nSidecar gate:\n- command: python ~/dotfiles/agent/scripts/intent_closure_gate.py\
+      \ --plan plan.yaml --step orch_removal_final_gate --worktree .vectl/worktrees/orch_removal_final_gate\
+      \ --base 18d5ced4e48368147a7dab06a71488b21518f3f8 --out /tmp/orch_removal_final_gate_verdict.json\n\
+      - exit_code: 0\n- status: NOT_APPLICABLE\n- reason: NO_INTENT_CLOSURE_CONTRACT\n\
+      - changed_paths: []\n\ngate_decision:\n  recommendation: BLOCK\n  requirement_matrix:\n\
+      \  - requirement: final grep closure\n    status: PROVEN\n    evidence: recursive\
+      \ forbidden-term rg over src/tests/docs/README/pyproject returned FORBIDDEN_GREP_CLEAN.\n\
+      \  - requirement: exact deletion-target path closure\n    status: BLOCKED\n\
+      \    evidence: `PRESENT_FORBIDDEN tests/fixtures/helpers/extended_runner_gaps.py`.\n\
+      \  - requirement: preserved decide support/path-presence\n    status: PROVEN\n\
+      \    evidence: required decide paths present; MCP `vectl_decide` invocation\
+      \ returned status=dispatch, reason_code=dispatch_available.\n  - requirement:\
+      \ active tests/conftest.py cleanup\n    status: PROVEN\n    evidence: no DRIVER_YAML_SPEC\
+      \ or orchestration token; pytest_collection_modifyitems preserved.\n  - requirement:\
+      \ packaged CLI help excludes orch\n    status: PROVEN\n    evidence: `uvx --refresh\
+      \ --from . vectl --help` exit 0; command list has no `orch`.\n  - requirement:\
+      \ negative vectl orch help probe\n    status: PROVEN\n    evidence: `uvx --refresh\
+      \ --from . vectl orch --help` exit 2; No such command 'orch'.\n  - requirement:\
+      \ full pytest\n    status: PROVEN\n    evidence: `uv run pytest` exit 0; 1217\
+      \ passed, 15 skipped.\n  - requirement: invar guard full scan\n    status: PROVEN\n\
+      \    evidence: `uvx invar-tools guard --all` exit 0; status passed; 0 errors,\
+      \ 14 warnings.\n  - requirement: plan validation disposition\n    status: NON_BLOCKING\n\
+      \    evidence: `uv run vectl validate` exit 1 with 43 known completed-evidence\
+      \ guard errors; 0 `orch_removal_` errors; not claimed green.\n  - requirement:\
+      \ B2/B3/B4 blockers closed\n    status: PROVEN\n    evidence: focused B3/B4\
+      \ residue probes passed; recursive forbidden grep clean; plan evidence records\
+      \ B2/B3/B4 retests completed green.\n  defect_ledger:\n  - id: B5-exact-deletion-target-extended-runner-gaps\n\
+      \    severity: BLOCKER\n    path: tests/fixtures/helpers/extended_runner_gaps.py\n\
+      \    evidence: file exists; rg shows driver-multi-runner-hardening, CodexRunnerStub,\
+      \ GeminiRunnerStub, and test_extended_runner_protocol residue.\n  plan_validation_disposition:\n\
+      \    validation_command: uv run vectl validate\n    pre_existing_error_count:\
+      \ 43\n    orch_removal_error_count: 0\n    gate_intersection: false\n    disposition:\
+      \ NON_BLOCKING\n    owner_if_blocking: \"\"\n\nRaw receipts:\n- final recursive\
+      \ forbidden grep / exact deletion-target closure probe: exit_code 1; stdout\
+      \ `FORBIDDEN_GREP_CLEAN; PRESENT_FORBIDDEN tests/fixtures/helpers/extended_runner_gaps.py;\
+      \ FINAL_CLOSURE_EXIT=1`.\n- `uv run pytest`: exit_code 0; 1217 passed, 15 skipped\
+      \ in 23.39s.\n- `uvx --refresh --from . vectl --help`: exit_code 0; no orch\
+      \ command in command list.\n- `uvx --refresh --from . vectl orch --help`: exit_code\
+      \ 2; No such command 'orch'.\n- `uvx invar-tools guard --all`: exit_code 0;\
+      \ status passed; files_checked=56; errors=0; warnings=14; infos=0.\n- `uv run\
+      \ vectl validate`: exit_code 1; 43 error(s), 0 warning(s); ORCH_REMOVAL_ERROR_COUNT=0;\
+      \ stderr VIRTUAL_ENV mismatch warning only.\n- `uv run python` decide support/path-presence\
+      \ probe: exit_code 0; DECIDE_PATHS_PRESENT; VECTL_DECIDE_SUPPORT=PASS; status=dispatch;\
+      \ reason_code=dispatch_available.\n- final git status: clean worktree.\n\nbehavioral_proof_register:\n\
+      - no_unresolved_orch_removal_blockers: DISPROVEN until B5 fix/retest close.\n\
+      - gate_open_allowed: false\n\nDisposition / owner creation:\n- Planner created\
+      \ `orch_removal_fix_b5_exact_deletion_target_extended_runner_gaps` for B5.\n\
+      - Planner created `orch_removal_retest_b5_exact_deletion_target_extended_runner_gaps`\
+      \ as final gate retry after B5 fix.\n\nWorktree:\n- final_git_status: clean\n\
+      - product_code_doc_mutations: none\n- commit_hashes: none\n"
   - id: orch_removal_fix_final_grep_forbidden_residue
     name: Fix B2 final grep forbidden residue
     status: done

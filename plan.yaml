@@ -113929,7 +113929,7 @@ phases:
       '
   - id: orch_removal_retest_final_grep_closure
     name: Retest B2 final grep closure
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -114005,6 +114005,135 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-18T05:45:57.019440+00:00'
+    done_at: '2026-06-18T05:52:48.254471+00:00'
+    evidence: 'step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: n/a
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE_ALLOWED
+
+
+      ## refs Read Confirmation
+
+      - orch_removal_final_grep_closure — worker NOT READ as file: no such file in
+      isolated worktree and plan-state/vectl commands prohibited; worker used local
+      evidence context and reconstructed final grep semantics. Orchestrator separately
+      extracted and reran the exact command from current plan step verification.
+
+      - orch_removal_fix_final_grep_forbidden_residue — worker NOT READ as file: no
+      such file in isolated worktree and plan-state/vectl commands prohibited; verified
+      known fix commit diff instead.
+
+      - tools/vectl/README.md — NOT READ: tools directory absent in isolated worktree.
+
+      - CONSTITUTION.md — NOT READ: absent in isolated worktree.
+
+      - .agent/evidence/orch_removal_scope_matrix.md — READ by worker; key insight:
+      final grep closure gate requires preserved decide/MCP files, exact deleted orchestration
+      paths absent, and active source/tests/docs residue scan excluding preserved
+      decide/MCP refs.
+
+
+      Sidecar gate:
+
+      - command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_retest_final_grep_closure --worktree .vectl/worktrees/orch_removal_retest_final_grep_closure
+      --base e2d181878697fd8488da4693ccc725ba9a77c46a --out /tmp/orch_removal_retest_final_grep_closure_verdict.json
+
+      - exit_code: 0
+
+      - status: NOT_APPLICABLE
+
+      - reason: NO_INTENT_CLOSURE_CONTRACT
+
+      - changed_paths: []
+
+
+      Worker raw command receipts:
+
+      - reconstructed forbidden-term and exact-deletion closure scan over src tests
+      docs README.md README_zh.md pyproject.toml: exit_code 0; stdout `forbidden-term
+      and exact-deletion closure PASS`; stderr only VIRTUAL_ENV mismatch warning.
+
+      - `uv run pytest tests/test_models.py -q`: exit_code 0; 52 passed in 0.62s.
+
+      - targeted residue rg over six fixed docs/invar_guard_remediation files: exit_code
+      0 wrapper with rg_exit=1 and `DOCS_RESIDUE_ABSENT PASS`.
+
+      - `git diff --name-status d434589b14888281ae070663826f3a76085920c0^ d434589b14888281ae070663826f3a76085920c0`:
+      exit_code 0; changed files exactly six docs/invar_guard_remediation artifacts
+      plus tests/test_models.py.
+
+
+      Orchestrator exact-command verification:
+
+      - Extracted exact Python heredoc command from current `orch_removal_final_grep_closure`
+      verification text and ran it verbatim in `.vectl/worktrees/orch_removal_retest_final_grep_closure`.
+
+      - command: `uv run python - <<''PY'' ... PY` exact 265-line heredoc
+
+      - exit_code: 0
+
+      - stdout: `forbidden-term and exact-deletion closure clean, preserved decide
+      targets present including RFC, TestDriveCLI positive orch coverage absent, conftest
+      orchestration config absent, IO/model lowercase word-boundary isolation residue
+      absent, and both legacy worktree roots absent`
+
+      - stderr: empty
+
+
+      Orchestrator targeted model verification:
+
+      - command: `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/test_models.py
+      -q`
+
+      - exit_code: 0
+
+      - stdout: 52 passed in 0.11s
+
+      - stderr: empty
+
+
+      behavioral_proof_register:
+
+      - final_grep_closure_green: PROVEN
+
+      - touched_model_tests_green: PROVEN
+
+      - docs_residue_absent: PROVEN
+
+      - exact_final_grep_command_rerun: PROVEN
+
+      - verify_only_no_mutation: PROVEN
+
+
+      Worktree:
+
+      - final_git_status: clean
+
+      - product_code_doc_mutations: none
+
+      - commit_hashes: none
+
+
+      Disposition:
+
+      - B2-final-grep-forbidden-residue is closed by exact final grep retest and targeted
+      tests.
+
+      - No blockers remain for downstream deep review/final gate from this retest.
+
+      '
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
   status: done

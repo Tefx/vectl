@@ -113565,6 +113565,8 @@ phases:
     - orch_removal_fix_final_grep_forbidden_residue
     - orch_removal_retest_final_grep_closure
     - orch_removal_deep_review
+    - orch_removal_fix_b3_final_forbidden_grep_nonreproducible
+    - orch_removal_retest_b3_final_forbidden_grep_nonreproducible
     agent: gate-reviewer
   - id: orch_removal_fix_final_grep_forbidden_residue
     name: Fix B2 final grep forbidden residue

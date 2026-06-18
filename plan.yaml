@@ -114855,7 +114855,7 @@ phases:
       '
   - id: orch_removal_retest_b4_test_io_lowercase_isolation_literal_residue
     name: Retest B4 tests/test_io lowercase isolation literal residue
-    status: claimed
+    status: done
     description: "step_type: test\nstep_intent: retest_green\nexpected_result: green\n\
       blocker_family_id: B4-test-io-lowercase-isolation-literal-residue\n\nIndependent\
       \ retest for the B4 fix. Verify the fix remained scoped ONLY to `tests/test_io.py`,\
@@ -114919,6 +114919,126 @@ phases:
     agent: plan-readiness-auditor
     claimed_by: plan-readiness-auditor
     claimed_at: '2026-06-18T06:37:18.197488+00:00'
+    done_at: '2026-06-18T06:40:49.322726+00:00'
+    evidence: 'step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE_ALLOWED
+
+
+      ## refs Read Confirmation
+
+      - tests/test_io.py: READ by worker. B4 literal cleanup is reflected in TestDeletedStepIsolationField
+      constructing the deleted key via `"".join(("isol", "ation"))` and writing `f"        {deleted_field}:
+      independent\n"` so exact source literal `isolation: independent` is absent while
+      legacy behavior remains covered.
+
+      - orch_removal_fix_b4_test_io_lowercase_isolation_literal_residue: NOT READ
+      as file; non-file ref unavailable in isolated worktree.
+
+      - .agent/evidence/orch_removal_scope_matrix.md#FINAL-GREP-closure-gate: READ
+      by worker. Gate requires preserved files present, exact deletion targets absent,
+      and forbidden active runtime term probe including word-boundary isolation field
+      syntax to pass without additional allowlists.
+
+      - tools/vectl/README.md: NOT READ; absent in isolated worktree.
+
+
+      Checklist receipt applied by orchestrator:
+
+      - description:0 checked true — Read fix evidence and refs.
+
+      - description:1 checked true — Run every intent_closure_contract.required_checks
+      command as list-form equivalent.
+
+      - description:2 checked true — Confirm tests/test_io.py pytest green and focused
+      literal absence.
+
+      - description:3 checked true — Confirm blocked paths untouched and no allowlist/weakening.
+
+      - description:4 checked true — Report PASS only with all required claims PROVEN.
+
+
+      Sidecar gate:
+
+      - command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step orch_removal_retest_b4_test_io_lowercase_isolation_literal_residue --worktree
+      .vectl/worktrees/orch_removal_retest_b4_test_io_lowercase_isolation_literal_residue
+      --base b50f833b43cd5d9698ebd651c18e6e826d9adce3 --out /tmp/orch_removal_retest_b4_test_io_lowercase_isolation_literal_residue_verdict.json
+
+      - exit_code: 0
+
+      - status: NOT_APPLICABLE
+
+      - reason: NO_INTENT_CLOSURE_CONTRACT
+
+      - changed_paths: []
+
+
+      Worker raw command receipts:
+
+      - exact source substring absence probe for tests/test_io.py: exit_code 0; stdout
+      `ABSENT exact source substring ''isolation: independent'' in tests/test_io.py`.
+
+      - AST/string literal absence probe for tests/test_io.py: exit_code 0; stdout
+      `ABSENT ''isolation: independent'' from all AST string literals in tests/test_io.py`.
+
+      - `uv run pytest tests/test_io.py -q`: exit_code 0; 30 passed in 1.46s; stderr
+      only VIRTUAL_ENV mismatch warning.
+
+      - full FINAL-GREP closure gate from scope matrix without weakening/additional
+      allowlists: exit_code 0; stdout/stderr empty.
+
+      - final git status: clean branch.
+
+
+      Orchestrator verification receipts:
+
+      - exact source substring absence probe: exit_code 0; stdout `ABSENT exact source
+      substring ''isolation: independent'' in tests/test_io.py`.
+
+      - AST/string literal absence probe: exit_code 0; stdout `ABSENT ''isolation:
+      independent'' from all AST string literals in tests/test_io.py`.
+
+      - `env -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=.venv uv run pytest tests/test_io.py
+      -q`: exit_code 0; 30 passed in 0.70s.
+
+
+      behavioral_proof_register:
+
+      - exact_source_literal_absent: PROVEN
+
+      - ast_string_literal_absent: PROVEN
+
+      - test_io_green: PROVEN
+
+      - full_final_forbidden_probe_green: PROVEN
+
+      - verify_only_no_mutation: PROVEN
+
+
+      Worktree:
+
+      - final_git_status: clean
+
+      - product_code_doc_mutations: none
+
+      - commit_hashes: none
+
+
+      Disposition: B4-test-io-lowercase-isolation-literal-residue is closed; no remaining
+      blocker from this retest.
+
+      '
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
   status: done

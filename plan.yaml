@@ -115211,6 +115211,179 @@ phases:
     depends_on:
     - orch_removal_final_gate
     agent: architectural-demolitionist
+  - id: orch_removal_retest_b5_exact_deletion_target_extended_runner_gaps
+    name: Retest/final gate retry for B5 exact deletion target extended_runner_gaps
+    status: pending
+    description: "step_type: gate\nstep_intent: retest_green\nexpected_result: green\n\
+      blocker_family_id: B5-exact-deletion-target-extended-runner-gaps\nverification_scope:\
+      \ full-plan-check retry scoped to the failed exact-deletion-target obligation;\
+      \ all other orch_removal_final_gate requirements were reported PROVEN by the\
+      \ failed gate evidence and must not be re-opened unless this retest finds regression.\n\
+      \nAs an independent final-gate retry reviewer, verify that blocker B5_EXACT_DELETION_TARGET_PRESENT\
+      \ is closed after orch_removal_fix_b5_exact_deletion_target_extended_runner_gaps.\
+      \ This step is the required green closure path for final all-done after the\
+      \ original orch_removal_final_gate is completed as a blocker-finding artifact.\n\
+      \ntarget_kill_list:\n  - tests/fixtures/helpers/extended_runner_gaps.py\nremoval_warrant:\n\
+      \  source_refs:\n    - user-request:2026-06-18#B5_EXACT_DELETION_TARGET_PRESENT\n\
+      \    - .agent/evidence/orch_removal_scope_matrix.md#additional-orchestration-owned-runner-fixture-deletion-target\n\
+      \  reverse_dependency_check: Independently rerun live-reference and collection/import\
+      \ checks after the fix, rather than trusting the fix evidence.\n  preserved_behavior:\
+      \ final orchestrator-removal closure remains green with B2/B3/B4 closed and\
+      \ no regression in preserved decide/CLI/invar proof areas.\n  negative_delta_expectation:\
+      \ exact deletion target absent; no replacement helper, fixture, shim, or abstraction\
+      \ exists.\n\nside_effect_budget:\n  allowed:\n    - Read-only verification of\
+      \ repository state and fix evidence.\n  forbidden:\n    - Product/test/doc/config/plan/evidence\
+      \ edits during retest.\n    - Opening the final gate if B5 file absence, no-reference,\
+      \ scope containment, or no-replacement claims are unproven.\n\nrisk_probes:\n\
+      \  - Detect hidden replacement of extended_runner_gaps under a different helper\
+      \ name.\n  - Detect stale test_extended_runner_protocol or get_expected_gaps_summary\
+      \ references outside the deleted file.\n  - Detect broadened fix scope that\
+      \ touched production/docs/plan/evidence despite the B5 narrow-scope contract.\n\
+      \nintent_closure_contract:\n  id: B5-exact-deletion-target-extended-runner-gaps\n\
+      \  allowed_paths:\n    - tests/fixtures/helpers/extended_runner_gaps.py\n  blocked_paths:\n\
+      \    - src/**\n    - README.md\n    - pyproject.toml\n    - plan.yaml\n    -\
+      \ docs/**\n    - .agent/evidence/**\n  required_claims:\n    - id: B5.file_absent\n\
+      \      claim: tests/fixtures/helpers/extended_runner_gaps.py is absent.\n  \
+      \  - id: B5.no_live_refs\n      claim: extended_runner_gaps, get_expected_gaps_summary,\
+      \ and stale test_extended_runner_protocol references are absent from live test/code/doc/config\
+      \ surfaces.\n    - id: B5.import_collection_safe\n      claim: pytest collection/import\
+      \ proof passes after deletion.\n    - id: B5.scope_contained\n      claim: fix\
+      \ diff is limited to the exact deletion target plus any explicitly justified\
+      \ exact adjacent importing test file.\n    - id: B5.blocked_paths_untouched\n\
+      \      claim: src, README, pyproject, plan, docs, and evidence paths were not\
+      \ modified by the fix.\n    - id: B5.no_replacement_abstraction\n      claim:\
+      \ no new expected-red runner fixture/helper/abstraction replaced the deleted\
+      \ file.\n  required_checks:\n    - id: check.file_absent\n      covers_claims:\
+      \ [B5.file_absent]\n      command: [\"test\", \"!\", \"-e\", \"tests/fixtures/helpers/extended_runner_gaps.py\"\
+      ]\n    - id: check.no_live_references\n      covers_claims: [B5.no_live_refs]\n\
+      \      command: [\"bash\", \"-lc\", \"! rg -n 'extended_runner_gaps|get_expected_gaps_summary|test_extended_runner_protocol'\
+      \ tests src docs README.md pyproject.toml\"]\n    - id: check.pytest_collection\n\
+      \      covers_claims: [B5.import_collection_safe]\n      command: [\"uv\", \"\
+      run\", \"pytest\", \"--collect-only\", \"-q\", \"tests\"]\n    - id: check.scope_containment\n\
+      \      covers_claims: [B5.scope_contained]\n      command: [\"bash\", \"-lc\"\
+      , \"git diff --name-only HEAD -- | python -c 'import sys; allowed={\\\"tests/fixtures/helpers/extended_runner_gaps.py\\\
+      \"}; changed={p.strip() for p in sys.stdin if p.strip()}; bad=[p for p in changed\
+      \ if p not in allowed and not p.startswith(\\\"tests/\\\")]; print(sorted(changed));\
+      \ assert not bad, bad'\"]\n    - id: check.blocked_paths_untouched\n      covers_claims:\
+      \ [B5.blocked_paths_untouched]\n      command: [\"bash\", \"-lc\", \"! git diff\
+      \ --name-only HEAD -- src README.md pyproject.toml plan.yaml docs .agent/evidence\
+      \ | grep .\"]\n    - id: check.no_replacement_abstraction\n      covers_claims:\
+      \ [B5.no_replacement_abstraction]\n      command: [\"bash\", \"-lc\", \"! rg\
+      \ -n 'EXPECTED_RUNNER_GAPS|EXPECTED_PARSER_GAPS|CODEX_SUCCESS_SINGLE_ITEM|GEMINI_SUCCESS_SIMPLE|Expected-RED\
+      \ Gaps for driver-multi-runner-hardening' tests src docs README.md pyproject.toml\"\
+      ]\n\nGate decision rule: OPEN only if every B5 required claim is PROVEN. BLOCK\
+      \ if the file exists, references remain, import/collection proof is missing/failing,\
+      \ blocked paths changed, scope broadened without exact import-break proof, or\
+      \ a replacement abstraction/fixture appears."
+    verification: Gate retry OPEN only when all B5 intent_closure_contract required
+      checks pass from an independent run and the fix evidence proves narrow deletion-only
+      scope. Gate retry BLOCKS final all-done if any B5 claim is missing, unproven,
+      or contradicted.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - user-request:2026-06-18#B5_EXACT_DELETION_TARGET_PRESENT — key passage or
+      NOT READ reason
+
+      - .agent/evidence/orch_removal_scope_matrix.md — key passage or NOT READ reason
+
+
+      ## B5 Retest / Final Gate Retry Report
+
+      blocker_family_id: B5-exact-deletion-target-extended-runner-gaps
+
+      reviewer: gate-reviewer
+
+
+      ### Fix evidence reviewed
+
+      - Fix step: orch_removal_fix_b5_exact_deletion_target_extended_runner_gaps
+
+      - Evidence quality: PASS/FAIL
+
+      - Adjacent reference justification present when needed: YES/NO/NONE NEEDED
+
+
+      ### Independent required checks
+
+      - check.file_absent:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - check.no_live_references:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - check.pytest_collection:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - check.scope_containment:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - check.blocked_paths_untouched:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - check.no_replacement_abstraction:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+
+      ### B5 closure register
+
+      | Claim | Status | Evidence ref |
+
+      | --- | --- | --- |
+
+      | B5.file_absent | PROVEN/UNPROVEN | <output> |
+
+      | B5.no_live_refs | PROVEN/UNPROVEN | <output> |
+
+      | B5.import_collection_safe | PROVEN/UNPROVEN | <output> |
+
+      | B5.scope_contained | PROVEN/UNPROVEN | <output> |
+
+      | B5.blocked_paths_untouched | PROVEN/UNPROVEN | <output> |
+
+      | B5.no_replacement_abstraction | PROVEN/UNPROVEN | <output> |
+
+
+      ### Gate decision
+
+      - [ ] OPEN: B5 closed and final all-done may proceed.
+
+      - [ ] BLOCKED: B5 remains open; list required remediation.'
+    depends_on:
+    - orch_removal_final_gate
+    - orch_removal_fix_b5_exact_deletion_target_extended_runner_gaps
+    agent: gate-reviewer
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
   status: done

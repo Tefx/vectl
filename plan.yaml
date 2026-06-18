@@ -114265,34 +114265,33 @@ phases:
       \    claim: The cleanup is a deletion or narrow rewrite only, with no new abstraction,\
       \ replacement surface, or command weakening.\n  - id: preserved_decide_mcp_and_completed_b2_evidence_untouched\n\
       \    claim: Decide/MCP surfaces and already completed B2/finalization evidence\
-      \ are untouched by worker changes.\nrequired_checks:\n  - name: docs_reported_line_residue_absent\n\
+      \ are untouched by worker changes.\nrequired_checks:\n  - id: docs_reported_line_residue_absent\n\
       \    command: [\"python\", \"-c\", \"from pathlib import Path\\np=Path('docs/repo_regression_remediation_execution_sequence.md')\\\
       nline=p.read_text().splitlines()[32]\\nassert 'driver.yaml' not in line, line\\\
       nassert 'drive' not in line.lower(), line\"]\n    covers_claims: [b3_blocker_family_closed,\
-      \ exact_docs_residue_removed_without_allowlist]\n  - name: test_io_lowercase_isolation_residue_absent\n\
+      \ exact_docs_residue_removed_without_allowlist]\n  - id: test_io_lowercase_isolation_residue_absent\n\
       \    command: [\"python\", \"-c\", \"from pathlib import Path\\ntext=Path('tests/test_io.py').read_text().lower()\\\
       nassert 'isolation: independent' not in text\"]\n    covers_claims: [b3_blocker_family_closed,\
-      \ exact_test_io_isolation_residue_removed_without_behavior_loss]\n  - name:\
-      \ changed_path_scope_allowed_only\n    command: [\"bash\", \"-lc\", \"python\
-      \ - <<'PY'\\nimport subprocess\\nallowed={'docs/repo_regression_remediation_execution_sequence.md','tests/test_io.py'}\\\
+      \ exact_test_io_isolation_residue_removed_without_behavior_loss]\n  - id: changed_path_scope_allowed_only\n\
+      \    command: [\"bash\", \"-lc\", \"python - <<'PY'\\nimport subprocess\\nallowed={'docs/repo_regression_remediation_execution_sequence.md','tests/test_io.py'}\\\
       ncmds=[['git','diff','--name-only'],['git','diff','--name-only','--cached']]\\\
       nchanged=set()\\nfor cmd in cmds:\\n    out=subprocess.check_output(cmd, text=True)\\\
       n    changed.update(x for x in out.splitlines() if x)\\nprint('changed_paths=',\
       \ sorted(changed))\\nassert changed <= allowed, sorted(changed-allowed)\\nassert\
       \ changed, 'expected a narrow residue-removal diff before completion'\\nPY\"\
       ]\n    covers_claims: [only_allowed_paths_changed, preserved_decide_mcp_and_completed_b2_evidence_untouched]\n\
-      \  - name: blocked_paths_untouched\n    command: [\"bash\", \"-lc\", \"! git\
-      \ diff --name-only -- src README.md README_zh.md pyproject.toml plan.yaml .agent/evidence\
+      \  - id: blocked_paths_untouched\n    command: [\"bash\", \"-lc\", \"! git diff\
+      \ --name-only -- src README.md README_zh.md pyproject.toml plan.yaml .agent/evidence\
       \ docs/RFC-vectl-decide-advisor-refresh.md tests/test_decide.py tests/test_decide_state_isolation.py\
       \ tests/test_mcp.py | grep .\"]\n    covers_claims: [only_allowed_paths_changed,\
-      \ preserved_decide_mcp_and_completed_b2_evidence_untouched]\n  - name: targeted_test_io_green\n\
+      \ preserved_decide_mcp_and_completed_b2_evidence_untouched]\n  - id: targeted_test_io_green\n\
       \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_io.py\", \"-q\"]\n\
       \    covers_claims: [exact_test_io_isolation_residue_removed_without_behavior_loss]\n\
-      \  - name: no_command_weakening_or_allowlist_changes\n    command:\n      -\
-      \ bash\n      - -lc\n      - |\n        ! git diff -- .agent/evidence plan.yaml\
-      \ docs/RFC-vectl-decide-advisor-refresh.md | grep -Ei 'allowlist|exclude|ignore|waiv|driver[.]yaml|isolation[[:space:]]*:'\n\
+      \  - id: no_command_weakening_or_allowlist_changes\n    command:\n      - bash\n\
+      \      - -lc\n      - |\n        ! git diff -- .agent/evidence plan.yaml docs/RFC-vectl-decide-advisor-refresh.md\
+      \ | grep -Ei 'allowlist|exclude|ignore|waiv|driver[.]yaml|isolation[[:space:]]:'\n\
       \    covers_claims: [exact_docs_residue_removed_without_allowlist, preserved_decide_mcp_and_completed_b2_evidence_untouched]\n\
-      \  - name: negative_narrow_rewrite_diff_stat\n    command: [\"bash\", \"-lc\"\
+      \  - id: negative_narrow_rewrite_diff_stat\n    command: [\"bash\", \"-lc\"\
       , \"git diff --numstat -- docs/repo_regression_remediation_execution_sequence.md\
       \ tests/test_io.py\"]\n    covers_claims: [negative_narrow_rewrite_no_new_abstraction]\n\
       </intent_closure_contract>\n\n## Completion Criteria (stub exclusion)\nThis\

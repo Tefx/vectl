@@ -115422,7 +115422,7 @@ phases:
       '
   - id: orch_removal_retest_b5_exact_deletion_target_extended_runner_gaps
     name: Retest/final gate retry for B5 exact deletion target extended_runner_gaps
-    status: pending
+    status: claimed
     description: "step_type: gate\nstep_intent: retest_green\nexpected_result: green\n\
       blocker_family_id: B5-exact-deletion-target-extended-runner-gaps\nverification_scope:\
       \ full-plan-check retry scoped to the failed exact-deletion-target obligation;\
@@ -115593,6 +115593,8 @@ phases:
     - orch_removal_final_gate
     - orch_removal_fix_b5_exact_deletion_target_extended_runner_gaps
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-18T07:04:48.118075+00:00'
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
   status: done

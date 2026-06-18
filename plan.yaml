@@ -113566,7 +113566,7 @@ phases:
     agent: gate-reviewer
   - id: orch_removal_fix_final_grep_forbidden_residue
     name: Fix B2 final grep forbidden residue
-    status: pending
+    status: claimed
     description: "step_type: implementation\nwork_type: technical_debt_remediation\n\
       blocker_family: B2-final-grep-forbidden-residue\nagent_source: suggested\n\n\
       Demolition fix owner: close only the B2 final grep forbidden residue family\
@@ -113750,6 +113750,8 @@ phases:
     depends_on:
     - orch_removal_final_grep_closure
     agent: architectural-demolitionist
+    claimed_by: architectural-demolitionist
+    claimed_at: '2026-06-18T03:46:03.439486+00:00'
   - id: orch_removal_retest_final_grep_closure
     name: Retest B2 final grep closure
     status: pending

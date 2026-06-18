@@ -114253,19 +114253,28 @@ phases:
       blocked_paths:\n  - src/**\n  - README.md\n  - README_zh.md\n  - pyproject.toml\n\
       \  - plan.yaml\n  - .agent/evidence/**\n  - docs/RFC-vectl-decide-advisor-refresh.md\n\
       \  - tests/test_decide.py\n  - tests/test_decide_state_isolation.py\n  - tests/test_mcp.py\n\
-      required_claims:\n  - blocker_family_id: B3-deep-review-final-forbidden-grep-nonreproducible\n\
-      \  - only_allowed_paths_changed\n  - exact_docs_residue_removed_without_allowlist\n\
-      \  - exact_test_io_isolation_residue_removed_without_behavior_loss\n  - negative_narrow_rewrite_no_new_abstraction\n\
-      \  - preserved_decide_mcp_and_completed_b2_evidence_untouched\nrequired_checks:\n\
-      \  - name: docs_reported_line_residue_absent\n    command: [\"python\", \"-c\"\
-      , \"from pathlib import Path\\np=Path('docs/repo_regression_remediation_execution_sequence.md')\\\
+      required_claims:\n  - id: b3_blocker_family_closed\n    claim: B3-deep-review-final-forbidden-grep-nonreproducible\
+      \ residues are removed from docs/repo_regression_remediation_execution_sequence.md\
+      \ and tests/test_io.py.\n  - id: only_allowed_paths_changed\n    claim: Changed\
+      \ paths are limited to docs/repo_regression_remediation_execution_sequence.md\
+      \ and tests/test_io.py.\n  - id: exact_docs_residue_removed_without_allowlist\n\
+      \    claim: The reported docs driver.yaml / drive residue is removed without\
+      \ allowlist, exclusion, or command weakening.\n  - id: exact_test_io_isolation_residue_removed_without_behavior_loss\n\
+      \    claim: The tests/test_io.py lowercase model/IO isolation residue is removed\
+      \ while preserving the targeted test_io behavioral assertion.\n  - id: negative_narrow_rewrite_no_new_abstraction\n\
+      \    claim: The cleanup is a deletion or narrow rewrite only, with no new abstraction,\
+      \ replacement surface, or command weakening.\n  - id: preserved_decide_mcp_and_completed_b2_evidence_untouched\n\
+      \    claim: Decide/MCP surfaces and already completed B2/finalization evidence\
+      \ are untouched by worker changes.\nrequired_checks:\n  - name: docs_reported_line_residue_absent\n\
+      \    command: [\"python\", \"-c\", \"from pathlib import Path\\np=Path('docs/repo_regression_remediation_execution_sequence.md')\\\
       nline=p.read_text().splitlines()[32]\\nassert 'driver.yaml' not in line, line\\\
-      nassert 'drive' not in line.lower(), line\"]\n    covers_claims: [exact_docs_residue_removed_without_allowlist]\n\
-      \  - name: test_io_lowercase_isolation_residue_absent\n    command: [\"python\"\
-      , \"-c\", \"from pathlib import Path\\ntext=Path('tests/test_io.py').read_text().lower()\\\
-      nassert 'isolation: independent' not in text\"]\n    covers_claims: [exact_test_io_isolation_residue_removed_without_behavior_loss]\n\
-      \  - name: changed_path_scope_allowed_only\n    command: [\"bash\", \"-lc\"\
-      , \"python - <<'PY'\\nimport subprocess\\nallowed={'docs/repo_regression_remediation_execution_sequence.md','tests/test_io.py'}\\\
+      nassert 'drive' not in line.lower(), line\"]\n    covers_claims: [b3_blocker_family_closed,\
+      \ exact_docs_residue_removed_without_allowlist]\n  - name: test_io_lowercase_isolation_residue_absent\n\
+      \    command: [\"python\", \"-c\", \"from pathlib import Path\\ntext=Path('tests/test_io.py').read_text().lower()\\\
+      nassert 'isolation: independent' not in text\"]\n    covers_claims: [b3_blocker_family_closed,\
+      \ exact_test_io_isolation_residue_removed_without_behavior_loss]\n  - name:\
+      \ changed_path_scope_allowed_only\n    command: [\"bash\", \"-lc\", \"python\
+      \ - <<'PY'\\nimport subprocess\\nallowed={'docs/repo_regression_remediation_execution_sequence.md','tests/test_io.py'}\\\
       ncmds=[['git','diff','--name-only'],['git','diff','--name-only','--cached']]\\\
       nchanged=set()\\nfor cmd in cmds:\\n    out=subprocess.check_output(cmd, text=True)\\\
       n    changed.update(x for x in out.splitlines() if x)\\nprint('changed_paths=',\

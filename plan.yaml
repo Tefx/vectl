@@ -114640,7 +114640,7 @@ phases:
       '
   - id: orch_removal_fix_b4_test_io_lowercase_isolation_literal_residue
     name: Fix B4 tests/test_io lowercase isolation literal residue
-    status: pending
+    status: claimed
     description: "step_type: implementation\nblocker_family_id: B4-test-io-lowercase-isolation-literal-residue\n\
       target_kill_list:\n  - tests/test_io.py AST string literal residue `isolation:\
       \ independent`\n\nFix ONLY `tests/test_io.py` to remove or rephrase the YAML\
@@ -114728,6 +114728,8 @@ phases:
     depends_on:
     - orch_removal_retest_b3_final_forbidden_grep_nonreproducible
     agent: architectural-demolitionist
+    claimed_by: architectural-demolitionist
+    claimed_at: '2026-06-18T06:27:58.067908+00:00'
   - id: orch_removal_retest_b4_test_io_lowercase_isolation_literal_residue
     name: Retest B4 tests/test_io lowercase isolation literal residue
     status: pending

@@ -114898,11 +114898,11 @@ phases:
       \ absence probe as stricter and blocking even if a broader final grep reports\
       \ exit 0.\n- Validate scope containment; docs/source/evidence changes are not\
       \ allowed for B4.\n- Confirm the rewrite is negative/narrow and did not replace\
-      \ residue with an exception mechanism.\n</risk_probes>\n\nChecklist:\n- [ ]\
-      \ Read fix evidence and refs.\n- [ ] Run every `intent_closure_contract.required_checks`\
-      \ command as list-form equivalent.\n- [ ] Confirm `tests/test_io.py` pytest\
-      \ green and focused literal absence.\n- [ ] Confirm blocked paths untouched\
-      \ and no allowlist/weakening.\n- [ ] Report PASS only with all required claims\
+      \ residue with an exception mechanism.\n</risk_probes>\n\nChecklist:\n- [x]\
+      \ Read fix evidence and refs.\n- [x] Run every `intent_closure_contract.required_checks`\
+      \ command as list-form equivalent.\n- [x] Confirm `tests/test_io.py` pytest\
+      \ green and focused literal absence.\n- [x] Confirm blocked paths untouched\
+      \ and no allowlist/weakening.\n- [x] Report PASS only with all required claims\
       \ PROVEN."
     verification: 'Expected green. PASS only if all intent_closure_contract required
       checks pass: focused absence of `isolation: independent` in `tests/test_io.py`,

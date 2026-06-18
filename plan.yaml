@@ -114710,10 +114710,10 @@ phases:
       </risk_probes>\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
       \ demolition step. Stub-only or evidence-only completion is NOT acceptable;\
       \ the forbidden literal residue must actually be removed or rephrased in the\
-      \ allowed file.\n\nChecklist:\n- [ ] Read `tests/test_io.py` around the reported\
-      \ fixture and cite the local behavior being preserved.\n- [ ] Remove or rephrase\
-      \ only the forbidden lowercase YAML fixture literal residue.\n- [ ] Run the\
-      \ required checks from `intent_closure_contract`.\n- [ ] Confirm no allowlist/weakening\
+      \ allowed file.\n\nChecklist:\n- [x] Read `tests/test_io.py` around the reported\
+      \ fixture and cite the local behavior being preserved.\n- [x] Remove or rephrase\
+      \ only the forbidden lowercase YAML fixture literal residue.\n- [x] Run the\
+      \ required checks from `intent_closure_contract`.\n- [x] Confirm no allowlist/weakening\
       \ and no blocked-path changes."
     verification: 'PASS only if `tests/test_io.py` no longer contains `isolation:
       independent`, `uv run pytest tests/test_io.py -q` passes, `git diff --name-only`

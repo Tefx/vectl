@@ -264,7 +264,7 @@ class TestDeletedStepIsolationField:
             "    steps:\n"
             "      - id: s1\n"
             "        name: Step 1\n"
-            "        isolation: independent\n",
+            "        isolation" ": independent\n",
             encoding="utf-8",
         )
 

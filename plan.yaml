@@ -115041,6 +115041,176 @@ phases:
       blocker from this retest.
 
       '
+  - id: orch_removal_fix_b5_exact_deletion_target_extended_runner_gaps
+    name: Fix B5 exact deletion target extended_runner_gaps
+    status: pending
+    description: "step_type: implementation\nblocker_family_id: B5-exact-deletion-target-extended-runner-gaps\n\
+      \nDemolition fix owner for blocker B5_EXACT_DELETION_TARGET_PRESENT. Delete\
+      \ the remaining orchestration-owned expected-red fixture residue at tests/fixtures/helpers/extended_runner_gaps.py.\
+      \ Start narrow: the intended edit is deletion of that one file only. If deletion\
+      \ reveals a direct adjacent import/collection break, remove only the exact importing\
+      \ test reference after proving the import break; do not touch production src,\
+      \ README, pyproject, docs, plan.yaml, or evidence artifacts.\n\ntarget_kill_list:\n\
+      \  - tests/fixtures/helpers/extended_runner_gaps.py\nremoval_warrant:\n  source_refs:\n\
+      \    - user-request:2026-06-18#B5_EXACT_DELETION_TARGET_PRESENT\n    - .agent/evidence/orch_removal_scope_matrix.md#additional-orchestration-owned-runner-fixture-deletion-target\n\
+      \  reverse_dependency_check: Run rg over tests/src/docs/README/pyproject for\
+      \ extended_runner_gaps, get_expected_gaps_summary, and stale test_extended_runner_protocol\
+      \ residue before and after deletion.\n  preserved_behavior: orchestrator removal\
+      \ final-gate behavior remains preserved; decide support, CLI help, full pytest,\
+      \ invar guard, conftest cleanup, and prior B2/B3/B4 closures are not modified.\n\
+      \  negative_delta_expectation: remove the exact fixture file and any proven\
+      \ dead adjacent importing references only; no replacement fixture, helper, abstraction,\
+      \ or production code substitute is introduced.\n\nside_effect_budget:\n  allowed:\n\
+      \    - Delete tests/fixtures/helpers/extended_runner_gaps.py.\n    - Only if\
+      \ import/collection proof requires it, delete direct adjacent stale import/reference\
+      \ lines from exact test files that import this fixture.\n  forbidden:\n    -\
+      \ Any production src/** edits.\n    - README.md, pyproject.toml, plan.yaml,\
+      \ docs/**, .agent/evidence/**, or generated evidence edits.\n    - Replacing\
+      \ the deleted fixture with a new helper, abstraction, alias, skip marker, or\
+      \ compatibility shim.\n\nrisk_probes:\n  - Confirm no stale expected-red Codex/Gemini\
+      \ runner fixture residue remains under tests after deletion.\n  - Confirm pytest\
+      \ collection/imports do not rely on the removed helper.\n  - Confirm the fix\
+      \ is deletion-only and does not weaken the already-proven final-gate checks.\n\
+      \nintent_closure_contract:\n  id: B5-exact-deletion-target-extended-runner-gaps\n\
+      \  allowed_paths:\n    - tests/fixtures/helpers/extended_runner_gaps.py\n  conditional_adjacent_paths_policy:\
+      \ Exact importing test files may be touched only when an import-break proof\
+      \ from pytest collection or rg output is recorded before the edit.\n  blocked_paths:\n\
+      \    - src/**\n    - README.md\n    - pyproject.toml\n    - plan.yaml\n    -\
+      \ docs/**\n    - .agent/evidence/**\n  required_claims:\n    - id: B5.file_absent\n\
+      \      claim: tests/fixtures/helpers/extended_runner_gaps.py is absent from\
+      \ the working tree.\n    - id: B5.no_live_refs\n      claim: live code/test/doc/config\
+      \ surfaces contain no references to extended_runner_gaps or stale test_extended_runner_protocol\
+      \ residue.\n    - id: B5.scope_contained\n      claim: changed paths are limited\
+      \ to the allowed file plus any justified exact adjacent importing test file.\n\
+      \    - id: B5.no_replacement_abstraction\n      claim: no new fixture/helper/abstraction\
+      \ replaces the deleted target.\n  required_checks:\n    - id: check.file_absent\n\
+      \      covers_claims: [B5.file_absent]\n      command: [\"test\", \"!\", \"\
+      -e\", \"tests/fixtures/helpers/extended_runner_gaps.py\"]\n    - id: check.no_live_references\n\
+      \      covers_claims: [B5.no_live_refs]\n      command: [\"bash\", \"-lc\",\
+      \ \"! rg -n 'extended_runner_gaps|get_expected_gaps_summary|test_extended_runner_protocol'\
+      \ tests src docs README.md pyproject.toml\"]\n    - id: check.pytest_collection\n\
+      \      covers_claims: [B5.no_live_refs]\n      command: [\"uv\", \"run\", \"\
+      pytest\", \"--collect-only\", \"-q\", \"tests\"]\n    - id: check.scope_containment\n\
+      \      covers_claims: [B5.scope_contained]\n      command: [\"bash\", \"-lc\"\
+      , \"git diff --name-only HEAD -- | python -c 'import sys; allowed={\\\"tests/fixtures/helpers/extended_runner_gaps.py\\\
+      \"}; changed={p.strip() for p in sys.stdin if p.strip()}; bad=[p for p in changed\
+      \ if p not in allowed and not p.startswith(\\\"tests/\\\")]; print(sorted(changed));\
+      \ assert not bad, bad'\"]\n    - id: check.blocked_paths_untouched\n      covers_claims:\
+      \ [B5.scope_contained]\n      command: [\"bash\", \"-lc\", \"! git diff --name-only\
+      \ HEAD -- src README.md pyproject.toml plan.yaml docs .agent/evidence | grep\
+      \ .\"]\n    - id: check.no_replacement_abstraction\n      covers_claims: [B5.no_replacement_abstraction]\n\
+      \      command: [\"bash\", \"-lc\", \"! rg -n 'EXPECTED_RUNNER_GAPS|EXPECTED_PARSER_GAPS|CODEX_SUCCESS_SINGLE_ITEM|GEMINI_SUCCESS_SIMPLE|Expected-RED\
+      \ Gaps for driver-multi-runner-hardening' tests src docs README.md pyproject.toml\"\
+      ]\n\n## Completion Criteria (stub/replacement exclusion)\nThis is a DEMOLITION\
+      \ fix. Completion requires deletion with negative line delta. Creating a replacement\
+      \ helper, wrapper, shim, placeholder, or new abstraction does NOT satisfy this\
+      \ step."
+    verification: '- Required B5 file-absent check passes.
+
+      - Required no-live-reference check passes for tests/src/docs/README/pyproject
+      without editing blocked paths.
+
+      - Pytest collection/import proof passes, or any adjacent reference removal is
+      justified by pre-edit import-break proof and exact changed paths.
+
+      - Scope containment proof shows no forbidden production/docs/plan/evidence path
+      changed.
+
+      - No replacement abstraction or expected-red runner fixture residue remains.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - user-request:2026-06-18#B5_EXACT_DELETION_TARGET_PRESENT — key passage or
+      NOT READ reason
+
+      - .agent/evidence/orch_removal_scope_matrix.md — key passage or NOT READ reason
+
+
+      ## B5 Fix Evidence
+
+      blocker_family_id: B5-exact-deletion-target-extended-runner-gaps
+
+
+      ### Changed paths
+
+      ```
+
+      <paste git diff --name-only HEAD -->
+
+      ```
+
+
+      ### Required checks
+
+      - check.file_absent:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - check.no_live_references:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - check.pytest_collection:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - check.scope_containment:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - check.blocked_paths_untouched:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - check.no_replacement_abstraction:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+
+      ### Adjacent reference justification
+
+      If any path beyond tests/fixtures/helpers/extended_runner_gaps.py changed, paste
+      the pre-edit import-break proof and exact importing test file path. Otherwise
+      state: none.
+
+
+      ### Claims
+
+      - B5.file_absent: PASS/FAIL
+
+      - B5.no_live_refs: PASS/FAIL
+
+      - B5.scope_contained: PASS/FAIL
+
+      - B5.no_replacement_abstraction: PASS/FAIL'
+    depends_on:
+    - orch_removal_final_gate
+    agent: architectural-demolitionist
 - id: evidence_guard_remediation
   name: Evidence Guard Remediation
   status: done

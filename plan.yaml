@@ -113587,9 +113587,8 @@ phases:
       \  preserved_behavior: CLI runtime proof PASS, full regression PASS, wiring\
       \ audit PASS, B1 retest PASS, decide/MCP docs/tests/sources.\n  negative_delta_expectation:\
       \ remove or narrowly rewrite stale residue only; no replacement abstraction.\n\
-      \n<intent_closure_contract>\nallowed_paths:\n  exact:\n  - tests/test_models.py\n\
-      \  - docs/invar_guard_remediation/uiux-proof-artifact.md\n  - docs/invar_guard_remediation/guard_all_raw.txt\n\
-      \  - docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md\n\
+      \n<intent_closure_contract>\nallowed_paths:\n  - tests/test_models.py\n  - docs/invar_guard_remediation/uiux-proof-artifact.md\n\
+      \  - docs/invar_guard_remediation/guard_all_raw.txt\n  - docs/invar_guard_remediation/config_projection_recovery_residual_disposition.md\n\
       \  - docs/invar_guard_remediation/escape_budget_authority_decision.md\n  - docs/invar_guard_remediation/failure_inventory.md\n\
       \  - docs/invar_guard_remediation/post_salvage_residual_classification_register.md\n\
       blocked_paths:\n  - plan.yaml\n  - .vectl/**\n  - src/**\n  - README.md\n  -\
@@ -113598,7 +113597,7 @@ phases:
       \  - docs/**/*mcp*.md\n  - docs/**/*MCP*.md\nrequired_claims:\n  - id: b2_blocker_family_closed\n\
       \    claim: Every raw B2 file:term hit from orch_removal_final_grep_closure\
       \ is absent, and no sibling B2 hit remains under docs/invar_guard_remediation.\n\
-      \  - id: scope_containment\n    claim: Changed paths are limited to allowed_paths.exact;\
+      \  - id: scope_containment\n    claim: Changed paths are limited to allowed_paths;\
       \ no src, README, pyproject, decide/MCP, plan, or .vectl path is edited by worker\
       \ changes.\n  - id: no_final_grep_weakening\n    claim: Final grep command and\
       \ retest are not edited; no allowlist, ignored-term list, or scan-narrowing\
@@ -113633,7 +113632,7 @@ phases:
       n'.join(fail))\n            raise SystemExit(1)\n        print('PASS: bare B2\
       \ forbidden residue absent from allowed inventory and sibling docs scope')\n\
       \    expected: exit 0 and PASS line printed.\n  - id: changed_path_scope_containment\n\
-      \    purpose: changed paths are a subset of allowed_paths.exact.\n    covers_claims:\n\
+      \    purpose: changed paths are a subset of allowed_paths.\n    covers_claims:\n\
       \      - scope_containment\n      - preserve_green_finalization_proofs\n   \
       \ command:\n      - python\n      - -c\n      - |\n        import os, subprocess\n\
       \        allowed = set(['tests/test_models.py', 'docs/invar_guard_remediation/uiux-proof-artifact.md',\
@@ -113645,9 +113644,9 @@ phases:
       \ [p for p in paths if p not in allowed]\n        if bad:\n            print('FAIL\
       \ outside allowed_paths')\n            print('\\n'.join(bad))\n            raise\
       \ SystemExit(1)\n        print('PASS: changed paths contained')\n    expected:\
-      \ exit 0; no path outside allowed_paths.exact.\n  - id: no_blocked_path_edits\n\
-      \    purpose: no edits to blocked paths or preserved decide/MCP/finalization\
-      \ proof surfaces.\n    covers_claims:\n      - scope_containment\n      - preserve_green_finalization_proofs\n\
+      \ exit 0; no path outside allowed_paths.\n  - id: no_blocked_path_edits\n  \
+      \  purpose: no edits to blocked paths or preserved decide/MCP/finalization proof\
+      \ surfaces.\n    covers_claims:\n      - scope_containment\n      - preserve_green_finalization_proofs\n\
       \    command:\n      - python\n      - -c\n      - |\n        import fnmatch,\
       \ os, subprocess\n        blocked = ['plan.yaml', '.vectl/**', 'src/**', 'README.md',\
       \ 'README_zh.md', 'pyproject.toml', 'tests/test_decide.py', 'tests/test_decide_state_isolation.py',\
@@ -113710,19 +113709,19 @@ phases:
       \        print(f'PASS negative/non-positive delta adds={adds} dels={dels}')\n\
       \    expected: exit 0; additions do not exceed deletions and no abstraction\
       \ tokens added.\n</intent_closure_contract>\n\n<side_effect_budget>\nAllowed\
-      \ side effects: remove stale historical remediation residue only from allowed_paths.exact;\
+      \ side effects: remove stale historical remediation residue only from allowed_paths;\
       \ run local grep/test commands.\nForbidden side effects: production code edits,\
       \ grep command weakening, allowlists, README/pyproject edits, plan/worktree\
       \ metadata edits, decide/MCP preservation edits, or rework of already-green\
-      \ finalization evidence outside allowed_paths.exact.\n</side_effect_budget>\n\
-      \n<risk_probes>\n- Probe hidden sibling residue under docs/invar_guard_remediation\
-      \ with the same forbidden terms before finishing.\n- Probe tests/test_models.py\
-      \ still validates active model behavior if touched.\n- Probe the final grep\
-      \ command is unchanged and fails only on real residue, not because of narrowed\
-      \ scan scope.\n</risk_probes>\n\n## Completion Criteria (stub exclusion)\nThis\
-      \ is an IMPLEMENTATION cleanup step. Stub-only completion is not applicable\
-      \ and not acceptable; the residue must actually be removed or narrowly rewritten,\
-      \ and required_checks must be runnable from the worker worktree."
+      \ finalization evidence outside allowed_paths.\n</side_effect_budget>\n\n<risk_probes>\n\
+      - Probe hidden sibling residue under docs/invar_guard_remediation with the same\
+      \ forbidden terms before finishing.\n- Probe tests/test_models.py still validates\
+      \ active model behavior if touched.\n- Probe the final grep command is unchanged\
+      \ and fails only on real residue, not because of narrowed scan scope.\n</risk_probes>\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION cleanup\
+      \ step. Stub-only completion is not applicable and not acceptable; the residue\
+      \ must actually be removed or narrowly rewritten, and required_checks must be\
+      \ runnable from the worker worktree."
     verification: '- Main path: every raw hit in blocker family `B2-final-grep-forbidden-residue`
       is absent from the allowed path budget after deletion/narrow rewrite.
 

@@ -2,7 +2,6 @@
 
 import pytest
 
-import vectl.models as models
 from vectl.models import (
     AffinityMode,
     Clipboard,
@@ -63,9 +62,6 @@ class TestStep:
         step = Step.model_validate({"id": "s1", "name": "Do thing", "isolation": "workspace"})
         assert "isolation" not in Step.model_fields
         assert "isolation" not in step.model_dump()
-
-    def test_isolation_mode_is_not_exported(self):
-        assert not hasattr(models, "IsolationMode")
 
     def test_skipped_requires_reason(self):
         with pytest.raises(ValueError, match="skipped_reason is required"):

@@ -1,6 +1,6 @@
 [project]
 name = "vectl"
-version = "0.8.0"
+version = "0.8.1"
 description = "Execution control plane for AI agents — structure agents, save tokens."
 readme = "README.md"
 authors = [{name = "Tefx", email = "zhaomeng.zhu@gmail.com"}]
@@ -29,6 +29,7 @@ dependencies = [
     "invar-runtime>=1.3.0",
     "deal>=4.24.6",
     "typing-extensions>=4.15.0",
+    "watchfiles>=1.1.0",
 ]
 
 [project.urls]

@@ -96,30 +96,7 @@ def status(
     has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(p, plan_path)
 
     # Overview: all phases
-    table = Table(title=f"Plan: {p.project}", show_lines=True)
-    table.add_column("Phase", style="bold")
-    table.add_column("Name")
-    table.add_column("Status")
-    table.add_column("Progress")
-    table.add_column("Depends On")
-
-    for ph in p.phases:
-        total = len(ph.steps)
-        done = sum(1 for s in ph.steps if s.status in (StepStatus.DONE, StepStatus.SKIPPED))
-        bar = f"{done}/{total}"
-        if total > 0:
-            pct = done / total * 100
-            bar += f" ({pct:.0f}%)"
-
-        table.add_row(
-            _esc(ph.id),
-            _esc(ph.name),
-            _phase_icon(ph.status),
-            bar,
-            _esc(", ".join(ph.depends_on)) if ph.depends_on else "-",
-        )
-
-    out.print(table)
+    out.print(_build_phase_overview_table(p).unwrap())
     out.print()
     _print_duplicate_id_warning_block(p)
 
@@ -136,6 +113,13 @@ def status(
     out.print()
     out.print("[dim]→ vectl next                      See claimable steps[/]")
     out.print("[dim]→ vectl show <phase>               Phase detail[/]")
+
+
+def top(plan: Path | None = PlanOption) -> None:
+    """Show a live plan-level progress panel."""
+    from vectl.cli_top import run_top
+
+    run_top(plan)
 
 
 # @shell_complexity: phase renderer preserves existing Rich layout and conditional detail fields.

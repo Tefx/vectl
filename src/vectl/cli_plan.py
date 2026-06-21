@@ -29,7 +29,7 @@ from vectl.cli_plan_mutation_commands import (
     move_step_cmd,
     remove_step_cmd,
 )
-from vectl.cli_plan_read_commands import dag, guide_cmd, next_cmd, show, status
+from vectl.cli_plan_read_commands import dag, guide_cmd, next_cmd, show, status, top
 from vectl.cli_plan_review_commands import (
     clipboard_clear_cmd,
     clipboard_read_cmd,

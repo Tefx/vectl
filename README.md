@@ -128,13 +128,15 @@ Prefer MCP tools (`vectl_mutate`, `vectl_guide`) over CLI if available.
 ```
 
 ### 5. Monitor Progress
-
 As a user, your main job is to **review progress** and **make decisions**:
 
 ```bash
-uvx vectl render            # Markdown progress report
-uvx vectl dashboard --open  # Visual HTML dashboard (static, no server)
+uvx vectl top              # Live terminal progress panel (auto-updates on plan changes)
+uvx vectl render           # Markdown progress report
+uvx vectl dashboard --open # Visual HTML dashboard (static, no server)
 ```
+
+`vectl top` is the lightweight terminal view for keeping a panel open while agents work. It watches the plan files and redraws only when the plan changes, so it avoids high-frequency repainting. To stay readable in normal terminal panes, it automatically folds earlier completed phases, keeps the latest and not-done phases visible, and exits with `q` or Ctrl-C.
 
 ![Dashboard Overview](docs/dashboard-overview.png)
 

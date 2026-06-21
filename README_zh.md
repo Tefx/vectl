@@ -128,13 +128,15 @@ uvx vectl agents-md --target claude # 强制写入 CLAUDE.md
 ```
 
 ### 5. 查看进度
-
 作为使用者，你的日常主要是**看进度**和**做决策**：
 
 ```bash
-uvx vectl render            # 生成 Markdown 进度报告
-uvx vectl dashboard --open  # 可视化 Dashboard（静态 HTML，不需要 server）
+uvx vectl top              # 常驻终端进度面板（plan 变化时自动更新）
+uvx vectl render           # 生成 Markdown 进度报告
+uvx vectl dashboard --open # 可视化 Dashboard（静态 HTML，不需要 server）
 ```
+
+`vectl top` 适合开在一个终端 panel 里常驻观察进度。它监听 plan 文件变化，只在内容变化时重绘，避免高频刷新带来的 CPU 和耗电浪费。为了适配普通终端窗口，它会自动折叠前面已完成的 phase，并保留最近和未完成的 phase 可见；按 `q` 或 Ctrl-C 可退出。
 
 Dashboard 里有进度概览、每个 phase 的状态、依赖关系的 DAG 图。打开浏览器就能看，不需要启动任何服务。DAG 视图会从 CDN 加载 Mermaid.js（该 tab 需要网络）。
 

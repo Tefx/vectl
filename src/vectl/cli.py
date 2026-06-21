@@ -48,6 +48,7 @@ from vectl.cli_plan import (
     skip,
     skip_phase_cmd,
     status,
+    top,
     unlock,
     validate,
 )
@@ -120,6 +121,7 @@ app.command("agents-md")(agents_md_cmd)
 app.command()(init)
 app.command("next")(next_cmd)
 app.command()(status)
+app.command()(top)
 app.command()(show)
 app.command("guide")(guide_cmd)
 app.command()(dag)

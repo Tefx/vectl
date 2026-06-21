@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import json
 import subprocess as sp
+from io import StringIO
 from pathlib import Path
+import threading
 
 import pytest
 import yaml
+from rich.console import Console
 from typer.testing import CliRunner
 
 from vectl import __version__
@@ -662,6 +665,213 @@ class TestStatus:
         result = runner.invoke(app, ["status", "--plan", str(plan_file), "--phase", "nope"])
         assert result.exit_code == 1
         assert "not found" in result.output
+
+
+class TestTop:
+    def test_help_is_simple(self):
+        result = runner.invoke(app, ["top", "--help"])
+        assert result.exit_code == 0
+        assert "--plan" in result.output
+        assert "--phase" not in result.output
+        assert "--watch-backend" not in result.output
+        assert "--poll-interval" not in result.output
+
+    def test_top_renders_and_watches_plan_files(
+        self,
+        plan_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import vectl.cli_top as cli_top
+
+        live_instances = []
+        captured: dict[str, object] = {}
+
+        class FakeLive:
+            def __init__(self, renderable, **kwargs):
+                self.renderable = renderable
+                self.kwargs = kwargs
+                self.updates = []
+                live_instances.append(self)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def update(self, renderable, *, refresh: bool = False):
+                self.updates.append((renderable, refresh))
+
+        def fake_watch(*paths, **kwargs):
+            captured["paths"] = paths
+            captured["kwargs"] = kwargs
+            yield {(None, str(plan_file))}
+            raise KeyboardInterrupt
+
+        monkeypatch.setattr(cli_top, "Live", FakeLive)
+        monkeypatch.setattr(cli_top, "watch", fake_watch)
+
+        result = runner.invoke(app, ["top", "--plan", str(plan_file)], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert live_instances
+        assert len(live_instances[0].updates) == 1
+        assert live_instances[0].updates[0][1] is True
+        assert captured["paths"] == (plan_file.parent.resolve(),)
+        assert captured["kwargs"]["recursive"] is False
+        assert captured["kwargs"]["raise_interrupt"] is False
+        assert captured["kwargs"]["poll_delay_ms"] == 10_000
+        assert captured["kwargs"]["rust_timeout"] == 500
+        assert callable(captured["kwargs"]["stop_event"].is_set)
+        assert "Stopped" in result.output
+
+    def test_top_is_read_only_for_plan_yaml(
+        self,
+        plan_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import vectl.cli_top as cli_top
+
+        class FakeLive:
+            def __init__(self, renderable, **kwargs):
+                self.renderable = renderable
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def update(self, renderable, *, refresh: bool = False):
+                return None
+
+        def fake_watch(*paths, **kwargs):
+            if False:
+                yield None
+
+        monkeypatch.setattr(cli_top, "Live", FakeLive)
+        monkeypatch.setattr(cli_top, "watch", fake_watch)
+
+        before = plan_file.read_text(encoding="utf-8")
+        result = runner.invoke(app, ["top", "--plan", str(plan_file)], catch_exceptions=False)
+        after = plan_file.read_text(encoding="utf-8")
+
+        assert result.exit_code == 0
+        assert after == before
+
+    def test_watch_filter_only_accepts_plan_and_claims_paths(self, tmp_path: Path) -> None:
+        from vectl.cli_top import _make_watch_filter
+
+        plan_path = tmp_path / "plan.yaml"
+        claims_path = tmp_path / ".vectl" / "claims.json"
+        include = _make_watch_filter({plan_path, claims_path}).unwrap()
+
+        assert include(None, str(plan_path)) is True
+        assert include(None, str(claims_path)) is True
+        assert include(None, str(tmp_path / "README.md")) is False
+
+    def test_top_phase_table_folds_early_completed_phases(self) -> None:
+        from vectl.cli_top import _build_top_phase_table
+
+        phases = [
+            Phase(
+                id=f"p{index}",
+                name=f"Phase {index}",
+                status=PhaseStatus.DONE,
+                depends_on=[f"p{index - 1}"] if index else [],
+                steps=[Step(id=f"s{index}", name="Step", status=StepStatus.DONE)],
+            )
+            for index in range(8)
+        ]
+        plan = Plan(project="fold-test", phases=phases)
+        table = _build_top_phase_table(plan, max_phase_rows=4).unwrap()
+        console = Console(record=True, width=120, color_system=None)
+
+        console.print(table)
+        output = console.export_text()
+
+        assert table.show_lines is True
+        assert "Name" in output
+        assert "Progress" in output
+        assert "Depends On" in output
+        assert "Status" not in output
+        assert "5 completed phases folded" in output
+        assert "p0" not in output
+        assert "p5" in output
+        assert "p7" in output
+        assert "Phase 7" in output
+
+    def test_top_phase_table_keeps_non_done_phase_outside_tail(self) -> None:
+        from vectl.cli_top import _build_top_phase_table
+
+        phases = [
+            Phase(
+                id=f"p{index}",
+                name=f"Phase {index}",
+                status=PhaseStatus.DONE,
+                steps=[Step(id=f"s{index}", name="Step", status=StepStatus.DONE)],
+            )
+            for index in range(8)
+        ]
+        phases[1] = phases[1].model_copy(update={"status": PhaseStatus.IN_PROGRESS})
+        plan = Plan(project="fold-test", phases=phases)
+        table = _build_top_phase_table(plan, max_phase_rows=4).unwrap()
+        console = Console(record=True, width=120, color_system=None)
+
+        console.print(table)
+        output = console.export_text()
+
+        assert "p1" in output
+        assert "active" in output
+        assert "████" in output
+        assert "p6" in output
+        assert "p7" in output
+        assert "completed phases folded" in output
+
+    def test_top_renderable_fits_terminal_height_without_duplicate_titles(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import vectl.cli_top as cli_top
+
+        phases = [
+            Phase(
+                id=f"p{index}",
+                name=f"Phase {index}",
+                status=PhaseStatus.DONE,
+                steps=[Step(id=f"s{index}", name="Step", status=StepStatus.DONE)],
+            )
+            for index in range(30)
+        ]
+        plan = Plan(project="fit-test", phases=phases)
+        fake_out = Console(file=StringIO(), width=120, height=20, color_system=None)
+        monkeypatch.setattr(cli_top, "out", fake_out)
+
+        panel = cli_top.build_top_renderable(
+            plan,
+            tmp_path / "plan.yaml",
+            last_updated="00:00:00",
+        ).unwrap()
+        console = Console(file=StringIO(), record=True, width=120, color_system=None)
+
+        console.print(panel)
+        output = console.export_text()
+
+        assert cli_top._rendered_line_count(panel, 120).unwrap() <= 20
+        assert "vectl top · Plan" not in output
+        assert "q/Ctrl-C to exit" in output
+        assert output.count("Plan: fit-test") == 1
+
+    def test_top_quit_key_sets_stop_event(self) -> None:
+        import vectl.cli_top as cli_top
+
+        stop_event = threading.Event()
+
+        assert cli_top._handle_quit_key("x", stop_event).unwrap() is False
+        assert stop_event.is_set() is False
+        assert cli_top._handle_quit_key("q", stop_event).unwrap() is True
+        assert stop_event.is_set() is True
 
 
 # ---------------------------------------------------------------------------

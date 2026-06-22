@@ -118953,6 +118953,94 @@ phases:
     depends_on:
     - batch_claim_implementation.core-atomic-claim
     agent: python-executor
+  - id: batch_claim_implementation.gate
+    name: Gate implementation and surface wiring
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check; protects finalization proof from proceeding
+      with partial implementation.
+
+      review_depth: THOROUGH
+
+      review_depth_rationale: batch claim touches lifecycle state, claims-store rollback,
+      CLI/MCP tool registries, CAS-adjacent save behavior, and user-visible CLI output.
+
+
+      Requirement-to-Evidence Matrix:
+
+      | requirement_id | source_ref + key passage | target_state | evidence_class
+      | required_probe_or_artifact | status |
+
+      | BCM-IG1 | docs/RFC-batch-claim.md#contract — atomic all-or-nothing explicit
+      batch claim while existing claim behavior unchanged | implementation evidence
+      proves every contract row or has blocker owner | artifact_review | gate decision
+      basis over implementation evidence | OWNED |
+
+      | BCM-IG2 | docs/RFC-batch-claim.md#consistency-requirement — no partial plan
+      changes or orphaned claim records | rollback/no-ghost proof is positive, not
+      inferred | artifact_review | review of simulated failure test stdout and claims-store
+      inspection | OWNED |
+
+      | BCM-IG3 | docs/RFC-batch-claim.md#expected-cli-shape/#expected-mcp-shape —
+      CLI and MCP parity | both runtime surfaces are wired to same core result | artifact_review
+      | CLI/MCP parity test evidence reviewed | OWNED |
+
+
+      Gate must reject sampled evidence that omits rollback/no-ghost tests, approves
+      CLI/MCP by source inspection only, or treats unit mocks as proof of transport
+      parity.'
+    verification: Review implementation evidence from all same-phase steps. Gate OPEN
+      only if core atomicity, claims-store rollback, single-claim regression safety,
+      CLI claim-many, and MCP vectl_claim_many have positive targeted evidence. Gate
+      BLOCKED if any RFC non-goal was implemented or if raw command evidence is missing.
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - docs/RFC-batch-claim.md#contract — key passage:
+
+      - docs/RFC-batch-claim.md#consistency-requirement — key passage:
+
+      - docs/RFC-batch-claim.md#expected-cli-shape — key passage:
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — key passage:
+
+      - docs/RFC-batch-claim.md#verification-gate — key passage:
+
+
+      ### Execution Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      |---|---|---|---|
+
+      | batch_claim_implementation.core-atomic-claim | | | |
+
+      | batch_claim_implementation.cli-mcp-parity | | | |
+
+
+      ### Decision Basis
+
+      - Atomic all-or-nothing proven: YES/NO
+
+      - Rollback/no ghost claim proven: YES/NO
+
+      - Single-step claim unchanged: YES/NO
+
+      - CLI/MCP parity proven by runtime tests: YES/NO
+
+      - Non-goals absent: YES/NO
+
+
+      ### Gate Decision
+
+      OPEN or BLOCKED, with blocker owner if blocked.'
+    depends_on:
+    - batch_claim_implementation.core-atomic-claim
+    - batch_claim_implementation.cli-mcp-parity
+    agent: gate-reviewer
 - id: batch_claim_finalization
   name: Atomic Batch Claim Verification, Documentation, and Gate
   status: locked

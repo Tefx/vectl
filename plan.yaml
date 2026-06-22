@@ -118593,3 +118593,10 @@ phases:
     and MCP vectl_claim_many are implemented and covered by targeted tests.
   depends_on:
   - batch_claim_contract_tests
+- id: batch_claim_finalization
+  name: Atomic Batch Claim Verification, Documentation, and Gate
+  status: locked
+  gate: Targeted tests, CLI/MCP parity proof, docs/guide sync, and repo-wide guard
+    evidence are reviewed with no unresolved blockers.
+  depends_on:
+  - batch_claim_implementation

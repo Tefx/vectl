@@ -119221,3 +119221,80 @@ phases:
 
       Paste raw stdout/stderr and exit code.'
     agent: doc-reviewer
+  - id: batch_claim_finalization.full-regression-guard
+    name: Run full regression guard for batch claim
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: full-plan-check; protects final gate and release readiness.
+
+      Independence Level: L2.
+
+
+      Requirement-to-Evidence Matrix:
+
+      | requirement_id | source_ref + key passage | target_state | evidence_class
+      | required_probe_or_artifact | status |
+
+      | BCM-F1 | docs/RFC-batch-claim.md#verification-gate — targeted core, claims-store,
+      MCP, CLI tests plus full guard/current policy | repo-wide regression command
+      passes after implementation and docs changes | runtime_probe | raw `uvx invar-tools
+      guard --all` output, plus targeted pytest outputs if guard excludes any required
+      target | OWNED |
+
+
+      Run the repo-wide guard from a fresh/cold environment after batch claim implementation
+      and docs sync. If the guard reports pre-existing or out-of-step failures that
+      intersect batch claim release readiness, this step must report BLOCKED and name
+      required owner steps rather than dismissing them as out-of-scope.'
+    verification: Run `uvx invar-tools guard --all` from the repository root and paste
+      raw stdout/stderr and exit code. If unavailable, run `uv run pytest tests/test_batch_claim.py
+      tests/test_claims.py tests/test_cli.py tests/test_mcp.py -q` plus `uvx invar-tools
+      guard --changed`, and explicitly state the infrastructure blocker for full guard.
+    evidence_template: '## Full Regression Guard Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - docs/RFC-batch-claim.md#verification-gate — key passage:
+
+      - pyproject.toml#tool-invar-guard — key passage:
+
+      - INVAR.md — key passage or NOT READ reason:
+
+
+      ### Commands
+
+      ```
+
+      uvx invar-tools guard --all
+
+      ```
+
+      Raw stdout/stderr and exit code:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ### Fallback, only if full guard cannot run
+
+      - Reason full guard unavailable:
+
+      - Targeted commands run instead:
+
+      - Raw outputs:
+
+      - Owner for infrastructure blocker:
+
+
+      ### Disposition
+
+      PASS / BLOCKED. If BLOCKED, list blocker owner step required.'
+    depends_on:
+    - batch_claim_finalization.blackbox-parity-proof
+    - batch_claim_finalization.docs-guide-sync
+    agent: integration-verifier

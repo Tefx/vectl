@@ -119048,3 +119048,116 @@ phases:
     evidence are reviewed with no unresolved blockers.
   depends_on:
   - batch_claim_implementation
+  steps:
+  - id: batch_claim_finalization.blackbox-parity-proof
+    name: Black-box CLI and MCP atomic batch proof
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check; protects final gate and user-visible CLI/MCP
+      release readiness.
+
+      Independence Level: L2 (fresh repo context, independent from implementation
+      agents).
+
+
+      Requirement-to-Evidence Matrix:
+
+      | requirement_id | source_ref + key passage | target_state | evidence_class
+      | required_probe_or_artifact | status |
+
+      | BCM-V1 | docs/RFC-batch-claim.md#expected-cli-shape — machine-oriented `vectl
+      claim-many --claims-json ... --json --no-guidance` | real CLI invocation works
+      and emits parseable structured JSON | runtime_probe | raw command stdout piped
+      through JSON parser and exit code | OWNED |
+
+      | BCM-V2 | docs/RFC-batch-claim.md#expected-mcp-shape — `vectl_claim_many(claims=[...],
+      guidance=False, force=False)` | MCP tool/function returns equivalent structured
+      response | runtime_probe | raw MCP/test stdout with response fields and order
+      | OWNED |
+
+      | BCM-V3 | docs/RFC-batch-claim.md#response-shape — ok/claimed/failed/affinity_warnings/markdown/lock_notice
+      | CLI and MCP responses are equivalent for the same fixture and no partial failure
+      leaves claims | runtime_probe | parity table plus claims repair dry-run/no-mismatch
+      evidence | OWNED |
+
+
+      As an independent tester, try to disprove the implementation using true CLI/MCP
+      surfaces, not only unit mocks. Include at least one successful multi-agent batch,
+      one conflict/duplicate failure, one affinity/force case, one no-partial-mutation
+      case, and explicit absence probes for count/auto-select/reserve_steps.'
+    verification: Run targeted core, claims-store, CLI, and MCP tests plus at least
+      one real CLI `uv run vectl claim-many ... --json --no-guidance` probe whose
+      stdout is parsed as JSON. Provide raw stdout/stderr, exit codes, and a parity
+      table. Mock-only proof is insufficient.
+    evidence_template: '## Black-Box Batch Claim Proof
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - docs/RFC-batch-claim.md#expected-cli-shape — key passage:
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — key passage:
+
+      - docs/RFC-batch-claim.md#response-shape — key passage:
+
+      - docs/RFC-batch-claim.md#verification-gate — key passage:
+
+
+      ### Runtime Probes
+
+      **CLI command executed:**
+
+      ```
+
+      <exact uv run vectl claim-many ... --json --no-guidance command>
+
+      ```
+
+      **CLI stdout/stderr + exit code:**
+
+      ```
+
+      <paste raw output>
+
+      ```
+
+      **JSON parser proof:**
+
+      ```
+
+      <paste parser command/output>
+
+      ```
+
+      **MCP proof command/output:**
+
+      ```
+
+      <paste raw MCP/tool test output>
+
+      ```
+
+
+      ### Parity / Safety Table
+
+      | Scenario | CLI status | MCP status | Claims-store after | Plan state after
+      | Verdict |
+
+      |---|---|---|---|---|---|
+
+      | success multi-agent | | | | | |
+
+      | duplicate/conflict failure | | | | | |
+
+      | affinity/force | | | | | |
+
+      | save-failure rollback/no-ghost | | | | | |
+
+      | count/auto-select/reserve_steps rejected/absent | | | | | |
+
+
+      ### Headline
+
+      PASS / FAIL with blockers.'
+    agent: integration-verifier

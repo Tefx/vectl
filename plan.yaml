@@ -118586,6 +118586,64 @@ phases:
   status: pending
   gate: Contract stubs and expected-red tests define Atomic Batch Claim acceptance
     without shipping production behavior.
+  steps:
+  - id: batch_claim_contract_tests.contract-lock
+    name: Lock explicit batch claim contracts
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\
+      \ signatures, type_defs, stubs, docstrings\n\nRequirement-to-Evidence Matrix:\n\
+      | requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| BCM-R1 | docs/RFC-batch-claim.md#decision\
+      \ — add explicit atomic batch claim; CLI claim-many, MCP vectl_claim_many, Core\
+      \ claim_many/claim_steps | public contract names and request/result shapes are\
+      \ pinned without implementation logic | source_static | contract diff and import/collection\
+      \ proof | OWNED |\n| BCM-R2 | docs/RFC-batch-claim.md#non-goals — no count,\
+      \ no auto-select, no dispatch policy, no reserve/reserved state | contract exposes\
+      \ only explicit claims[] plus guidance/force | source_static | contract review\
+      \ plus import proof | OWNED |\n\nTarget state: define acceptance-only request/result\
+      \ models and stub signatures for explicit batch claims, preserving existing\
+      \ single-step claim APIs. Do not implement production mutation logic in this\
+      \ step.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"src/vectl/core/batch_claim.py\"\
+      \n  - \"src/vectl/core/__init__.py\"\n  - \"src/vectl/core_plan_mutations.py\"\
+      \n  - \"src/vectl/lifecycle.py\"\n  - \"tests/test_batch_claim_contract.py\"\
+      \nblocked_paths:\n  - \"src/vectl/cli_plan_lifecycle_commands.py\"\n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\
+      \n  - \"src/vectl/mcp_server.py\"\nrequired_claims:\n  - explicit_claims_contract_locked\n\
+      \  - non_goals_excluded_from_contract\n  - existing_claim_imports_preserved\n\
+      required_checks:\n  - id: contract_imports\n    command: [\"uv\", \"run\", \"\
+      pytest\", \"tests/test_lifecycle_imports.py\", \"tests/test_batch_claim_contract.py\"\
+      , \"-q\"]\n    covers_claims:\n      - explicit_claims_contract_locked\n   \
+      \   - non_goals_excluded_from_contract\n      - existing_claim_imports_preserved\n\
+      </intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - docs/RFC-batch-claim.md#decision — key passage:
+
+      - docs/RFC-batch-claim.md#contract — key passage:
+
+      - docs/RFC-batch-claim.md#non-goals — key passage:
+
+
+      ## Contract Purity Evidence
+
+      - Files changed:
+
+      - Stubs/signatures added:
+
+      - Confirmation no production mutation logic shipped:
+
+
+      ## Commands
+
+      ```
+
+      uv run pytest tests/test_lifecycle_imports.py tests/test_batch_claim_contract.py
+      -q
+
+      ```
+
+      Paste raw stdout/stderr and exit code.'
+    agent: python-executor
 - id: batch_claim_implementation
   name: Atomic Batch Claim Implementation and Surface Wiring
   status: locked

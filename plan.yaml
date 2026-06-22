@@ -118591,31 +118591,49 @@ phases:
     name: Lock explicit batch claim contracts
     status: pending
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\
-      \ signatures, type_defs, stubs, docstrings\n\nRequirement-to-Evidence Matrix:\n\
-      | requirement_id | source_ref + key passage | target_state | evidence_class\
-      \ | required_probe_or_artifact | status |\n| BCM-R1 | docs/RFC-batch-claim.md#decision\
-      \ — add explicit atomic batch claim; CLI claim-many, MCP vectl_claim_many, Core\
-      \ claim_many/claim_steps | public contract names and request/result shapes are\
-      \ pinned without implementation logic | source_static | contract diff and import/collection\
-      \ proof | OWNED |\n| BCM-R2 | docs/RFC-batch-claim.md#non-goals — no count,\
-      \ no auto-select, no dispatch policy, no reserve/reserved state | contract exposes\
-      \ only explicit claims[] plus guidance/force | source_static | contract review\
-      \ plus import proof | OWNED |\n\nTarget state: define acceptance-only request/result\
-      \ models and stub signatures for explicit batch claims, preserving existing\
-      \ single-step claim APIs. Do not implement production mutation logic in this\
-      \ step.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"src/vectl/core/batch_claim.py\"\
-      \n  - \"src/vectl/core/__init__.py\"\n  - \"src/vectl/core_plan_mutations.py\"\
-      \n  - \"src/vectl/lifecycle.py\"\n  - \"tests/test_batch_claim_contract.py\"\
-      \nblocked_paths:\n  - \"src/vectl/cli_plan_lifecycle_commands.py\"\n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\
-      \n  - \"src/vectl/mcp_server.py\"\nrequired_claims:\n  - explicit_claims_contract_locked\n\
-      \  - non_goals_excluded_from_contract\n  - existing_claim_imports_preserved\n\
+      \ signatures, type_defs, stubs, docstrings, semantic_core_contracts, doctests\n\
+      \nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
+      \ | target_state | evidence_class | required_probe_or_artifact | status |\n\
+      | BCM-R1 | docs/RFC-batch-claim.md#decision — add explicit atomic batch claim;\
+      \ CLI claim-many, MCP vectl_claim_many, Core claim_many/claim_steps | public\
+      \ contract names and request/result shapes are pinned without implementation\
+      \ logic | source_static | contract diff and import/collection proof | OWNED\
+      \ |\n| BCM-R2 | docs/RFC-batch-claim.md#non-goals — no count, no auto-select,\
+      \ no dispatch policy, no reserve/reserved state | contract exposes only explicit\
+      \ claims[] plus guidance/force | source_static | contract review plus import\
+      \ proof | OWNED |\n| BCM-R3 | AGENTS.md#Invar and INVAR.md#Before-Writing-Code\
+      \ — Core functions require @pre, @post, and at least one doctest before implementation;\
+      \ guard rejects uncontracted Core code | Core batch-claim stubs include semantic\
+      \ @pre/@post contracts and doctest coverage before implementation | source_static\
+      \ | static contract/doctest inspection plus contract evidence | OWNED |\n\n\
+      Target state: define acceptance-only request/result models and stub signatures\
+      \ for explicit batch claims, preserving existing single-step claim APIs. Because\
+      \ `src/vectl/core/batch_claim.py` is Core code, the `claim_many` and `claim_steps`\
+      \ stubs MUST include semantic `@pre` and `@post` contracts and at least one\
+      \ doctest before any implementation logic lands. The contracts must reference\
+      \ real parameters/results and must not be vacuous identity lambdas. Doctests\
+      \ may document the contract-stub behavior, but must exercise the documented\
+      \ request/result shape for `claim_many` and/or `claim_steps`. Do not implement\
+      \ production mutation logic in this step.\n\n<intent_closure_contract>\nallowed_paths:\n\
+      \  - \"src/vectl/core/batch_claim.py\"\n  - \"src/vectl/core/__init__.py\"\n\
+      \  - \"src/vectl/core_plan_mutations.py\"\n  - \"src/vectl/lifecycle.py\"\n\
+      \  - \"tests/test_batch_claim_contract.py\"\nblocked_paths:\n  - \"src/vectl/cli_plan_lifecycle_commands.py\"\
+      \n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\n  - \"src/vectl/mcp_server.py\"\
+      \nrequired_claims:\n  - explicit_claims_contract_locked\n  - non_goals_excluded_from_contract\n\
+      \  - existing_claim_imports_preserved\n  - core_pre_post_doctests_defined\n\
       required_checks:\n  - id: contract_imports\n    command: [\"uv\", \"run\", \"\
       pytest\", \"tests/test_lifecycle_imports.py\", \"tests/test_batch_claim_contract.py\"\
       , \"-q\"]\n    covers_claims:\n      - explicit_claims_contract_locked\n   \
       \   - non_goals_excluded_from_contract\n      - existing_claim_imports_preserved\n\
-      </intent_closure_contract>"
+      \  - id: core_contract_doctest_static_check\n    command: [\"uv\", \"run\",\
+      \ \"python\", \"-c\", \"from pathlib import Path; text=Path('src/vectl/core/batch_claim.py').read_text();\
+      \ assert 'def claim_many' in text and 'def claim_steps' in text; assert text.count('@pre')\
+      \ >= 2 and text.count('@post') >= 2; assert '>>>' in text; assert 'lambda result:\
+      \ result' not in text and 'lambda x: x' not in text\"]\n    covers_claims:\n\
+      \      - core_pre_post_doctests_defined\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     evidence_template: '## refs Read Confirmation (MANDATORY)
+
 
       - docs/RFC-batch-claim.md#decision — key passage:
 
@@ -118623,8 +118641,13 @@ phases:
 
       - docs/RFC-batch-claim.md#non-goals — key passage:
 
+      - AGENTS.md#Invar — key passage:
+
+      - INVAR.md#Before-Writing-Code — key passage:
+
 
       ## Contract Purity Evidence
+
 
       - Files changed:
 
@@ -118633,14 +118656,33 @@ phases:
       - Confirmation no production mutation logic shipped:
 
 
+      ## Core Contract Evidence
+
+
+      - `claim_many` @pre/@post summary, including parameters/results referenced:
+
+      - `claim_steps` @pre/@post summary, including parameters/results referenced:
+
+      - Doctest location(s) and what contract shape they exercise:
+
+      - Confirmation contracts are semantic and not identity/vacuous lambdas:
+
+
       ## Commands
+
 
       ```
 
       uv run pytest tests/test_lifecycle_imports.py tests/test_batch_claim_contract.py
       -q
 
+      uv run python -c "from pathlib import Path; text=Path(''src/vectl/core/batch_claim.py'').read_text();
+      assert ''def claim_many'' in text and ''def claim_steps'' in text; assert text.count(''@pre'')
+      >= 2 and text.count(''@post'') >= 2; assert ''>>>'' in text; assert ''lambda
+      result: result'' not in text and ''lambda x: x'' not in text"
+
       ```
+
 
       Paste raw stdout/stderr and exit code.'
     agent: python-executor

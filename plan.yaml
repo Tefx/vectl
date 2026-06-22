@@ -118644,6 +118644,78 @@ phases:
 
       Paste raw stdout/stderr and exit code.'
     agent: python-executor
+  - id: batch_claim_contract_tests.expected-red-tests
+    name: Define expected-red atomicity and parity tests
+    status: pending
+    description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
+      \ red\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref + key\
+      \ passage | target_state | evidence_class | required_probe_or_artifact | status\
+      \ |\n| BCM-T1 | docs/RFC-batch-claim.md#contract — validate every requested\
+      \ claim, preserve input order, one mutation, no partial plan mutation | expected-red\
+      \ tests expose missing core atomic batch behavior | runtime_probe | targeted\
+      \ pytest failure fingerprint for missing claim_many behavior | OWNED |\n| BCM-T2\
+      \ | docs/RFC-batch-claim.md#consistency-requirement — failed batch must not\
+      \ leave partial plan changes or orphaned claim records | rollback/ghost-claim\
+      \ safety tests fail for missing implementation, not import errors | runtime_probe\
+      \ | targeted pytest failure with rollback assertions | OWNED |\n| BCM-T3 | docs/RFC-batch-claim.md#expected-cli-shape\
+      \ and #expected-mcp-shape — CLI claim-many and MCP vectl_claim_many parity |\
+      \ expected-red CLI/MCP tests cover same core operation and structured response\
+      \ fields | runtime_probe | targeted pytest failure fingerprints for missing\
+      \ CLI/MCP surfaces | OWNED |\n\nDefine tests only. Do not modify product implementation\
+      \ outside contract stubs from the previous step. Tests must include success,\
+      \ multi-agent batches, conflicts, affinity/force, duplicate IDs, no partial\
+      \ mutation, no ghost claim records on save failure, response order, and CLI/MCP\
+      \ parity. Fixtures for external CLI/MCP formats must use the exact documented\
+      \ shapes and must not include count, auto-select, or reserve_steps convenience\
+      \ fields.\n\n<intent_closure_contract>\nintent_kind: test_define_red\nallowed_paths:\n\
+      \  - \"tests/test_batch_claim.py\"\n  - \"tests/test_claims.py\"\n  - \"tests/test_cli.py\"\
+      \n  - \"tests/test_mcp.py\"\n  - \"tests/fixtures/**\"\nblocked_paths:\n  -\
+      \ \"src/vectl/**\"\nrequired_claims:\n  - expected_red_gap_exposed\n  - rollback_safety_guards_defined\n\
+      \  - cli_mcp_parity_guards_defined\n  - non_goal_guards_defined\nrequired_checks:\n\
+      \  - id: targeted_expected_red\n    command: [\"uv\", \"run\", \"pytest\", \"\
+      tests/test_batch_claim.py\", \"tests/test_claims.py\", \"tests/test_cli.py\"\
+      , \"tests/test_mcp.py\", \"-q\"]\n    expected_result: red\n    expected_exit_codes:\
+      \ [1]\n    expected_failure_patterns_any:\n      - \"claim_many\"\n      - \"\
+      claim-many\"\n      - \"vectl_claim_many\"\n    covers_claims:\n      - expected_red_gap_exposed\n\
+      \      - rollback_safety_guards_defined\n      - cli_mcp_parity_guards_defined\n\
+      \      - non_goal_guards_defined\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - docs/RFC-batch-claim.md#contract — key passage:
+
+      - docs/RFC-batch-claim.md#expected-cli-shape — key passage:
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — key passage:
+
+      - docs/RFC-batch-claim.md#response-shape — key passage:
+
+      - docs/RFC-batch-claim.md#consistency-requirement — key passage:
+
+
+      ## Expected-Red Evidence
+
+      - Tests added/updated only under tests/:
+
+      - Expected failure fingerprints (must be missing behavior, not import/module
+      errors):
+
+      - Non-goal guards for count/auto-select/reserve_steps:
+
+
+      ## Commands
+
+      ```
+
+      uv run pytest tests/test_batch_claim.py tests/test_claims.py tests/test_cli.py
+      tests/test_mcp.py -q
+
+      ```
+
+      Paste raw stdout/stderr and exit code.'
+    depends_on:
+    - batch_claim_contract_tests.contract-lock
+    agent: python-executor
 - id: batch_claim_implementation
   name: Atomic Batch Claim Implementation and Surface Wiring
   status: locked

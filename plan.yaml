@@ -119298,3 +119298,93 @@ phases:
     - batch_claim_finalization.blackbox-parity-proof
     - batch_claim_finalization.docs-guide-sync
     agent: integration-verifier
+  - id: batch_claim_finalization.gate
+    name: Final gate for Atomic Batch Claim
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: full-plan-check; protects plan completion for Atomic Batch
+      Claim.
+
+      review_depth: THOROUGH
+
+
+      Requirement-to-Evidence Matrix:
+
+      | requirement_id | source_ref + key passage | target_state | evidence_class
+      | required_probe_or_artifact | status |
+
+      | BCM-FG1 | docs/RFC-batch-claim.md#contract — all 10 contract obligations for
+      claim_many | every owned contract obligation has positive evidence or blocker
+      owner | artifact_review | structured gate decision basis over all phase evidence
+      | OWNED |
+
+      | BCM-FG2 | docs/RFC-batch-claim.md#non-goals — count/auto-select/reserve/dispatch/batch-complete
+      excluded | final implementation and docs preserve scope boundaries | artifact_review
+      | non-goal conformance review | OWNED |
+
+      | BCM-FG3 | docs/RFC-batch-claim.md#verification-gate — targeted tests and full
+      guard required | targeted and repo-wide evidence is raw, current, and passing
+      | artifact_review | raw logs reviewed with OPEN/BLOCK decision | OWNED |
+
+
+      Final gate must block on any unresolved atomicity, rollback/no-ghost, CLI/MCP
+      parity, docs drift, or repo-wide guard issue. It must not approve from source
+      inspection alone; require raw command/log evidence for runtime surfaces.'
+    verification: Review all Atomic Batch Claim phase evidence. Gate OPEN only if
+      contract/tests/implementation/docs/black-box proof/full guard are complete,
+      raw evidence is sufficient, and every RFC non-goal remains excluded. Gate BLOCKED
+      if any requirement is UNPROVEN, NEEDS_TEST, or missing a blocker-owner step.
+    evidence_template: '## Final Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - docs/RFC-batch-claim.md#contract — key passage:
+
+      - docs/RFC-batch-claim.md#non-goals — key passage:
+
+      - docs/RFC-batch-claim.md#response-shape — key passage:
+
+      - docs/RFC-batch-claim.md#verification-gate — key passage:
+
+
+      ### Requirement Decision Basis
+
+      | requirement_id | Evidence reviewed | Status (PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED)
+      | Closure path |
+
+      |---|---|---|---|
+
+      | BCM-I1 atomic core batch claim | | | |
+
+      | BCM-I2 rollback/no ghost claim | | | |
+
+      | BCM-S1 CLI claim-many | | | |
+
+      | BCM-S2 MCP vectl_claim_many | | | |
+
+      | BCM-D1 docs/guide sync | | | |
+
+      | BCM-F1 full guard | | | |
+
+
+      ### Non-Goal Conformance
+
+      - count absent/rejected:
+
+      - auto-select absent/rejected:
+
+      - reserve_steps/reserved state absent:
+
+      - dispatch policy absent:
+
+
+      ### Gate Decision
+
+      OPEN or BLOCKED. If BLOCKED, list exact blocker owner step(s) to create.'
+    depends_on:
+    - batch_claim_finalization.blackbox-parity-proof
+    - batch_claim_finalization.docs-guide-sync
+    - batch_claim_finalization.full-regression-guard
+    agent: gate-reviewer

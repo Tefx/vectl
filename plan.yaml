@@ -118876,6 +118876,83 @@ phases:
 
       Paste raw stdout/stderr and exit code.'
     agent: python-senior
+  - id: batch_claim_implementation.cli-mcp-parity
+    name: Wire CLI claim-many and MCP vectl_claim_many parity
+    status: pending
+    description: "step_type: implementation\ntags: [integration]\n\nComplete CLI and\
+      \ MCP transport wiring around the core batch claim operation. This step must\
+      \ not re-implement selection, validation, or rollback policy; it must call the\
+      \ same core operation used by tests.\n\nUPSTREAM ARTIFACTS:\n- Core operation\
+      \ from batch_claim_implementation.core-atomic-claim is AUTHORITATIVE.\n- CLI/MCP\
+      \ expected-red tests from batch_claim_contract_tests.expected-red-tests are\
+      \ PROTECTED.\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref\
+      \ + key passage | target_state | evidence_class | required_probe_or_artifact\
+      \ | status |\n| BCM-S1 | docs/RFC-batch-claim.md#expected-cli-shape — `vectl\
+      \ claim-many --claims-json ... --json --no-guidance` and optional `--claim worker:step`\
+      \ | CLI exposes claim-many with exact explicit-claim inputs and JSON/human modes\
+      \ | runtime_probe | CLI pytest and black-box command stdout parsed as JSON |\
+      \ OWNED |\n| BCM-S2 | docs/RFC-batch-claim.md#expected-mcp-shape — `vectl_claim_many(claims=[...],\
+      \ guidance=False, force=False)` | MCP exposes vectl_claim_many with same core\
+      \ response semantics | runtime_probe | MCP test calls tool/function and checks\
+      \ structured response | OWNED |\n| BCM-S3 | docs/RFC-batch-claim.md#response-shape\
+      \ — ok, claimed, failed, affinity_warnings, markdown, lock_notice | CLI JSON\
+      \ and MCP response share equivalent fields and order | runtime_probe | parity\
+      \ assertions over same fixture | OWNED |\n\nShared registry/wiring note: this\
+      \ single integration step owns CLI and MCP registration to avoid parallel edits\
+      \ to shared command/tool registries.\n\n## Client Surface Completion Criteria\
+      \ (runtime output required)\nCLI completion requires terminal-observable output,\
+      \ including `--json` output that parses as JSON and human-mode output that names\
+      \ the claimed steps. Build/import evidence alone is insufficient.\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable. Each deliverable MUST contain substantive logic that processes\
+      \ its inputs and produces outputs that vary based on those inputs.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \"src/vectl/cli_plan_lifecycle_commands.py\"\n  - \"src/vectl/cli_plan.py\"\
+      \n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\n  - \"src/vectl/mcp_core_tools.py\"\
+      \n  - \"src/vectl/mcp_server.py\"\n  - \"tests/test_cli.py\"\n  - \"tests/test_mcp.py\"\
+      \n  - \"tests/test_batch_claim.py\"\nblocked_paths:\n  - \"src/vectl/decide.py\"\
+      \n  - \"src/vectl/models.py\"\nrequired_claims:\n  - cli_claim_many_wired\n\
+      \  - mcp_claim_many_wired\n  - cli_mcp_response_parity\n  - no_auto_selection_or_count_surface\n\
+      required_checks:\n  - id: cli_mcp_parity_tests\n    command: [\"uv\", \"run\"\
+      , \"pytest\", \"tests/test_cli.py\", \"tests/test_mcp.py\", \"tests/test_batch_claim.py\"\
+      , \"-q\"]\n    covers_claims:\n      - cli_claim_many_wired\n      - mcp_claim_many_wired\n\
+      \      - cli_mcp_response_parity\n      - no_auto_selection_or_count_surface\n\
+      </intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - docs/RFC-batch-claim.md#expected-cli-shape — key passage:
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — key passage:
+
+      - docs/RFC-batch-claim.md#response-shape — key passage:
+
+
+      ## CLI/MCP Parity Evidence
+
+      - CLI command shape verified:
+
+      - MCP tool shape verified:
+
+      - Shared core operation used: YES/NO
+
+      - JSON output parsed by real parser: YES/NO
+
+      - Count/auto-select/reserve_steps absent from surfaces: YES/NO
+
+
+      ## Commands
+
+      ```
+
+      uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_batch_claim.py
+      -q
+
+      ```
+
+      Paste raw stdout/stderr and exit code.'
+    depends_on:
+    - batch_claim_implementation.core-atomic-claim
+    agent: python-executor
 - id: batch_claim_finalization
   name: Atomic Batch Claim Verification, Documentation, and Gate
   status: locked

@@ -118581,3 +118581,8 @@ phases:
       uncertainty_sources: none material; validate command was not rerun by auditor
       because vectl CLI use was prohibited, so audit relies on MCP-derived retest/closure
       records for validate receipts.'
+- id: batch_claim_contract_tests
+  name: Atomic Batch Claim Contract and Expected-Red Tests
+  status: pending
+  gate: Contract stubs and expected-red tests define Atomic Batch Claim acceptance
+    without shipping production behavior.

@@ -118716,6 +118716,78 @@ phases:
     depends_on:
     - batch_claim_contract_tests.contract-lock
     agent: python-executor
+  - id: batch_claim_contract_tests.gate
+    name: Gate contract and expected-red readiness
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check; protects batch_claim_implementation from starting
+      on unclear or over-broad acceptance.
+
+
+      Requirement-to-Evidence Matrix:
+
+      | requirement_id | source_ref + key passage | target_state | evidence_class
+      | required_probe_or_artifact | status |
+
+      | BCM-G1 | docs/RFC-batch-claim.md#contract — explicit claims[] atomic semantics
+      and existing claim unchanged | contract/tests are sufficient for implementation
+      dispatch | artifact_review | review of contract step evidence and expected-red
+      logs | OWNED |
+
+      | BCM-G2 | docs/RFC-batch-claim.md#non-goals — no count, auto-select, dispatch
+      policy, reserve/reserved state | non-goal guardrails are encoded in tests/contract
+      | artifact_review | gate decision basis with non-goal review | OWNED |
+
+
+      Gate review: block if the expected-red failures are due to import errors, if
+      any count/auto-select/reserve_steps acceptance is introduced, or if tests cannot
+      later prove claims-store rollback/no-ghost behavior.'
+    verification: Review both phase steps. Gate OPEN only if contract purity is preserved,
+      expected-red tests expose the intended missing Atomic Batch Claim behavior,
+      and every RFC non-goal has an executable guard. Gate BLOCKED if evidence is
+      missing or if implementation could start without rollback/parity tests.
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - docs/RFC-batch-claim.md#contract — key passage:
+
+      - docs/RFC-batch-claim.md#non-goals — key passage:
+
+      - docs/RFC-batch-claim.md#verification-gate — key passage:
+
+
+      ### Evidence Reviewed
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      |---|---|---|---|
+
+      | batch_claim_contract_tests.contract-lock | | | |
+
+      | batch_claim_contract_tests.expected-red-tests | | | |
+
+
+      ### Decision Basis
+
+      - Contract purity preserved: YES/NO
+
+      - Expected-red failure is intended behavior gap, not infrastructure: YES/NO
+
+      - Non-goal guards present: YES/NO
+
+      - Rollback/parity safety tests present: YES/NO
+
+
+      ### Gate Decision
+
+      OPEN or BLOCKED, with blocker owner if blocked.'
+    depends_on:
+    - batch_claim_contract_tests.contract-lock
+    - batch_claim_contract_tests.expected-red-tests
+    agent: gate-reviewer
 - id: batch_claim_implementation
   name: Atomic Batch Claim Implementation and Surface Wiring
   status: locked

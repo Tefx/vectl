@@ -119210,28 +119210,41 @@ phases:
       Requirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
       \ | target_state | evidence_class | required_probe_or_artifact | status |\n\
       | BCM-D1 | docs/RFC-batch-claim.md#decision — CLI claim-many, MCP vectl_claim_many,\
-      \ Core claim_many/claim_steps, explicit claims only | user-facing docs/guide\
-      \ describe atomic batch claim and distinguish it from single claim | artifact_review\
-      \ | docs diff plus guide import proof | OWNED |\n| BCM-D2 | docs/RFC-batch-claim.md#non-goals\
-      \ — no count, auto-select, dispatch policy, reserve/reserved state | docs explicitly\
-      \ state non-goals so orchestrators keep selection in decide layer | artifact_review\
-      \ | grep/import proof that docs mention non-goals and no reserve_steps command\
-      \ guidance | OWNED |\n\nUpdate README/docs/guide help text for users and orchestrators.\
-      \ Keep docs concise: explain single-step `claim` remains unchanged, `claim-many`\
-      \ is atomic for already-decided explicit assignments, and batch claim is not\
-      \ dispatch/selection/reservation.\n\n<intent_closure_contract>\nallowed_paths:\n\
-      \  - \"README.md\"\n  - \"docs/**\"\n  - \"src/vectl/guide.py\"\nblocked_paths:\n\
-      \  - \"src/vectl/claims.py\"\n  - \"src/vectl/lifecycle.py\"\n  - \"src/vectl/cli_plan_lifecycle_commands.py\"\
-      \n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\nrequired_claims:\n  - docs_describe_claim_many\n\
-      \  - guide_distinguishes_single_vs_batch_claim\n  - non_goals_documented\nrequired_checks:\n\
-      \  - id: docs_guide_claim_many_check\n    command: [\"uv\", \"run\", \"python\"\
-      , \"-c\", \"from pathlib import Path; import vectl.guide as g; text=Path('README.md').read_text()+Path('docs/RFC-batch-claim.md').read_text()+g.GUIDE_ALL;\
-      \ assert 'claim-many' in text and 'vectl_claim_many' in text and 'count' in\
-      \ text and 'auto-select' in text\"]\n    covers_claims:\n      - docs_describe_claim_many\n\
-      \      - guide_distinguishes_single_vs_batch_claim\n      - non_goals_documented\n\
+      \ Core claim_many/claim_steps, explicit claims only | user-facing README and\
+      \ guide describe atomic batch claim and distinguish it from single claim | artifact_review\
+      \ | independent README and guide checks, not satisfied by RFC-only text | OWNED\
+      \ |\n| BCM-D2 | docs/RFC-batch-claim.md#non-goals — no count, auto-select, dispatch\
+      \ policy, reserve/reserved state | README and guide independently state non-goals\
+      \ so orchestrators keep selection in decide layer | artifact_review | separate\
+      \ README and guide import checks for no count, no auto-select, no dispatch policy,\
+      \ and no reserve_steps | OWNED |\n\nUpdate README/docs/guide help text for users\
+      \ and orchestrators. Keep docs concise: explain single-step `claim` remains\
+      \ unchanged, `claim-many` is atomic for already-decided explicit assignments,\
+      \ and batch claim is not dispatch/selection/reservation. The required checks\
+      \ MUST NOT be satisfiable by `docs/RFC-batch-claim.md` alone: README and `vectl.guide.GUIDE_ALL`\
+      \ must independently document the single-step vs batch distinction and the non-goals\
+      \ (`no count`, `no auto-select`, `no dispatch policy`, and `no reserve_steps`).\n\
+      \n<intent_closure_contract>\nallowed_paths:\n  - \"README.md\"\n  - \"docs/**\"\
+      \n  - \"src/vectl/guide.py\"\nblocked_paths:\n  - \"src/vectl/claims.py\"\n\
+      \  - \"src/vectl/lifecycle.py\"\n  - \"src/vectl/cli_plan_lifecycle_commands.py\"\
+      \n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\nrequired_claims:\n  - readme_describes_single_vs_batch_claim\n\
+      \  - guide_describes_single_vs_batch_claim\n  - readme_non_goals_documented\n\
+      \  - guide_non_goals_documented\nrequired_checks:\n  - id: readme_claim_many_check\n\
+      \    command: [\"uv\", \"run\", \"python\", \"-c\", \"from pathlib import Path;\
+      \ text=Path('README.md').read_text(); required=['claim-many','vectl_claim_many','single-step','batch\
+      \ claim','no count','no auto-select','no dispatch policy','no reserve_steps'];\
+      \ missing=[s for s in required if s not in text]; assert not missing, missing\"\
+      ]\n    covers_claims:\n      - readme_describes_single_vs_batch_claim\n    \
+      \  - readme_non_goals_documented\n  - id: guide_claim_many_check\n    command:\
+      \ [\"uv\", \"run\", \"python\", \"-c\", \"import vectl.guide as g; text=g.GUIDE_ALL;\
+      \ required=['claim-many','vectl_claim_many','single-step','batch claim','no\
+      \ count','no auto-select','no dispatch policy','no reserve_steps']; missing=[s\
+      \ for s in required if s not in text]; assert not missing, missing\"]\n    covers_claims:\n\
+      \      - guide_describes_single_vs_batch_claim\n      - guide_non_goals_documented\n\
       </intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     evidence_template: '## refs Read Confirmation (MANDATORY)
+
 
       - docs/RFC-batch-claim.md#decision — key passage:
 
@@ -119244,22 +119257,39 @@ phases:
 
       ## Docs/Guide Evidence
 
+
       - Files updated:
 
-      - Single-step vs batch claim distinction:
+      - README single-step vs batch claim distinction:
 
-      - Non-goals documented (count/auto-select/reserve_steps/dispatch policy):
+      - Guide single-step vs batch claim distinction:
+
+      - README non-goals documented exactly (`no count`, `no auto-select`, `no dispatch
+      policy`, `no reserve_steps`):
+
+      - Guide non-goals documented exactly (`no count`, `no auto-select`, `no dispatch
+      policy`, `no reserve_steps`):
+
+      - Confirmation checks do not concatenate or rely on `docs/RFC-batch-claim.md`
+      to satisfy README/guide requirements:
 
 
       ## Commands
 
-      ```
-
-      uv run python -c "from pathlib import Path; import vectl.guide as g; text=Path(''README.md'').read_text()+Path(''docs/RFC-batch-claim.md'').read_text()+g.GUIDE_ALL;
-      assert ''claim-many'' in text and ''vectl_claim_many'' in text and ''count''
-      in text and ''auto-select'' in text"
 
       ```
+
+      uv run python -c "from pathlib import Path; text=Path(''README.md'').read_text();
+      required=[''claim-many'',''vectl_claim_many'',''single-step'',''batch claim'',''no
+      count'',''no auto-select'',''no dispatch policy'',''no reserve_steps'']; missing=[s
+      for s in required if s not in text]; assert not missing, missing"
+
+      uv run python -c "import vectl.guide as g; text=g.GUIDE_ALL; required=[''claim-many'',''vectl_claim_many'',''single-step'',''batch
+      claim'',''no count'',''no auto-select'',''no dispatch policy'',''no reserve_steps''];
+      missing=[s for s in required if s not in text]; assert not missing, missing"
+
+      ```
+
 
       Paste raw stdout/stderr and exit code.'
     agent: doc-reviewer

@@ -118586,3 +118586,10 @@ phases:
   status: pending
   gate: Contract stubs and expected-red tests define Atomic Batch Claim acceptance
     without shipping production behavior.
+- id: batch_claim_implementation
+  name: Atomic Batch Claim Implementation and Surface Wiring
+  status: locked
+  gate: Core atomic batch claim, claims-store consistency/rollback, CLI claim-many,
+    and MCP vectl_claim_many are implemented and covered by targeted tests.
+  depends_on:
+  - batch_claim_contract_tests

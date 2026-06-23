@@ -120286,7 +120286,7 @@ phases:
       state before sidecar/merge/completion.'
   - id: fix-mcp-claim-many-result-contract
     name: Fix MCP claim-many Result shell contract
-    status: pending
+    status: claimed
     description: "step_type: implementation\nwork_type: defect_repair\nTARGET STATE:\n\
       `vectl_claim_many` in `src/vectl/mcp_core_lifecycle_tools.py` satisfies the\
       \ Invar Shell rule by returning `Result[T, E]` on every shell path while preserving\
@@ -120333,6 +120333,8 @@ phases:
     depends_on:
     - batch_claim_implementation.gate
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-06-23T18:59:25.671331+00:00'
   - id: retest-mcp-claim-many-result-contract
     name: Retest MCP claim-many Result contract and implementation gate closure
     status: pending

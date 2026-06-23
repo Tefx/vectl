@@ -119625,49 +119625,71 @@ phases:
   - id: batch_claim_implementation.core-atomic-claim
     name: Implement core atomic batch claim and rollback semantics
     status: pending
-    description: "step_type: implementation\n\nComplete the behavior within the contract\
-      \ from batch_claim_contract_tests.contract-lock and tests from batch_claim_contract_tests.expected-red-tests.\n\
-      \nUPSTREAM ARTIFACTS:\n- src/vectl/core/batch_claim.py — request/result models,\
-      \ signatures, and docstrings from contract step are AUTHORITATIVE.\n- tests/test_batch_claim.py\
-      \ and tests/test_claims.py — expected-red test cases are PROTECTED.\n\nRequirement-to-Evidence\
-      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
-      \ | required_probe_or_artifact | status |\n| BCM-I1 | docs/RFC-batch-claim.md#contract\
-      \ — validate all claims with single-step rules, preserve order, one mutation,\
-      \ no partial mutation | core claim_many/claim_steps returns structured all-or-nothing\
-      \ result and preserves existing claim behavior | runtime_probe | targeted core\
-      \ batch claim pytest stdout | OWNED |\n| BCM-I2 | docs/RFC-batch-claim.md#consistency-requirement\
+    description: "step_type: implementation\n\nComplete the core atomic batch-claim\
+      \ behavior within the contract from batch_claim_contract_tests.contract-lock\
+      \ and tests from batch_claim_contract_tests.expected-red-tests. Keep this step\
+      \ implementation-focused: product-code changes are allowed only in the listed\
+      \ implementation files; upstream test artifacts are protected and must be run,\
+      \ not rewritten.\n\nUPSTREAM ARTIFACTS:\n- src/vectl/core/batch_claim.py — request/result\
+      \ models, signatures, docstrings, @pre/@post contracts, and doctests from the\
+      \ contract step are AUTHORITATIVE.\n- tests/test_batch_claim.py, tests/test_claims.py,\
+      \ and tests/test_batch_claim_contract.py — expected-red/contract guard test\
+      \ cases are PROTECTED.\n\nRequirement-to-Evidence Matrix:\n| requirement_id\
+      \ | source_ref + key passage | target_state | evidence_class | required_probe_or_artifact\
+      \ | status |\n| BCM-I1 | docs/RFC-batch-claim.md#contract — validate all claims\
+      \ with single-step rules, preserve order, one mutation, no partial mutation\
+      \ | core claim_many/claim_steps returns structured all-or-nothing result and\
+      \ preserves existing claim behavior | runtime_probe | targeted core batch claim\
+      \ pytest stdout | OWNED |\n| BCM-I2 | docs/RFC-batch-claim.md#consistency-requirement\
       \ — failed batch must not leave partial plan changes or orphaned claim records\
       \ | claims-store acquisition/rollback is atomic across plan-visible state and\
       \ claims.json | runtime_probe | rollback/no-ghost tests with simulated save/acquire\
       \ failure | OWNED |\n| BCM-I3 | docs/RFC-batch-claim.md#response-shape — ok,\
       \ claimed, failed, affinity_warnings, markdown, lock_notice | core result object\
       \ supports machine-readable structured response in input order | source_static\
-      \ | result-shape assertions in targeted tests | OWNED |\n\nState semantics and\
-      \ failure modes that must be explicit in evidence: input-order preservation;\
-      \ duplicate/ambiguous step rejection; affinity warnings and force behavior;\
-      \ stale/ghost claim avoidance; rollback after plan-save failure; pre-existing\
+      \ | result-shape assertions in targeted tests | OWNED |\n| BCM-I4 | AGENTS.md#invar\
+      \ — Core code requires @pre/@post contracts and doctests before/with implementation\
+      \ | batch_claim core code preserves non-vacuous contracts and executable doctests\
+      \ | runtime_probe | doctest plus invar changed guard stdout | OWNED |\n\nState\
+      \ semantics and failure modes that must be explicit in evidence: input-order\
+      \ preservation; duplicate/ambiguous step rejection; affinity warnings and force\
+      \ behavior; stale/ghost claim avoidance; rollback after plan-save failure; pre-existing\
       \ single-step claim unchanged; no count/auto-select/reserve_steps/reserved state.\n\
       \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
       \ completion is NOT acceptable. Each deliverable MUST contain substantive logic\
       \ that processes its inputs and produces outputs that vary based on those inputs.\
       \ Private stub classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy\
-      \ this requirement.\n\n## Gate Preview (what the gate WILL reject)\n1. Partial\
-      \ success semantics for blocking validation failures.\n2. Any ghost claim record\
-      \ when plan save fails.\n3. Any drift in existing single-step `claim` behavior.\n\
-      4. Any count/auto-select/reserve_steps/dispatch-policy behavior.\n\n<intent_closure_contract>\n\
-      allowed_paths:\n  - \"src/vectl/core/batch_claim.py\"\n  - \"src/vectl/core/__init__.py\"\
-      \n  - \"src/vectl/core_plan_mutations.py\"\n  - \"src/vectl/lifecycle.py\"\n\
-      \  - \"src/vectl/lifecycle_metadata.py\"\n  - \"src/vectl/claims.py\"\n  - \"\
-      tests/test_batch_claim.py\"\n  - \"tests/test_claims.py\"\nblocked_paths:\n\
+      \ this requirement.\n\n## Protected upstream artifacts\n- Do NOT edit tests/test_batch_claim.py,\
+      \ tests/test_claims.py, or tests/test_batch_claim_contract.py in this step.\n\
+      - If a protected test artifact is demonstrably wrong or incomplete, stop and\
+      \ report a deviation record; do not silently rewrite it.\n- Non-semantic fixture\
+      \ adaptation is NOT pre-authorized for this core implementation step.\n\n##\
+      \ Gate Preview (what the gate WILL reject)\n1. Partial success semantics for\
+      \ blocking validation failures.\n2. Any ghost claim record when plan save fails.\n\
+      3. Any drift in existing single-step `claim` behavior.\n4. Any count/auto-select/reserve_steps/dispatch-policy\
+      \ behavior.\n5. Missing doctest/@pre/@post preservation evidence for core batch-claim\
+      \ code.\n\n<intent_closure_contract>\nallowed_paths:\n  - \"src/vectl/core/batch_claim.py\"\
+      \n  - \"src/vectl/core/__init__.py\"\n  - \"src/vectl/core_plan_mutations.py\"\
+      \n  - \"src/vectl/lifecycle.py\"\n  - \"src/vectl/lifecycle_metadata.py\"\n\
+      \  - \"src/vectl/claims.py\"\nblocked_paths:\n  - \"tests/test_batch_claim.py\"\
+      \n  - \"tests/test_claims.py\"\n  - \"tests/test_batch_claim_contract.py\"\n\
       \  - \"src/vectl/cli_plan_lifecycle_commands.py\"\n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\
       \n  - \"src/vectl/mcp_server.py\"\nrequired_claims:\n  - core_batch_claim_atomic\n\
       \  - claims_store_rollback_safe\n  - response_order_and_shape_correct\n  - single_claim_behavior_preserved\n\
-      \  - non_goals_excluded\nrequired_checks:\n  - id: core_batch_claim_tests\n\
-      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_batch_claim.py\", \"\
-      tests/test_claims.py\", \"tests/test_properties.py\", \"-q\"]\n    covers_claims:\n\
-      \      - core_batch_claim_atomic\n      - claims_store_rollback_safe\n     \
-      \ - response_order_and_shape_correct\n      - single_claim_behavior_preserved\n\
-      \      - non_goals_excluded\n</intent_closure_contract>"
+      \  - non_goals_excluded\n  - core_invar_contract_preserved\nrequired_checks:\n\
+      \  - id: batch_claim_contract_guards\n    command: [\"uv\", \"run\", \"pytest\"\
+      , \"tests/test_batch_claim_contract.py\", \"-q\"]\n    covers_claims:\n    \
+      \  - core_batch_claim_atomic\n      - claims_store_rollback_safe\n      - non_goals_excluded\n\
+      \  - id: batch_claim_core_behavior_tests\n    command: [\"uv\", \"run\", \"\
+      pytest\", \"tests/test_batch_claim.py\", \"-q\"]\n    covers_claims:\n     \
+      \ - core_batch_claim_atomic\n      - response_order_and_shape_correct\n  - id:\
+      \ single_claim_regression_tests\n    command: [\"uv\", \"run\", \"pytest\",\
+      \ \"tests/test_claims.py\", \"tests/test_properties.py\", \"-q\"]\n    covers_claims:\n\
+      \      - single_claim_behavior_preserved\n  - id: core_batch_claim_doctest\n\
+      \    command: [\"uv\", \"run\", \"python\", \"-m\", \"doctest\", \"src/vectl/core/batch_claim.py\"\
+      ]\n    covers_claims:\n      - core_invar_contract_preserved\n  - id: invar_changed_guard\n\
+      \    command: [\"uvx\", \"invar-tools\", \"guard\", \"--changed\"]\n    covers_claims:\n\
+      \      - core_invar_contract_preserved\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     evidence_template: '## refs Read Confirmation (MANDATORY)
 

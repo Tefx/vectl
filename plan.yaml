@@ -120529,7 +120529,7 @@ phases:
   steps:
   - id: batch_claim_finalization.blackbox-parity-proof
     name: Black-box CLI and MCP atomic batch proof
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check; protects final gate and user-visible CLI/MCP
@@ -120641,6 +120641,134 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-23T19:10:07.409799+00:00'
+    done_at: '2026-06-23T19:18:39.703135+00:00'
+    evidence: '## Black-Box Batch Claim Proof
+
+
+      ### refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#expected-cli-shape — CLI supports `vectl claim-many
+      --claims-json ... --json --no-guidance` and repeated `--claim worker:step`.
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — MCP supports `vectl_claim_many(claims=[...],
+      guidance=False, force=False)`.
+
+      - docs/RFC-batch-claim.md#response-shape — structured fields: ok, claimed, failed,
+      affinity_warnings, markdown, lock_notice; failed atomic batches have empty claimed.
+
+      - docs/RFC-batch-claim.md#verification-gate — targeted core lifecycle, claims-store
+      consistency, MCP, CLI tests, plus guard/regression evidence.
+
+
+      ### Runtime Probes
+
+      CLI command executed:
+
+      `uv run vectl claim-many --claims-json ''[{"step_id":"p1.s1","agent":"worker-a"},{"step_id":"p1.s2","agent":"worker-b"}]''
+      --json --no-guidance --plan /tmp/vectl-batch-parity-uer_tons/plan.yaml`
+
+
+      CLI stdout/stderr + exit code:
+
+      exit_code=0; stdout parsed to ok=true, claimed=[p1.s1/worker-a, p1.s2/worker-b],
+      failed=[], affinity_warnings=[], markdown=''Claimed 2 step(s): p1.s1, p1.s2'',
+      lock_notice=null; stderr empty; claims_store_after=2 records; plan_state_after=s1
+      claimed_by worker-a and s2 claimed_by worker-b.
+
+
+      JSON parser proof:
+
+      `python -m json.tool /tmp/larva-agent-artifacts/cli_success_stdout.json` exited
+      0; parsed keys: ok, claimed, failed, affinity_warnings, markdown, lock_notice.
+
+
+      MCP proof command/output:
+
+      `uv run python /tmp/larva-agent-artifacts/batch_claim_blackbox_probe.py` exited
+      0; parity success_key_sets_equal=true, success_ok_equal=true, success_claimed_equal=true,
+      conflict_ok_equal=true, duplicate_ok_equal=true, force_ok_equal=true; mcp_success
+      ok=true claimed=2 failed=0 claims_count=2; mcp_conflict ok=false claimed=0 failed=1
+      claims_count=0; mcp_duplicate ok=false claimed=0 failed=1 claims_count=0; mcp_affinity_force
+      ok=true claimed=1 failed=0 claims_count=1.
+
+
+      ### Parity / Safety Table
+
+      | Scenario | CLI status | MCP status | Claims-store after | Plan state after
+      | Verdict |
+
+      |---|---|---|---|---|---|
+
+      | success multi-agent | exit 0; ok=true; claimed=2 | ok=true; claimed=2 | 2
+      records | requested steps claimed | PASS |
+
+      | duplicate/conflict failure | exit 1; ok=false; claimed=[] | ok=false; claimed=[]
+      | 0 records | pending step remained pending; preclaimed step unchanged | PASS
+      |
+
+      | affinity/force | no-force exit 1; force exit 0 | no-force ok=false; force
+      ok=true | 0 on no-force; 1 on force | force claimed s5 with warning | PASS |
+
+      | save-failure rollback/no-ghost | targeted CLI/core rollback tests passed |
+      targeted MCP rollback test passed | rollback assertions require no ghost claims
+      | plan mutation rollback asserted | PASS |
+
+      | non-goal absence probes | --count/--auto-select/--reserve-steps all exit 2
+      No such option | count/auto_select/reserve_steps all TypeError | 0 records |
+      unchanged | PASS |
+
+
+      ### Commands
+
+      - `uv run pytest -q tests/test_batch_claim_contract.py tests/test_batch_claim.py
+      tests/test_cli.py::test_cli_claim_many_human tests/test_cli.py::test_cli_claim_many_json
+      tests/test_cli.py::test_cli_claim_many_nongoal_guards tests/test_cli.py::test_cli_claim_many_rollback_on_save_failure
+      tests/test_mcp.py::test_mcp_vectl_claim_many tests/test_mcp.py::test_mcp_vectl_claim_many_nongoal_guards
+      tests/test_mcp.py::test_batch_claim_expected_red_mcp_strict_error_rolls_back_without_ghost_claims`
+      — exit 0; 17 passed in 0.78s.
+
+      - `uv run pytest -q tests/test_claims.py::test_acquire_release_claim tests/test_claims.py::test_concurrent_claims
+      tests/test_claims.py::test_branch_isolation tests/test_batch_claim.py::test_claim_many_rollback_on_plan_save_failure`
+      — exit 0; 4 passed in 0.16s.
+
+      - `uv run invar guard` — exit 0; status passed.
+
+      - `uv run python /tmp/larva-agent-artifacts/batch_claim_blackbox_probe.py` —
+      exit 0; artifact /tmp/larva-agent-artifacts/batch_claim_blackbox_probe.json
+      sha256 6afe95735e4a264d2f547b1d7a9a545deb6255cdce2851c853e26ba876816239.
+
+
+      ### Behavioral Proof Register
+
+      - Real CLI structured JSON: PROVEN
+
+      - MCP function structured response: PROVEN
+
+      - CLI/MCP parity: PROVEN
+
+      - Atomic failure/no partial claims: PROVEN
+
+      - Non-goal absence probes: PROVEN
+
+
+      ### Gate Decision
+
+      OPEN
+
+
+      ### Closure Signals
+
+      headline: PASS
+
+      blocking_status: CLOSED
+
+      proof_gap_status: NONE
+
+      verdict: PASS
+
+      blockers: []
+
+      orchestrator_action_hint: COMPLETE'
   - id: batch_claim_finalization.docs-guide-sync
     name: Update docs and guide for atomic batch claim
     status: done

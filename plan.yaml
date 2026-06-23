@@ -119236,12 +119236,12 @@ phases:
       \ missing=[s for s in required if s not in text]; assert not missing, missing\"\
       ]\n    covers_claims:\n      - readme_describes_single_vs_batch_claim\n    \
       \  - readme_non_goals_documented\n  - id: guide_claim_many_check\n    command:\
-      \ [\"uv\", \"run\", \"python\", \"-c\", \"import vectl.guide as g; text=g.GUIDE_ALL;\
-      \ required=['claim-many','vectl_claim_many','single-step','batch claim','no\
-      \ count','no auto-select','no dispatch policy','no reserve_steps']; missing=[s\
-      \ for s in required if s not in text]; assert not missing, missing\"]\n    covers_claims:\n\
-      \      - guide_describes_single_vs_batch_claim\n      - guide_non_goals_documented\n\
-      </intent_closure_contract>"
+      \ [\"uv\", \"run\", \"python\", \"-c\", \"import vectl.guide as g; text='\\\
+      n'.join(g.GUIDE_ALL); required=['claim-many','vectl_claim_many','single-step','batch\
+      \ claim','no count','no auto-select','no dispatch policy','no reserve_steps'];\
+      \ missing=[s for s in required if s not in text]; assert not missing, missing\"\
+      ]\n    covers_claims:\n      - guide_describes_single_vs_batch_claim\n     \
+      \ - guide_non_goals_documented\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
@@ -119284,7 +119284,7 @@ phases:
       count'',''no auto-select'',''no dispatch policy'',''no reserve_steps'']; missing=[s
       for s in required if s not in text]; assert not missing, missing"
 
-      uv run python -c "import vectl.guide as g; text=g.GUIDE_ALL; required=[''claim-many'',''vectl_claim_many'',''single-step'',''batch
+      uv run python -c "import vectl.guide as g; text=''\n''.join(g.GUIDE_ALL); required=[''claim-many'',''vectl_claim_many'',''single-step'',''batch
       claim'',''no count'',''no auto-select'',''no dispatch policy'',''no reserve_steps''];
       missing=[s for s in required if s not in text]; assert not missing, missing"
 

@@ -120193,6 +120193,114 @@ phases:
       - Worker initially committed in main workspace; orchestrator recovered by cherry-picking
       the commit into the isolated worktree branch and resetting main to pre-violation
       state before sidecar/merge/completion.'
+  - id: fix-mcp-claim-many-result-contract
+    name: Fix MCP claim-many Result shell contract
+    status: pending
+    description: "step_type: implementation\nwork_type: defect_repair\nTARGET STATE:\n\
+      `vectl_claim_many` in `src/vectl/mcp_core_lifecycle_tools.py` satisfies the\
+      \ Invar Shell rule by returning `Result[T, E]` on every shell path while preserving\
+      \ the already-proven batch claim behavior, atomicity, rollback/no-ghost semantics,\
+      \ single-claim regression behavior, CLI/MCP parity, and RFC non-goals.\n\nRequirement-to-Evidence\
+      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| BCM-RC1 | gate evidence for `batch_claim_implementation.gate`\
+      \ B1 — `src/vectl/mcp_core_lifecycle_tools.py:397 shell_result error: Shell\
+      \ function `vectl_claim_many` should return Result[T, E]` | MCP shell function\
+      \ returns Result[T,E] and passes Invar shell contract | runtime_probe | `uvx\
+      \ invar-tools guard --all` raw stdout/stderr exit 0 | OWNED |\n| BCM-RC2 | docs/RFC-batch-claim.md#expected-mcp-shape\
+      \ — MCP `vectl_claim_many` surface remains parity-compatible with CLI batch\
+      \ claim behavior | Result-contract fix does not alter public batch claim semantics\
+      \ or transport parity | runtime_probe | targeted CLI/MCP/batch pytest raw stdout/stderr\
+      \ exit 0 | OWNED |\n\nSCOPE BOUNDARY:\n- Fix only the MCP shell Result-return\
+      \ contract violation for `vectl_claim_many`.\n- Do NOT reopen completed core\
+      \ atomicity, CLI wiring, expected-red sentinel retirement, or RFC non-goal work\
+      \ unless the Result contract fix directly requires an adjacent test assertion.\n\
+      - Preserve the gate-proven behavior for atomicity, rollback/no-ghost, single-claim\
+      \ regression, expected-red sentinel retirement, CLI/MCP parity runtime tests,\
+      \ and CLI help surface.\n\n## Completion Criteria (stub exclusion)\nThis is\
+      \ an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The shell\
+      \ function must return a real `Result[T, E]` value on success and error paths\
+      \ while preserving input-dependent behavior.\n\n<intent_closure_contract>\n\
+      allowed_paths:\n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\n  - \"tests/test_mcp.py\"\
+      \n  - \"tests/test_batch_claim.py\"\n  - \"tests/test_batch_claim_contract.py\"\
+      \nblocked_paths:\n  - \"src/vectl/core/**\"\n  - \"src/vectl/cli.py\"\n  - \"\
+      docs/**\"\nrequired_claims:\n  - mcp_claim_many_returns_result\n  - batch_claim_semantics_preserved\n\
+      \  - full_invar_guard_green\n  - targeted_batch_claim_regressions_green\nrequired_checks:\n\
+      \  - id: full_invar_guard\n    command: [\"uvx\", \"invar-tools\", \"guard\"\
+      , \"--all\"]\n    covers_claims:\n      - mcp_claim_many_returns_result\n  \
+      \    - full_invar_guard_green\n  - id: cli_mcp_batch_surface_regression\n  \
+      \  command: [\"uv\", \"run\", \"pytest\", \"tests/test_cli.py\", \"tests/test_mcp.py\"\
+      , \"tests/test_batch_claim.py\", \"-q\"]\n    covers_claims:\n      - batch_claim_semantics_preserved\n\
+      \      - targeted_batch_claim_regressions_green\n  - id: batch_claim_contract_regression\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_batch_claim_contract.py\"\
+      , \"tests/test_batch_claim.py\", \"tests/test_claims.py\", \"tests/test_properties.py\"\
+      , \"-q\"]\n    covers_claims:\n      - batch_claim_semantics_preserved\n   \
+      \   - targeted_batch_claim_regressions_green\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    refs:
+    - docs/RFC-batch-claim.md#expected-mcp-shape
+    - src/vectl/mcp_core_lifecycle_tools.py
+    depends_on:
+    - batch_claim_implementation.gate
+    agent: python-executor
+  - id: retest-mcp-claim-many-result-contract
+    name: Retest MCP claim-many Result contract and implementation gate closure
+    status: pending
+    description: 'step_type: gate
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check; protects `batch_claim_finalization` from proceeding
+      while the implementation gate blocker B1 remains open.
+
+
+      As an INDEPENDENT TESTER, verify that the focused MCP Result-contract remediation
+      closed gate blocker B1 without regressing the already-proven batch claim implementation
+      evidence. This step is the implementation phase reopening gate for the B1 remediation
+      path.
+
+
+      Requirement-to-Evidence Matrix:
+
+      | requirement_id | source_ref + key passage | target_state | evidence_class
+      | required_probe_or_artifact | status |
+
+      | BCM-RG1 | `batch_claim_implementation.gate` B1 — `uvx invar-tools guard --all`
+      failed because `vectl_claim_many` did not return `Result[T,E]` | full Invar
+      guard is green after remediation | runtime_probe | raw stdout/stderr and exit
+      code from `uvx invar-tools guard --all` | OWNED |
+
+      | BCM-RG2 | docs/RFC-batch-claim.md#contract — atomic all-or-nothing batch claim
+      and existing claim behavior unchanged | targeted batch claim, CLI, MCP, claims/property
+      regressions are green | runtime_probe | raw stdout/stderr and exit code for
+      both mandated pytest commands | OWNED |
+
+
+      Gate decision basis MUST explicitly state OPEN only if all three mandated commands
+      exit 0. If any command fails, report BLOCKED and preserve remediation ownership
+      rather than treating the previous gate evidence as sufficient.
+
+
+      Required commands:
+
+      1. `uvx invar-tools guard --all`
+
+      2. `uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_batch_claim.py
+      -q`
+
+      3. `uv run pytest tests/test_batch_claim_contract.py tests/test_batch_claim.py
+      tests/test_claims.py tests/test_properties.py -q`'
+    verification: Run the three mandated commands exactly, capture raw stdout/stderr
+      and exit codes, and mark this gate OPEN only when all exit 0. Unit/source inspection
+      summaries alone are insufficient.
+    refs:
+    - docs/RFC-batch-claim.md#contract
+    - docs/RFC-batch-claim.md#expected-mcp-shape
+    - src/vectl/mcp_core_lifecycle_tools.py
+    depends_on:
+    - fix-mcp-claim-many-result-contract
+    agent: integration-verifier
 - id: batch_claim_finalization
   name: Atomic Batch Claim Verification, Documentation, and Gate
   status: locked

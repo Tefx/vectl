@@ -120932,7 +120932,7 @@ phases:
       - none'
   - id: batch_claim_finalization.full-regression-guard
     name: Run full regression guard for batch claim
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: full-plan-check; protects final gate and release readiness.
@@ -121009,6 +121009,62 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-23T19:19:08.385386+00:00'
+    done_at: '2026-06-23T19:21:09.177178+00:00'
+    evidence: '## Full Regression Guard Evidence
+
+
+      ### refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#verification-gate — required evidence includes targeted
+      core lifecycle, claims-store, MCP, CLI tests, and full project guard or documented
+      repo-wide regression command per policy.
+
+      - pyproject.toml#tool-invar-guard — excludes .vectl, .venv, and tests.
+
+      - INVAR.md — Core functions require @pre/@post/doctest; Shell handles I/O and
+      returns Result[T,E]; run invar guard after changes.
+
+
+      ### Commands
+
+      `uvx invar-tools guard --all`
+
+      Raw stdout/stderr and exit code: status passed; static passed true; errors 0;
+      warnings 19; infos 7; files_checked 58; doctest passed; crosshair skipped no
+      core files found; property_tests skipped no core files; exit_code 0.
+
+
+      ### Fallback
+
+      - Not applicable: full guard ran successfully.
+
+
+      ### Broad Verifier Disposition
+
+      - Failing items: []
+
+      - Gate-intersection reasoning: full guard exited 0 with no errors or failed
+      status. Warnings/infos do not block current RFC verification gate.
+
+
+      ### Disposition
+
+      PASS
+
+
+      ### Closure Signals
+
+      headline: PASS
+
+      blocking_status: CLOSED
+
+      proof_gap_status: NONE
+
+      verdict: PASS
+
+      blockers: []
+
+      orchestrator_action_hint: COMPLETE'
   - id: batch_claim_finalization.gate
     name: Final gate for Atomic Batch Claim
     status: pending

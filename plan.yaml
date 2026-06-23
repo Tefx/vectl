@@ -120643,7 +120643,7 @@ phases:
     claimed_at: '2026-06-23T19:10:07.409799+00:00'
   - id: batch_claim_finalization.docs-guide-sync
     name: Update docs and guide for atomic batch claim
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\n[REQUIRES_SKILL: ponytail-coder]\n\n\
       Requirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
       \ | target_state | evidence_class | required_probe_or_artifact | status |\n\
@@ -120731,6 +120731,8 @@ phases:
 
       Paste raw stdout/stderr and exit code.'
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-06-23T19:10:19.590143+00:00'
   - id: batch_claim_finalization.full-regression-guard
     name: Run full regression guard for batch claim
     status: pending

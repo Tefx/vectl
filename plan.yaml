@@ -118583,13 +118583,13 @@ phases:
       records for validate receipts.'
 - id: batch_claim_contract_tests
   name: Atomic Batch Claim Contract and Expected-Red Tests
-  status: pending
+  status: in_progress
   gate: Contract stubs and expected-red tests define Atomic Batch Claim acceptance
     without shipping production behavior.
   steps:
   - id: batch_claim_contract_tests.contract-lock
     name: Lock explicit batch claim contracts
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\
       \ signatures, type_defs, stubs, docstrings, semantic_core_contracts, doctests\n\
       \nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
@@ -118827,6 +118827,8 @@ phases:
     - INVAR.md#before-writing-code
     - INVAR.md#contract-syntax-traps
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-06-23T16:35:12.849645+00:00'
   - id: batch_claim_contract_tests.expected-red-tests
     name: Define expected-red atomicity and parity tests
     status: pending

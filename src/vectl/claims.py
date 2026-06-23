@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from pydantic import BaseModel
+from returns.result import Failure, Result, Success
 
 from vectl.models import Plan, PlanError, StepStatus
 from vectl.plan_path import resolve_claims_path as _resolve_claims_path
@@ -97,12 +98,14 @@ __all__ = [
     "RepairClaimsResult",
     "RepairStatus",
     "acquire_claim",
+    "acquire_claims",
     "cleanup_stale_claims",
     "get_claim_info",
     "get_current_branch",
     "load_claims",
     "load_claims_for_branch",
     "release_claim",
+    "release_claims",
     "repair_claims",
     "resolve_claims_path",
     "save_claims",
@@ -276,44 +279,77 @@ def get_claim_info(step_id: str, branch: str, claims_path: Path):
 
 
 # @shell_orchestration: public compatibility requires bool success and PlanError conflict semantics
+def _drop_stale_claims(claims: dict[str, ClaimEntry]) -> None:
+    stale_keys = [key for key, entry in claims.items() if _is_stale(entry, ttl_hours=2.0)]
+    for stale_key in stale_keys:
+        claims.pop(stale_key, None)
+
+
+# @shell_orchestration: public compatibility requires bool success and PlanError conflict semantics
 def acquire_claim(step_id: str, branch: str, agent: str, claims_path: Path):
     """Acquire a branch-scoped claim for a step.
 
     Raises:
         PlanError: If the claim key already exists and is not stale.
     """
-    key = _claim_key(branch, step_id)
+    result = acquire_claims([(step_id, agent)], branch, claims_path)
+    try:
+        return result.unwrap() == 1
+    except Exception as exc:
+        raise PlanError(result.failure()) from exc
+
+
+# @shell_orchestration: atomic claims-store helper performs indirect I/O through locked read/write helpers.
+# @shell_complexity: atomic batch acquisition must validate duplicates, conflicts, stale cleanup, and writes under one lock.
+def acquire_claims(
+    step_agents: list[tuple[str, str]], branch: str, claims_path: Path
+) -> Result[int, str]:
+    """Acquire several branch-scoped claims with one claims-store write."""
     with _locked_claims_file(claims_path):
         claims = _read_claims_file(claims_path)
+        _drop_stale_claims(claims)
 
-        stale_keys = [k for k, v in claims.items() if _is_stale(v, ttl_hours=2.0)]
-        for stale_key in stale_keys:
-            claims.pop(stale_key, None)
+        seen: set[str] = set()
+        for step_id, _agent in step_agents:
+            key = _claim_key(branch, step_id)
+            if key in seen:
+                return Failure(f"Duplicate claim request for step '{step_id}'")
+            seen.add(key)
+            if key in claims:
+                return Failure(f"Step '{step_id}' is already claimed on branch '{branch}'")
 
-        if key in claims:
-            raise PlanError(f"Step '{step_id}' is already claimed on branch '{branch}'")
-
-        claims[key] = ClaimEntry(
-            step_id=step_id,
-            branch=branch,
-            agent=agent,
-            claimed_at=_now_iso(),
-        )
+        for step_id, agent in step_agents:
+            claims[_claim_key(branch, step_id)] = ClaimEntry(
+                step_id=step_id,
+                branch=branch,
+                agent=agent,
+                claimed_at=_now_iso(),
+            )
         _write_claims_file(claims_path, claims)
-        return True
+        return Success(len(step_agents))
 
 
 # @shell_orchestration: public compatibility requires bool released/not-found semantics
 def release_claim(step_id: str, branch: str, claims_path: Path):
     """Release a branch-scoped claim if present."""
-    key = _claim_key(branch, step_id)
+    return release_claims([step_id], branch, claims_path).unwrap() == 1
+
+
+# @shell_orchestration: atomic rollback helper performs indirect I/O through locked read/write helpers.
+def release_claims(step_ids: list[str], branch: str, claims_path: Path) -> Result[int, str]:
+    """Release branch-scoped claims with one claims-store write."""
     with _locked_claims_file(claims_path):
         claims = _read_claims_file(claims_path)
-        if key not in claims:
-            return False
-        claims.pop(key, None)
-        _write_claims_file(claims_path, claims)
-        return True
+        removed = 0
+        for step_id in step_ids:
+            key = _claim_key(branch, step_id)
+            if key not in claims:
+                continue
+            claims.pop(key, None)
+            removed += 1
+        if removed:
+            _write_claims_file(claims_path, claims)
+        return Success(removed)
 
 
 # @shell_orchestration: public compatibility requires fallback branch string, not Result

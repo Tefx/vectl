@@ -118589,7 +118589,7 @@ phases:
   steps:
   - id: batch_claim_contract_tests.contract-lock
     name: Lock explicit batch claim contracts
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\
       \ signatures, type_defs, stubs, docstrings, semantic_core_contracts, doctests\n\
       \nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
@@ -118829,6 +118829,119 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-06-23T16:35:12.849645+00:00'
+    done_at: '2026-06-23T16:50:10.012924+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#decision — Add explicit atomic batch claim with CLI/MCP
+      parity; accepts only explicit claim requests; no count/auto-select/dispatch
+      policy.
+
+      - docs/RFC-batch-claim.md#contract — claim_many takes explicit {step_id, agent},
+      preserves order, validates claims, rejects duplicates, leaves existing claim
+      unchanged.
+
+      - docs/RFC-batch-claim.md#non-goals — no count, auto-selecting, dispatch policy,
+      reserved state.
+
+      - docs/RFC-batch-claim.md#response-shape — fields pinned: ok, claimed, failed,
+      affinity_warnings, markdown, lock_notice; atomic failures have empty claimed.
+
+      - docs/RFC-batch-claim.md#consistency-requirement — batch must not simply loop
+      single-step claims; must avoid partial updates/orphaned records.
+
+      - INVAR.md#before-writing-code — Core code requires @pre, @post, and doctest
+      before implementation.
+
+      - INVAR.md#contract-syntax-traps — @pre covers all parameters; @post only receives
+      result; contracts must be semantic.
+
+
+      ## Files Changed
+
+      - src/vectl/core/batch_claim.py
+
+      - src/vectl/core/__init__.py
+
+      - tests/test_batch_claim_contract.py
+
+
+      ## Intent-Closure Sidecar
+
+      Command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step batch_claim_contract_tests.contract-lock --worktree .vectl/worktrees/batch_claim_contract_tests.contract-lock
+      --base Main --out .vectl/worktrees/batch_claim_contract_tests.contract-lock/.agent/gate/verdict.json
+
+      Result: {"status": "CONFORMANT", "reasons": []}
+
+
+      ## Mainline Required Contract Check Execution Receipts
+
+      ### contract_imports_and_field_guards
+
+      Command: uv run pytest tests/test_lifecycle_imports.py tests/test_batch_claim_contract.py
+      -q
+
+      Exit code: 0
+
+      stdout/stderr excerpt: collected 4 items; tests/test_lifecycle_imports.py .;
+      tests/test_batch_claim_contract.py ...; 4 passed in 0.16s.
+
+
+      ### core_batch_claim_doctests
+
+      Command: uv run python -m doctest -v src/vectl/core/batch_claim.py
+
+      Exit code: 0
+
+      stdout/stderr excerpt: 8 tests in 19 items; 8 passed and 0 failed; Test passed.
+
+
+      ### invar_changed_contract_gate
+
+      Command: uvx invar-tools guard --changed
+
+      Exit code: 0
+
+      stdout/stderr excerpt: JSON status passed; static passed true; doctest passed
+      true; errors 0 warnings 0.
+
+
+      ### contract_purity_static_guard
+
+      Command: AST static purity guard from plan intent contract
+
+      Exit code: 0
+
+      stdout: contract purity static guard passed: no mutation imports/calls/claim-store/plan-save
+      behavior.
+
+
+      ## Requirement Coverage
+
+      - BCM-R1: PROVEN — claim_many/claim_steps and request/result DTO contract added.
+
+      - BCM-R2: PROVEN — tests assert forbidden count/auto_select/dispatch_policy/reserve_steps
+      are not accepted.
+
+      - BCM-R3: PROVEN — Core @pre/@post contracts and doctests present and pass.
+
+      - BCM-R4: PROVEN — BatchClaimResult pins ok, claimed, failed, affinity_warnings,
+      markdown, lock_notice.
+
+      - BCM-R5: PROVEN — allowed paths only; AST purity guard passed; no mutation/claim-store/plan-save/CLI/MCP
+      behavior.
+
+
+      ## Commits
+
+      - worker branch: 175a6166239d2eb2d46ed9f097482c5f08ccbffb
+
+      - main squash: 39a43d1
+
+
+      ## Gaps / Notes
+
+      - None.'
   - id: batch_claim_contract_tests.expected-red-tests
     name: Define expected-red atomicity and parity tests
     status: pending

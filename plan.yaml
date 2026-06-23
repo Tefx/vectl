@@ -120521,7 +120521,7 @@ phases:
       orchestrator_action_hint: COMPLETE'
 - id: batch_claim_finalization
   name: Atomic Batch Claim Verification, Documentation, and Gate
-  status: in_progress
+  status: done
   gate: Targeted tests, CLI/MCP parity proof, docs/guide sync, and repo-wide guard
     evidence are reviewed with no unresolved blockers.
   depends_on:
@@ -121067,7 +121067,7 @@ phases:
       orchestrator_action_hint: COMPLETE'
   - id: batch_claim_finalization.gate
     name: Final gate for Atomic Batch Claim
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: full-plan-check; protects plan completion for Atomic Batch
@@ -121157,3 +121157,85 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-23T19:21:39.651237+00:00'
+    done_at: '2026-06-23T19:27:32.689847+00:00'
+    evidence: '## Final Gate Review Report
+
+
+      ### refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#contract — claim_many must take explicit {step_id,
+      agent} requests, preserve input order, validate like single claim, reject duplicate
+      IDs, honor affinity/force, write at most one plan mutation, avoid partial mutation/ghost
+      claims, expose CLI/MCP parity, and leave claim unchanged.
+
+      - docs/RFC-batch-claim.md#non-goals — no count, no auto-selecting steps, no
+      dispatch/agent-selection policy, no reserved lifecycle state, no batch complete/skip/reject/defer,
+      and no CAS weakening.
+
+      - docs/RFC-batch-claim.md#response-shape — response includes ok, ordered claimed,
+      ordered failed, affinity_warnings, markdown, lock_notice; atomic failure has
+      empty claimed.
+
+      - docs/RFC-batch-claim.md#verification-gate — requires targeted core lifecycle,
+      claims-store consistency, MCP, CLI tests, plus full project guard/current repo-wide
+      regression.
+
+
+      ### Requirement Decision Basis
+
+      | requirement_id | Evidence reviewed | Status | Closure path |
+
+      |---|---|---|---|
+
+      | BCM-I1 atomic core batch claim | Core implementation and targeted pytest evidence;
+      broader tests passed | PROVEN | Closed |
+
+      | BCM-I2 rollback/no ghost claim | rollback source behavior and tests/test_batch_claim.py::test_claim_many_rollback_on_plan_save_failure
+      plus claims-store targeted run | PROVEN | Closed |
+
+      | BCM-S1 CLI claim-many | CLI command registration, help/options, human/JSON/non-goal/rollback
+      tests, real CLI JSON probe parsed | PROVEN | Closed |
+
+      | BCM-S2 MCP vectl_claim_many | MCP tool registration/signature; success/non-goal/rollback
+      tests; black-box parity probe | PROVEN | Closed |
+
+      | BCM-D1 docs/guide sync | README and src/vectl/guide.py checks passed | PROVEN
+      | Closed |
+
+      | BCM-F1 full guard | uvx invar-tools guard --all exit 0, errors 0, doctest
+      passed | PROVEN | Closed |
+
+
+      ### Non-Goal Conformance
+
+      - count absent/rejected: PROVEN by dataclass/MCP signatures and CLI/MCP non-goal
+      tests; --count rejected / MCP count TypeError.
+
+      - auto-select absent/rejected: PROVEN; batch APIs require explicit claims; --auto-select
+      rejected / MCP auto_select TypeError.
+
+      - reserve_steps/reserved state absent: PROVEN; reserve_steps rejected, StepStatus
+      has no reserved, reserved input/emission tests pass.
+
+      - dispatch policy absent: PROVEN; no dispatch policy in signatures and tests
+      reject dispatch_policy / --dispatch-policy.
+
+
+      ### Gate Decision
+
+      OPEN. No blocker owner steps required.
+
+
+      ### Closure Signals
+
+      headline: PASS
+
+      blocking_status: CLOSED
+
+      proof_gap_status: NONE
+
+      verdict: PASS
+
+      blockers: []
+
+      orchestrator_action_hint: COMPLETE'

@@ -120286,7 +120286,7 @@ phases:
       state before sidecar/merge/completion.'
   - id: fix-mcp-claim-many-result-contract
     name: Fix MCP claim-many Result shell contract
-    status: claimed
+    status: done
     description: "step_type: implementation\nwork_type: defect_repair\nTARGET STATE:\n\
       `vectl_claim_many` in `src/vectl/mcp_core_lifecycle_tools.py` satisfies the\
       \ Invar Shell rule by returning `Result[T, E]` on every shell path while preserving\
@@ -120335,6 +120335,70 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-06-23T18:59:25.671331+00:00'
+    done_at: '2026-06-23T19:06:48.962865+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — MCP exposes vectl_claim_many
+      with claims/guidance/force shape and parity semantics.
+
+      - src/vectl/mcp_core_lifecycle_tools.py — vectl_claim_many shell boundary violated
+      invar shell_result because return annotation was not Result[T,E].
+
+
+      ## Files Changed
+
+      - src/vectl/mcp_core_lifecycle_tools.py
+
+
+      ## Intent-Closure Sidecar
+
+      Command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step fix-mcp-claim-many-result-contract --worktree .vectl/worktrees/fix-mcp-claim-many-result-contract
+      --base 6a2e4ac5 --main-ref Main --include-diff-diagnostics --out /tmp/fix-mcp-claim-many-result-contract-verdict.json
+
+      Result: CONFORMANT
+
+
+      ## Result Contract Evidence
+
+      - MCP shell Result-return contract fix: vectl_claim_many annotation changed
+      from dict to Result[dict[str, Any], str].
+
+      - Success path return shape: runtime behavior preserved; tests pass.
+
+      - Error path return shape: runtime behavior preserved; tests pass.
+
+      - Batch claim semantics preserved: no core/CLI behavior changed; targeted CLI/MCP/batch
+      and core contract regressions pass.
+
+
+      ## Mainline Commands
+
+      - uvx invar-tools guard --all — exit 0; status passed; errors 0; warnings 19;
+      infos 7. Prior shell_result error resolved.
+
+      - uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_batch_claim.py
+      -q — exit 0; 445 passed.
+
+      - uv run pytest tests/test_batch_claim_contract.py tests/test_batch_claim.py
+      tests/test_claims.py tests/test_properties.py -q — exit 0; 25 passed.
+
+
+      ## Deviation Records
+
+      - none
+
+
+      ## Commits
+
+      - worker branch: 5676d75499b323ddab2a2a849f27c76aae7c2ee7
+
+      - main squash: 0f347b4
+
+
+      ## Gaps / Notes
+
+      - none'
   - id: retest-mcp-claim-many-result-contract
     name: Retest MCP claim-many Result contract and implementation gate closure
     status: pending

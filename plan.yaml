@@ -119861,15 +119861,15 @@ phases:
       \ is NOT acceptable. Each deliverable MUST contain substantive logic that processes\
       \ its inputs and produces outputs that vary based on those inputs.\n\n<intent_closure_contract>\n\
       allowed_paths:\n  - \"src/vectl/cli_plan_lifecycle_commands.py\"\n  - \"src/vectl/cli_plan.py\"\
-      \n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\n  - \"src/vectl/mcp_core_tools.py\"\
-      \n  - \"src/vectl/mcp_server.py\"\n  - \"tests/test_cli.py\"\n  - \"tests/test_mcp.py\"\
-      \n  - \"tests/test_batch_claim.py\"\nblocked_paths:\n  - \"src/vectl/decide.py\"\
-      \n  - \"src/vectl/models.py\"\nrequired_claims:\n  - cli_claim_many_wired\n\
-      \  - mcp_claim_many_wired\n  - cli_mcp_response_parity\n  - no_auto_selection_or_count_surface\n\
-      required_checks:\n  - id: cli_mcp_parity_tests\n    command: [\"uv\", \"run\"\
-      , \"pytest\", \"tests/test_cli.py\", \"tests/test_mcp.py\", \"tests/test_batch_claim.py\"\
-      , \"-q\"]\n    covers_claims:\n      - cli_claim_many_wired\n      - mcp_claim_many_wired\n\
-      \      - cli_mcp_response_parity\n      - no_auto_selection_or_count_surface\n\
+      \n  - \"src/vectl/cli.py\"\n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\n\
+      \  - \"src/vectl/mcp_core_tools.py\"\n  - \"src/vectl/mcp_server.py\"\n  - \"\
+      tests/test_cli.py\"\n  - \"tests/test_mcp.py\"\n  - \"tests/test_batch_claim.py\"\
+      \nblocked_paths:\n  - \"src/vectl/decide.py\"\n  - \"src/vectl/models.py\"\n\
+      required_claims:\n  - cli_claim_many_wired\n  - mcp_claim_many_wired\n  - cli_mcp_response_parity\n\
+      \  - no_auto_selection_or_count_surface\nrequired_checks:\n  - id: cli_mcp_parity_tests\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_cli.py\", \"tests/test_mcp.py\"\
+      , \"tests/test_batch_claim.py\", \"-q\"]\n    covers_claims:\n      - cli_claim_many_wired\n\
+      \      - mcp_claim_many_wired\n      - cli_mcp_response_parity\n      - no_auto_selection_or_count_surface\n\
       </intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     evidence_template: '## refs Read Confirmation (MANDATORY)

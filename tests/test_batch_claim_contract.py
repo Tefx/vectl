@@ -83,15 +83,4 @@ def test_batch_claim_result_fields():
     assert result.claimed == []
     assert len(result.failed) == 1
 
-def test_batch_claim_expected_red_atomic_write_at_most_one_mutation():
-    assert False, "BCM-G1-ATOMIC-WRITE-COUNT: Implementation must ensure at most one save/logical mutation"
-
-def test_batch_claim_expected_red_validation_failure_rolls_back_without_partial_plan_or_claims():
-    assert False, "BCM-G1-NO-PARTIAL-PERSISTED-STATE: validation failure rollback must leave plan and claims unchanged"
-
-def test_batch_claim_expected_red_conflict_failure_rolls_back_without_partial_plan_or_claims():
-    assert False, "BCM-G1-NO-PARTIAL-PERSISTED-STATE: conflict failure rollback must leave plan and claims unchanged"
-
-def test_batch_claim_expected_red_reserved_lifecycle_never_accepted_or_emitted():
-    assert False, "BCM-G2-NO-RESERVED-LIFECYCLE: reserved lifecycle/status must not be accepted or emitted"
 

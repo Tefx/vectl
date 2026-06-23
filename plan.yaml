@@ -120643,7 +120643,7 @@ phases:
     claimed_at: '2026-06-23T19:10:07.409799+00:00'
   - id: batch_claim_finalization.docs-guide-sync
     name: Update docs and guide for atomic batch claim
-    status: claimed
+    status: done
     description: "step_type: implementation\n\n[REQUIRES_SKILL: ponytail-coder]\n\n\
       Requirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
       \ | target_state | evidence_class | required_probe_or_artifact | status |\n\
@@ -120733,6 +120733,75 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-06-23T19:10:19.590143+00:00'
+    done_at: '2026-06-23T19:18:04.592019+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#decision — add vectl claim-many / vectl_claim_many;
+      accepts only explicit {step_id, agent} claims; no count/auto-select/dispatch
+      policy.
+
+      - docs/RFC-batch-claim.md#non-goals — no count, no auto-select, no dispatch/agent-selection
+      policy, no reserved lifecycle state.
+
+      - docs/RFC-batch-claim.md#expected-cli-shape — documents `vectl claim-many --claims-json
+      ...` and repeated `--claim worker:step`.
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — documents `vectl_claim_many(claims=[...],
+      guidance=False, force=False)`.
+
+
+      ## Docs/Guide Evidence
+
+      - Files updated: README.md; src/vectl/guide.py
+
+      - README single-step vs batch claim distinction: added section explaining single-step
+      claim remains normal for one decided step; batch claim is for already-decided
+      explicit assignments.
+
+      - Guide single-step vs batch claim distinction: added GUIDE_ALL startup section
+      with unchanged single-step claim and atomic claim-many / vectl_claim_many.
+
+      - README non-goals documented exactly: `no count`, `no auto-select`, `no dispatch
+      policy`, `no reserve_steps`.
+
+      - Guide non-goals documented exactly: `no count`, `no auto-select`, `no dispatch
+      policy`, `no reserve_steps`.
+
+      - Confirmation checks do not rely on RFC text: checks read README.md and imported
+      vectl.guide.GUIDE_ALL only.
+
+
+      ## Intent-Closure Sidecar
+
+      Command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step batch_claim_finalization.docs-guide-sync --worktree .vectl/worktrees/batch_claim_finalization.docs-guide-sync
+      --base 1fd165e9 --main-ref Main --include-diff-diagnostics --out /tmp/docs-guide-sync-verdict.json
+
+      Result: CONFORMANT after planner repaired command quoting.
+
+
+      ## Mainline Commands
+
+      - README check command — exit 0.
+
+      - guide check command using text=str(g.GUIDE_ALL) — exit 0.
+
+
+      ## Deviation Records
+
+      - none
+
+
+      ## Commits
+
+      - worker branch: 8d58f8cb407312a07fd47bc77d0424642d45b3fc
+
+      - main squash: c1c446a
+
+
+      ## Gaps / Notes
+
+      - none'
   - id: batch_claim_finalization.full-regression-guard
     name: Run full regression guard for batch claim
     status: pending

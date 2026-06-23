@@ -118583,7 +118583,7 @@ phases:
       records for validate receipts.'
 - id: batch_claim_contract_tests
   name: Atomic Batch Claim Contract and Expected-Red Tests
-  status: in_progress
+  status: done
   gate: Contract stubs and expected-red tests define Atomic Batch Claim acceptance
     without shipping production behavior.
   steps:
@@ -119095,7 +119095,7 @@ phases:
       - None; red is intentional for pre-implementation test definition.'
   - id: batch_claim_contract_tests.gate
     name: Gate contract and expected-red readiness
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check; protects batch_claim_implementation from starting
@@ -119169,6 +119169,81 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-23T18:00:04.823182+00:00'
+    done_at: '2026-06-23T18:04:51.478512+00:00'
+    evidence: '## Gate Review Report
+
+      ### refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#contract — claim_many must use explicit {step_id,
+      agent}, preserve order, validate like single claim, reject ambiguity, honor
+      affinity/force, write at most one mutation, avoid partial plan mutation and
+      ghost claims, expose CLI/MCP, and leave claim unchanged.
+
+      - docs/RFC-batch-claim.md#non-goals — no count, auto-select, dispatch policy,
+      reserved lifecycle, batch lifecycle shortcuts, or CAS weakening.
+
+      - docs/RFC-batch-claim.md#verification-gate — targeted core lifecycle, claims-store
+      consistency, MCP, CLI, and full guard/regression evidence required.
+
+
+      ### Evidence Reviewed
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      |---|---|---|---|
+
+      | batch_claim_contract_tests.contract-lock | PASS | doctest 8 passed; contract
+      pytest 4 passed; AST purity and invar scans passed | None blocking |
+
+      | batch_claim_contract_tests.expected-red-tests | PASS | expected-red pytest
+      collected and failed with claim_many/claim-many/vectl_claim_many and BCM fingerprints;
+      no collection/import errors | Expected-red only |
+
+      | batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests | PASS
+      | non-goal, fixture-scoped parity, rollback/no-ghost guards present | Expected-red
+      only |
+
+      | remediate-atomicity-reserved-mcp-rollback-tests | PASS | atomic write-count,
+      partial-state rollback, reserved lifecycle, MCP strict rollback/no-ghost fingerprints
+      present | Expected-red only |
+
+
+      ### Decision Basis
+
+      - Contract purity preserved: YES — core contract file has no I/O/save/claim-store
+      imports; doctest 8 passed; AST purity probe passed; invar scan completed ok.
+
+      - Expected-red failure is intended behavior gap, not infrastructure: YES — targeted
+      tests collect successfully and fail through explicit assertion fingerprints
+      for missing implementation/BCM gaps.
+
+      - Non-goal guards present: YES — tests cover no count, auto-select, dispatch
+      policy, reserve/reserved lifecycle/state, batch lifecycle shortcuts, and CAS
+      weakening.
+
+      - Rollback/parity safety tests present: YES — tests cover at-most-one mutation/write-count,
+      no partial persisted state on validation/conflict/save failure, CLI parity,
+      MCP strict rollback/error, and no ghost claims.
+
+
+      ### Gate Decision
+
+      OPEN — no blockers.
+
+
+      ### Closure Signals
+
+      headline: PASS
+
+      blocking_status: CLOSED
+
+      proof_gap_status: NONE
+
+      verdict: PASS
+
+      blockers: []
+
+      orchestrator_action_hint: COMPLETE'
   - id: batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests
     name: Remediate non-goal, parity, and rollback expected-red tests
     status: done
@@ -119541,7 +119616,7 @@ phases:
       - None; red is intentional for expected-red remediation.'
 - id: batch_claim_implementation
   name: Atomic Batch Claim Implementation and Surface Wiring
-  status: locked
+  status: pending
   gate: Core atomic batch claim, claims-store consistency/rollback, CLI claim-many,
     and MCP vectl_claim_many are implemented and covered by targeted tests.
   depends_on:

@@ -118613,97 +118613,211 @@ phases:
       \ | core result contract pins RFC field names and atomic failure shape at the\
       \ contract boundary | source_static | contract tests/assertions for result fields;\
       \ CLI/MCP serialization parity remains owned by expected-red tests | OWNED |\n\
-      \nTarget state: define acceptance-only request/result models and stub signatures\
-      \ for explicit batch claims, preserving existing single-step claim APIs. Because\
-      \ `src/vectl/core/batch_claim.py` is Core code, the `claim_many` and `claim_steps`\
-      \ stubs MUST include semantic `@pre` and `@post` contracts and at least one\
-      \ executable doctest before any implementation logic lands. The contracts must\
-      \ reference real parameters/results, include correct lambda signatures, and\
-      \ must not be vacuous identity or type-only lambdas. Doctests must run successfully\
-      \ and exercise the documented explicit request/result shape for `claim_many`\
-      \ and/or `claim_steps`.\n\nScope boundary:\n- This is a CONTRACT step only;\
-      \ do not implement production mutation logic, claims-store writes, plan save\
-      \ behavior, CLI/MCP command handling, auto-selection, or dispatch policy.\n\
-      - Do not edit `src/vectl/lifecycle.py` or `src/vectl/core_plan_mutations.py`;\
-      \ those mutation surfaces are explicitly out of scope for this contract lock.\n\
-      - The core response contract MUST pin the RFC response field names: `ok`, `claimed`,\
-      \ `failed`, `affinity_warnings`, `markdown`, and `lock_notice`. CLI/MCP response\
-      \ serialization parity is deferred to `batch_claim_contract_tests.expected-red-tests`\
-      \ and later implementation/finalization steps.\n- Contract tests must explicitly\
-      \ prove that no `count`, auto-select/auto-selection parameter, dispatch policy\
-      \ field, `reserve_steps`, or `reserved` lifecycle/state is accepted by the contract.\n\
-      \n<intent_closure_contract>\nallowed_paths:\n  - \"src/vectl/core/batch_claim.py\"\
-      \n  - \"src/vectl/core/__init__.py\"\n  - \"tests/test_batch_claim_contract.py\"\
-      \nblocked_paths:\n  - \"src/vectl/lifecycle.py\"\n  - \"src/vectl/core_plan_mutations.py\"\
-      \n  - \"src/vectl/cli_plan_lifecycle_commands.py\"\n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\
-      \n  - \"src/vectl/mcp_server.py\"\nrequired_claims:\n  - explicit_claims_contract_locked\n\
+      | BCM-R5 | docs/RFC-batch-claim.md#contract and #non-goals plus INVAR.md#before-writing-code\
+      \ — this lock is acceptance-only Core contract work, not mutation/claim-store/plan-save\
+      \ behavior | src/vectl/core/batch_claim.py remains contract/stub-only with no\
+      \ mutation imports/calls, claims-store writes, plan save behavior, CLI/MCP handling,\
+      \ auto-selection, reserve, or dispatch policy | source_static | contract_purity_static_guard\
+      \ raw execution receipt | OWNED |\n\nTarget state: define acceptance-only request/result\
+      \ models and stub signatures for explicit batch claims, preserving existing\
+      \ single-step claim APIs. Because src/vectl/core/batch_claim.py is Core code,\
+      \ the claim_many and claim_steps stubs MUST include semantic @pre and @post\
+      \ contracts and at least one executable doctest before any implementation logic\
+      \ lands. The contracts must reference real parameters/results, include correct\
+      \ lambda signatures, and must not be vacuous identity or type-only lambdas.\
+      \ Doctests must run successfully and exercise the documented explicit request/result\
+      \ shape for claim_many and/or claim_steps.\n\nScope boundary:\n- This is a CONTRACT\
+      \ step only; do not implement production mutation logic, claims-store writes,\
+      \ plan save behavior, CLI/MCP command handling, auto-selection, reserve semantics,\
+      \ or dispatch policy.\n- Do not edit src/vectl/lifecycle.py, src/vectl/core_plan_mutations.py,\
+      \ or src/vectl/claims.py; lifecycle mutation, plan-save mutation, and claim-record\
+      \ persistence are explicitly out of scope for this contract lock.\n- The core\
+      \ response contract MUST pin the RFC response field names: ok, claimed, failed,\
+      \ affinity_warnings, markdown, and lock_notice. CLI/MCP response serialization\
+      \ parity is deferred to batch_claim_contract_tests.expected-red-tests and later\
+      \ implementation/finalization steps.\n- Contract tests must explicitly prove\
+      \ that no count, auto-select/auto-selection parameter, dispatch policy field,\
+      \ reserve_steps, or reserved lifecycle/state is accepted by the contract.\n\n\
+      <intent_closure_contract>\nallowed_paths:\n  - src/vectl/core/batch_claim.py\n\
+      \  - src/vectl/core/__init__.py\n  - tests/test_batch_claim_contract.py\nblocked_paths:\n\
+      \  - src/vectl/lifecycle.py\n  - src/vectl/core_plan_mutations.py\n  - src/vectl/claims.py\n\
+      \  - src/vectl/cli_plan_lifecycle_commands.py\n  - src/vectl/mcp_core_lifecycle_tools.py\n\
+      \  - src/vectl/mcp_server.py\nrequired_claims:\n  - explicit_claims_contract_locked\n\
       \  - rfc_response_fields_locked\n  - non_goals_excluded_from_contract\n  - existing_claim_imports_preserved\n\
-      \  - core_pre_post_doctests_defined\nrequired_checks:\n  - id: contract_imports_and_field_guards\n\
-      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_lifecycle_imports.py\"\
-      , \"tests/test_batch_claim_contract.py\", \"-q\"]\n    covers_claims:\n    \
-      \  - explicit_claims_contract_locked\n      - rfc_response_fields_locked\n \
-      \     - non_goals_excluded_from_contract\n      - existing_claim_imports_preserved\n\
-      \  - id: core_batch_claim_doctests\n    command: [\"uv\", \"run\", \"python\"\
-      , \"-m\", \"doctest\", \"-v\", \"src/vectl/core/batch_claim.py\"]\n    covers_claims:\n\
+      \  - core_pre_post_doctests_defined\n  - contract_purity_no_mutation_logic\n\
+      required_checks:\n  - id: contract_imports_and_field_guards\n    command:\n\
+      \      - uv\n      - run\n      - pytest\n      - tests/test_lifecycle_imports.py\n\
+      \      - tests/test_batch_claim_contract.py\n      - -q\n    covers_claims:\n\
       \      - explicit_claims_contract_locked\n      - rfc_response_fields_locked\n\
+      \      - non_goals_excluded_from_contract\n      - existing_claim_imports_preserved\n\
+      \  - id: core_batch_claim_doctests\n    command:\n      - uv\n      - run\n\
+      \      - python\n      - -m\n      - doctest\n      - -v\n      - src/vectl/core/batch_claim.py\n\
+      \    covers_claims:\n      - explicit_claims_contract_locked\n      - rfc_response_fields_locked\n\
       \      - core_pre_post_doctests_defined\n  - id: invar_changed_contract_gate\n\
-      \    command: [\"uvx\", \"invar-tools\", \"guard\", \"--changed\"]\n    covers_claims:\n\
-      \      - explicit_claims_contract_locked\n      - non_goals_excluded_from_contract\n\
-      \      - core_pre_post_doctests_defined\n</intent_closure_contract>"
+      \    command:\n      - uvx\n      - invar-tools\n      - guard\n      - --changed\n\
+      \    covers_claims:\n      - explicit_claims_contract_locked\n      - non_goals_excluded_from_contract\n\
+      \      - core_pre_post_doctests_defined\n  - id: contract_purity_static_guard\n\
+      \    command:\n      - uv\n      - run\n      - python\n      - -c\n      -\
+      \ |\n        import ast\n        from pathlib import Path\n        path = Path('src/vectl/core/batch_claim.py')\n\
+      \        tree = ast.parse(path.read_text())\n        forbidden_modules = (\n\
+      \            'vectl.claims',\n            'vectl.lifecycle',\n            'vectl.core_plan_mutations',\n\
+      \            'vectl.cli_plan_lifecycle_commands',\n            'vectl.mcp_core_lifecycle_tools',\n\
+      \            'vectl.mcp_server',\n        )\n        forbidden_names = {\n \
+      \           'ClaimStore', 'ClaimRecord', 'ClaimsStore', 'claim_store', 'claims_store',\n\
+      \            'PlanStore', 'plan_store', 'save_plan', 'write_plan', 'save_claims',\n\
+      \            'write_claims', 'record_claim', 'claim_record', 'claim_step', 'reserve_steps',\n\
+      \        }\n        forbidden_calls = forbidden_names | {\n            'open',\
+      \ 'write_text', 'write_bytes', 'replace', 'unlink', 'mkdir',\n            'dump',\
+      \ 'dumps', 'safe_dump', 'save', 'write',\n        }\n        bad = []\n    \
+      \    def import_name(node):\n            if isinstance(node, ast.Import):\n\
+      \                for alias in node.names:\n                    yield alias.name\n\
+      \            elif isinstance(node, ast.ImportFrom):\n                base =\
+      \ node.module or ''\n                yield base\n                for alias in\
+      \ node.names:\n                    yield f'{base}.{alias.name}' if base else\
+      \ alias.name\n        def call_name(node):\n            if isinstance(node,\
+      \ ast.Name):\n                return node.id\n            if isinstance(node,\
+      \ ast.Attribute):\n                return node.attr\n            return ''\n\
+      \        for node in ast.walk(tree):\n            if isinstance(node, (ast.Import,\
+      \ ast.ImportFrom)):\n                for name in import_name(node):\n      \
+      \              if any(name == mod or name.startswith(mod + '.') for mod in forbidden_modules):\n\
+      \                        bad.append(f'import {name}')\n            elif isinstance(node,\
+      \ ast.Name) and node.id in forbidden_names:\n                bad.append(f'name\
+      \ {node.id}')\n            elif isinstance(node, ast.Attribute) and node.attr\
+      \ in forbidden_names:\n                bad.append(f'attribute {node.attr}')\n\
+      \            elif isinstance(node, ast.Call):\n                name = call_name(node.func)\n\
+      \                if name in forbidden_calls:\n                    bad.append(f'call\
+      \ {name}')\n        if bad:\n            raise SystemExit('contract purity violations:\
+      \ ' + '; '.join(sorted(set(bad))))\n        print('contract purity static guard\
+      \ passed: no mutation imports/calls/claim-store/plan-save behavior')\n    covers_claims:\n\
+      \      - contract_purity_no_mutation_logic\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
+      For each ref in this step, paste a key passage or NOT READ with reason:
 
-      - docs/RFC-batch-claim.md#decision — key passage:
+      - docs/RFC-batch-claim.md#decision — <key passage or NOT READ: reason>
 
-      - docs/RFC-batch-claim.md#contract — key passage:
+      - docs/RFC-batch-claim.md#contract — <key passage or NOT READ: reason>
 
-      - docs/RFC-batch-claim.md#non-goals — key passage:
+      - docs/RFC-batch-claim.md#non-goals — <key passage or NOT READ: reason>
 
-      - AGENTS.md#Invar — key passage:
+      - docs/RFC-batch-claim.md#response-shape — <key passage or NOT READ: reason>
 
-      - INVAR.md#Before-Writing-Code — key passage:
+      - docs/RFC-batch-claim.md#consistency-requirement — <key passage or NOT READ:
+      reason>
 
+      - INVAR.md#before-writing-code — <key passage or NOT READ: reason>
 
-      ## Contract Purity Evidence
-
-
-      - Files changed:
-
-      - Stubs/signatures added:
-
-      - Confirmation no production mutation logic shipped:
+      - INVAR.md#contract-syntax-traps — <key passage or NOT READ: reason>
 
 
-      ## Core Contract Evidence
+      ## Required Contract Check Execution Receipts (MANDATORY)
+
+      Completion evidence MUST paste stdout, stderr, and exit code for every required_check
+      exactly as listed in the intent_closure_contract. A non-contract Python text
+      probe or narrative summary is not a substitute.
 
 
-      - `claim_many` @pre/@post summary, including parameters/results referenced:
+      ### contract_imports_and_field_guards
 
-      - `claim_steps` @pre/@post summary, including parameters/results referenced:
-
-      - Doctest location(s) and what contract shape they exercise:
-
-      - Confirmation contracts are semantic and not identity/vacuous lambdas:
-
-
-      ## Commands
-
-
-      ```
-
-      uv run pytest tests/test_lifecycle_imports.py tests/test_batch_claim_contract.py
+      Exact command: uv run pytest tests/test_lifecycle_imports.py tests/test_batch_claim_contract.py
       -q
 
-      uv run python -c "from pathlib import Path; text=Path(''src/vectl/core/batch_claim.py'').read_text();
-      assert ''def claim_many'' in text and ''def claim_steps'' in text; assert text.count(''@pre'')
-      >= 2 and text.count(''@post'') >= 2; assert ''>>>'' in text; assert ''lambda
-      result: result'' not in text and ''lambda x: x'' not in text"
+      Exit code: <paste>
+
+      Stdout:
+
+      ```
+
+      <paste raw stdout>
+
+      ```
+
+      Stderr:
+
+      ```
+
+      <paste raw stderr>
 
       ```
 
 
-      Paste raw stdout/stderr and exit code.'
+      ### core_batch_claim_doctests
+
+      Exact command: uv run python -m doctest -v src/vectl/core/batch_claim.py
+
+      Exit code: <paste>
+
+      Stdout:
+
+      ```
+
+      <paste raw stdout>
+
+      ```
+
+      Stderr:
+
+      ```
+
+      <paste raw stderr>
+
+      ```
+
+
+      ### invar_changed_contract_gate
+
+      Exact command: uvx invar-tools guard --changed
+
+      Exit code: <paste>
+
+      Stdout:
+
+      ```
+
+      <paste raw stdout>
+
+      ```
+
+      Stderr:
+
+      ```
+
+      <paste raw stderr>
+
+      ```
+
+
+      ### contract_purity_static_guard
+
+      Exact command: paste the list-form uv run python -c command from the contract,
+      or the exact argv-equivalent command used.
+
+      Exit code: <paste>
+
+      Stdout:
+
+      ```
+
+      <paste raw stdout>
+
+      ```
+
+      Stderr:
+
+      ```
+
+      <paste raw stderr>
+
+      ```
+
+
+      ## Completion Verdict
+
+      PASS only if all required_checks exit 0, all refs have key-passage receipts
+      or justified NOT READ entries, and the purity guard reports no mutation imports/calls,
+      claim-store behavior, plan-save behavior, CLI/MCP handling, auto-selection,
+      reserve semantics, or dispatch policy.'
     refs:
     - docs/RFC-batch-claim.md#decision
     - docs/RFC-batch-claim.md#contract

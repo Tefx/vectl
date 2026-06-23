@@ -119898,6 +119898,45 @@ phases:
     - batch_claim_implementation.core-atomic-claim
     - batch_claim_implementation.cli-mcp-parity
     agent: gate-reviewer
+  - id: batch_claim_implementation.retire-core-expected-red-sentinels
+    name: Retire core expected-red contract sentinels
+    status: pending
+    description: "step_type: test\nstep_intent: retest_green\nexpected_result: green\n\
+      \nConvert or retire the unconditional expected-red sentinel tests in tests/test_batch_claim_contract.py\
+      \ after core implementation evidence exists. This is a test-intent cleanup/remediation\
+      \ step, not product implementation. Preserve behavioral protection while removing\
+      \ unconditional `assert False` blockers from the green path.\n\nRequirement-to-Evidence\
+      \ Matrix:\n| requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| BCM-RS1 | docs/RFC-batch-claim.md#contract\
+      \ — atomic all-or-nothing explicit batch claim, preserves order, rejects invalid/duplicate/conflicting\
+      \ claims | expected-red sentinels no longer fail unconditionally; equivalent\
+      \ behavior is covered by passing runtime tests | runtime_probe | full core/contract\
+      \ pytest stdout with tests/test_batch_claim_contract.py included | OWNED |\n\
+      | BCM-RS2 | docs/RFC-batch-claim.md#consistency-requirement — no partial plan\
+      \ changes or orphaned claim records after failed batch/save failure | rollback/no-ghost\
+      \ protection remains covered after sentinel retirement | runtime_probe | rollback/no-ghost\
+      \ pytest stdout from core behavioral tests | OWNED |\n| BCM-RS3 | docs/RFC-batch-claim.md#non-goals\
+      \ — no count, auto-select, dispatch policy, reserve_steps, or reserved lifecycle/state\
+      \ | non-goal static guards remain present and green | runtime_probe | tests/test_batch_claim_contract.py\
+      \ green stdout | OWNED |\n\nTARGET STATE:\n- Replace the four unconditional\
+      \ expected-red `assert False` sentinel tests with meaningful green assertions,\
+      \ or remove them only when their behavior is already covered by tests/test_batch_claim.py\
+      \ and the remaining static/non-goal guards still run.\n- Do not weaken any RFC\
+      \ non-goal guard.\n- Do not change product code.\n- Preserve dispatch readiness:\
+      \ the implementation sidecar and later gates must be able to run tests/test_batch_claim_contract.py\
+      \ without intentional red failures.\n\n<intent_closure_contract>\nallowed_paths:\n\
+      \  - \"tests/test_batch_claim_contract.py\"\nblocked_paths:\n  - \"src/**\"\n\
+      \  - \"plan.yaml\"\nrequired_claims:\n  - expected_red_sentinels_retired\n \
+      \ - behavioral_guards_preserved\n  - non_goal_guards_preserved\n  - core_contract_suite_green\n\
+      required_checks:\n  - id: full_core_contract_green\n    command: [\"uv\", \"\
+      run\", \"pytest\", \"tests/test_batch_claim_contract.py\", \"tests/test_batch_claim.py\"\
+      , \"tests/test_claims.py\", \"tests/test_properties.py\", \"-q\"]\n    covers_claims:\n\
+      \      - expected_red_sentinels_retired\n      - behavioral_guards_preserved\n\
+      \      - non_goal_guards_preserved\n      - core_contract_suite_green\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    depends_on:
+    - batch_claim_implementation.core-atomic-claim
+    agent: python-executor
 - id: batch_claim_finalization
   name: Atomic Batch Claim Verification, Documentation, and Gate
   status: locked

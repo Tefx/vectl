@@ -119294,6 +119294,69 @@ phases:
       ## Gaps / Notes
 
       - None; red is intentional for test-definition remediation.'
+  - id: remediate-atomicity-reserved-mcp-rollback-tests
+    name: Remediate atomicity, reserved lifecycle, and MCP rollback expected-red tests
+    status: pending
+    description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
+      \ red\n\nBatched remediation ownership for new batch_claim_contract_tests.gate\
+      \ blockers GATE-BLOCKER-001, GATE-BLOCKER-002, and GATE-BLOCKER-003. This is\
+      \ test-definition remediation only; implementation files remain forbidden and\
+      \ the implementation phase must remain locked.\n\nRequirement-to-Evidence Matrix:\n\
+      | requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| BCM-G1-ATOMIC-WRITE-COUNT | docs/RFC-batch-claim.md#consistency-requirement\
+      \ — failed batch must not leave partial plan changes or orphaned claim records\
+      \ | executable tests count/enforce at most one save/logical mutation and assert\
+      \ plan plus claims unchanged after validation/conflict failure | runtime_probe\
+      \ | expected-red targeted pytest logs showing mutation-count and no-partial-persisted-state\
+      \ assertions fail only because batch claim implementation is missing | OWNED\
+      \ |\n| BCM-G2-NO-RESERVED-LIFECYCLE | docs/RFC-batch-claim.md#non-goals — no\
+      \ reserve/reserved lifecycle/state acceptance or emission | executable guard\
+      \ proves batch claim never accepts or emits reserved lifecycle/status; reserve_steps\
+      \ parameter-only checks are insufficient | runtime_probe | expected-red targeted\
+      \ pytest logs covering accepted inputs and emitted structured/core/CLI/MCP outputs\
+      \ for reserved lifecycle/status | OWNED |\n| BCM-G1-MCP-ROLLBACK-STRICT | docs/RFC-batch-claim.md#expected-mcp-shape\
+      \ and docs/RFC-batch-claim.md#consistency-requirement — MCP batch claim must\
+      \ return structured failure or raise PlanError with no ghost claims | MCP rollback\
+      \ test cannot pass via `if not raised: pass`; it asserts structured error/ok=false\
+      \ or raised PlanError and no ghost claim records | runtime_probe | expected-red\
+      \ targeted pytest logs proving strict MCP rollback assertion and unchanged claim\
+      \ store after failure | OWNED |\n\nTARGET STATE:\nAdd or strengthen executable\
+      \ expected-red tests for the three remaining gate blockers:\n- GATE-BLOCKER-001:\
+      \ tests count/enforce one save/logical mutation maximum and assert both plan\
+      \ contents and claims records are unchanged after validation failure and conflict\
+      \ failure; no partial persisted state may be accepted as a passing test condition.\n\
+      - GATE-BLOCKER-002: tests prove no `reserved` lifecycle/status is accepted or\
+      \ emitted by batch claim across the relevant public surfaces; checks limited\
+      \ to a `reserve_steps` parameter are not sufficient.\n- GATE-BLOCKER-003: MCP\
+      \ rollback tests must assert either structured error/ok=false or raised PlanError,\
+      \ plus no ghost claim records; tests must not contain a permissive `if not raised:\
+      \ pass` path.\n- Preserve expected-red semantics: success for this remediation\
+      \ is a focused red suite that exposes the still-missing Atomic Batch Claim behavior\
+      \ without modifying production code.\n\nSCOPE BOUNDARY:\n- Modify tests and\
+      \ fixtures only.\n- Do NOT implement claim_many, claim-many, vectl_claim_many,\
+      \ lifecycle changes, CAS changes, reserved states, claim-store behavior, or\
+      \ production rollback logic.\n- Do NOT weaken existing expected-red tests to\
+      \ make the suite pass.\n- Keep implementation-phase work locked behind batch_claim_contract_tests.gate.\n\
+      \n<intent_closure_contract>\nintent_kind: test_define_red\nallowed_paths:\n\
+      \  - \"tests/test_batch_claim_contract.py\"\n  - \"tests/test_batch_claim.py\"\
+      \n  - \"tests/test_claims.py\"\n  - \"tests/test_cli.py\"\n  - \"tests/test_mcp.py\"\
+      \n  - \"tests/fixtures/**\"\nblocked_paths:\n  - \"src/vectl/**\"\n  - \"plan.yaml\"\
+      \nrequired_claims:\n  - expected_red_gap_exposed\n  - write_at_most_one_mutation_guard_defined\n\
+      \  - validation_conflict_no_partial_state_guard_defined\n  - reserved_lifecycle_never_accepted_or_emitted_guard_defined\n\
+      \  - mcp_rollback_strict_error_and_no_ghost_guard_defined\nrequired_checks:\n\
+      \  - id: targeted_expected_red_atomicity_reserved_mcp_rollback\n    command:\
+      \ [\"uv\", \"run\", \"pytest\", \"tests/test_batch_claim_contract.py\", \"tests/test_batch_claim.py\"\
+      , \"tests/test_claims.py\", \"tests/test_cli.py\", \"tests/test_mcp.py\", \"\
+      -q\"]\n    expected_result: red\n    expected_exit_codes: [1]\n    expected_failure_patterns_any:\n\
+      \      - \"claim_many\"\n      - \"claim-many\"\n      - \"vectl_claim_many\"\
+      \n      - \"reserved\"\n      - \"ghost\"\n      - \"rollback\"\n      - \"\
+      conflict\"\n    covers_claims:\n      - expected_red_gap_exposed\n      - write_at_most_one_mutation_guard_defined\n\
+      \      - validation_conflict_no_partial_state_guard_defined\n      - reserved_lifecycle_never_accepted_or_emitted_guard_defined\n\
+      \      - mcp_rollback_strict_error_and_no_ghost_guard_defined\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    depends_on:
+    - batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests
+    agent: python-executor
 - id: batch_claim_implementation
   name: Atomic Batch Claim Implementation and Surface Wiring
   status: locked

@@ -119297,7 +119297,7 @@ phases:
       - None; red is intentional for test-definition remediation.'
   - id: remediate-atomicity-reserved-mcp-rollback-tests
     name: Remediate atomicity, reserved lifecycle, and MCP rollback expected-red tests
-    status: claimed
+    status: done
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\n\nBatched remediation ownership for new batch_claim_contract_tests.gate\
       \ blockers GATE-BLOCKER-001, GATE-BLOCKER-002, and GATE-BLOCKER-003. This is\
@@ -119459,6 +119459,84 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-06-23T17:44:28.518009+00:00'
+    done_at: '2026-06-23T17:59:47.012842+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#consistency-requirement — implementation must handle
+      both plan-visible state and branch-scoped claims so failed batch leaves no partial
+      plan changes or orphaned claim records.
+
+      - docs/RFC-batch-claim.md#non-goals — no new reserved lifecycle state.
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — failed atomic batches expose
+      structured failure/no claimed entries; MCP shape uses explicit claims[].
+
+
+      ## Expected-Red Evidence
+
+      - step_intent: test_define_red
+
+      - expected_result: red
+
+      - observed_result: red
+
+      - failure_alignment: matched
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - product implementation files modified: no
+
+      - tests changed: tests/test_batch_claim_contract.py, tests/test_mcp.py, tests/test_batch_claim.py
+
+
+      ## Required Claim to Concrete Failure Fingerprint Map
+
+      - expected_red_gap_exposed — aggregate suite red with targeted AssertionErrors,
+      not import/collection failures.
+
+      - write_at_most_one_mutation_guard_defined — `BCM-G1-ATOMIC-WRITE-COUNT: Implementation
+      must ensure at most one save/logical mutation`.
+
+      - validation_conflict_no_partial_state_guard_defined — `BCM-G1-NO-PARTIAL-PERSISTED-STATE:
+      validation failure rollback must leave plan and claims unchanged` and `conflict
+      failure rollback must leave plan and claims unchanged`.
+
+      - reserved_lifecycle_never_accepted_or_emitted_guard_defined — `BCM-G2-NO-RESERVED-LIFECYCLE:
+      reserved lifecycle/status must not be accepted or emitted`.
+
+      - mcp_rollback_strict_error_and_no_ghost_guard_defined — `BCM-G1-MCP-ROLLBACK-STRICT:
+      structured error or PlanError required to ensure BCM-G1-MCP-NO-GHOST-CLAIMS`.
+
+
+      ## Intent-Closure Sidecar
+
+      Command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step remediate-atomicity-reserved-mcp-rollback-tests --worktree .vectl/worktrees/remediate-atomicity-reserved-mcp-rollback-tests
+      --base Main --out .vectl/worktrees/remediate-atomicity-reserved-mcp-rollback-tests/.agent/gate/verdict.json
+
+      Result: {"status": "CONFORMANT", "reasons": []}
+
+
+      ## Commands
+
+      Targeted commands for all per-claim checks each exited 1 with required fingerprints;
+      aggregate command `uv run pytest tests/test_batch_claim_contract.py tests/test_batch_claim.py
+      tests/test_claims.py tests/test_cli.py tests/test_mcp.py -q` exited 1 as expected-red:
+      16 failed, 450 passed.
+
+
+      ## Commits
+
+      - worker branch: c278c081
+
+      - main squash: a7762fe
+
+
+      ## Gaps / Notes
+
+      - None; red is intentional for expected-red remediation.'
 - id: batch_claim_implementation
   name: Atomic Batch Claim Implementation and Surface Wiring
   status: locked

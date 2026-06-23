@@ -120401,7 +120401,7 @@ phases:
       - none'
   - id: retest-mcp-claim-many-result-contract
     name: Retest MCP claim-many Result contract and implementation gate closure
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       step_intent: retest_green
@@ -120458,6 +120458,8 @@ phases:
     depends_on:
     - fix-mcp-claim-many-result-contract
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-23T19:07:15.206519+00:00'
 - id: batch_claim_finalization
   name: Atomic Batch Claim Verification, Documentation, and Gate
   status: locked

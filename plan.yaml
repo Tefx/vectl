@@ -119095,7 +119095,7 @@ phases:
       - None; red is intentional for pre-implementation test definition.'
   - id: batch_claim_contract_tests.gate
     name: Gate contract and expected-red readiness
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check; protects batch_claim_implementation from starting
@@ -119166,6 +119166,8 @@ phases:
     - batch_claim_contract_tests.expected-red-tests
     - batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-23T17:24:58.765678+00:00'
   - id: batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests
     name: Remediate non-goal, parity, and rollback expected-red tests
     status: done

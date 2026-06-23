@@ -4276,3 +4276,57 @@ class TestDeterministicCheckCLI:
         result = runner.invoke(app, ["check-inventory", "s3", "--json", "--plan", str(plan_file)])
         assert result.exit_code == 0
         assert '"checklist_inventory_revision":' in result.output
+
+def test_cli_claim_many_human(plan_file: Path) -> None:
+    # Test `vectl claim-many --claim worker-a:p1.s1 --claim worker-b:p1.s2`
+    result = runner.invoke(app, ["claim-many", "--claim", "worker-a:p1.s1", "--claim", "worker-b:p1.s2", "--no-guidance"])
+    assert result.exit_code == 0
+    assert "worker-a" in result.stdout
+    assert "p1.s1" in result.stdout
+
+def test_cli_claim_many_json(plan_file: Path) -> None:
+    # Test `vectl claim-many --claims-json '[...]'`
+    import json
+    claims_json = json.dumps([
+        {"step_id": "p1.s1", "agent": "worker-a"},
+        {"step_id": "p1.s2", "agent": "worker-b"}
+    ])
+    result = runner.invoke(app, ["claim-many", "--claims-json", claims_json, "--json", "--no-guidance"])
+    assert result.exit_code == 0
+    res = json.loads(result.stdout)
+    assert res["ok"] is True
+    assert len(res["claimed"]) == 2
+    assert "failed" in res
+
+def test_cli_claim_many_duplicate_or_invalid() -> None:
+    # This just ensures we don't have count/auto-select in claim-many
+    result = runner.invoke(app, ["claim-many", "--count", "2"])
+    assert result.exit_code != 0
+    assert "No such option" in result.stdout or "Error" in result.stdout
+
+def test_cli_claim_many_human(plan_file: Path) -> None:
+    # Test `vectl claim-many --claim worker-a:p1.s1 --claim worker-b:p1.s2`
+    result = runner.invoke(app, ["claim-many", "--claim", "worker-a:p1.s1", "--claim", "worker-b:p1.s2", "--no-guidance"])
+    assert result.exit_code == 0, f"claim-many missing implementation: exit {result.exit_code}"
+    assert "worker-a" in result.stdout
+    assert "p1.s1" in result.stdout
+
+def test_cli_claim_many_json(plan_file: Path) -> None:
+    # Test `vectl claim-many --claims-json '[...]'`
+    import json
+    claims_json = json.dumps([
+        {"step_id": "p1.s1", "agent": "worker-a"},
+        {"step_id": "p1.s2", "agent": "worker-b"}
+    ])
+    result = runner.invoke(app, ["claim-many", "--claims-json", claims_json, "--json", "--no-guidance"])
+    assert result.exit_code == 0, f"claim-many missing implementation: exit {result.exit_code}"
+    res = json.loads(result.stdout)
+    assert res["ok"] is True
+    assert len(res["claimed"]) == 2
+    assert "failed" in res
+
+def test_cli_claim_many_duplicate_or_invalid() -> None:
+    # This just ensures we don't have count/auto-select in claim-many
+    result = runner.invoke(app, ["claim-many", "--count", "2"])
+    assert result.exit_code != 0, f"claim-many missing implementation: exit {result.exit_code}"
+    assert ("No such option" in result.stdout) or ("Error" in result.stdout), "claim-many missed count option guard"

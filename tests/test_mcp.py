@@ -3368,3 +3368,51 @@ class TestDeterministicCheckMCP:
                 os.environ.pop("VECTL_PLAN_PATH", None)
             else:
                 os.environ["VECTL_PLAN_PATH"] = old_plan
+
+def test_mcp_vectl_claim_many(plan_file: Path) -> None:
+    tool_fn = None
+    try:
+        from vectl.mcp_server import vectl_claim_many as _tool
+        tool_fn = _tool.fn
+    except (ImportError, AttributeError):
+        pass
+    if tool_fn is None:
+        assert False, "vectl_claim_many MCP tool not implemented"
+    
+    vectl_claim_many = tool_fn
+
+    result = vectl_claim_many(
+        claims=[
+            {"step_id": "a.1", "agent": "worker-a"}
+        ],
+        guidance=False,
+        force=False
+    )
+    assert result["ok"] is True
+    assert len(result["claimed"]) == 1
+    assert "failed" in result
+    assert "lock_notice" in result
+    
+def test_mcp_claim_many_conflicts(plan_file: Path) -> None:
+    tool_fn = None
+    try:
+        from vectl.mcp_server import vectl_claim_many as _tool
+        tool_fn = _tool.fn
+    except (ImportError, AttributeError):
+        pass
+    if tool_fn is None:
+        assert False, "vectl_claim_many MCP tool not implemented"
+    
+    vectl_claim_many = tool_fn
+        
+    result = vectl_claim_many(
+        claims=[
+            {"step_id": "a.1", "agent": "worker-a"},
+            {"step_id": "a.1", "agent": "worker-b"}
+        ],
+        guidance=False,
+        force=False
+    )
+    assert result["ok"] is False
+    assert len(result["failed"]) > 0
+    assert result["failed"][0]["step_id"] == "a.1"

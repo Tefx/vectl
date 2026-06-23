@@ -19,6 +19,7 @@ from vectl.cli_plan import (
     check_cmd,
     checkpoint,
     claim,
+    claim_many_cmd,
     clipboard_clear_cmd,
     clipboard_read_cmd,
     clipboard_write_cmd,
@@ -126,6 +127,7 @@ app.command()(show)
 app.command("guide")(guide_cmd)
 app.command()(dag)
 app.command()(claim)
+app.command("claim-many")(claim_many_cmd)
 app.command()(complete)
 app.command("complete-phase")(complete_phase_cmd)
 app.command()(defer)

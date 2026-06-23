@@ -3432,7 +3432,28 @@ def test_mcp_vectl_claim_many_nongoal_guards(plan_file: Path) -> None:
     with pytest.raises(TypeError):
         vectl_claim_many(claims=[], ignore_cas=True)  # type: ignore
 
-def test_batch_claim_expected_red_mcp_strict_error_rolls_back_without_ghost_claims():
-    assert False, "BCM-G1-MCP-ROLLBACK-STRICT: structured error or PlanError required to ensure BCM-G1-MCP-NO-GHOST-CLAIMS"
+def test_batch_claim_expected_red_mcp_strict_error_rolls_back_without_ghost_claims(plan_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    try:
+        from vectl.mcp_server import vectl_claim_many as _tool
+        vectl_claim_many = _tool.fn
+    except (ImportError, AttributeError):
+        pytest.skip("tool not implemented")
+
+    from vectl.models import PlanError
+    def fake_save_plan(plan, path):
+        raise PlanError("Simulated CAS failure")
+
+    monkeypatch.setattr("vectl.core.batch_claim.save_plan", fake_save_plan, raising=False)
+    monkeypatch.setattr("vectl.cli_render.save_plan", fake_save_plan, raising=False)
+    monkeypatch.setattr("vectl.io.save_plan", fake_save_plan, raising=False)
+
+    result = vectl_claim_many(claims=[{"step_id": "a.1", "agent": "worker-a"}])
+    assert result["ok"] is False
+
+    from vectl.claims import load_claims
+    from vectl.plan_path import resolve_claims_path
+    claims = load_claims(resolve_claims_path(plan_file))
+    assert "a.1" not in claims
+
 
 

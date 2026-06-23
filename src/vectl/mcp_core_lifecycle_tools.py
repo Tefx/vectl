@@ -393,3 +393,36 @@ def vectl_lifecycle(
 # ---------------------------------------------------------------------------
 
 
+
+def vectl_claim_many(
+    claims: list[dict[str, str]],
+    guidance: bool = False,
+    force: bool = False
+) -> dict:
+    """Atomic batch claim operation for committing multiple explicitly decided claims.
+    
+    Accepts explicit claim requests [{"step_id": "foo", "agent": "worker"}].
+    Returns structured results including successfully claimed steps and any failures.
+    """
+    from vectl.core.batch_claim import claim_steps
+    try:
+        import dataclasses
+        result = claim_steps(claims, guidance=guidance, force=force)
+        return {
+            "ok": result.ok,
+            "claimed": [dataclasses.asdict(c) for c in result.claimed],
+            "failed": [dataclasses.asdict(f) for f in result.failed],
+            "affinity_warnings": result.affinity_warnings,
+            "markdown": result.markdown,
+            "lock_notice": result.lock_notice
+        }
+    except Exception as e:
+        # Wrap everything in a nice error response just in case
+        return {
+            "ok": False,
+            "claimed": [],
+            "failed": [],
+            "affinity_warnings": [],
+            "markdown": f"Batch claim syntax or systemic error: {e}",
+            "lock_notice": None
+        }

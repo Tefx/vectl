@@ -343,3 +343,111 @@ def validate(
 
 
 # @shell_complexity: migration command preserves preview, confirmation, idempotence, and warning output semantics.
+from datetime import datetime
+import json
+import dataclasses
+from rich.console import Console
+
+def encode_batch_result(result):
+    from vectl.core.batch_claim import BatchClaimResult
+    return dataclasses.asdict(result)
+
+def claim_many_cmd(
+    claims_json: str | None = typer.Option(None, "--claims-json", help="JSON array of claims: [{'step_id':'foo','agent':'worker-a'}, ...]"),
+    claim_args: list[str] | None = typer.Option(None, "--claim", help="Claim request in agent:step_id format"),
+    is_json: bool = typer.Option(False, "--json", help="Output machine-readable JSON"),
+    guidance: bool = typer.Option(True, "--guidance/--no-guidance", help="Show claim-time Guidance block"),
+    force: bool = typer.Option(False, "--force", "-f", help="Override exclusive affinity violations"),
+    plan: Path | None = PlanOption,
+):
+    """Explict atomic batch claim operation.
+    
+    Accepts explicit claim requests via --claims-json or repeated --claim args.
+    Returns structured results for orchestrators when --json is passed.
+    """
+    from vectl.core.batch_claim import BatchClaimItem, BatchClaimRequest, claim_many
+    import json
+    
+    p, def_h, plan_path = _load(plan)
+    
+    req_claims = []
+    if claims_json:
+        try:
+            parsed = json.loads(claims_json)
+            for item in parsed:
+                req_claims.append(BatchClaimItem(step_id=item["step_id"], agent=item["agent"]))
+        except Exception as e:
+            _die(f"Invalid --claims-json payload: {e}")
+            return
+            
+    if claim_args:
+        for arg in claim_args:
+            parts = arg.split(":", 1)
+            if len(parts) != 2:
+                _die(f"Invalid --claim argument format (expected agent:step_id): {arg}")
+                return
+            req_claims.append(BatchClaimItem(agent=parts[0], step_id=parts[1]))
+            
+    if not req_claims:
+        _die("No claims provided. Use --claims-json or --claim.")
+        return
+        
+    req = BatchClaimRequest(claims=req_claims, guidance=guidance, force=force)
+    
+    # We must mock os.environ temporarily to point plan_path specifically for claim_many
+    # wait, claim_many internally reads VECTL_PLAN_PATH from environment or uses default 
+    # instead of passing it as arg. Let's see: `claim_many` calls resolve_plan_path(None).
+    import os
+    o_env = os.environ.get("VECTL_PLAN_PATH")
+    os.environ["VECTL_PLAN_PATH"] = str(plan_path)
+    
+    try:
+        result = claim_many(req)
+    finally:
+        if o_env is not None:
+            os.environ["VECTL_PLAN_PATH"] = o_env
+        else:
+            os.environ.pop("VECTL_PLAN_PATH", None)
+            
+    if is_json:
+        import dataclasses
+        from vectl.core.batch_claim import ClaimFailure
+        out_dict = {
+            "ok": result.ok,
+            "claimed": [dataclasses.asdict(c) for c in result.claimed],
+            "failed": [dataclasses.asdict(f) for f in result.failed],
+            "affinity_warnings": result.affinity_warnings,
+            "markdown": result.markdown,
+            "lock_notice": result.lock_notice
+        }
+        typer.echo(json.dumps(out_dict, indent=2))
+        if not result.ok:
+            raise typer.Exit(1)
+        return
+        
+    if not result.ok:
+        out.print(f"[red bold]Batch claim failed[/]")
+        for failure in result.failed:
+            out.print(f"  [red]Failed:[/] {failure.step_id} (by {failure.agent}): {failure.reason}")
+        raise typer.Exit(1)
+
+    for warning in result.affinity_warnings:
+        out.print(f"[yellow]⚠️  {warning}[/]")
+
+    out.print(f"[green]Batch Claimed:[/]")
+    for c in result.claimed:
+        out.print(f"  [green]✓[/] {c.step_id} by {c.agent}")
+        
+    if guidance:
+        # Load the updated plan since claim_many re-saved it
+        p2, _, _ = _load(plan)
+        for c in result.claimed:
+            found = p2.find_step(c.step_id)
+            if found is not None:
+                from vectl.claim_guidance import build_claim_guidance
+                phase_obj, step_obj = found
+                payload = build_claim_guidance(p2, phase_obj, step_obj)
+                out.print()
+                out.print(f"[bold cyan]--- Guidance for {c.step_id} ---[/]")
+                out.print(payload.markdown, markup=False)
+

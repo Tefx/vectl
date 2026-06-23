@@ -120932,7 +120932,7 @@ phases:
       - none'
   - id: batch_claim_finalization.full-regression-guard
     name: Run full regression guard for batch claim
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: full-plan-check; protects final gate and release readiness.
@@ -121007,6 +121007,8 @@ phases:
     - batch_claim_finalization.blackbox-parity-proof
     - batch_claim_finalization.docs-guide-sync
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-23T19:19:08.385386+00:00'
   - id: batch_claim_finalization.gate
     name: Final gate for Atomic Batch Claim
     status: pending

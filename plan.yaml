@@ -119095,7 +119095,7 @@ phases:
       - None; red is intentional for pre-implementation test definition.'
   - id: batch_claim_contract_tests.gate
     name: Gate contract and expected-red readiness
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check; protects batch_claim_implementation from starting
@@ -119165,6 +119165,8 @@ phases:
     - batch_claim_contract_tests.contract-lock
     - batch_claim_contract_tests.expected-red-tests
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-23T17:05:46.833303+00:00'
 - id: batch_claim_implementation
   name: Atomic Batch Claim Implementation and Surface Wiring
   status: locked

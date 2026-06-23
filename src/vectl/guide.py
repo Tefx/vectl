@@ -32,6 +32,15 @@ CLI fallback priority: `uv run vectl` > `vectl` > `uvx vectl`.
 Use the included evidence template as the skeleton for completion evidence.
 For automation/CI, disable guidance with: `vectl claim --no-guidance`.
 
+## single-step vs batch claim
+Single-step `claim` remains unchanged for one decided step:
+`vectl claim <step-id>` or MCP `vectl_claim`.
+
+Batch claim is only for orchestrators committing already-decided explicit
+step-to-agent assignments atomically: `vectl claim-many` or MCP
+`vectl_claim_many`. It is not dispatch, selection, or reservation.
+Non-goals: no count, no auto-select, no dispatch policy, no reserve_steps.
+
 ## Evidence (Strict)
 Required: Files changed, Verification (cmd + result), Gaps (skipped).
 > Ex: "Fixed auth.py. Ran pytest (PASS). No integration tests."

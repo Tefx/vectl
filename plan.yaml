@@ -119165,6 +119165,7 @@ phases:
     - batch_claim_contract_tests.contract-lock
     - batch_claim_contract_tests.expected-red-tests
     - batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests
+    - remediate-atomicity-reserved-mcp-rollback-tests
     agent: gate-reviewer
   - id: batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests
     name: Remediate non-goal, parity, and rollback expected-red tests

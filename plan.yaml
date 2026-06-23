@@ -119832,7 +119832,7 @@ phases:
       batch_claim_implementation.retire-core-expected-red-sentinels.'
   - id: batch_claim_implementation.cli-mcp-parity
     name: Wire CLI claim-many and MCP vectl_claim_many parity
-    status: pending
+    status: claimed
     description: "step_type: implementation\ntags: [integration]\n\nComplete CLI and\
       \ MCP transport wiring around the core batch claim operation. This step must\
       \ not re-implement selection, validation, or rollback policy; it must call the\
@@ -119907,6 +119907,8 @@ phases:
     depends_on:
     - batch_claim_implementation.core-atomic-claim
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-06-23T18:27:16.389542+00:00'
   - id: batch_claim_implementation.gate
     name: Gate implementation and surface wiring
     status: pending

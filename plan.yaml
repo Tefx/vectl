@@ -119164,6 +119164,7 @@ phases:
     depends_on:
     - batch_claim_contract_tests.contract-lock
     - batch_claim_contract_tests.expected-red-tests
+    - batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-23T17:05:46.833303+00:00'

@@ -120002,7 +120002,7 @@ phases:
     agent: gate-reviewer
   - id: batch_claim_implementation.retire-core-expected-red-sentinels
     name: Retire core expected-red contract sentinels
-    status: claimed
+    status: done
     description: "step_type: test\nstep_intent: retest_green\nexpected_result: green\n\
       \nConvert or retire the unconditional expected-red sentinel tests in tests/test_batch_claim_contract.py\
       \ after core implementation evidence exists. This is a test-intent cleanup/remediation\
@@ -120041,6 +120041,72 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-06-23T18:27:01.526733+00:00'
+    done_at: '2026-06-23T18:48:05.695269+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#contract — write at most one plan mutation for batch;
+      avoid partial plan mutation; avoid ghost claim records if plan save fails.
+
+      - docs/RFC-batch-claim.md#consistency-requirement — failed batch must not leave
+      partial plan changes or orphaned claim records.
+
+      - docs/RFC-batch-claim.md#non-goals — no new reserved lifecycle state.
+
+
+      ## Files Changed
+
+      - tests/test_batch_claim_contract.py
+
+
+      ## Intent-Closure Sidecar
+
+      Command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step batch_claim_implementation.retire-core-expected-red-sentinels --worktree
+      .vectl/worktrees/batch_claim_implementation.retire-core-expected-red-sentinels
+      --base cc236bcc --main-ref Main --include-diff-diagnostics --out /tmp/retire-sentinels-verdict.json
+
+      Result: CONFORMANT
+
+
+      ## Sentinel Retirement Evidence
+
+      - Sentinels retired/converted: removed four unconditional expected-red assert
+      False sentinel tests.
+
+      - Behavioral guards preserved: backing behavior covered by test_claim_many_success_multi_agent,
+      test_claim_many_conflicts, and test_claim_many_rollback_on_plan_save_failure
+      in tests/test_batch_claim.py.
+
+      - Non-goal guards preserved: test_batch_claim_rejects_reserved_lifecycle_value
+      remains in tests/test_batch_claim_contract.py unchanged.
+
+      - Product code unchanged: YES
+
+
+      ## Mainline Commands
+
+      - uv run pytest tests/test_batch_claim_contract.py tests/test_batch_claim.py
+      tests/test_claims.py tests/test_properties.py -q — exit 0; 25 passed in 0.74s.
+
+
+      ## Deviation Records
+
+      - none
+
+
+      ## Commits
+
+      - worker branch: 952c5051 (recovered from worker''s accidental main commit c6f9a1e8
+      into isolated branch)
+
+      - main squash: 437ac98
+
+
+      ## Gaps / Notes
+
+      - Worker initially committed in main workspace; orchestrator recovered by cherry-picking
+      the commit into the isolated worktree branch and resetting main to pre-violation
+      state before sidecar/merge/completion.'
 - id: batch_claim_finalization
   name: Atomic Batch Claim Verification, Documentation, and Gate
   status: locked

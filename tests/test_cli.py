@@ -4279,34 +4279,7 @@ class TestDeterministicCheckCLI:
 
 def test_cli_claim_many_human(plan_file: Path) -> None:
     # Test `vectl claim-many --claim worker-a:p1.s1 --claim worker-b:p1.s2`
-    result = runner.invoke(app, ["claim-many", "--claim", "worker-a:p1.s1", "--claim", "worker-b:p1.s2", "--no-guidance"])
-    assert result.exit_code == 0
-    assert "worker-a" in result.stdout
-    assert "p1.s1" in result.stdout
-
-def test_cli_claim_many_json(plan_file: Path) -> None:
-    # Test `vectl claim-many --claims-json '[...]'`
-    import json
-    claims_json = json.dumps([
-        {"step_id": "p1.s1", "agent": "worker-a"},
-        {"step_id": "p1.s2", "agent": "worker-b"}
-    ])
-    result = runner.invoke(app, ["claim-many", "--claims-json", claims_json, "--json", "--no-guidance"])
-    assert result.exit_code == 0
-    res = json.loads(result.stdout)
-    assert res["ok"] is True
-    assert len(res["claimed"]) == 2
-    assert "failed" in res
-
-def test_cli_claim_many_duplicate_or_invalid() -> None:
-    # This just ensures we don't have count/auto-select in claim-many
-    result = runner.invoke(app, ["claim-many", "--count", "2"])
-    assert result.exit_code != 0
-    assert "No such option" in result.stdout or "Error" in result.stdout
-
-def test_cli_claim_many_human(plan_file: Path) -> None:
-    # Test `vectl claim-many --claim worker-a:p1.s1 --claim worker-b:p1.s2`
-    result = runner.invoke(app, ["claim-many", "--claim", "worker-a:p1.s1", "--claim", "worker-b:p1.s2", "--no-guidance"])
+    result = runner.invoke(app, ["claim-many", "--claim", "worker-a:p1.s1", "--claim", "worker-b:p1.s2", "--no-guidance", "--plan", str(plan_file)])
     assert result.exit_code == 0, f"claim-many missing implementation: exit {result.exit_code}"
     assert "worker-a" in result.stdout
     assert "p1.s1" in result.stdout
@@ -4318,15 +4291,58 @@ def test_cli_claim_many_json(plan_file: Path) -> None:
         {"step_id": "p1.s1", "agent": "worker-a"},
         {"step_id": "p1.s2", "agent": "worker-b"}
     ])
-    result = runner.invoke(app, ["claim-many", "--claims-json", claims_json, "--json", "--no-guidance"])
+    result = runner.invoke(app, ["claim-many", "--claims-json", claims_json, "--json", "--no-guidance", "--plan", str(plan_file)])
     assert result.exit_code == 0, f"claim-many missing implementation: exit {result.exit_code}"
     res = json.loads(result.stdout)
     assert res["ok"] is True
     assert len(res["claimed"]) == 2
     assert "failed" in res
 
-def test_cli_claim_many_duplicate_or_invalid() -> None:
-    # This just ensures we don't have count/auto-select in claim-many
-    result = runner.invoke(app, ["claim-many", "--count", "2"])
-    assert result.exit_code != 0, f"claim-many missing implementation: exit {result.exit_code}"
-    assert ("No such option" in result.stdout) or ("Error" in result.stdout), "claim-many missed count option guard"
+def test_cli_claim_many_nongoal_guards(plan_file: Path) -> None:
+    non_goal_args_cases = [
+        ["--count", "2"],
+        ["--auto-select"],
+        ["--dispatch-policy", "x"],
+        ["--reserve-steps", "5"],
+        ["--defer"],
+        ["--skip"],
+        ["--reject"],
+        ["--complete"],
+        ["--ignore-cas"],
+    ]
+    for case in non_goal_args_cases:
+        result = runner.invoke(app, ["claim-many", "--plan", str(plan_file)] + case)
+        assert result.exit_code != 0, f"claim-many missed guard for {case}: expected non-zero exit code"
+        if "No such command" in result.output:
+            assert False, "claim-many missing implementation"
+        assert ("No such option" in result.output) or ("Error" in result.output), f"claim-many missed error message for {case}: {result.output}"
+
+def test_cli_claim_many_rollback_on_save_failure(plan_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from vectl.io import save_plan
+    from vectl.models import PlanError
+    from vectl.claims import load_claims
+    from vectl.plan_path import resolve_claims_path
+
+    original_save_plan = save_plan
+    def fake_save_plan(plan, path):
+        raise PlanError("Simulated CAS failure")
+
+    import vectl.cli
+    monkeypatch.setattr("vectl.core.batch_claim.save_plan", fake_save_plan, raising=False)
+    monkeypatch.setattr("vectl.cli.save_plan", fake_save_plan, raising=False)
+    monkeypatch.setattr("vectl.io.save_plan", fake_save_plan, raising=False)
+
+    import json
+    claims_json = json.dumps([
+        {"step_id": "p1.s1", "agent": "worker-a"}
+    ])
+    result = runner.invoke(app, ["claim-many", "--claims-json", claims_json, "--json", "--no-guidance", "--plan", str(plan_file)])
+    
+    claims_path = resolve_claims_path(plan_file)
+    claims = load_claims(claims_path)
+    assert "p1.s1" not in claims
+    
+    if result.exit_code == 2:
+        assert False, f"claim-many missing implementation: exit {result.exit_code} output {result.output}"
+    if result.exit_code == 0:
+        assert False, f"claim-many rollback test passed but should have failed due to CAS error (or it's stubbed)"

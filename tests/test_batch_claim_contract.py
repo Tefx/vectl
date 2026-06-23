@@ -31,6 +31,21 @@ def test_batch_claim_request_fields():
     with pytest.raises(TypeError):
         BatchClaimRequest(claims=[], reserve_steps=5)  # type: ignore
 
+    with pytest.raises(TypeError):
+        BatchClaimRequest(claims=[], defer=True)  # type: ignore
+
+    with pytest.raises(TypeError):
+        BatchClaimRequest(claims=[], skip=True)  # type: ignore
+
+    with pytest.raises(TypeError):
+        BatchClaimRequest(claims=[], reject=True)  # type: ignore
+
+    with pytest.raises(TypeError):
+        BatchClaimRequest(claims=[], complete=True)  # type: ignore
+
+    with pytest.raises(TypeError):
+        BatchClaimRequest(claims=[], ignore_cas=True)  # type: ignore
+
 def test_batch_claim_result_fields():
     result = BatchClaimResult(
         ok=False,

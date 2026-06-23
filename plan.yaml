@@ -119616,7 +119616,7 @@ phases:
       - None; red is intentional for expected-red remediation.'
 - id: batch_claim_implementation
   name: Atomic Batch Claim Implementation and Surface Wiring
-  status: pending
+  status: in_progress
   gate: Core atomic batch claim, claims-store consistency/rollback, CLI claim-many,
     and MCP vectl_claim_many are implemented and covered by targeted tests.
   depends_on:
@@ -119624,7 +119624,7 @@ phases:
   steps:
   - id: batch_claim_implementation.core-atomic-claim
     name: Implement core atomic batch claim and rollback semantics
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\nComplete the core atomic batch-claim\
       \ behavior within the contract from batch_claim_contract_tests.contract-lock\
       \ and tests from batch_claim_contract_tests.expected-red-tests. Keep this step\
@@ -119724,6 +119724,8 @@ phases:
 
       Paste raw stdout/stderr and exit code.'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-06-23T18:10:28.523061+00:00'
   - id: batch_claim_implementation.cli-mcp-parity
     name: Wire CLI claim-many and MCP vectl_claim_many parity
     status: pending

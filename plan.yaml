@@ -119616,7 +119616,7 @@ phases:
       - None; red is intentional for expected-red remediation.'
 - id: batch_claim_implementation
   name: Atomic Batch Claim Implementation and Surface Wiring
-  status: in_progress
+  status: done
   gate: Core atomic batch claim, claims-store consistency/rollback, CLI claim-many,
     and MCP vectl_claim_many are implemented and covered by targeted tests.
   depends_on:
@@ -120401,7 +120401,7 @@ phases:
       - none'
   - id: retest-mcp-claim-many-result-contract
     name: Retest MCP claim-many Result contract and implementation gate closure
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       step_intent: retest_green
@@ -120460,9 +120460,68 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-23T19:07:15.206519+00:00'
+    done_at: '2026-06-23T19:09:27.582011+00:00'
+    evidence: '## Retest Gate Report
+
+
+      ### refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#contract — claim_many must take explicit {step_id,
+      agent} requests, preserve input order, validate with single-step rules, avoid
+      partial mutation/ghost records, expose CLI/MCP parity, and leave existing claim
+      unchanged.
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — MCP shape is vectl_claim_many(claims=[{step_id,
+      agent}], guidance=False, force=False).
+
+      - src/vectl/mcp_core_lifecycle_tools.py — vectl_claim_many returns Result[dict[str,
+      Any], str], calls claim_steps, and returns structured ok/claimed/failed/affinity_warnings/markdown/lock_notice.
+
+
+      ### Commands
+
+      - uvx invar-tools guard --all — exit 0; status passed; static errors 0, warnings
+      19, infos 7; doctest passed.
+
+      - uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_batch_claim.py
+      -q — exit 0; 445 passed in 12.73s.
+
+      - uv run pytest tests/test_batch_claim_contract.py tests/test_batch_claim.py
+      tests/test_claims.py tests/test_properties.py -q — exit 0; 25 passed in 0.76s.
+
+
+      ### Decision Basis
+
+      - Full Invar guard green: YES
+
+      - CLI/MCP/batch surface regression green: YES
+
+      - Core contract/claims regression green: YES
+
+      - B1 closed: YES
+
+
+      ### Gate Decision
+
+      OPEN
+
+
+      ### Closure Signals
+
+      headline: PASS
+
+      blocking_status: CLOSED
+
+      proof_gap_status: NONE
+
+      verdict: PASS
+
+      blockers: []
+
+      orchestrator_action_hint: COMPLETE'
 - id: batch_claim_finalization
   name: Atomic Batch Claim Verification, Documentation, and Gate
-  status: locked
+  status: pending
   gate: Targeted tests, CLI/MCP parity proof, docs/guide sync, and repo-wide guard
     evidence are reviewed with no unresolved blockers.
   depends_on:

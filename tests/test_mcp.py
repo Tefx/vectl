@@ -3432,54 +3432,7 @@ def test_mcp_vectl_claim_many_nongoal_guards(plan_file: Path) -> None:
     with pytest.raises(TypeError):
         vectl_claim_many(claims=[], ignore_cas=True)  # type: ignore
 
-def test_mcp_claim_many_rollback_on_save_failure(plan_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Ensure parity with core: a failed CAS or save drops no partial claim records"""
-    from vectl.io import save_plan
-    from vectl.models import PlanError
-    from vectl.claims import load_claims
-    from vectl.plan_path import resolve_claims_path
-
-    tool_fn = None
-    try:
-        from vectl.mcp_server import vectl_claim_many as _tool
-        tool_fn = _tool.fn
-    except (ImportError, AttributeError):
-        pass
-    if tool_fn is None:
-        assert False, "vectl_claim_many MCP tool not implemented"
-
-    vectl_claim_many = tool_fn
-
-    original_save_plan = save_plan
-    def fake_save_plan(plan, path):
-        raise PlanError("Simulated CAS failure")
-
-    monkeypatch.setattr("vectl.mcp_server.save_plan", fake_save_plan)
-    monkeypatch.setattr("vectl.core.batch_claim.save_plan", fake_save_plan)
-
-    raised = False
-    try:
-        vectl_claim_many(
-            claims=[
-                {"step_id": "a.1", "agent": "worker-a"}
-            ]
-        )
-    except Exception as e:
-        if "Simulated CAS failure" in str(e):
-            raised = True
-        elif isinstance(e, PlanError):
-            raised = True
-            
-    # We might catch PlanError, or maybe the MCP tool wrapper handles it and returns a JSON error.
-    # The requirement is that no ghost claims are left if a save fails.
-    claims_path = resolve_claims_path(plan_file)
-    claims = load_claims(claims_path)
-    assert "a.1" not in claims
-    
-    # Actually wait. If the tool is not implemented, the fallback above failed.
-    # I should ensure the tool raises an assertion for missing behavior.
-    if not raised:
-        # Check if the tool actually executed our logic or returned a hardcoded success.
-        pass
+def test_batch_claim_expected_red_mcp_strict_error_rolls_back_without_ghost_claims():
+    assert False, "BCM-G1-MCP-ROLLBACK-STRICT: structured error or PlanError required to ensure BCM-G1-MCP-NO-GHOST-CLAIMS"
 
 

@@ -37,7 +37,7 @@ def plan_file(tmp_path: Path):
         os.environ["VECTL_PLAN_PATH"] = old_plan
 
 
-def test_claim_many_success_multi_agent(plan_file: Path) -> None:
+def test_claim_many_success_multi_agent(plan_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     req = BatchClaimRequest(
         claims=[
             BatchClaimItem(step_id="p1.s1", agent="worker-a"),
@@ -46,10 +46,22 @@ def test_claim_many_success_multi_agent(plan_file: Path) -> None:
         guidance=False,
         force=False
     )
+    
+    save_plan_calls = 0
+    from vectl.io import save_plan
+    original_save_plan = save_plan
+    def fake_save_plan(plan, path):
+        nonlocal save_plan_calls
+        save_plan_calls += 1
+        return original_save_plan(plan, path)
+    monkeypatch.setattr("vectl.io.save_plan", fake_save_plan)
+
     result = claim_many(req)
     # Expected red tests: the stubs will fail the structural expectations 
     # of complete implementation. The contract requires `ok`, `claimed`, `failed`.
     # Wait, they are expected red so we assert the correct behavior that is currently missing.
+    
+    assert save_plan_calls <= 1, f"save_plan called {save_plan_calls} times on atomic success; expected at most 1"
     assert result.ok is True
     assert len(result.claimed) == 2
     assert result.claimed[0].step_id == "p1.s1"
@@ -58,7 +70,7 @@ def test_claim_many_success_multi_agent(plan_file: Path) -> None:
     assert result.claimed[1].agent == "worker-b"
     assert len(result.failed) == 0
 
-def test_claim_many_conflicts(plan_file: Path) -> None:
+def test_claim_many_conflicts(plan_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # Try to claim s4 which is already claimed, and s1
     req = BatchClaimRequest(
         claims=[
@@ -66,13 +78,78 @@ def test_claim_many_conflicts(plan_file: Path) -> None:
             BatchClaimItem(step_id="p1.s4", agent="worker-b")
         ],
     )
+    
+    # Track saves
+    save_plan_calls = 0
+    save_claims_calls = 0
+    
+    from vectl.io import save_plan
+    original_save_plan = save_plan
+    def fake_save_plan(plan, path):
+        nonlocal save_plan_calls
+        save_plan_calls += 1
+        return original_save_plan(plan, path)
+        
+    monkeypatch.setattr("vectl.io.save_plan", fake_save_plan)
+    
+    try:
+        from vectl.claims import append_claim
+        original_append_claim = append_claim
+        def fake_append_claim(*args, **kwargs):
+            nonlocal save_claims_calls
+            save_claims_calls += 1
+            return original_append_claim(*args, **kwargs)
+        monkeypatch.setattr("vectl.claims.append_claim", fake_append_claim)
+    except ImportError:
+        pass
+
+    try:
+        from vectl.claims import save_claims
+        original_save_claims = save_claims
+        def fake_save_claims(*args, **kwargs):
+            nonlocal save_claims_calls
+            save_claims_calls += 1
+            return original_save_claims(*args, **kwargs)
+        monkeypatch.setattr("vectl.claims.save_claims", fake_save_claims)
+    except ImportError:
+        pass
+
     result = claim_many(req)
     if result.ok is True:
         assert False, "claim_many missing expected failure behavior"
+        
+    assert save_plan_calls == 0, f"save_plan called {save_plan_calls} times on validation failure"
+    assert save_claims_calls == 0, f"save_claims/append called {save_claims_calls} times on validation failure"
+    
     assert len(result.claimed) == 0
     assert len(result.failed) == 1
     assert result.failed[0].step_id == "p1.s4"
     assert "already claimed" in result.failed[0].reason.lower()
+
+def test_claim_many_rejects_reserved_input_or_emission(plan_file: Path) -> None:
+    import yaml
+    from pydantic import ValidationError
+    data = yaml.safe_load(plan_file.read_text())
+    data["phases"][0]["steps"][0]["status"] = "reserved"
+    plan_file.write_text(yaml.dump(data))
+    
+    req = BatchClaimRequest(
+        claims=[
+            BatchClaimItem(step_id="p1.s1", agent="worker-a")
+        ],
+    )
+    
+    raised = False
+    try:
+        result = claim_many(req)
+        # If it didn't raise, it must return failed
+        if result.ok is True:
+            assert False, "claim_many accepted a reserved task"
+        assert len(result.failed) > 0
+        assert "reserved" in result.failed[0].reason.lower() or "invalid" in result.failed[0].reason.lower()
+    except ValidationError as e:
+        # Expected failure if Plan strictly rejects `reserved` status enum
+        pass
 
 def test_claim_many_hard_affinity(plan_file: Path) -> None:
     # Try to claim s5 with worker-b

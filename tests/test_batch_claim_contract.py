@@ -46,6 +46,22 @@ def test_batch_claim_request_fields():
     with pytest.raises(TypeError):
         BatchClaimRequest(claims=[], ignore_cas=True)  # type: ignore
 
+def test_batch_claim_rejects_reserved_lifecycle_value():
+    # BCM-G2-NO-RESERVED-LIFECYCLE
+    # Prove batch claim never accepts or emits `reserved` lifecycle/status.
+    
+    # 1. Enforce that BatchClaimItem cannot take a status override (it has no status field)
+    with pytest.raises(TypeError):
+        BatchClaimItem(step_id="foo", agent="bar", status="reserved")  # type: ignore
+        
+    from vectl.models import StepStatus
+    # 2. Enforce Enum does NOT contain reserved, so it's impossible to serialize
+    assert "reserved" not in [s.value for s in StepStatus]
+
+    # 3. Ensure the result structure does not emit "reserved" objects
+    result = BatchClaimResult(ok=False, claimed=[], failed=[], affinity_warnings=[], markdown="", lock_notice="")
+    assert not hasattr(result, "reserved")
+
 def test_batch_claim_result_fields():
     result = BatchClaimResult(
         ok=False,
@@ -67,16 +83,15 @@ def test_batch_claim_result_fields():
     assert result.claimed == []
     assert len(result.failed) == 1
 
-def test_atomic_failure_contract():
-    # If atomic semantics reject partial success, claimed should be empty when ok=false
-    req = BatchClaimRequest(claims=[BatchClaimItem(step_id="test", agent="agent")])
-    result = claim_many(req)
-    
-    # Modifying the stub response to test post condition failure if we violated it
-    # Currently the stub returns ok=True, claimed=req.claims
-    assert result.ok is True
-    assert len(result.claimed) == 1
-    
-    # If we hack the stub to ok=False and claimed len > 0, the @post contract would violate
-    # We will test the types directly.
+def test_batch_claim_expected_red_atomic_write_at_most_one_mutation():
+    assert False, "BCM-G1-ATOMIC-WRITE-COUNT: Implementation must ensure at most one save/logical mutation"
+
+def test_batch_claim_expected_red_validation_failure_rolls_back_without_partial_plan_or_claims():
+    assert False, "BCM-G1-NO-PARTIAL-PERSISTED-STATE: validation failure rollback must leave plan and claims unchanged"
+
+def test_batch_claim_expected_red_conflict_failure_rolls_back_without_partial_plan_or_claims():
+    assert False, "BCM-G1-NO-PARTIAL-PERSISTED-STATE: conflict failure rollback must leave plan and claims unchanged"
+
+def test_batch_claim_expected_red_reserved_lifecycle_never_accepted_or_emitted():
+    assert False, "BCM-G2-NO-RESERVED-LIFECYCLE: reserved lifecycle/status must not be accepted or emitted"
 

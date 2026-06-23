@@ -119337,7 +119337,11 @@ phases:
       \ fixtures only.\n- Do NOT implement claim_many, claim-many, vectl_claim_many,\
       \ lifecycle changes, CAS changes, reserved states, claim-store behavior, or\
       \ production rollback logic.\n- Do NOT weaken existing expected-red tests to\
-      \ make the suite pass.\n- Keep implementation-phase work locked behind batch_claim_contract_tests.gate.\n\
+      \ make the suite pass.\n- Infrastructure/import/module-not-found/collection\
+      \ failures are NOT acceptable expected-red proof. Red proof must come from the\
+      \ behavioral assertion fingerprints named below, not from missing symbols, missing\
+      \ modules, import errors, fixture collection errors, or unavailable test infrastructure.\n\
+      - Keep implementation-phase work locked behind batch_claim_contract_tests.gate.\n\
       \n<intent_closure_contract>\nintent_kind: test_define_red\nallowed_paths:\n\
       \  - \"tests/test_batch_claim_contract.py\"\n  - \"tests/test_batch_claim.py\"\
       \n  - \"tests/test_claims.py\"\n  - \"tests/test_cli.py\"\n  - \"tests/test_mcp.py\"\
@@ -119345,16 +119349,111 @@ phases:
       \nrequired_claims:\n  - expected_red_gap_exposed\n  - write_at_most_one_mutation_guard_defined\n\
       \  - validation_conflict_no_partial_state_guard_defined\n  - reserved_lifecycle_never_accepted_or_emitted_guard_defined\n\
       \  - mcp_rollback_strict_error_and_no_ghost_guard_defined\nrequired_checks:\n\
-      \  - id: targeted_expected_red_atomicity_reserved_mcp_rollback\n    command:\
-      \ [\"uv\", \"run\", \"pytest\", \"tests/test_batch_claim_contract.py\", \"tests/test_batch_claim.py\"\
-      , \"tests/test_claims.py\", \"tests/test_cli.py\", \"tests/test_mcp.py\", \"\
-      -q\"]\n    expected_result: red\n    expected_exit_codes: [1]\n    expected_failure_patterns_any:\n\
-      \      - \"claim_many\"\n      - \"claim-many\"\n      - \"vectl_claim_many\"\
-      \n      - \"reserved\"\n      - \"ghost\"\n      - \"rollback\"\n      - \"\
-      conflict\"\n    covers_claims:\n      - expected_red_gap_exposed\n      - write_at_most_one_mutation_guard_defined\n\
-      \      - validation_conflict_no_partial_state_guard_defined\n      - reserved_lifecycle_never_accepted_or_emitted_guard_defined\n\
-      \      - mcp_rollback_strict_error_and_no_ghost_guard_defined\n</intent_closure_contract>"
+      \  - id: targeted_expected_red_atomic_write_count\n    command: [\"uv\", \"\
+      run\", \"pytest\", \"tests/test_batch_claim_contract.py::test_batch_claim_expected_red_atomic_write_at_most_one_mutation\"\
+      , \"-q\"]\n    expected_result: red\n    expected_exit_codes: [1]\n    expected_failure_patterns_all:\n\
+      \      - \"BCM-G1-ATOMIC-WRITE-COUNT\"\n      - \"at most one save/logical mutation\"\
+      \n    forbidden_failure_patterns_any:\n      - \"ImportError\"\n      - \"ModuleNotFoundError\"\
+      \n      - \"NameError\"\n      - \"fixture .* not found\"\n      - \"ERROR collecting\"\
+      \n      - \"no tests ran\"\n    covers_claims:\n      - expected_red_gap_exposed\n\
+      \      - write_at_most_one_mutation_guard_defined\n  - id: targeted_expected_red_validation_rollback_no_partial_state\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_batch_claim_contract.py::test_batch_claim_expected_red_validation_failure_rolls_back_without_partial_plan_or_claims\"\
+      , \"-q\"]\n    expected_result: red\n    expected_exit_codes: [1]\n    expected_failure_patterns_all:\n\
+      \      - \"BCM-G1-NO-PARTIAL-PERSISTED-STATE\"\n      - \"validation failure\
+      \ rollback\"\n      - \"plan and claims unchanged\"\n    forbidden_failure_patterns_any:\n\
+      \      - \"ImportError\"\n      - \"ModuleNotFoundError\"\n      - \"NameError\"\
+      \n      - \"fixture .* not found\"\n      - \"ERROR collecting\"\n      - \"\
+      no tests ran\"\n    covers_claims:\n      - expected_red_gap_exposed\n     \
+      \ - validation_conflict_no_partial_state_guard_defined\n  - id: targeted_expected_red_conflict_rollback_no_partial_state\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_batch_claim_contract.py::test_batch_claim_expected_red_conflict_failure_rolls_back_without_partial_plan_or_claims\"\
+      , \"-q\"]\n    expected_result: red\n    expected_exit_codes: [1]\n    expected_failure_patterns_all:\n\
+      \      - \"BCM-G1-NO-PARTIAL-PERSISTED-STATE\"\n      - \"conflict failure rollback\"\
+      \n      - \"plan and claims unchanged\"\n    forbidden_failure_patterns_any:\n\
+      \      - \"ImportError\"\n      - \"ModuleNotFoundError\"\n      - \"NameError\"\
+      \n      - \"fixture .* not found\"\n      - \"ERROR collecting\"\n      - \"\
+      no tests ran\"\n    covers_claims:\n      - expected_red_gap_exposed\n     \
+      \ - validation_conflict_no_partial_state_guard_defined\n  - id: targeted_expected_red_reserved_lifecycle_status\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_batch_claim_contract.py::test_batch_claim_expected_red_reserved_lifecycle_never_accepted_or_emitted\"\
+      , \"-q\"]\n    expected_result: red\n    expected_exit_codes: [1]\n    expected_failure_patterns_all:\n\
+      \      - \"BCM-G2-NO-RESERVED-LIFECYCLE\"\n      - \"reserved lifecycle/status\
+      \ must not be accepted or emitted\"\n    forbidden_failure_patterns_any:\n \
+      \     - \"ImportError\"\n      - \"ModuleNotFoundError\"\n      - \"NameError\"\
+      \n      - \"fixture .* not found\"\n      - \"ERROR collecting\"\n      - \"\
+      no tests ran\"\n    covers_claims:\n      - expected_red_gap_exposed\n     \
+      \ - reserved_lifecycle_never_accepted_or_emitted_guard_defined\n  - id: targeted_expected_red_mcp_strict_rollback_no_ghost\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_mcp.py::test_batch_claim_expected_red_mcp_strict_error_rolls_back_without_ghost_claims\"\
+      , \"-q\"]\n    expected_result: red\n    expected_exit_codes: [1]\n    expected_failure_patterns_all:\n\
+      \      - \"BCM-G1-MCP-ROLLBACK-STRICT\"\n      - \"structured error or PlanError\
+      \ required\"\n      - \"BCM-G1-MCP-NO-GHOST-CLAIMS\"\n    forbidden_failure_patterns_any:\n\
+      \      - \"ImportError\"\n      - \"ModuleNotFoundError\"\n      - \"NameError\"\
+      \n      - \"fixture .* not found\"\n      - \"ERROR collecting\"\n      - \"\
+      no tests ran\"\n    covers_claims:\n      - expected_red_gap_exposed\n     \
+      \ - mcp_rollback_strict_error_and_no_ghost_guard_defined\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    evidence_template: '## Expected-Red Contract Evidence
+
+
+      ### Sidecar Verdict (MANDATORY)
+
+      Paste the Intent-Closure sidecar verdict for `remediate-atomicity-reserved-mcp-rollback-tests`,
+      including allowed/blocked path results and required check results.
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this proof step:
+
+      - docs/RFC-batch-claim.md#consistency-requirement — key passage or `NOT READ:
+      <reason>`
+
+      - docs/RFC-batch-claim.md#non-goals — key passage or `NOT READ: <reason>`
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — key passage or `NOT READ: <reason>`
+
+
+      ### Required Claim to Concrete Failure Fingerprint Map (MANDATORY)
+
+      For each required claim, paste the targeted pytest command, exit code, and the
+      exact excerpt containing the required fingerprint. Do not use a generic `claim_many`,
+      `claim-many`, or `vectl_claim_many` excerpt as sole proof.
+
+
+      | required_claim | targeted_check_id | concrete failure fingerprint excerpt
+      | infrastructure failure absent? |
+
+      | --- | --- | --- | --- |
+
+      | expected_red_gap_exposed | all targeted_expected_red_* checks | `BCM-*` behavioral
+      assertion excerpt from pytest | yes/no |
+
+      | write_at_most_one_mutation_guard_defined | targeted_expected_red_atomic_write_count
+      | `BCM-G1-ATOMIC-WRITE-COUNT` plus `at most one save/logical mutation` | yes/no
+      |
+
+      | validation_conflict_no_partial_state_guard_defined | targeted_expected_red_validation_rollback_no_partial_state
+      and targeted_expected_red_conflict_rollback_no_partial_state | `BCM-G1-NO-PARTIAL-PERSISTED-STATE`
+      plus validation/conflict rollback excerpt | yes/no |
+
+      | reserved_lifecycle_never_accepted_or_emitted_guard_defined | targeted_expected_red_reserved_lifecycle_status
+      | `BCM-G2-NO-RESERVED-LIFECYCLE` plus reserved lifecycle/status excerpt | yes/no
+      |
+
+      | mcp_rollback_strict_error_and_no_ghost_guard_defined | targeted_expected_red_mcp_strict_rollback_no_ghost
+      | `BCM-G1-MCP-ROLLBACK-STRICT` and `BCM-G1-MCP-NO-GHOST-CLAIMS` excerpts | yes/no
+      |
+
+
+      ### Infrastructure Failure Rejection (MANDATORY)
+
+      State whether pytest output contains any of these unacceptable red causes: `ImportError`,
+      `ModuleNotFoundError`, `NameError`, fixture-not-found, `ERROR collecting`, or
+      `no tests ran`. If any appear, evidence is INCOMPLETE/FAIL even if a generic
+      claim-many string appears.
+
+
+      ### Test-Only Scope Confirmation (MANDATORY)
+
+      List changed files. Confirm no `src/vectl/**` file and no `plan.yaml` edit occurred.'
     depends_on:
     - batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests
     agent: python-executor

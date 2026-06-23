@@ -119167,6 +119167,60 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-23T17:05:46.833303+00:00'
+  - id: batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests
+    name: Remediate non-goal, parity, and rollback expected-red tests
+    status: pending
+    description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
+      \ red\n\nBatched remediation ownership for blocked gate findings BCM-G2-NONGOAL-GUARDS-INCOMPLETE\
+      \ and BCM-G1-PARITY-ROLLBACK-PARTIAL. This is test-definition remediation only;\
+      \ implementation files remain forbidden.\n\nRequirement-to-Evidence Matrix:\n\
+      | requirement_id | source_ref + key passage | target_state | evidence_class\
+      \ | required_probe_or_artifact | status |\n| BCM-G2-FIX | docs/RFC-batch-claim.md#non-goals\
+      \ — no count, no auto-selecting, no dispatch policy, no reserve/reserved lifecycle/state,\
+      \ no batch lifecycle/CAS weakening | executable non-goal guards exist on every\
+      \ relevant public surface before implementation starts | runtime_probe | expected-red\
+      \ targeted pytest logs showing core/CLI/MCP reject unsupported non-goal parameters\
+      \ and lifecycle shortcuts without harness ambiguity | OWNED |\n| BCM-G1-FIX\
+      \ | docs/RFC-batch-claim.md#consistency-requirement — failed batch must not\
+      \ leave partial plan changes or orphaned claim records | rollback/parity tests\
+      \ prove fixture-scoped core, CLI, and MCP behavior with no ghost claim records\
+      \ after save failure | runtime_probe | expected-red targeted pytest logs for\
+      \ fixture-scoped CLI/MCP/core parity and rollback/ghost-claim assertions | OWNED\
+      \ |\n\nTARGET STATE:\nAdd or adjust tests so the contract-test phase owns every\
+      \ blocker reported by batch_claim_contract_tests.gate:\n- Add executable negative\
+      \ guards for every RFC non-goal on all relevant public surfaces: core contract,\
+      \ CLI claim-many, and MCP vectl_claim_many. Cover count, auto-select/auto-selection,\
+      \ dispatch policy/dispatch, reserve_steps/reserved state, batch lifecycle shortcut\
+      \ commands, and any CAS-weakening acceptance path.\n- Fix CLI claim-many tests\
+      \ so every CLI invocation uses the fixture plan path explicitly, e.g. an explicit\
+      \ --plan str(plan_file) or the project-equivalent fixture-scoped plan selector.\n\
+      - Strengthen rollback/parity tests so they prove equivalent fixture-scoped structured\
+      \ results and failure behavior across core, CLI, and MCP, including no ghost\
+      \ claim records after a simulated save failure.\n- Keep expected-red semantics:\
+      \ success for this step is a focused red suite that fails only because Atomic\
+      \ Batch Claim implementation is missing, not because tests read the wrong plan,\
+      \ import paths fail, or fixtures are ambiguous.\n\nSCOPE BOUNDARY:\n- Modify\
+      \ tests and fixtures only.\n- Do NOT implement claim_many, claim-many, vectl_claim_many,\
+      \ lifecycle changes, CAS changes, reserved states, or claim-store behavior.\n\
+      - Do NOT weaken the RFC non-goals to make tests pass.\n\n<intent_closure_contract>\n\
+      intent_kind: test_define_red\nallowed_paths:\n  - \"tests/test_batch_claim_contract.py\"\
+      \n  - \"tests/test_batch_claim.py\"\n  - \"tests/test_claims.py\"\n  - \"tests/test_cli.py\"\
+      \n  - \"tests/test_mcp.py\"\n  - \"tests/fixtures/**\"\nblocked_paths:\n  -\
+      \ \"src/vectl/**\"\n  - \"plan.yaml\"\nrequired_claims:\n  - expected_red_gap_exposed\n\
+      \  - all_rfc_non_goal_guards_defined\n  - cli_claim_many_fixture_scoped\n  -\
+      \ cli_mcp_core_parity_guards_defined\n  - rollback_no_ghost_claim_guards_defined\n\
+      required_checks:\n  - id: targeted_expected_red_remediation\n    command: [\"\
+      uv\", \"run\", \"pytest\", \"tests/test_batch_claim_contract.py\", \"tests/test_batch_claim.py\"\
+      , \"tests/test_claims.py\", \"tests/test_cli.py\", \"tests/test_mcp.py\", \"\
+      -q\"]\n    expected_result: red\n    expected_exit_codes: [1]\n    expected_failure_patterns_any:\n\
+      \      - \"claim_many\"\n      - \"claim-many\"\n      - \"vectl_claim_many\"\
+      \n    covers_claims:\n      - expected_red_gap_exposed\n      - all_rfc_non_goal_guards_defined\n\
+      \      - cli_claim_many_fixture_scoped\n      - cli_mcp_core_parity_guards_defined\n\
+      \      - rollback_no_ghost_claim_guards_defined\n</intent_closure_contract>"
+    verification: Run Intent-Closure sidecar gate and required checks from the contract.
+    depends_on:
+    - batch_claim_contract_tests.expected-red-tests
+    agent: python-executor
 - id: batch_claim_implementation
   name: Atomic Batch Claim Implementation and Surface Wiring
   status: locked

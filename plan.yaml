@@ -119849,8 +119849,10 @@ phases:
       parity.'
     verification: Review implementation evidence from all same-phase steps. Gate OPEN
       only if core atomicity, claims-store rollback, single-claim regression safety,
-      CLI claim-many, and MCP vectl_claim_many have positive targeted evidence. Gate
-      BLOCKED if any RFC non-goal was implemented or if raw command evidence is missing.
+      expected-red sentinel retirement, CLI claim-many, and MCP vectl_claim_many have
+      positive targeted evidence. Gate BLOCKED if any RFC non-goal was implemented,
+      if tests/test_batch_claim_contract.py still contains intentional red sentinel
+      failures on the green path, or if raw command evidence is missing.
     evidence_template: '## Gate Review Report
 
 
@@ -119896,6 +119898,7 @@ phases:
       OPEN or BLOCKED, with blocker owner if blocked.'
     depends_on:
     - batch_claim_implementation.core-atomic-claim
+    - batch_claim_implementation.retire-core-expected-red-sentinels
     - batch_claim_implementation.cli-mcp-parity
     agent: gate-reviewer
   - id: batch_claim_implementation.retire-core-expected-red-sentinels

@@ -45,6 +45,18 @@ Agent frameworks manage how agents think. vectl manages **what agents see, when 
 | **Handoff Notes** | Agents lose state between hosts/sessions | `clipboard-write/read/clear` stores short notes in `plan.yaml` (with TTL) |
 | **Agent Affinity** | Different agents are good at different tasks | Steps can suggest an agent; `next` sorts by affinity |
 
+## Claiming: single-step vs batch claim
+
+Single-step `claim` remains the normal path for one worker taking one step. Use
+CLI `vectl claim <step-id>` or MCP `vectl_claim` when the caller is claiming a
+single decided step.
+
+Batch claim is only for orchestrators that have already decided explicit
+step-to-agent assignments and need one atomic commit. Use CLI `vectl claim-many`
+or MCP `vectl_claim_many` with an explicit list of `{step_id, agent}` requests.
+It is not dispatch, selection, or reservation. Non-goals: no count,
+no auto-select, no dispatch policy, no reserve_steps.
+
 ## Quick Start
 
 ### 1. Initialize

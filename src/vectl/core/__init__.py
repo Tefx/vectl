@@ -10,6 +10,7 @@ from vectl.semantics import is_step_locked as _is_step_locked_shared
 from vectl.core_duplicate_step_id import *  # noqa: F403
 from vectl.core_plan_mutations import *  # noqa: F403
 from vectl.core_plan_queries import *  # noqa: F403
+from vectl.core.batch_claim import *  # noqa: F403
 from vectl.core_plan_mutations import (
     _SENTINEL,
     _Unset,

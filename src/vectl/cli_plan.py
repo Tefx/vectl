@@ -11,6 +11,7 @@ from vectl.cli_plan_lock_commands import unlock, recalc_lock, repair_claims_cmd,
 from vectl.cli_plan_lifecycle_commands import (
     cancel,
     claim,
+    claim_many_cmd,
     complete,
     complete_phase_cmd,
     defer,

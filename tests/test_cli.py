@@ -1010,17 +1010,17 @@ class TestClaim:
                 Phase(
                     id="p1",
                     name="Phase 1",
-                    steps=[Step(id="p1.s1", name="Step 1", status=StepStatus.DONE)],
+                    steps=[Step(id="s1", name="Step 1", status=StepStatus.DONE)],
                 )
             ],
         )
         plan_path = tmp_path / "plan.yaml"
         save_plan(plan, plan_path)
 
-        result = runner.invoke(app, ["claim", "p1.s1", "--plan", str(plan_path)])
+        result = runner.invoke(app, ["claim", "s1", "--plan", str(plan_path)])
 
         assert result.exit_code == 1
-        assert "p1.s1" in result.output
+        assert "s1" in result.output
         assert "p1.p1.s1" not in result.output
 
     def test_auto_claim_picks_first(self, plan_file: Path) -> None:
@@ -1921,11 +1921,11 @@ class TestRecover:
 
         current = Plan(
             project="recover-cli",
-            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="s1", name="Current")])],
         )
         backup = Plan(
             project="recover-cli",
-            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Backup")])],
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="s1", name="Backup")])],
         )
         save_plan(current, plan_path)
         backup_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1954,7 +1954,7 @@ class TestRecover:
         assert "cancelled" in result.output.lower()
 
         restored_plan, _ = load_plan_definition(plan_path)
-        restored = restored_plan.find_step("p1.s1")
+        restored = restored_plan.find_step("s1")
         assert restored is not None
         assert restored[1].name == "Current"
 
@@ -1966,7 +1966,7 @@ class TestRecover:
 
         current = Plan(
             project="recover-cli",
-            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="s1", name="Current")])],
         )
         save_plan(current, plan_path)
 
@@ -2001,7 +2001,7 @@ class TestRecover:
 
         current = Plan(
             project="recover-cli",
-            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="s1", name="Current")])],
         )
         save_plan(current, plan_path)
         backup_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2042,11 +2042,11 @@ class TestRecover:
 
         current = Plan(
             project="recover-cli",
-            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Current")])],
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="s1", name="Current")])],
         )
         backup = Plan(
             project="recover-cli",
-            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="p1.s1", name="Backup")])],
+            phases=[Phase(id="p1", name="Phase 1", steps=[Step(id="s1", name="Backup")])],
         )
         save_plan(current, plan_path)
         vectl_dir.mkdir(parents=True, exist_ok=True)
@@ -4276,3 +4276,73 @@ class TestDeterministicCheckCLI:
         result = runner.invoke(app, ["check-inventory", "s3", "--json", "--plan", str(plan_file)])
         assert result.exit_code == 0
         assert '"checklist_inventory_revision":' in result.output
+
+def test_cli_claim_many_human(plan_file: Path) -> None:
+    # Test `vectl claim-many --claim worker-a:s1 --claim worker-b:s3`
+    result = runner.invoke(app, ["claim-many", "--claim", "worker-a:s1", "--claim", "worker-b:s3", "--no-guidance", "--plan", str(plan_file)])
+    assert result.exit_code == 0, f"claim-many missing implementation: exit {result.exit_code}"
+    assert "worker-a" in result.stdout
+    assert "s1" in result.stdout
+
+def test_cli_claim_many_json(plan_file: Path) -> None:
+    # Test `vectl claim-many --claims-json '[...]'`
+    import json
+    claims_json = json.dumps([
+        {"step_id": "s1", "agent": "worker-a"},
+        {"step_id": "s3", "agent": "worker-b"}
+    ])
+    result = runner.invoke(app, ["claim-many", "--claims-json", claims_json, "--json", "--no-guidance", "--plan", str(plan_file)])
+    assert result.exit_code == 0, f"claim-many missing implementation: exit {result.exit_code}"
+    res = json.loads(result.stdout)
+    assert res["ok"] is True
+    assert len(res["claimed"]) == 2
+    assert "failed" in res
+
+def test_cli_claim_many_nongoal_guards(plan_file: Path) -> None:
+    non_goal_args_cases = [
+        ["--count", "2"],
+        ["--auto-select"],
+        ["--dispatch-policy", "x"],
+        ["--reserve-steps", "5"],
+        ["--defer"],
+        ["--skip"],
+        ["--reject"],
+        ["--complete"],
+        ["--ignore-cas"],
+    ]
+    for case in non_goal_args_cases:
+        result = runner.invoke(app, ["claim-many", "--plan", str(plan_file)] + case)
+        assert result.exit_code != 0, f"claim-many missed guard for {case}: expected non-zero exit code"
+        if "No such command" in result.output:
+            assert False, "claim-many missing implementation"
+        assert ("No such option" in result.output) or ("Error" in result.output), f"claim-many missed error message for {case}: {result.output}"
+
+def test_cli_claim_many_rollback_on_save_failure(plan_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from vectl.io import save_plan
+    from vectl.models import PlanError
+    from vectl.claims import load_claims
+    from vectl.plan_path import resolve_claims_path
+
+    original_save_plan = save_plan
+    def fake_save_plan(plan, path):
+        raise PlanError("Simulated CAS failure")
+
+    import vectl.cli
+    monkeypatch.setattr("vectl.core.batch_claim.save_plan", fake_save_plan, raising=False)
+    monkeypatch.setattr("vectl.cli.save_plan", fake_save_plan, raising=False)
+    monkeypatch.setattr("vectl.io.save_plan", fake_save_plan, raising=False)
+
+    import json
+    claims_json = json.dumps([
+        {"step_id": "s1", "agent": "worker-a"}
+    ])
+    result = runner.invoke(app, ["claim-many", "--claims-json", claims_json, "--json", "--no-guidance", "--plan", str(plan_file)])
+    
+    claims_path = resolve_claims_path(plan_file)
+    claims = load_claims(claims_path)
+    assert "s1" not in claims
+    
+    if result.exit_code == 2:
+        assert False, f"claim-many missing implementation: exit {result.exit_code} output {result.output}"
+    if result.exit_code == 0:
+        assert False, f"claim-many rollback test passed but should have failed due to CAS error (or it's stubbed)"

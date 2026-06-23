@@ -3368,3 +3368,92 @@ class TestDeterministicCheckMCP:
                 os.environ.pop("VECTL_PLAN_PATH", None)
             else:
                 os.environ["VECTL_PLAN_PATH"] = old_plan
+
+def test_mcp_vectl_claim_many(plan_file: Path) -> None:
+    tool_fn = None
+    try:
+        from vectl.mcp_server import vectl_claim_many as _tool
+        tool_fn = _tool.fn
+    except (ImportError, AttributeError):
+        pass
+    if tool_fn is None:
+        assert False, "vectl_claim_many MCP tool not implemented"
+    
+    vectl_claim_many = tool_fn
+
+    result = vectl_claim_many(
+        claims=[
+            {"step_id": "a.1", "agent": "worker-a"}
+        ],
+        guidance=False,
+        force=False
+    )
+    assert result["ok"] is True
+    assert len(result["claimed"]) == 1
+    assert "failed" in result
+    assert "lock_notice" in result
+    
+def test_mcp_vectl_claim_many_nongoal_guards(plan_file: Path) -> None:
+    tool_fn = None
+    try:
+        from vectl.mcp_server import vectl_claim_many as _tool
+        tool_fn = _tool.fn
+    except (ImportError, AttributeError):
+        pass
+    if tool_fn is None:
+        assert False, "vectl_claim_many MCP tool not implemented"
+
+    vectl_claim_many = tool_fn
+
+    with pytest.raises(TypeError):
+        vectl_claim_many(claims=[], count=2)  # type: ignore
+
+    with pytest.raises(TypeError):
+        vectl_claim_many(claims=[], auto_select=True)  # type: ignore
+
+    with pytest.raises(TypeError):
+        vectl_claim_many(claims=[], dispatch_policy="any")  # type: ignore
+
+    with pytest.raises(TypeError):
+        vectl_claim_many(claims=[], reserve_steps=5)  # type: ignore
+
+    with pytest.raises(TypeError):
+        vectl_claim_many(claims=[], defer=True)  # type: ignore
+
+    with pytest.raises(TypeError):
+        vectl_claim_many(claims=[], skip=True)  # type: ignore
+
+    with pytest.raises(TypeError):
+        vectl_claim_many(claims=[], reject=True)  # type: ignore
+
+    with pytest.raises(TypeError):
+        vectl_claim_many(claims=[], complete=True)  # type: ignore
+
+    with pytest.raises(TypeError):
+        vectl_claim_many(claims=[], ignore_cas=True)  # type: ignore
+
+def test_batch_claim_expected_red_mcp_strict_error_rolls_back_without_ghost_claims(plan_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    try:
+        from vectl.mcp_server import vectl_claim_many as _tool
+        vectl_claim_many = _tool.fn
+    except (ImportError, AttributeError):
+        pytest.skip("tool not implemented")
+
+    from vectl.models import PlanError
+    def fake_save_plan(plan, path):
+        raise PlanError("Simulated CAS failure")
+
+    monkeypatch.setattr("vectl.core.batch_claim.save_plan", fake_save_plan, raising=False)
+    monkeypatch.setattr("vectl.cli_render.save_plan", fake_save_plan, raising=False)
+    monkeypatch.setattr("vectl.io.save_plan", fake_save_plan, raising=False)
+
+    result = vectl_claim_many(claims=[{"step_id": "a.1", "agent": "worker-a"}])
+    assert result["ok"] is False
+
+    from vectl.claims import load_claims
+    from vectl.plan_path import resolve_claims_path
+    claims = load_claims(resolve_claims_path(plan_file))
+    assert "a.1" not in claims
+
+
+

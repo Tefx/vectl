@@ -116,7 +116,7 @@ mcp = FastMCP(
         "  - `phase_id`: always a phase (format: 'phase', e.g. 'core')\n"
         "  - `target`: accepts either a step ID or phase ID (used by vectl_show, vectl_lifecycle)\n\n"
         "Tool groups:\n"
-        "  Core loop: vectl_status, vectl_claim, vectl_complete, vectl_check\n"
+        "  Core loop: vectl_status, vectl_claim, vectl_claim_many, vectl_complete, vectl_check\n"
         "  Inspect:   vectl_show, vectl_search, vectl_dag, vectl_render\n"
         "  Lifecycle: vectl_lifecycle, vectl_review, vectl_checkpoint\n"
         "  Mutate:    vectl_mutate\n"
@@ -125,7 +125,7 @@ mcp = FastMCP(
     ),
 )
 
-from vectl.mcp_core_tools import _get_next_steps_with_phase, _load, _plan_path, _save_plan, vectl_check, vectl_claim, vectl_complete, vectl_decide, vectl_lifecycle, vectl_migrate_step_id, vectl_mutate, vectl_search, vectl_show, vectl_status, vectl_validate
+from vectl.mcp_core_tools import _get_next_steps_with_phase, _load, _plan_path, _save_plan, vectl_check, vectl_claim, vectl_claim_many, vectl_complete, vectl_decide, vectl_lifecycle, vectl_migrate_step_id, vectl_mutate, vectl_search, vectl_show, vectl_status, vectl_validate
 from vectl.mcp_project_tools import vectl_clipboard, vectl_init, vectl_recover, vectl_repair_claims
 from vectl.mcp_render_tools import vectl_checkpoint, vectl_dag, vectl_guide, vectl_render, vectl_review
 
@@ -133,6 +133,7 @@ from vectl.mcp_render_tools import vectl_checkpoint, vectl_dag, vectl_guide, vec
 vectl_check = mcp.tool()(vectl_check)
 vectl_checkpoint = mcp.tool()(vectl_checkpoint)
 vectl_claim = mcp.tool()(vectl_claim)
+vectl_claim_many = mcp.tool()(vectl_claim_many)
 vectl_clipboard = mcp.tool()(vectl_clipboard)
 vectl_complete = mcp.tool()(vectl_complete)
 vectl_dag = mcp.tool()(vectl_dag)
@@ -188,6 +189,9 @@ vectl_show = _ToolWrapper(vectl_show)  # type: ignore[assignment]
 
 _vectl_claim_tool = vectl_claim
 vectl_claim = _ToolWrapper(vectl_claim)  # type: ignore[assignment]
+
+_vectl_claim_many_tool = vectl_claim_many
+vectl_claim_many = _ToolWrapper(vectl_claim_many)  # type: ignore[assignment]
 
 _vectl_complete_tool = vectl_complete
 vectl_complete = _ToolWrapper(vectl_complete)  # type: ignore[assignment]

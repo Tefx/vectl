@@ -398,7 +398,7 @@ def vectl_claim_many(
     claims: list[dict[str, str]],
     guidance: bool = False,
     force: bool = False
-) -> dict:
+) -> Result[dict[str, Any], str]:
     """Atomic batch claim operation for committing multiple explicitly decided claims.
     
     Accepts explicit claim requests [{"step_id": "foo", "agent": "worker"}].

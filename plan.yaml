@@ -119168,7 +119168,7 @@ phases:
     agent: gate-reviewer
   - id: batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests
     name: Remediate non-goal, parity, and rollback expected-red tests
-    status: claimed
+    status: done
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\n\nBatched remediation ownership for blocked gate findings BCM-G2-NONGOAL-GUARDS-INCOMPLETE\
       \ and BCM-G1-PARITY-ROLLBACK-PARTIAL. This is test-definition remediation only;\
@@ -119222,6 +119222,78 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-06-23T17:15:34.842705+00:00'
+    done_at: '2026-06-23T17:24:15.360448+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#non-goals — no count, auto-select, dispatch policy,
+      reserved lifecycle state, batch lifecycle shortcuts, or CAS weakening.
+
+      - docs/RFC-batch-claim.md#consistency-requirement — failed batch must not leave
+      partial plan changes or orphaned claim records; implementation must handle both
+      plan-visible state and branch-scoped claims.
+
+      - docs/RFC-batch-claim.md#expected-cli-shape — vectl claim-many --claims-json
+      ... --json --no-guidance and --claim worker:step form.
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — vectl_claim_many(claims=[...],
+      guidance=False, force=False).
+
+
+      ## Expected-Red Evidence
+
+      - step_intent: test_define_red
+
+      - expected_result: red
+
+      - observed_result: red
+
+      - failure_alignment: matched
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - product implementation files modified: no
+
+      - tests changed: tests/test_batch_claim_contract.py, tests/test_cli.py, tests/test_mcp.py
+
+      - proofs: added/strengthened non-goal guards, fixture-scoped CLI checks, CLI/MCP/core
+      parity expectations, rollback/no-ghost assertions.
+
+
+      ## Intent-Closure Sidecar
+
+      Command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests --worktree
+      .vectl/worktrees/batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests
+      --base Main --out .vectl/worktrees/batch_claim_contract_tests.remediate-nongoal-parity-rollback-tests/.agent/gate/verdict.json
+
+      Result: {"status": "CONFORMANT", "reasons": []}
+
+
+      ## Commands
+
+      Command: uv run pytest tests/test_batch_claim_contract.py tests/test_batch_claim.py
+      tests/test_claims.py tests/test_cli.py tests/test_mcp.py -q
+
+      Exit code: 1 (expected red)
+
+      stdout/stderr excerpt: collected 461 items; 450 passed, 11 failed. Failure fingerprints
+      include claim_many missing expected failure behavior, claim-many missing implementation,
+      vectl_claim_many MCP tool not implemented, rollback/fixture-scoped expected
+      implementation gaps.
+
+
+      ## Commits
+
+      - worker branch: bed183ee
+
+      - main squash: 98bb542
+
+
+      ## Gaps / Notes
+
+      - None; red is intentional for test-definition remediation.'
 - id: batch_claim_implementation
   name: Atomic Batch Claim Implementation and Surface Wiring
   status: locked

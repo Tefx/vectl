@@ -119995,7 +119995,7 @@ phases:
       - none'
   - id: batch_claim_implementation.gate
     name: Gate implementation and surface wiring
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check; protects finalization proof from proceeding
@@ -120086,6 +120086,97 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-23T18:49:31.473624+00:00'
+    done_at: '2026-06-23T18:58:57.533047+00:00'
+    evidence: '## Gate Review Report
+
+
+      ### refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#contract — claim_many must take explicit {step_id,
+      agent} requests, preserve order, validate like single claim, reject duplicates,
+      honor affinity/force, write at most one plan mutation, avoid partial mutation/ghost
+      claims, expose CLI/MCP, and leave claim unchanged.
+
+      - docs/RFC-batch-claim.md#consistency-requirement — failed batches must leave
+      no partial plan changes or orphaned claim records; implementation must explicitly
+      handle plan state and claims records.
+
+      - docs/RFC-batch-claim.md#expected-cli-shape — CLI shape includes claim-many
+      with --claims-json or repeated --claim plus --json/--no-guidance.
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — MCP shape is vectl_claim_many(claims=[...],
+      guidance=False, force=False).
+
+      - docs/RFC-batch-claim.md#verification-gate — required evidence includes targeted
+      core lifecycle, claims-store consistency, MCP, CLI tests, and guard/regression
+      evidence.
+
+
+      ### Execution Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      |---|---|---|---|
+
+      | batch_claim_implementation.core-atomic-claim | PASS targeted behavior | 25-test
+      core/contract suite passed; source reviewed for working plan copy, one save,
+      rollback release. | none blocking for core |
+
+      | batch_claim_implementation.retire-core-expected-red-sentinels | PASS | tests/test_batch_claim_contract.py
+      has no expected_red sentinels; 25-test suite passed. | none |
+
+      | batch_claim_implementation.cli-mcp-parity | BLOCKED | CLI/MCP/batch runtime
+      suite 445 passed; CLI help exposes claim-many options. | full guard fails shell_result
+      on vectl_claim_many returning non-Result |
+
+
+      ### Decision Basis
+
+      - Atomic all-or-nothing proven: YES — source uses deep-copied working_plan;
+      validation failure returns no claimed items; targeted suite passed.
+
+      - Rollback/no ghost claim proven: YES — source releases acquired claim IDs on
+      save exception; rollback tests passed.
+
+      - Single-step claim unchanged: YES — tests/test_claims.py and tests/test_properties.py
+      included in 25 passed.
+
+      - Expected-red sentinels retired from green path: YES — no expected_red matches
+      in tests/test_batch_claim_contract.py; suite passed.
+
+      - CLI/MCP parity proven by runtime tests: YES — 445 passed across CLI/MCP/batch
+      tests and help surface proof present.
+
+      - Non-goals absent: YES — RFC non-goal args rejected in contract/CLI/MCP tests.
+
+      - Regression/guard readiness: NO — `uvx invar-tools guard --all` failed: `src/vectl/mcp_core_lifecycle_tools.py:397
+      shell_result error: Shell function ''vectl_claim_many'' should return Result[T,
+      E]`.
+
+
+      ### Gate Decision
+
+      BLOCKED as an implementation phase gate. Planner created blocker-owner steps
+      before completion: `fix-mcp-claim-many-result-contract` and `retest-mcp-claim-many-result-contract`.
+
+
+      ### Closure Signals
+
+      headline: FAIL
+
+      blocking_status: OPEN
+
+      proof_gap_status: BLOCKING
+
+      verdict: BLOCKED
+
+      blockers:
+
+      - B1: `uvx invar-tools guard --all` exits 1 because `vectl_claim_many` shell
+      function should return `Result[T, E]`; owner steps created: fix-mcp-claim-many-result-contract,
+      retest-mcp-claim-many-result-contract.
+
+      orchestrator_action_hint: COMPLETE_REPORT_WITH_BLOCKER_OWNERS_CREATED'
   - id: batch_claim_implementation.retire-core-expected-red-sentinels
     name: Retire core expected-red contract sentinels
     status: done

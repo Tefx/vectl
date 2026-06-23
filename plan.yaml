@@ -119995,7 +119995,7 @@ phases:
       - none'
   - id: batch_claim_implementation.gate
     name: Gate implementation and surface wiring
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check; protects finalization proof from proceeding
@@ -120084,6 +120084,8 @@ phases:
     - batch_claim_implementation.retire-core-expected-red-sentinels
     - batch_claim_implementation.cli-mcp-parity
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-23T18:49:31.473624+00:00'
   - id: batch_claim_implementation.retire-core-expected-red-sentinels
     name: Retire core expected-red contract sentinels
     status: done

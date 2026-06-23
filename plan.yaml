@@ -120000,7 +120000,7 @@ phases:
     agent: gate-reviewer
   - id: batch_claim_implementation.retire-core-expected-red-sentinels
     name: Retire core expected-red contract sentinels
-    status: pending
+    status: claimed
     description: "step_type: test\nstep_intent: retest_green\nexpected_result: green\n\
       \nConvert or retire the unconditional expected-red sentinel tests in tests/test_batch_claim_contract.py\
       \ after core implementation evidence exists. This is a test-intent cleanup/remediation\
@@ -120037,6 +120037,8 @@ phases:
     depends_on:
     - batch_claim_implementation.core-atomic-claim
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-06-23T18:27:01.526733+00:00'
 - id: batch_claim_finalization
   name: Atomic Batch Claim Verification, Documentation, and Gate
   status: locked

@@ -118595,41 +118595,60 @@ phases:
       \nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref + key passage\
       \ | target_state | evidence_class | required_probe_or_artifact | status |\n\
       | BCM-R1 | docs/RFC-batch-claim.md#decision — add explicit atomic batch claim;\
-      \ CLI claim-many, MCP vectl_claim_many, Core claim_many/claim_steps | public\
-      \ contract names and request/result shapes are pinned without implementation\
-      \ logic | source_static | contract diff and import/collection proof | OWNED\
-      \ |\n| BCM-R2 | docs/RFC-batch-claim.md#non-goals — no count, no auto-select,\
-      \ no dispatch policy, no reserve/reserved state | contract exposes only explicit\
-      \ claims[] plus guidance/force | source_static | contract review plus import\
-      \ proof | OWNED |\n| BCM-R3 | AGENTS.md#Invar and INVAR.md#Before-Writing-Code\
-      \ — Core functions require @pre, @post, and at least one doctest before implementation;\
-      \ guard rejects uncontracted Core code | Core batch-claim stubs include semantic\
-      \ @pre/@post contracts and doctest coverage before implementation | source_static\
-      \ | static contract/doctest inspection plus contract evidence | OWNED |\n\n\
-      Target state: define acceptance-only request/result models and stub signatures\
+      \ CLI claim-many, MCP vectl_claim_many, Core claim_many/claim_steps; operation\
+      \ accepts only explicit claims[] plus guidance/force | public contract names\
+      \ and request/result shapes are pinned without implementation logic | source_static\
+      \ | contract diff plus import/collection proof | OWNED |\n| BCM-R2 | docs/RFC-batch-claim.md#non-goals\
+      \ — no count, no auto-select, no dispatch policy, no reserve_steps/reserved\
+      \ state | contract exposes only explicit claims[] plus guidance/force and rejects/non-accepts\
+      \ forbidden request/state fields | source_static | contract tests with negative\
+      \ non-goal assertions | OWNED |\n| BCM-R3 | INVAR.md#before-writing-code and\
+      \ #contract-syntax-traps — Core functions require @pre, @post, doctest; @pre\
+      \ lambdas include all parameters; @post only receives result; contracts must\
+      \ be semantic | Core batch-claim stubs include semantic @pre/@post contracts\
+      \ and doctests that pass before implementation | runtime_probe | doctest execution\
+      \ plus invar changed-file contract gate | OWNED |\n| BCM-R4 | docs/RFC-batch-claim.md#response-shape\
+      \ — response fields include ok, claimed, failed, affinity_warnings, markdown,\
+      \ lock_notice; failed atomic batches have empty claimed and ordered failures\
+      \ | core result contract pins RFC field names and atomic failure shape at the\
+      \ contract boundary | source_static | contract tests/assertions for result fields;\
+      \ CLI/MCP serialization parity remains owned by expected-red tests | OWNED |\n\
+      \nTarget state: define acceptance-only request/result models and stub signatures\
       \ for explicit batch claims, preserving existing single-step claim APIs. Because\
       \ `src/vectl/core/batch_claim.py` is Core code, the `claim_many` and `claim_steps`\
       \ stubs MUST include semantic `@pre` and `@post` contracts and at least one\
-      \ doctest before any implementation logic lands. The contracts must reference\
-      \ real parameters/results and must not be vacuous identity lambdas. Doctests\
-      \ may document the contract-stub behavior, but must exercise the documented\
-      \ request/result shape for `claim_many` and/or `claim_steps`. Do not implement\
-      \ production mutation logic in this step.\n\n<intent_closure_contract>\nallowed_paths:\n\
-      \  - \"src/vectl/core/batch_claim.py\"\n  - \"src/vectl/core/__init__.py\"\n\
-      \  - \"src/vectl/core_plan_mutations.py\"\n  - \"src/vectl/lifecycle.py\"\n\
-      \  - \"tests/test_batch_claim_contract.py\"\nblocked_paths:\n  - \"src/vectl/cli_plan_lifecycle_commands.py\"\
-      \n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\n  - \"src/vectl/mcp_server.py\"\
-      \nrequired_claims:\n  - explicit_claims_contract_locked\n  - non_goals_excluded_from_contract\n\
-      \  - existing_claim_imports_preserved\n  - core_pre_post_doctests_defined\n\
-      required_checks:\n  - id: contract_imports\n    command: [\"uv\", \"run\", \"\
-      pytest\", \"tests/test_lifecycle_imports.py\", \"tests/test_batch_claim_contract.py\"\
-      , \"-q\"]\n    covers_claims:\n      - explicit_claims_contract_locked\n   \
-      \   - non_goals_excluded_from_contract\n      - existing_claim_imports_preserved\n\
-      \  - id: core_contract_doctest_static_check\n    command: [\"uv\", \"run\",\
-      \ \"python\", \"-c\", \"from pathlib import Path; text=Path('src/vectl/core/batch_claim.py').read_text();\
-      \ assert 'def claim_many' in text and 'def claim_steps' in text; assert text.count('@pre')\
-      \ >= 2 and text.count('@post') >= 2; assert '>>>' in text; assert 'lambda result:\
-      \ result' not in text and 'lambda x: x' not in text\"]\n    covers_claims:\n\
+      \ executable doctest before any implementation logic lands. The contracts must\
+      \ reference real parameters/results, include correct lambda signatures, and\
+      \ must not be vacuous identity or type-only lambdas. Doctests must run successfully\
+      \ and exercise the documented explicit request/result shape for `claim_many`\
+      \ and/or `claim_steps`.\n\nScope boundary:\n- This is a CONTRACT step only;\
+      \ do not implement production mutation logic, claims-store writes, plan save\
+      \ behavior, CLI/MCP command handling, auto-selection, or dispatch policy.\n\
+      - Do not edit `src/vectl/lifecycle.py` or `src/vectl/core_plan_mutations.py`;\
+      \ those mutation surfaces are explicitly out of scope for this contract lock.\n\
+      - The core response contract MUST pin the RFC response field names: `ok`, `claimed`,\
+      \ `failed`, `affinity_warnings`, `markdown`, and `lock_notice`. CLI/MCP response\
+      \ serialization parity is deferred to `batch_claim_contract_tests.expected-red-tests`\
+      \ and later implementation/finalization steps.\n- Contract tests must explicitly\
+      \ prove that no `count`, auto-select/auto-selection parameter, dispatch policy\
+      \ field, `reserve_steps`, or `reserved` lifecycle/state is accepted by the contract.\n\
+      \n<intent_closure_contract>\nallowed_paths:\n  - \"src/vectl/core/batch_claim.py\"\
+      \n  - \"src/vectl/core/__init__.py\"\n  - \"tests/test_batch_claim_contract.py\"\
+      \nblocked_paths:\n  - \"src/vectl/lifecycle.py\"\n  - \"src/vectl/core_plan_mutations.py\"\
+      \n  - \"src/vectl/cli_plan_lifecycle_commands.py\"\n  - \"src/vectl/mcp_core_lifecycle_tools.py\"\
+      \n  - \"src/vectl/mcp_server.py\"\nrequired_claims:\n  - explicit_claims_contract_locked\n\
+      \  - rfc_response_fields_locked\n  - non_goals_excluded_from_contract\n  - existing_claim_imports_preserved\n\
+      \  - core_pre_post_doctests_defined\nrequired_checks:\n  - id: contract_imports_and_field_guards\n\
+      \    command: [\"uv\", \"run\", \"pytest\", \"tests/test_lifecycle_imports.py\"\
+      , \"tests/test_batch_claim_contract.py\", \"-q\"]\n    covers_claims:\n    \
+      \  - explicit_claims_contract_locked\n      - rfc_response_fields_locked\n \
+      \     - non_goals_excluded_from_contract\n      - existing_claim_imports_preserved\n\
+      \  - id: core_batch_claim_doctests\n    command: [\"uv\", \"run\", \"python\"\
+      , \"-m\", \"doctest\", \"-v\", \"src/vectl/core/batch_claim.py\"]\n    covers_claims:\n\
+      \      - explicit_claims_contract_locked\n      - rfc_response_fields_locked\n\
+      \      - core_pre_post_doctests_defined\n  - id: invar_changed_contract_gate\n\
+      \    command: [\"uvx\", \"invar-tools\", \"guard\", \"--changed\"]\n    covers_claims:\n\
+      \      - explicit_claims_contract_locked\n      - non_goals_excluded_from_contract\n\
       \      - core_pre_post_doctests_defined\n</intent_closure_contract>"
     verification: Run Intent-Closure sidecar gate and required checks from the contract.
     evidence_template: '## refs Read Confirmation (MANDATORY)
@@ -118685,6 +118704,14 @@ phases:
 
 
       Paste raw stdout/stderr and exit code.'
+    refs:
+    - docs/RFC-batch-claim.md#decision
+    - docs/RFC-batch-claim.md#contract
+    - docs/RFC-batch-claim.md#non-goals
+    - docs/RFC-batch-claim.md#response-shape
+    - docs/RFC-batch-claim.md#consistency-requirement
+    - INVAR.md#before-writing-code
+    - INVAR.md#contract-syntax-traps
     agent: python-executor
   - id: batch_claim_contract_tests.expected-red-tests
     name: Define expected-red atomicity and parity tests

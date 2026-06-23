@@ -118944,7 +118944,7 @@ phases:
       - None.'
   - id: batch_claim_contract_tests.expected-red-tests
     name: Define expected-red atomicity and parity tests
-    status: claimed
+    status: done
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref + key\
       \ passage | target_state | evidence_class | required_probe_or_artifact | status\
@@ -119016,6 +119016,83 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-06-23T16:53:13.772954+00:00'
+    done_at: '2026-06-23T17:04:57.840581+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#contract — validate every requested claim, preserve
+      input order, one mutation, no partial plan mutation.
+
+      - docs/RFC-batch-claim.md#expected-cli-shape — machine path vectl claim-many
+      --claims-json ... --json.
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — vectl_claim_many(claims=[...],
+      guidance=False, force=False).
+
+      - docs/RFC-batch-claim.md#response-shape — structured fields ok, claimed, failed,
+      affinity_warnings, markdown, lock_notice.
+
+      - docs/RFC-batch-claim.md#consistency-requirement — failed batch must not leave
+      partial plan changes or orphaned claim records.
+
+
+      ## Expected-Red Evidence
+
+      - step_intent: test_define_red
+
+      - expected_result: red
+
+      - observed_result: red
+
+      - failure_alignment: matched
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - product implementation files modified: no
+
+      - Tests added/updated only under tests/: tests/test_batch_claim.py, tests/test_cli.py,
+      tests/test_mcp.py
+
+      - Expected failure fingerprints: claim_many missing expected failure behavior;
+      claim-many missing implementation; vectl_claim_many MCP tool not implemented.
+
+      - Non-goal guards: tests assert no count/auto-select/reserve_steps convenience
+      surface.
+
+
+      ## Intent-Closure Sidecar
+
+      Command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step batch_claim_contract_tests.expected-red-tests --worktree .vectl/worktrees/batch_claim_contract_tests.expected-red-tests
+      --base Main --out .vectl/worktrees/batch_claim_contract_tests.expected-red-tests/.agent/gate/verdict.json
+
+      Result: {"status": "CONFORMANT", "reasons": []}
+
+
+      ## Commands
+
+      Command: uv run pytest tests/test_batch_claim.py tests/test_claims.py tests/test_cli.py
+      tests/test_mcp.py -q
+
+      Exit code: 1 (expected red)
+
+      stdout/stderr excerpt: collected 456 items; 447 passed, 9 failed. Failure fingerprints
+      include claim_many missing expected failure behavior, claim-many missing implementation
+      exit 2, vectl_claim_many MCP tool not implemented. No product implementation
+      files were changed.
+
+
+      ## Commits
+
+      - worker branch: 308492b999928bad2d2ca985479e90bfe64fe79b
+
+      - main squash: a322d38
+
+
+      ## Gaps / Notes
+
+      - None; red is intentional for pre-implementation test definition.'
   - id: batch_claim_contract_tests.gate
     name: Gate contract and expected-red readiness
     status: pending

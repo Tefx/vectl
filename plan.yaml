@@ -120521,7 +120521,7 @@ phases:
       orchestrator_action_hint: COMPLETE'
 - id: batch_claim_finalization
   name: Atomic Batch Claim Verification, Documentation, and Gate
-  status: pending
+  status: in_progress
   gate: Targeted tests, CLI/MCP parity proof, docs/guide sync, and repo-wide guard
     evidence are reviewed with no unresolved blockers.
   depends_on:
@@ -120529,7 +120529,7 @@ phases:
   steps:
   - id: batch_claim_finalization.blackbox-parity-proof
     name: Black-box CLI and MCP atomic batch proof
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check; protects final gate and user-visible CLI/MCP
@@ -120639,6 +120639,8 @@ phases:
 
       PASS / FAIL with blockers.'
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-23T19:10:07.409799+00:00'
   - id: batch_claim_finalization.docs-guide-sync
     name: Update docs and guide for atomic batch claim
     status: pending

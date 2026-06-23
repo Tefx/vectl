@@ -119624,7 +119624,7 @@ phases:
   steps:
   - id: batch_claim_implementation.core-atomic-claim
     name: Implement core atomic batch claim and rollback semantics
-    status: claimed
+    status: done
     description: "step_type: implementation\n\nComplete the core atomic batch-claim\
       \ behavior within the contract from batch_claim_contract_tests.contract-lock\
       \ and tests from batch_claim_contract_tests.expected-red-tests. Keep this step\
@@ -119733,6 +119733,103 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-06-23T18:10:28.523061+00:00'
+    done_at: '2026-06-23T18:25:04.094273+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#contract — claim_many takes explicit step_id/agent
+      requests, preserves input order, validates like single claim, honors affinity/force,
+      writes at most one mutation, avoids partial/ghost state.
+
+      - docs/RFC-batch-claim.md#consistency-requirement — batch must explicitly handle
+      plan-visible state and claims.json; validate/acquire/rollback strategy required.
+
+      - docs/RFC-batch-claim.md#response-shape — result includes ok, claimed, failed,
+      affinity_warnings, markdown, lock_notice; failed atomic batch has empty claimed.
+
+      - src/vectl/core/batch_claim.py — replaced unconditional stub success with substantive
+      logic.
+
+      - tests/test_batch_claim.py — success order, conflicts, affinity/force, duplicate
+      rejection, rollback on save failure.
+
+      - tests/test_claims.py — existing claim-store behavior preserved.
+
+      - tests/test_batch_claim_contract.py — contract/static subset remains green;
+      expected-red sentinel retirement is downstream-owned.
+
+
+      ## Files Changed
+
+      - src/vectl/core/batch_claim.py
+
+      - src/vectl/claims.py
+
+
+      ## Intent-Closure Sidecar
+
+      Command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step batch_claim_implementation.core-atomic-claim --worktree .vectl/worktrees/batch_claim_implementation.core-atomic-claim
+      --base f14b176d --main-ref Main --include-diff-diagnostics --out /tmp/core-atomic-claim-verdict.json
+
+      Result: {"status": "CONFORMANT", "reasons": []}
+
+
+      ## Atomicity / Rollback Evidence
+
+      - Chosen state-surface strategy: validate all requested claims against a deep-copied
+      plan with claims_path=None; acquire all claims.json records in one locked claims-store
+      write; save plan once; if plan save fails, release acquired records with one
+      locked rollback helper and re-raise.
+
+      - Simulated failure paths covered: tests/test_batch_claim.py::test_claim_many_rollback_on_plan_save_failure
+      passes.
+
+      - Claims-store after failed batch: rollback test verifies no p1.s1/p1.s2 ghost
+      claim records after simulated PlanError.
+
+      - Plan-visible state after failed batch: rollback test verifies p1.s1 remains
+      pending after simulated save failure.
+
+      - Single-step claim regression status: tests/test_claims.py 14/14 and tests/test_properties.py
+      1/1 pass.
+
+      - Non-goals excluded: no CLI/MCP paths touched; no count/auto-select/reserve_steps/reserved
+      state implemented.
+
+
+      ## Mainline Required Checks
+
+      - uv run pytest tests/test_batch_claim_contract.py -q -k ''not expected_red''
+      — exit 0; 3 passed, 4 deselected.
+
+      - uv run pytest tests/test_batch_claim.py -q — exit 0; 7 passed.
+
+      - uv run pytest tests/test_claims.py tests/test_properties.py -q — exit 0; 15
+      passed.
+
+      - uv run python -m doctest src/vectl/core/batch_claim.py — exit 0.
+
+      - uvx invar-tools guard --changed — exit 0; status passed, static errors 0,
+      doctest passed.
+
+
+      ## Deviation Records
+
+      - none
+
+
+      ## Commits
+
+      - worker branch: de03c6b56c11668c0b5814bfd8e7f2a6d7ffc150
+
+      - main squash: 6be6805
+
+
+      ## Gaps / Notes
+
+      - None for this implementation step. Four unconditional expected-red sentinels
+      in tests/test_batch_claim_contract.py are intentionally downstream-owned by
+      batch_claim_implementation.retire-core-expected-red-sentinels.'
   - id: batch_claim_implementation.cli-mcp-parity
     name: Wire CLI claim-many and MCP vectl_claim_many parity
     status: pending

@@ -118944,7 +118944,7 @@ phases:
       - None.'
   - id: batch_claim_contract_tests.expected-red-tests
     name: Define expected-red atomicity and parity tests
-    status: pending
+    status: claimed
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\n\nRequirement-to-Evidence Matrix:\n| requirement_id | source_ref + key\
       \ passage | target_state | evidence_class | required_probe_or_artifact | status\
@@ -119014,6 +119014,8 @@ phases:
     depends_on:
     - batch_claim_contract_tests.contract-lock
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-06-23T16:53:13.772954+00:00'
   - id: batch_claim_contract_tests.gate
     name: Gate contract and expected-red readiness
     status: pending

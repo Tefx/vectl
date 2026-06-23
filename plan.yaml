@@ -119832,7 +119832,7 @@ phases:
       batch_claim_implementation.retire-core-expected-red-sentinels.'
   - id: batch_claim_implementation.cli-mcp-parity
     name: Wire CLI claim-many and MCP vectl_claim_many parity
-    status: claimed
+    status: done
     description: "step_type: implementation\ntags: [integration]\n\nComplete CLI and\
       \ MCP transport wiring around the core batch claim operation. This step must\
       \ not re-implement selection, validation, or rollback policy; it must call the\
@@ -119909,6 +119909,90 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-06-23T18:27:16.389542+00:00'
+    done_at: '2026-06-23T18:49:08.271393+00:00'
+    evidence: '## refs Read Confirmation
+
+      - docs/RFC-batch-claim.md#expected-cli-shape — describes explicit `--claims-json`
+      and repeated `--claim agent:step_id` inputs plus `--json` and guidance flags.
+
+      - docs/RFC-batch-claim.md#expected-mcp-shape — specifies `vectl_claim_many(claims=[...],
+      guidance=False, force=False)`.
+
+      - docs/RFC-batch-claim.md#response-shape — structured return includes ok, claimed,
+      failed, affinity_warnings, markdown, lock_notice.
+
+
+      ## Files Changed
+
+      - src/vectl/cli.py
+
+      - src/vectl/cli_plan.py
+
+      - src/vectl/cli_plan_lifecycle_commands.py
+
+      - src/vectl/mcp_server.py
+
+      - src/vectl/mcp_core_tools.py
+
+      - src/vectl/mcp_core_lifecycle_tools.py
+
+      - tests/test_cli.py
+
+      - tests/test_mcp.py
+
+
+      ## Intent-Closure Sidecar
+
+      Command: python ~/dotfiles/agent/scripts/intent_closure_gate.py --plan plan.yaml
+      --step batch_claim_implementation.cli-mcp-parity --worktree .vectl/worktrees/batch_claim_implementation.cli-mcp-parity
+      --base cc236bcc --main-ref Main --include-diff-diagnostics --out /tmp/cli-mcp-parity-verdict.json
+
+      Result: CONFORMANT
+
+
+      ## CLI/MCP Parity Evidence
+
+      - CLI command shape verified: `vectl claim-many` exposed with `--claim` and
+      `--claims-json` inputs.
+
+      - MCP tool shape verified: `vectl_claim_many(claims=[...], guidance=False, force=False)`
+      exposed.
+
+      - Shared core operation used: YES, via vectl.core.batch_claim claim_steps/claim_many.
+
+      - JSON output parsed by real parser: YES.
+
+      - Human output names claimed steps: YES.
+
+      - Count/auto-select/reserve_steps absent from surfaces: YES.
+
+
+      ## Mainline Commands
+
+      - uv run pytest tests/test_cli.py tests/test_mcp.py tests/test_batch_claim.py
+      -q — exit 0; 445 passed in 12.91s.
+
+
+      ## Deviation Records
+
+      - tests/test_cli.py fixture expectation was aligned from p1.s2 to valid fixture
+      steps s1/s3 because plan_file fixture has s2 dependency constraints; this is
+      a test fixture correction needed for the CLI parity proof.
+
+      - tests/test_mcp.py expected-red fallback stub was replaced with strict rollback/no-ghost
+      proof around vectl_claim_many CAS failure.
+
+
+      ## Commits
+
+      - worker branch: 7990d470df1210ad29b9c859994b690a7a5bf5fd
+
+      - main squash: af1164e
+
+
+      ## Gaps / Notes
+
+      - none'
   - id: batch_claim_implementation.gate
     name: Gate implementation and surface wiring
     status: pending

@@ -121353,7 +121353,7 @@ phases:
       `.pi/` untouched.'
   - id: verify-large-plan-stdio
     name: Verify large-plan behavior through the real stdio MCP seam
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -121400,3 +121400,5 @@ phases:
     depends_on:
     - loader-and-mcp-performance
     agent: integration-verifier
+    claimed_by: vectl
+    claimed_at: '2026-07-16T15:06:13.884224+00:00'

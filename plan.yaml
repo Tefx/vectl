@@ -121241,7 +121241,7 @@ phases:
       orchestrator_action_hint: COMPLETE'
 - id: mcp-large-plan-timeout-remediation
   name: MCP Large-Plan Timeout Remediation
-  status: in_progress
+  status: done
   gate: Large-plan YAML loading preserves Plan, CAS-hash, and error semantics; real
     stdio MCP status, show, and validate calls plus five concurrent show requests
     complete within declared budgets; and a same-transport follow-up succeeds.
@@ -121353,7 +121353,7 @@ phases:
       `.pi/` untouched.'
   - id: verify-large-plan-stdio
     name: Verify large-plan behavior through the real stdio MCP seam
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -121402,3 +121402,30 @@ phases:
     agent: integration-verifier
     claimed_by: vectl
     claimed_at: '2026-07-16T15:06:13.884224+00:00'
+    done_at: '2026-07-16T15:13:21.879913+00:00'
+    evidence: 'Semantic receipt:
+
+      - integration-verifier PASS: sha256:f4cac2b89166acb6c792b6bad0ebf99db6d8e16ae2163ad36111e8ec65222c4f
+
+      - Admission context: sha256:b2e75b252eab38c5fa9298d9f35b6910a6e4bb34fd384d11f3b1339f5fb78200
+
+
+      Real stdio evidence:
+
+      - Deterministic fixture: 8,388,608 bytes; SHA-256 c764ef53a963fbf6e1b1f2c58f7ba8c0bded5420f468def9646d838592641fbd
+      unchanged before/after.
+
+      - Serial durations: vectl_status 0.271s, vectl_show 2.118s, vectl_validate 0.113s;
+      substantive responses observed.
+
+      - Five concurrent vectl_show requests through one transport: 5/5 succeeded in
+      7.669s (<=15s).
+
+      - Same-transport follow-up vectl_show: succeeded in 1.344s (<=5s).
+
+      - Isolated claims context had no claim entries; only its lock file was created.
+
+      - Verifier-owned stdio process exited cleanly with code 0.
+
+      - Repository remained at ae3fd5a2e347a8624316d228f6b094863eec9370 with no tracked
+      mutation; pre-existing untracked `.pi/` remained untouched.'

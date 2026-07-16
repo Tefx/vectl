@@ -121245,3 +121245,130 @@ phases:
   gate: Large-plan YAML loading preserves Plan, CAS-hash, and error semantics; real
     stdio MCP status, show, and validate calls plus five concurrent show requests
     complete within declared budgets; and a same-transport follow-up succeeds.
+  steps:
+  - id: loader-and-mcp-performance
+    name: Optimize large-plan loading and lock the MCP performance contract
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver\
+      \ the Vectl-owned remediation for the verified large-plan timeout. In src/vectl/io.py,\
+      \ prefer yaml.CSafeLoader when available and fall back to yaml.SafeLoader without\
+      \ changing the public load_plan_definition contract, original-byte CAS hash,\
+      \ Plan construction, or PlanIOError categories. Keep exact parser wording non-authoritative\
+      \ where the two safe loaders differ.\n\nAdd deterministic developer tests in\
+      \ tests/test_io.py and tests/test_mcp.py that generate an 8 MB-class valid plan\
+      \ at runtime rather than committing a multi-megabyte fixture. Cover both loader\
+      \ paths, representative YAML semantics, malformed and non-mapping inputs, unchanged\
+      \ CAS hashing, serial status/show/validate behavior, five concurrent vectl_show\
+      \ calls, and a same-transport follow-up. The MCP probe must launch the real\
+      \ stdio server and use an isolated temporary plan/claims context so vectl_status\
+      \ claim repair cannot touch a developer workspace.\n\nUpdate docs/VECTL_MCP_LARGE_PLAN_TIMEOUT_REPORT.md\
+      \ with the verified measurements and responsibility boundaries: vectl_status\
+      \ can repair claims and is not strictly read-only; tool_timeout_sec is only\
+      \ a temporary client guardrail; per-server supports_parallel_tool_calls is unverified\
+      \ for Codex 0.144.2; and transport recovery plus orphaned stdio lifecycle belong\
+      \ to the host/client investigation.\n\nNon-goals: parsed-plan caching, global\
+      \ request serialization, plan format splitting, Codex/dotfiles configuration\
+      \ mutation, transport recovery implementation, stale-process termination, and\
+      \ unrelated refactoring. Rollback is a repository revert because the serialized\
+      \ plan format and external state remain unchanged.\n\n<vectl_step_policy>\n\
+      {\n  \"schema_version\": \"vectl.step.policy.v2\",\n  \"step_id\": \"mcp-large-plan-timeout-remediation.loader-and-mcp-performance\"\
+      ,\n  \"risk_tier\": \"R2\",\n  \"risk_reasons\": [\"public stdio MCP latency\
+      \ and plan-loading semantics\"],\n  \"primary_outcome\": \"REQ-MCP-LARGE-PLAN-RUNTIME-LATENCY\"\
+      ,\n  \"rollback_class\": \"TRIVIAL\",\n  \"observation_ledger\": [\n    {\n\
+      \      \"requirement_id\": \"REQ-MCP-LARGE-PLAN-RUNTIME-LATENCY\",\n      \"\
+      atom\": \"8 MB-class plans remain responsive through real stdio MCP serial and\
+      \ concurrent reads\",\n      \"modality\": \"runtime\",\n      \"seam\": \"\
+      real\",\n      \"check_id\": \"large_plan_loader_and_mcp_tests\",\n      \"\
+      independent_step\": \"mcp-large-plan-timeout-remediation.verify-large-plan-stdio\"\
+      \n    }\n  ],\n  \"test_authority\": {\n    \"developer_test_globs\": [\"tests/test_io.py\"\
+      , \"tests/test_mcp.py\"],\n    \"acceptance_test_paths\": [],\n    \"acceptance_check_ids\"\
+      : [],\n    \"acceptance_mutation\": \"FORBIDDEN\",\n    \"acceptance_authorizations\"\
+      : []\n  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\nschema_version:\
+      \ intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
+      profile: generic\nscope:\n  allowed_paths: [src/vectl/io.py, tests/test_io.py,\
+      \ tests/test_mcp.py, docs/VECTL_MCP_LARGE_PLAN_TIMEOUT_REPORT.md]\n  blocked_paths:\
+      \ [plan.yaml]\n  ignored_runtime_paths: [.git/, .vectl/, .agent/, .venv/]\n\
+      claims: [REQ-MCP-LARGE-PLAN-PARSE-EQUIVALENCE, REQ-MCP-LARGE-PLAN-RUNTIME-LATENCY]\n\
+      checks:\n  - id: large_plan_loader_and_mcp_tests\n    run:\n      command: [uv,\
+      \ run, pytest, tests/test_io.py, tests/test_mcp.py, -q]\n      timeout_seconds:\
+      \ 600\n    evidence:\n      mode: command_outcome\n      path_bindings:\n  \
+      \      - {path: pyproject.toml, access: read, availability: current}\n     \
+      \ test_bindings:\n        - {path: tests/test_io.py, classification: developer,\
+      \ availability: current}\n        - {path: tests/test_mcp.py, classification:\
+      \ developer, availability: current}\n    expect:\n      outcome: green\n   \
+      \   exit_codes: [0]\n      stdout_or_stderr:\n        contains_all: [{literal:\
+      \ passed}]\n        contains_any: []\n        forbids: [{literal: failed}, {literal:\
+      \ ERROR collecting}]\n    proves: [REQ-MCP-LARGE-PLAN-PARSE-EQUIVALENCE, REQ-MCP-LARGE-PLAN-RUNTIME-LATENCY]\n\
+      \  - id: repo_invar_guard\n    run:\n      command: [uvx, invar-tools, guard,\
+      \ --all]\n      timeout_seconds: 1800\n    evidence:\n      mode: command_outcome\n\
+      \      path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n      test_bindings: []\n    expect:\n      outcome: green\n   \
+      \   exit_codes: [0]\n      stdout_or_stderr:\n        contains_all: []\n   \
+      \     contains_any: []\n        forbids: []\n    proves: [REQ-MCP-LARGE-PLAN-PARSE-EQUIVALENCE]\n\
+      bindings:\n  expected_red:\n    items: []\n  closes_expected_red: []\n</intent_closure_contract>"
+    verification: Run both Intent-Closure checks. Targeted tests must force CSafeLoader
+      and SafeLoader paths, prove Plan/CAS-hash/error-category equivalence, and exercise
+      the real stdio MCP surface with a deterministic 8 MB-class temporary plan. Run
+      the repository-wide Invar guard without weakening or skipping checks.
+    refs:
+    - docs/VECTL_MCP_LARGE_PLAN_TIMEOUT_REPORT.md
+    - src/vectl/io.py
+    - src/vectl/mcp_core_common.py
+    - src/vectl/mcp_core_read_tools.py
+    - src/vectl/mcp_core_mutation_tools.py
+    - src/vectl/mcp_server.py
+    - tests/test_io.py
+    - tests/test_mcp.py
+    - pyproject.toml
+    agent: python-executor
+  - id: verify-large-plan-stdio
+    name: Verify large-plan behavior through the real stdio MCP seam
+    status: pending
+    description: 'step_type: verification
+
+      repo_change_policy: no_repo_change
+
+
+      Independently verify the integrated implementation through the real stdio MCP
+      boundary. Do not modify repository files or reuse the implementation owner''s
+      timing interpretation as proof.
+
+
+      Create an isolated deterministic 8 MB-class valid plan outside the repository,
+      launch `uv run --project /Users/tefx/Projects/vectl vectl mcp` with VECTL_PLAN_PATH
+      bound to that plan, and directly invoke vectl_status, vectl_show, and vectl_validate.
+      Establish substantive responses and record serial duration for each operation.
+      Then issue five concurrent vectl_show requests through one transport; every
+      response must succeed and total wall time must be at most 15 seconds. Immediately
+      issue another vectl_show on the same transport; it must succeed within 5 seconds.
+      Compare the fixture plan SHA-256 before and after all probes. Use an empty isolated
+      claims context and report any claim-store activity separately. Terminate the
+      verifier-owned process cleanly.
+
+
+      Ordered semantic-receipt scope: ["real stdio MCP serial status/show/validate
+      against a deterministic 8 MB-class plan", "five concurrent vectl_show responses
+      within 15 seconds", "same-transport post-batch vectl_show succeeds within 5
+      seconds", "fixture plan bytes remain unchanged"].
+
+
+      Host-level Codex reconnect recovery, per-server parallel-call configuration,
+      and accumulated app-server child cleanup remain out of scope; they cannot block
+      this Vectl-owned runtime claim unless the Vectl process itself fails clean termination
+      under the verifier-owned transport.'
+    verification: Return a vectl.verifier.semantic.v1 receipt with the ordered scope
+      stated in this step. PASS requires L1 plus L3 real-stdio evidence, exact commands
+      and timings, five successful concurrent responses within 15 seconds, a same-transport
+      follow-up within 5 seconds, unchanged fixture-plan bytes, and no repository
+      mutation.
+    refs:
+    - docs/VECTL_MCP_LARGE_PLAN_TIMEOUT_REPORT.md
+    - src/vectl/io.py
+    - src/vectl/mcp_server.py
+    - tests/test_io.py
+    - tests/test_mcp.py
+    - pyproject.toml
+    depends_on:
+    - loader-and-mcp-performance
+    agent: integration-verifier

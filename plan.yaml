@@ -121362,7 +121362,6 @@ phases:
       follow-up within 5 seconds, unchanged fixture-plan bytes, and no repository
       mutation.
     refs:
-    - docs/VECTL_MCP_LARGE_PLAN_TIMEOUT_REPORT.md
     - src/vectl/io.py
     - src/vectl/mcp_server.py
     - tests/test_io.py

@@ -121239,3 +121239,9 @@ phases:
       blockers: []
 
       orchestrator_action_hint: COMPLETE'
+- id: mcp-large-plan-timeout-remediation
+  name: MCP Large-Plan Timeout Remediation
+  status: pending
+  gate: Large-plan YAML loading preserves Plan, CAS-hash, and error semantics; real
+    stdio MCP status, show, and validate calls plus five concurrent show requests
+    complete within declared budgets; and a same-transport follow-up succeeds.

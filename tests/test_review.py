@@ -297,7 +297,13 @@ class TestReview:
                             evidence="gate_open_allowed=false\nreview_outcome=NEEDS_REVISION",
                         )
                     ],
-                )
+                ),
+                Phase(
+                    id="active",
+                    name="Unrelated active phase",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="work", name="Current work")],
+                ),
             ],
         )
         path = tmp_path / "plan.yaml"

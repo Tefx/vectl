@@ -318,7 +318,12 @@ def validate(
     p, _, plan_path = _load(plan)
 
     base_path = plan_path.parent if check_refs else None
-    errors = validate_plan(p, check_refs=check_refs, base_path=base_path)
+    errors = validate_plan(
+        p,
+        check_refs=check_refs,
+        base_path=base_path,
+        completed_evidence_scope="active_dependency_closure",
+    )
 
     if not errors:
         out.print("[green bold]✓ Plan is valid.[/]")

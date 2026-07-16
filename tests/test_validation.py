@@ -1,5 +1,7 @@
 """Tests for core.3: DAG Validation."""
 
+import json
+
 import pytest
 
 from vectl.core import add_step, add_steps_bulk, claim_step, edit_step, validate_plan
@@ -153,6 +155,401 @@ class TestCompletedEvidenceGuard:
         errors = validate_plan(plan)
 
         assert not [error for error in errors if "completed evidence guard" in error.message.lower()]
+
+    def test_scoped_guard_downgrades_unrelated_completed_failure(self):
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="legacy",
+                    name="Legacy",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="gate.review",
+                            name="Legacy gate review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false\nreview_outcome=NEEDS_REVISION",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="work", name="Current work")],
+                ),
+            ]
+        )
+
+        issues = validate_plan(plan, completed_evidence_scope="active_dependency_closure")
+        guard_issues = [issue for issue in issues if "completed evidence guard" in issue.message.lower()]
+
+        assert len(guard_issues) == 1
+        assert guard_issues[0].is_warning is True
+        assert "outside active dependency closure" in guard_issues[0].message
+
+    def test_scoped_guard_blocks_completed_phase_dependency_failure(self):
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="legacy",
+                    name="Legacy",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="gate.review",
+                            name="Legacy gate review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false\nreview_outcome=NEEDS_REVISION",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["legacy"],
+                    steps=[Step(id="work", name="Current work")],
+                ),
+            ]
+        )
+
+        issues = validate_plan(plan, completed_evidence_scope="active_dependency_closure")
+        guard_issues = [issue for issue in issues if "completed evidence guard" in issue.message.lower()]
+
+        assert len(guard_issues) == 1
+        assert guard_issues[0].is_warning is False
+
+    def test_scoped_guard_blocks_completed_step_dependency_failure(self):
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="test.setup",
+                            name="Failed setup test",
+                            status=StepStatus.DONE,
+                            evidence="pytest: 1 failed",
+                        ),
+                        Step(id="work", name="Current work", depends_on=["test.setup"]),
+                    ],
+                )
+            ]
+        )
+
+        issues = validate_plan(plan, completed_evidence_scope="active_dependency_closure")
+        guard_issues = [issue for issue in issues if "completed evidence guard" in issue.message.lower()]
+
+        assert len(guard_issues) == 1
+        assert guard_issues[0].is_warning is False
+
+    def test_scoped_guard_blocks_explicit_gate_integrated_step_failure(self):
+        gate_scope = {
+            "schema_version": "vectl.gate.scope.v2",
+            "phase_id": "active",
+            "requirement_ids": ["REQ-ACTIVE"],
+            "integrated_steps": ["active.implementation"],
+            "admitted_future_expected_red": [],
+            "forbid_out_of_scope_blockers": True,
+        }
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="implementation",
+                            name="Implementation verification",
+                            status=StepStatus.DONE,
+                            evidence="pytest: FAIL",
+                        ),
+                        Step(
+                            id="gate",
+                            name="Gate",
+                            description=(
+                                "<vectl_gate_scope>\n"
+                                f"{json.dumps(gate_scope)}\n"
+                                "</vectl_gate_scope>"
+                            ),
+                        ),
+                    ],
+                )
+            ]
+        )
+
+        issues = validate_plan(plan, completed_evidence_scope="active_dependency_closure")
+        guard_issues = [issue for issue in issues if "completed evidence guard" in issue.message.lower()]
+
+        assert len(guard_issues) == 1
+        assert guard_issues[0].is_warning is False
+
+    def test_scoped_guard_blocks_transitive_phase_dependency_failure(self):
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="legacy",
+                    name="Legacy",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="gate.review",
+                            name="Legacy gate review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="middle",
+                    name="Middle",
+                    status=PhaseStatus.DONE,
+                    depends_on=["legacy"],
+                    steps=[
+                        Step(
+                            id="middle.done",
+                            name="Middle done",
+                            status=StepStatus.DONE,
+                            evidence="green verification: PASS",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["middle"],
+                    steps=[Step(id="work", name="Current work")],
+                ),
+            ]
+        )
+
+        issues = validate_plan(plan, completed_evidence_scope="active_dependency_closure")
+        guard_issues = [issue for issue in issues if "completed evidence guard" in issue.message.lower()]
+
+        assert len(guard_issues) == 1
+        assert guard_issues[0].is_warning is False
+
+    @pytest.mark.parametrize(
+        ("work_status", "status_fields"),
+        [
+            (StepStatus.PENDING, {}),
+            (StepStatus.CLAIMED, {"claimed_by": "worker"}),
+            (StepStatus.REJECTED, {"rejection_reason": "needs repair"}),
+        ],
+    )
+    def test_scoped_guard_tracks_active_step_statuses(
+        self,
+        work_status: StepStatus,
+        status_fields: dict[str, str],
+    ) -> None:
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.IN_PROGRESS,
+                    steps=[
+                        Step(
+                            id="test.setup",
+                            name="Failed setup test",
+                            status=StepStatus.DONE,
+                            evidence="pytest: FAIL",
+                        ),
+                        Step(
+                            id="work",
+                            name="Current work",
+                            status=work_status,
+                            depends_on=["test.setup"],
+                            **status_fields,
+                        ),
+                    ],
+                )
+            ]
+        )
+
+        issues = validate_plan(plan, completed_evidence_scope="active_dependency_closure")
+        guard_issues = [issue for issue in issues if "completed evidence guard" in issue.message.lower()]
+
+        assert len(guard_issues) == 1
+        assert guard_issues[0].is_warning is False
+
+    def test_scoped_guard_tracks_eligible_locked_phase(self):
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="legacy",
+                    name="Legacy",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="gate.review",
+                            name="Legacy gate review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="locked",
+                    name="Eligible locked",
+                    status=PhaseStatus.LOCKED,
+                    depends_on=["legacy"],
+                    steps=[Step(id="work", name="Current work")],
+                ),
+            ]
+        )
+
+        issues = validate_plan(plan, completed_evidence_scope="active_dependency_closure")
+        guard_issues = [issue for issue in issues if "completed evidence guard" in issue.message.lower()]
+
+        assert len(guard_issues) == 1
+        assert guard_issues[0].is_warning is False
+
+    def test_scoped_guard_blocks_cross_phase_gate_integrated_step(self):
+        gate_scope = {
+            "schema_version": "vectl.gate.scope.v2",
+            "integrated_steps": ["legacy.gate.review"],
+        }
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="legacy",
+                    name="Legacy",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="gate.review",
+                            name="Legacy gate review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="gate",
+                            name="Gate",
+                            description=(
+                                "<vectl_gate_scope>\n"
+                                f"{json.dumps(gate_scope)}\n"
+                                "</vectl_gate_scope>"
+                            ),
+                        )
+                    ],
+                ),
+            ]
+        )
+
+        issues = validate_plan(plan, completed_evidence_scope="active_dependency_closure")
+        guard_issues = [issue for issue in issues if "completed evidence guard" in issue.message.lower()]
+
+        assert len(guard_issues) == 1
+        assert guard_issues[0].is_warning is False
+
+    @pytest.mark.parametrize(
+        "gate_description",
+        [
+            "<vectl_gate_scope>{invalid json}</vectl_gate_scope>",
+            (
+                "<vectl_gate_scope>{}</vectl_gate_scope>"
+                "<vectl_gate_scope>{}</vectl_gate_scope>"
+            ),
+            (
+                "<vectl_gate_scope>"
+                '{"schema_version":"vectl.gate.scope.v1","integrated_steps":[]}'
+                "</vectl_gate_scope>"
+            ),
+            (
+                "<vectl_gate_scope>"
+                '{"schema_version":"vectl.gate.scope.v2","integrated_steps":"legacy.gate.review"}'
+                "</vectl_gate_scope>"
+            ),
+            (
+                "<vectl_gate_scope>"
+                '{"schema_version":"vectl.gate.scope.v2","integrated_steps":["missing.step"]}'
+                "</vectl_gate_scope>"
+            ),
+        ],
+    )
+    def test_malformed_or_unresolved_gate_scope_fails_closed(
+        self,
+        gate_description: str,
+    ) -> None:
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="legacy",
+                    name="Legacy",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="gate.review",
+                            name="Legacy gate review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="gate", name="Gate", description=gate_description)],
+                ),
+            ]
+        )
+
+        issues = validate_plan(plan, completed_evidence_scope="active_dependency_closure")
+        guard_issues = [issue for issue in issues if "completed evidence guard" in issue.message.lower()]
+
+        assert len(guard_issues) == 1
+        assert guard_issues[0].is_warning is False
+
+    def test_gate_scope_in_phase_gate_field_fails_closed(self):
+        misplaced_scope = (
+            "<vectl_gate_scope>"
+            '{"schema_version":"vectl.gate.scope.v2","integrated_steps":["legacy.gate.review"]}'
+            "</vectl_gate_scope>"
+        )
+        plan = _make_plan(
+            phases=[
+                Phase(
+                    id="legacy",
+                    name="Legacy",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="gate.review",
+                            name="Legacy gate review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.PENDING,
+                    gate=misplaced_scope,
+                    steps=[Step(id="work", name="Current work")],
+                ),
+            ]
+        )
+
+        issues = validate_plan(plan, completed_evidence_scope="active_dependency_closure")
+        guard_issues = [issue for issue in issues if "completed evidence guard" in issue.message.lower()]
+
+        assert len(guard_issues) == 1
+        assert guard_issues[0].is_warning is False
 
 
 class TestStepDAG:

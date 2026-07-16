@@ -37,6 +37,10 @@ _PLAN_YAML_HEADER = """\
 
 _LOGGER = logging.getLogger(__name__)
 
+# LibYAML's C implementation is substantially faster for large plans. Keep the
+# pure-Python loader as a compatibility fallback for environments without it.
+_PLAN_YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
 
 def _file_hash(path: Path) -> str | Result[str, str]:
     """Compute SHA-256 of file contents."""
@@ -56,7 +60,7 @@ def load_plan_definition(path: Path | str) -> tuple[Plan, str] | Result[tuple[Pl
     content = path.read_text(encoding="utf-8")
     file_hash = hashlib.sha256(content.encode()).hexdigest()
     try:
-        raw = yaml.safe_load(content)
+        raw = yaml.load(content, Loader=_PLAN_YAML_LOADER)
     except yaml.YAMLError as e:
         raise PlanIOError(f"Invalid YAML in {path}: {e}") from e
     if not isinstance(raw, dict):

@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -372,6 +373,49 @@ def _reload_plan(path: Path) -> dict:
     return yaml.safe_load(path.read_text())
 
 
+@pytest.mark.skipif(not hasattr(yaml, "CSafeLoader"), reason="LibYAML C loader unavailable")
+def test_mcp_read_tools_handle_eight_megabyte_plan_serially(tmp_path: Path) -> None:
+    """Status, show, and validate stay usable on a large plan fixture."""
+    plan_file = tmp_path / "plan.yaml"
+    plan_file.write_text(
+        yaml.safe_dump(
+            {
+                "project": "large-mcp-plan",
+                "context": "x" * 8_000_000,
+                "phases": [
+                    {
+                        "id": "large-phase",
+                        "name": "Large phase",
+                        "status": "pending",
+                        "steps": [
+                            {"id": "large-step", "name": "Large step", "status": "pending"}
+                        ],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    assert plan_file.stat().st_size >= 8_000_000
+
+    old_plan_path = os.environ.get("VECTL_PLAN_PATH")
+    os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+    try:
+        started = time.perf_counter()
+        assert "large-mcp-plan" in vectl_status()
+        assert "Large step" in vectl_show(target="large-step")
+        assert "0 errors" in vectl_validate()
+        elapsed = time.perf_counter() - started
+    finally:
+        if old_plan_path is None:
+            os.environ.pop("VECTL_PLAN_PATH", None)
+        else:
+            os.environ["VECTL_PLAN_PATH"] = old_plan_path
+
+    assert elapsed < 30.0
+
+
 def _legacy_step_ids(plan_data: dict[str, object] | None = None) -> set[str]:
     """Collect step IDs from a legacy migration fixture."""
     data = plan_data if plan_data is not None else _legacy_migration_plan_dict()
@@ -458,6 +502,110 @@ class TestVectlValidate:
         assert "Validation" in result
         assert "ERROR:" in result
         assert "dup.step" in result
+        assert "1 error(s), 0 warning(s)" in result
+
+    @pytest.mark.parametrize(
+        ("active_dependencies", "severity", "summary"),
+        [
+            ([], "WARN:", "0 error(s), 1 warning(s)"),
+            (["legacy"], "ERROR:", "1 error(s), 0 warning(s)"),
+        ],
+    )
+    def test_completed_failure_severity_follows_active_dependency_closure(
+        self,
+        plan_file: Path,
+        active_dependencies: list[str],
+        severity: str,
+        summary: str,
+    ) -> None:
+        plan_file.write_text(
+            yaml.safe_dump(
+                {
+                    "project": "scoped-evidence-mcp",
+                    "phases": [
+                        {
+                            "id": "legacy",
+                            "name": "Legacy",
+                            "status": "done",
+                            "steps": [
+                                {
+                                    "id": "legacy.review",
+                                    "name": "Legacy review",
+                                    "status": "done",
+                                    "evidence": (
+                                        "gate_open_allowed=false\n"
+                                        "review_outcome=NEEDS_REVISION"
+                                    ),
+                                }
+                            ],
+                        },
+                        {
+                            "id": "active",
+                            "name": "Active",
+                            "status": "pending",
+                            "depends_on": active_dependencies,
+                            "steps": [{"id": "work", "name": "Current work"}],
+                        },
+                    ],
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        result = vectl_validate()
+
+        assert severity in result
+        assert "legacy.review" in result
+        assert summary in result
+        if severity == "WARN:":
+            assert "outside active dependency closure" in result
+
+    def test_malformed_active_gate_scope_fails_closed(self, plan_file: Path) -> None:
+        plan_file.write_text(
+            yaml.safe_dump(
+                {
+                    "project": "scoped-evidence-mcp",
+                    "phases": [
+                        {
+                            "id": "legacy",
+                            "name": "Legacy",
+                            "status": "done",
+                            "steps": [
+                                {
+                                    "id": "review",
+                                    "name": "Legacy review",
+                                    "status": "done",
+                                    "evidence": "gate_open_allowed=false",
+                                }
+                            ],
+                        },
+                        {
+                            "id": "active",
+                            "name": "Active",
+                            "status": "pending",
+                            "steps": [
+                                {
+                                    "id": "gate",
+                                    "name": "Gate",
+                                    "description": (
+                                        "<vectl_gate_scope>{invalid json}"
+                                        "</vectl_gate_scope>"
+                                    ),
+                                }
+                            ],
+                        },
+                    ],
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        result = vectl_validate()
+
+        assert "ERROR:" in result
+        assert "legacy" in result
         assert "1 error(s), 0 warning(s)" in result
 
 

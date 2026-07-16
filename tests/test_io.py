@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 import pytest
+import yaml
 
 from vectl.io import (
     _backup_definition,
@@ -78,6 +79,21 @@ class TestLoadPlanDefinition:
         path.write_text("- item1\n- item2\n", encoding="utf-8")
         with pytest.raises(PlanIOError, match="must be a YAML mapping"):
             load_plan(path)
+
+    def test_c_loader_is_semantically_equivalent_to_safe_loader(
+        self, tmp_path: Path, sample_plan: Plan
+    ) -> None:
+        path = tmp_path / "plan.yaml"
+        save_plan(sample_plan, path)
+        content = path.read_text(encoding="utf-8")
+
+        safe_raw = yaml.safe_load(content)
+        optimized_raw = yaml.load(
+            content,
+            Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader),
+        )
+
+        assert Plan(**optimized_raw).model_dump() == Plan(**safe_raw).model_dump()
 
 
 class TestSavePlan:

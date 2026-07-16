@@ -57,7 +57,7 @@ File reading, content hashing, and Pydantic model construction were small compar
 ## Relevant implementation
 
 - `src/vectl/mcp_core_common.py::_load()` calls `load_plan_definition()` for every MCP tool invocation.
-- `src/vectl/io.py::load_plan_definition()` uses `yaml.safe_load(content)`.
+- `src/vectl/io.py::load_plan_definition()` uses LibYAML's `yaml.CSafeLoader` when available, with `yaml.SafeLoader` as the compatibility fallback.
 - `src/vectl/mcp_core_read_tools.py::vectl_status()` and `vectl_show()` each load the complete plan before formatting a bounded result.
 - The MCP configuration generator supports `tool_timeout_sec` and can emit `supports_parallel_tool_calls`; the installed Codex 0.144.2 configuration reference and `codex mcp get` did not confirm the latter as an effective per-server setting.
 
@@ -81,6 +81,12 @@ The direct cause is repeated whole-plan YAML parsing combined with concurrent ca
 - Full-history `vectl review` retains blocking completed-evidence behavior.
 
 This separation prevents unrelated legacy evidence debt from blocking a new independent phase without weakening the dependencies that authorize its execution. It does not reduce YAML parsing cost and is only an admission prerequisite for the loader remediation.
+
+## Loader remediation status
+
+`load_plan_definition()` now selects `yaml.CSafeLoader` when the PyYAML LibYAML extension is available and falls back to `yaml.SafeLoader` otherwise. `tests/test_io.py` compares both loaders after model construction, and `tests/test_mcp.py` exercises serial `status`, `show`, and `validate` calls against an 8 MB-class plan fixture.
+
+The loader change covers parse cost only. MCP concurrency configuration, timeout recovery, and stdio process cleanup remain separate follow-up work outside this step.
 
 ## Immediate workaround
 

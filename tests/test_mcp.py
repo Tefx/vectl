@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -370,6 +371,49 @@ def duplicate_id_plan_file(tmp_path: Path) -> Iterator[Path]:
 def _reload_plan(path: Path) -> dict:
     """Re-read plan.yaml contents as dict."""
     return yaml.safe_load(path.read_text())
+
+
+@pytest.mark.skipif(not hasattr(yaml, "CSafeLoader"), reason="LibYAML C loader unavailable")
+def test_mcp_read_tools_handle_eight_megabyte_plan_serially(tmp_path: Path) -> None:
+    """Status, show, and validate stay usable on a large plan fixture."""
+    plan_file = tmp_path / "plan.yaml"
+    plan_file.write_text(
+        yaml.safe_dump(
+            {
+                "project": "large-mcp-plan",
+                "context": "x" * 8_000_000,
+                "phases": [
+                    {
+                        "id": "large-phase",
+                        "name": "Large phase",
+                        "status": "pending",
+                        "steps": [
+                            {"id": "large-step", "name": "Large step", "status": "pending"}
+                        ],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    assert plan_file.stat().st_size >= 8_000_000
+
+    old_plan_path = os.environ.get("VECTL_PLAN_PATH")
+    os.environ["VECTL_PLAN_PATH"] = str(plan_file)
+    try:
+        started = time.perf_counter()
+        assert "large-mcp-plan" in vectl_status()
+        assert "Large step" in vectl_show(target="large-step")
+        assert "0 errors" in vectl_validate()
+        elapsed = time.perf_counter() - started
+    finally:
+        if old_plan_path is None:
+            os.environ.pop("VECTL_PLAN_PATH", None)
+        else:
+            os.environ["VECTL_PLAN_PATH"] = old_plan_path
+
+    assert elapsed < 30.0
 
 
 def _legacy_step_ids(plan_data: dict[str, object] | None = None) -> set[str]:

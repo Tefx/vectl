@@ -121241,14 +121241,14 @@ phases:
       orchestrator_action_hint: COMPLETE'
 - id: mcp-large-plan-timeout-remediation
   name: MCP Large-Plan Timeout Remediation
-  status: pending
+  status: in_progress
   gate: Large-plan YAML loading preserves Plan, CAS-hash, and error semantics; real
     stdio MCP status, show, and validate calls plus five concurrent show requests
     complete within declared budgets; and a same-transport follow-up succeeds.
   steps:
   - id: loader-and-mcp-performance
     name: Optimize large-plan loading and lock the MCP performance contract
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver\
       \ the Vectl-owned remediation for the verified large-plan timeout. In src/vectl/io.py,\
@@ -121321,6 +121321,8 @@ phases:
     - tests/test_mcp.py
     - pyproject.toml
     agent: python-executor
+    claimed_by: vectl
+    claimed_at: '2026-07-16T14:55:38.049668+00:00'
   - id: verify-large-plan-stdio
     name: Verify large-plan behavior through the real stdio MCP seam
     status: pending

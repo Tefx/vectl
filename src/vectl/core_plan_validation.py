@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import re
-from typing import Any, TypeAlias
+from typing import Any, Literal, TypeAlias
 
 from vectl.core_duplicate_step_id import analyze_duplicate_step_ids
 Path: TypeAlias = Any
+CompletedEvidenceScope: TypeAlias = Literal["all", "active_dependency_closure"]
 
 from vectl.models import Phase, PhaseStatus, Plan, PlanValidationIssue, Step, StepStatus
 
@@ -57,6 +59,7 @@ def validate_plan(
     check_refs: bool = False,
     base_path: Path | None = None,
     include_completed_evidence_guard: bool = True,
+    completed_evidence_scope: CompletedEvidenceScope = "all",
 ) -> list[PlanValidationIssue]:
     """Validate plan structure, DAG, and consistency.
 
@@ -64,7 +67,14 @@ def validate_plan(
         plan: The plan to validate.
         check_refs: If True, check that files in refs[] exist on disk.
         base_path: Base path for resolving refs (defaults to cwd).
+        include_completed_evidence_guard: Whether to inspect completed failure evidence.
+        completed_evidence_scope: ``all`` blocks on every unclosed completed failure;
+            ``active_dependency_closure`` blocks only when the completed step is
+            relevant to current executable work and reports other failures as warnings.
     """
+    if completed_evidence_scope not in {"all", "active_dependency_closure"}:
+        raise ValueError(f"Unknown completed evidence scope: {completed_evidence_scope}")
+
     errors: list[PlanValidationIssue] = []
 
     # Phase ID uniqueness
@@ -167,7 +177,14 @@ def validate_plan(
                         )
 
     if include_completed_evidence_guard:
-        errors.extend(_completed_evidence_guard_issues(plan))
+        blocking_step_keys = (
+            _active_dependency_step_keys(plan)
+            if completed_evidence_scope == "active_dependency_closure"
+            else None
+        )
+        errors.extend(
+            _completed_evidence_guard_issues(plan, blocking_step_keys=blocking_step_keys)
+        )
 
     return errors
 
@@ -206,10 +223,152 @@ _EVIDENCE_CLOSURE_PATTERNS = (
     re.compile(r"\b(?:green verification|retest passed|all tests pass(?:ed)?|tests PASS|PASS)\b"),
     re.compile(r"\bOPEN\b"),
 )
+_ACTIVE_WORK_STEP_STATUSES = frozenset(
+    {StepStatus.PENDING, StepStatus.CLAIMED, StepStatus.REJECTED}
+)
+_GATE_SCOPE_TAG = "vectl_gate_scope"
+_GATE_SCOPE_BLOCK = re.compile(
+    rf"<{_GATE_SCOPE_TAG}>\s*(.*?)\s*</{_GATE_SCOPE_TAG}>",
+    re.DOTALL,
+)
 
 
-# @shell_complexity: Branches preserve candidate filtering, failure detection, expected-red disposition, later closure, and issue construction.
-def _completed_evidence_guard_issues(plan: Plan) -> list[PlanValidationIssue]:
+def _execution_active_phase_ids(plan: Plan) -> set[str]:
+    """Return phases where work can execute now, including claimed-work recovery."""
+
+    done_phase_ids = {phase.id for phase in plan.phases if phase.status == PhaseStatus.DONE}
+    active: set[str] = set()
+    for phase in plan.phases:
+        if phase.status in {PhaseStatus.PENDING, PhaseStatus.IN_PROGRESS}:
+            active.add(phase.id)
+        elif (
+            phase.status == PhaseStatus.LOCKED
+            and phase.depends_on
+            and all(dependency in done_phase_ids for dependency in phase.depends_on)
+        ):
+            active.add(phase.id)
+        elif any(step.status == StepStatus.CLAIMED for step in phase.steps):
+            active.add(phase.id)
+    return active
+
+
+def _phase_dependency_closure(plan: Plan, root_phase_ids: set[str]) -> set[str]:
+    """Return root phases and every transitive phase dependency."""
+
+    phase_by_id = {phase.id: phase for phase in plan.phases}
+    closure = set(root_phase_ids)
+    pending = list(root_phase_ids)
+    while pending:
+        phase = phase_by_id.get(pending.pop())
+        if phase is None:
+            continue
+        for dependency in phase.depends_on:
+            if dependency not in closure:
+                closure.add(dependency)
+                pending.append(dependency)
+    return closure
+
+
+def _gate_integrated_step_ids(description: str) -> tuple[str, ...] | None:
+    """Read a gate step's description scope, returning ``None`` when malformed.
+
+    ``Phase.gate`` remains the human-readable criterion. The machine-readable
+    ``<vectl_gate_scope>`` contract is carried by the explicit gate step description.
+    """
+
+    if f"<{_GATE_SCOPE_TAG}>" not in description:
+        return ()
+    matches = _GATE_SCOPE_BLOCK.findall(description)
+    if len(matches) != 1:
+        return None
+    try:
+        payload = json.loads(matches[0])
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict) or payload.get("schema_version") != "vectl.gate.scope.v2":
+        return None
+    integrated_steps = payload.get("integrated_steps")
+    if not isinstance(integrated_steps, list) or not all(
+        isinstance(step_id, str) and step_id for step_id in integrated_steps
+    ):
+        return None
+    return tuple(integrated_steps)
+
+
+# @shell_complexity: Closure preserves active-phase eligibility, transitive phase/step dependencies, and explicit gate integration.
+def _active_dependency_step_keys(plan: Plan) -> set[tuple[str, str]]:
+    """Return completed-evidence relevance for current executable work."""
+
+    phase_by_id = {phase.id: phase for phase in plan.phases}
+    active_phase_ids = _execution_active_phase_ids(plan)
+    phase_scope = _phase_dependency_closure(plan, active_phase_ids)
+    keys: set[tuple[str, str]] = set()
+    all_step_keys = {
+        (phase.id, step.id) for phase in plan.phases for step in phase.steps
+    }
+
+    for phase_id in phase_scope - active_phase_ids:
+        phase = phase_by_id.get(phase_id)
+        if phase is not None:
+            keys.update((phase.id, step.id) for step in phase.steps)
+
+    def add_step_dependencies(phase: Phase, root: Step) -> None:
+        step_by_id = {step.id: step for step in phase.steps}
+        pending = [root]
+        while pending:
+            step = pending.pop()
+            key = (phase.id, step.id)
+            if key in keys:
+                continue
+            keys.add(key)
+            pending.extend(
+                step_by_id[dependency]
+                for dependency in step.depends_on
+                if dependency in step_by_id
+            )
+
+    for phase_id in active_phase_ids:
+        phase = phase_by_id.get(phase_id)
+        if phase is None:
+            continue
+        for step in phase.steps:
+            if step.status in _ACTIVE_WORK_STEP_STATUSES:
+                add_step_dependencies(phase, step)
+
+        if f"<{_GATE_SCOPE_TAG}>" in phase.gate:
+            keys.update(all_step_keys)
+
+        for gate_step in phase.steps:
+            integrated_step_ids = _gate_integrated_step_ids(gate_step.description)
+            if integrated_step_ids is None:
+                keys.update(all_step_keys)
+                continue
+            for integrated_step_id in integrated_step_ids:
+                found = plan.find_step(integrated_step_id)
+                if found is None:
+                    keys.update(all_step_keys)
+                    continue
+                integrated_phase, integrated_step = found
+                add_step_dependencies(integrated_phase, integrated_step)
+                integrated_phase_scope = _phase_dependency_closure(
+                    plan, {integrated_phase.id}
+                )
+                for dependency_phase_id in integrated_phase_scope - {integrated_phase.id}:
+                    dependency_phase = phase_by_id.get(dependency_phase_id)
+                    if dependency_phase is not None:
+                        keys.update(
+                            (dependency_phase.id, step.id) for step in dependency_phase.steps
+                        )
+
+    return keys
+
+
+# @shell_complexity: Branches preserve candidate filtering, failure detection, expected-red disposition, later closure, and scoped severity.
+def _completed_evidence_guard_issues(
+    plan: Plan,
+    *,
+    blocking_step_keys: set[tuple[str, str]] | None = None,
+) -> list[PlanValidationIssue]:
     """Flag completed verification-like steps with unclosed failure evidence."""
 
     issues: list[PlanValidationIssue] = []
@@ -226,13 +385,20 @@ def _completed_evidence_guard_issues(plan: Plan) -> list[PlanValidationIssue]:
                 continue
             if _has_later_same_phase_closure(phase, after_index=index):
                 continue
+            is_warning = (
+                blocking_step_keys is not None and (phase.id, step.id) not in blocking_step_keys
+            )
+            scope_note = (
+                " (non-blocking outside active dependency closure)" if is_warning else ""
+            )
             issues.append(
                 PlanValidationIssue(
-                    "Completed evidence guard: "
+                    f"Completed evidence guard{scope_note}: "
                     f"step '{step.id}' in phase '{phase.id}' has unclosed failure evidence "
                     f"({', '.join(reasons)}). Add a later same-phase closure step with "
                     "green/OPEN/gate_open_allowed=true evidence, or record expected-red/non-blocking "
-                    "owner/lifecycle/gate-intersection disposition."
+                    "owner/lifecycle/gate-intersection disposition.",
+                    is_warning=is_warning,
                 )
             )
     return issues

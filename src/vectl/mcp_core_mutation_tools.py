@@ -303,10 +303,15 @@ def vectl_mutate(
 
 # @shell_complexity: Validate preserves grouped error/warning Markdown output.
 def vectl_validate(check_refs: bool = False) -> Result[str, str]:
-    """Validate plan structure and consistency (MCP read-only equivalent)."""
+    """Validate structure and active dependency-closure evidence."""
     plan, _ = _load()
     base_path = _plan_path().parent if check_refs else None
-    issues = validate_plan(plan, check_refs=check_refs, base_path=base_path)
+    issues = validate_plan(
+        plan,
+        check_refs=check_refs,
+        base_path=base_path,
+        completed_evidence_scope="active_dependency_closure",
+    )
 
     parts: list[str] = ["## Validation"]
     if not issues:

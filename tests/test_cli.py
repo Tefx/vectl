@@ -1718,6 +1718,128 @@ class TestValidate:
         assert result.exit_code == 1
         assert "ERROR" in result.output
 
+    def test_unrelated_completed_failure_is_a_nonblocking_warning(self, tmp_path: Path) -> None:
+        plan = Plan(
+            project="scoped-evidence",
+            phases=[
+                Phase(
+                    id="legacy",
+                    name="Legacy",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="legacy.review",
+                            name="Legacy review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false\nreview_outcome=NEEDS_REVISION",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.PENDING,
+                    steps=[Step(id="work", name="Current work")],
+                ),
+            ],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        result = runner.invoke(app, ["validate", "--plan", str(path)])
+
+        assert result.exit_code == 0
+        assert "WARN:" in result.output
+        assert "outside active dependency" in result.output
+        assert "closure" in result.output
+        assert "0 error(s)" in result.output
+        assert "1 warning(s)" in result.output
+
+    def test_completed_failure_in_phase_dependency_remains_blocking(self, tmp_path: Path) -> None:
+        plan = Plan(
+            project="scoped-evidence",
+            phases=[
+                Phase(
+                    id="legacy",
+                    name="Legacy",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="legacy.review",
+                            name="Legacy review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false\nreview_outcome=NEEDS_REVISION",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.PENDING,
+                    depends_on=["legacy"],
+                    steps=[Step(id="work", name="Current work")],
+                ),
+            ],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        result = runner.invoke(app, ["validate", "--plan", str(path)])
+
+        assert result.exit_code == 1
+        assert "ERROR:" in result.output
+        assert "legacy.review" in result.output
+        assert "1 error(s)" in result.output
+
+    def test_cross_phase_gate_integrated_failure_remains_blocking(self, tmp_path: Path) -> None:
+        gate_scope = {
+            "schema_version": "vectl.gate.scope.v2",
+            "integrated_steps": ["legacy.review"],
+        }
+        plan = Plan(
+            project="scoped-evidence",
+            phases=[
+                Phase(
+                    id="legacy",
+                    name="Legacy",
+                    status=PhaseStatus.DONE,
+                    steps=[
+                        Step(
+                            id="review",
+                            name="Legacy review",
+                            status=StepStatus.DONE,
+                            evidence="gate_open_allowed=false",
+                        )
+                    ],
+                ),
+                Phase(
+                    id="active",
+                    name="Active",
+                    status=PhaseStatus.PENDING,
+                    steps=[
+                        Step(
+                            id="gate",
+                            name="Gate",
+                            description=(
+                                "<vectl_gate_scope>\n"
+                                f"{json.dumps(gate_scope)}\n"
+                                "</vectl_gate_scope>"
+                            ),
+                        )
+                    ],
+                ),
+            ],
+        )
+        path = tmp_path / "plan.yaml"
+        save_plan(plan, path)
+
+        result = runner.invoke(app, ["validate", "--plan", str(path)])
+
+        assert result.exit_code == 1
+        assert "ERROR:" in result.output
+        assert "legacy" in result.output
+        assert "1 error(s)" in result.output
+
     def test_validate_ignores_split_state_orphans(self, tmp_path: Path) -> None:
         """Validate only checks unified plan.yaml state."""
         plan = Plan(

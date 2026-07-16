@@ -460,6 +460,110 @@ class TestVectlValidate:
         assert "dup.step" in result
         assert "1 error(s), 0 warning(s)" in result
 
+    @pytest.mark.parametrize(
+        ("active_dependencies", "severity", "summary"),
+        [
+            ([], "WARN:", "0 error(s), 1 warning(s)"),
+            (["legacy"], "ERROR:", "1 error(s), 0 warning(s)"),
+        ],
+    )
+    def test_completed_failure_severity_follows_active_dependency_closure(
+        self,
+        plan_file: Path,
+        active_dependencies: list[str],
+        severity: str,
+        summary: str,
+    ) -> None:
+        plan_file.write_text(
+            yaml.safe_dump(
+                {
+                    "project": "scoped-evidence-mcp",
+                    "phases": [
+                        {
+                            "id": "legacy",
+                            "name": "Legacy",
+                            "status": "done",
+                            "steps": [
+                                {
+                                    "id": "legacy.review",
+                                    "name": "Legacy review",
+                                    "status": "done",
+                                    "evidence": (
+                                        "gate_open_allowed=false\n"
+                                        "review_outcome=NEEDS_REVISION"
+                                    ),
+                                }
+                            ],
+                        },
+                        {
+                            "id": "active",
+                            "name": "Active",
+                            "status": "pending",
+                            "depends_on": active_dependencies,
+                            "steps": [{"id": "work", "name": "Current work"}],
+                        },
+                    ],
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        result = vectl_validate()
+
+        assert severity in result
+        assert "legacy.review" in result
+        assert summary in result
+        if severity == "WARN:":
+            assert "outside active dependency closure" in result
+
+    def test_malformed_active_gate_scope_fails_closed(self, plan_file: Path) -> None:
+        plan_file.write_text(
+            yaml.safe_dump(
+                {
+                    "project": "scoped-evidence-mcp",
+                    "phases": [
+                        {
+                            "id": "legacy",
+                            "name": "Legacy",
+                            "status": "done",
+                            "steps": [
+                                {
+                                    "id": "review",
+                                    "name": "Legacy review",
+                                    "status": "done",
+                                    "evidence": "gate_open_allowed=false",
+                                }
+                            ],
+                        },
+                        {
+                            "id": "active",
+                            "name": "Active",
+                            "status": "pending",
+                            "steps": [
+                                {
+                                    "id": "gate",
+                                    "name": "Gate",
+                                    "description": (
+                                        "<vectl_gate_scope>{invalid json}"
+                                        "</vectl_gate_scope>"
+                                    ),
+                                }
+                            ],
+                        },
+                    ],
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        result = vectl_validate()
+
+        assert "ERROR:" in result
+        assert "legacy" in result
+        assert "1 error(s), 0 warning(s)" in result
+
 
 class TestVectlReviewDuplicateBlocking:
     def test_review_gate_check_is_blocked_when_plan_has_duplicate_step_ids(

@@ -121248,7 +121248,7 @@ phases:
   steps:
   - id: loader-and-mcp-performance
     name: Optimize large-plan loading and lock the MCP performance contract
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver\
       \ the Vectl-owned remediation for the verified large-plan timeout. In src/vectl/io.py,\
@@ -121323,6 +121323,34 @@ phases:
     agent: python-executor
     claimed_by: vectl
     claimed_at: '2026-07-16T14:55:38.049668+00:00'
+    done_at: '2026-07-16T15:05:32.995056+00:00'
+    evidence: 'Artifact:
+
+      - Integrated commit: 65d4519715a4db3c5370ec0b7fba287f3b3bb1c8
+
+      - Worker receipt: sha256:2e2434fdbd78c6ef326711d0d83b37c8532ffc5369553e0f48614f8b306ed9fd
+
+      - Dispatch: sha256:f517ba90050803d39c3e5fdeb78bc2ee64480ea245ab5a824cee2bd6c28f3b5a
+
+
+      Verification:
+
+      - `uv run pytest tests/test_io.py tests/test_mcp.py -q` -> green (independently
+      rerun by central Intent-Closure Gate)
+
+      - `uvx invar-tools guard --all` -> green (independently rerun by central Intent-Closure
+      Gate)
+
+      - Worker receipt admission context: sha256:880711afe10ef036e9945f589e1f04fe083cefc404af96254b11713f485b58a6
+
+
+      Scope:
+
+      - Changed only docs/VECTL_MCP_LARGE_PLAN_TIMEOUT_REPORT.md, src/vectl/io.py,
+      tests/test_io.py, tests/test_mcp.py.
+
+      - Integrated by fast-forward onto Main; repository retains pre-existing untracked
+      `.pi/` untouched.'
   - id: verify-large-plan-stdio
     name: Verify large-plan behavior through the real stdio MCP seam
     status: pending

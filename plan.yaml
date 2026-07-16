@@ -121312,7 +121312,6 @@ phases:
       the real stdio MCP surface with a deterministic 8 MB-class temporary plan. Run
       the repository-wide Invar guard without weakening or skipping checks.
     refs:
-    - docs/VECTL_MCP_LARGE_PLAN_TIMEOUT_REPORT.md
     - src/vectl/io.py
     - src/vectl/mcp_core_common.py
     - src/vectl/mcp_core_read_tools.py

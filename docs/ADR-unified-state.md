@@ -54,9 +54,12 @@ plan.yaml                    # structure + completion (git-tracked)
 | Release | Explicit via `vectl unclaim` / `vectl defer`, or TTL expiry |
 | Worktree sharing | Yes (`.git/` shared via `--git-common-dir`) |
 | Cross-machine | Not synchronized (each machine independent) |
+| Timestamp identity | One canonical UTC `Z` timestamp is written unchanged to `plan.yaml` and `claims.json` for each claim |
+| Plan-save failure | Compensation removes the claim only when its full `(step_id, branch, agent, claimed_at)` identity still matches |
 
 Claims are ephemeral coordination (like PID files), not durable record. Loss on daemon crash or `git clone` is correct behavior — no active agents exist in a fresh clone.
 
+A successful claim must leave `plan.yaml` and `claims.json` with identical owner and timestamp fields. An immediate `vectl repair claims --dry-run` must therefore be a no-op. If plan persistence or CAS fails after claims-store acquisition, the caller conditionally releases only the exact entry it created so a concurrent replacement claim is preserved.
 ## Write Protocol
 
 ```

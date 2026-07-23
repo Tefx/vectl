@@ -15,10 +15,12 @@ from vectl.claims import (
     cleanup_stale_claims,
     load_claims,
     release_claim,
+    release_claim_if_matches,
     repair_claims,
     resolve_claims_path,
     save_claims,
 )
+from vectl.lifecycle import claim_step
 from vectl.models import Phase, Plan, PlanError, Step, StepStatus
 
 
@@ -57,6 +59,64 @@ def test_acquire_release_claim(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     with pytest.raises(OSError, match="replace failed"):
         save_claims({}, claims_path)
     assert claims_path.read_text(encoding="utf-8") == before
+
+
+def test_claim_step_uses_one_canonical_timestamp_for_plan_and_claim_store(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    plan_path.write_text("project: timestamp-test\n", encoding="utf-8")
+    claims_path = tmp_path / "claims.json"
+    plan = Plan(
+        project="timestamp-test",
+        phases=[Phase(id="phase", name="Phase", steps=[Step(id="step", name="Step")])],
+    )
+    monkeypatch.setattr("vectl.claims.get_current_branch", lambda: "feature/test")
+
+    plan, _ = claim_step(plan, "step", "agent", claims_path=claims_path)
+
+    step = plan.phases[0].steps[0]
+    stored = load_claims(claims_path)["feature/test:step"]
+    assert step.claimed_at is not None
+    assert step.claimed_at.endswith("Z")
+    assert stored.agent == step.claimed_by
+    assert stored.claimed_at == step.claimed_at
+
+    result = repair_claims(plan, plan_path, claims_path, dry_run=True)
+    assert result.changed is False
+    assert result.actions == ()
+
+
+def test_release_claim_if_matches_preserves_replacement_claim(tmp_path: Path) -> None:
+    claims_path = tmp_path / "claims.json"
+    created_at = "2026-07-23T16:03:12.236240Z"
+    replacement = ClaimEntry(
+        step_id="core.step",
+        branch="feature/test",
+        agent="agent-b",
+        claimed_at="2026-07-23T16:04:00Z",
+    )
+
+    assert acquire_claim(
+        "core.step",
+        "feature/test",
+        "agent-a",
+        claims_path,
+        claimed_at=created_at,
+    )
+    save_claims({"feature/test:core.step": replacement}, claims_path)
+
+    assert (
+        release_claim_if_matches(
+            "core.step",
+            "feature/test",
+            "agent-a",
+            created_at,
+            claims_path,
+        )
+        is False
+    )
+    assert load_claims(claims_path)["feature/test:core.step"] == replacement
 
 
 def test_stale_claim_cleanup(tmp_path: Path) -> None:

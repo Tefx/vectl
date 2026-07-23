@@ -5,7 +5,11 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 
 from __future__ import annotations
 
+from typing import cast
+
+from vectl.lifecycle import rollback_claim_record
 from vectl.mcp_core_common import *
+from vectl.mcp_core_common import _save_plan
 
 class ClaimStepData(BaseModel):
     """Claimed step summary.
@@ -77,11 +81,18 @@ def vectl_claim(
     lock_notice: str = ""
     try:
         plan, result = claim_step(plan, step_id, agent, force=force, claims_path=claims_path)
-        lock_notice = _save_plan(
-            plan,
-            expected_def_hash,
-            f"mcp: claim step {step_id} by {agent}",
-        )
+        try:
+            lock_notice = cast(
+                str,
+                _save_plan(
+                    plan,
+                    expected_def_hash,
+                    f"mcp: claim step {step_id} by {agent}",
+                ),
+            )
+        except Exception:
+            rollback_claim_record(result, claims_path)
+            raise
     except ClaimConflictError as e:
         # Claim conflict: existing claim record blocking this attempt
         err = str(e)

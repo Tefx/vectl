@@ -18,7 +18,7 @@ import pytest
 import yaml
 
 from vectl.claims import get_current_branch as _claims_current_branch
-from vectl.claims import load_claims
+from vectl.claims import load_claims, repair_claims
 from vectl.mcp_server import (
     _load as _vectl_load,
 )
@@ -76,6 +76,7 @@ from vectl.mcp_server import (
 from vectl.mcp_server import (
     vectl_validate as _vectl_validate_tool,
 )
+from vectl.io import load_plan_definition
 from vectl.migration import migrate_from_split_state
 from vectl.models import CompletedResult, PhaseStatus, PlanError, PlanIOError, StepStatus
 from vectl.plan_path import resolve_claims_path
@@ -724,6 +725,31 @@ class TestVectlClaim:
         step = data["phases"][0]["steps"][0]
         assert step["status"] == "claimed"
         assert step["claimed_by"] == "bot"
+
+        plan, _ = load_plan_definition(plan_file)
+        claims_path = resolve_claims_path(plan_file)
+        stored = next(iter(load_claims(claims_path).values()))
+        claimed_step = plan.phases[0].steps[0]
+        assert stored.claimed_at == claimed_step.claimed_at
+        repair = repair_claims(plan, plan_file, claims_path, dry_run=True)
+        assert repair.changed is False
+        assert repair.actions == ()
+
+    def test_claim_releases_created_claim_when_plan_save_fails(
+        self, plan_file: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def _fail_save(*args: object, **kwargs: object) -> str:
+            raise PlanError("simulated plan save failure")
+
+        monkeypatch.setattr("vectl.mcp_core_lifecycle_tools._save_plan", _fail_save)
+
+        result = vectl_claim(agent="bot", step_id="a.1")
+
+        assert result["ok"] is False
+        assert "simulated plan save failure" in result["error"]
+        assert load_claims(resolve_claims_path(plan_file)) == {}
+        data = _reload_plan(plan_file)
+        assert data["phases"][0]["steps"][0].get("status", "pending") == "pending"
 
     def test_auto_claim(self, plan_file: Path) -> None:
         result = vectl_claim(agent="bot")

@@ -105,6 +105,7 @@ __all__ = [
     "load_claims",
     "load_claims_for_branch",
     "release_claim",
+    "release_claim_if_matches",
     "release_claims",
     "repair_claims",
     "resolve_claims_path",
@@ -286,13 +287,30 @@ def _drop_stale_claims(claims: dict[str, ClaimEntry]) -> None:
 
 
 # @shell_orchestration: public compatibility requires bool success and PlanError conflict semantics
-def acquire_claim(step_id: str, branch: str, agent: str, claims_path: Path):
+def acquire_claim(
+    step_id: str,
+    branch: str,
+    agent: str,
+    claims_path: Path,
+    *,
+    claimed_at: str | None = None,
+):
     """Acquire a branch-scoped claim for a step.
+
+    Args:
+        claimed_at: Optional canonical timestamp supplied by a lifecycle operation
+            that persists the same logical claim in another store.
 
     Raises:
         PlanError: If the claim key already exists and is not stale.
     """
-    result = acquire_claims([(step_id, agent)], branch, claims_path)
+    claimed_at_by_step = {step_id: claimed_at} if claimed_at is not None else None
+    result = acquire_claims(
+        [(step_id, agent)],
+        branch,
+        claims_path,
+        claimed_at_by_step=claimed_at_by_step,
+    )
     try:
         return result.unwrap() == 1
     except Exception as exc:
@@ -302,9 +320,17 @@ def acquire_claim(step_id: str, branch: str, agent: str, claims_path: Path):
 # @shell_orchestration: atomic claims-store helper performs indirect I/O through locked read/write helpers.
 # @shell_complexity: atomic batch acquisition must validate duplicates, conflicts, stale cleanup, and writes under one lock.
 def acquire_claims(
-    step_agents: list[tuple[str, str]], branch: str, claims_path: Path
+    step_agents: list[tuple[str, str]],
+    branch: str,
+    claims_path: Path,
+    *,
+    claimed_at_by_step: dict[str, str] | None = None,
 ) -> Result[int, str]:
-    """Acquire several branch-scoped claims with one claims-store write."""
+    """Acquire several branch-scoped claims with one claims-store write.
+
+    ``claimed_at_by_step`` lets a lifecycle operation reuse timestamps already
+    assigned to its plan projection instead of creating a second claim event.
+    """
     with _locked_claims_file(claims_path):
         claims = _read_claims_file(claims_path)
         _drop_stale_claims(claims)
@@ -319,11 +345,14 @@ def acquire_claims(
                 return Failure(f"Step '{step_id}' is already claimed on branch '{branch}'")
 
         for step_id, agent in step_agents:
+            supplied_claimed_at = (
+                claimed_at_by_step.get(step_id) if claimed_at_by_step is not None else None
+            )
             claims[_claim_key(branch, step_id)] = ClaimEntry(
                 step_id=step_id,
                 branch=branch,
                 agent=agent,
-                claimed_at=_now_iso(),
+                claimed_at=supplied_claimed_at or _now_iso(),
             )
         _write_claims_file(claims_path, claims)
         return Success(len(step_agents))
@@ -333,6 +362,32 @@ def acquire_claims(
 def release_claim(step_id: str, branch: str, claims_path: Path):
     """Release a branch-scoped claim if present."""
     return release_claims([step_id], branch, claims_path).unwrap() == 1
+
+
+# @invar:allow shell_result: compensation callers need atomic released-or-mismatch bool semantics
+# @shell_orchestration: exact-entry rollback performs indirect I/O under the claims lock.
+def release_claim_if_matches(
+    step_id: str,
+    branch: str,
+    agent: str,
+    claimed_at: str,
+    claims_path: Path,
+) -> bool:
+    """Release only the exact claim created by a failed lifecycle operation."""
+    key = _claim_key(branch, step_id)
+    expected = ClaimEntry(
+        step_id=step_id,
+        branch=branch,
+        agent=agent,
+        claimed_at=claimed_at,
+    )
+    with _locked_claims_file(claims_path):
+        claims = _read_claims_file(claims_path)
+        if claims.get(key) != expected:
+            return False
+        claims.pop(key)
+        _write_claims_file(claims_path, claims)
+        return True
 
 
 # @shell_orchestration: atomic rollback helper performs indirect I/O through locked read/write helpers.

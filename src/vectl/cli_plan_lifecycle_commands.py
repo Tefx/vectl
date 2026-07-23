@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from vectl.cli_plan_common import *
+from vectl.cli_plan_common import _save_plan
 from vectl.cli_plan_read_commands import _show_step_detail
+from vectl.lifecycle import rollback_claim_record
+from vectl.plan_path import resolve_claims_path
 
 def claim(
     step_id: str | None = typer.Argument(
@@ -46,13 +49,14 @@ def claim(
         step_id = candidates[0].id
         out.print(f"[dim]Auto-selected:[/] {step_id}")
 
+    claims_path = resolve_claims_path(plan_path)
     try:
         p, result = claim_step(
             p,
             step_id,
             agent,
             force=force,
-            claims_path=resolve_claims_path(plan_path),
+            claims_path=claims_path,
         )
     except ClaimConflictError as e:
         # Rich claim conflict diagnostics with actionable next step
@@ -82,7 +86,11 @@ def claim(
         else:
             out.print(f"[yellow]⚠️  Affinity warning: {result.warning_message}[/]")
 
-    _save_plan(p, plan_path, def_h, f"vectl: claim {step_id} by {agent}")
+    try:
+        _save_plan(p, plan_path, def_h, f"vectl: claim {step_id} by {agent}")
+    except Exception:
+        rollback_claim_record(result, claims_path)
+        raise
     out.print(f"[green]Claimed:[/] {step_id} by {agent}")
 
     # Show affinity override in claim summary if applicable

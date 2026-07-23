@@ -6,6 +6,17 @@ from dataclasses import dataclass
 
 from vectl.models import PlanError, Step
 
+
+@dataclass(frozen=True)
+class ClaimStoreToken:
+    """Identity of the exact claims-store entry created for one claim."""
+
+    step_id: str
+    branch: str
+    agent: str
+    claimed_at: str
+
+
 @dataclass(frozen=True)
 class ClaimStepMetadata:
     """Lifecycle-owned metadata for a successfully claimed step."""
@@ -77,12 +88,14 @@ class ClaimResult:
         affinity_override: bool = False,
         affinity_warning_metadata: AffinityWarningMetadata | None = None,
         affinity_override_metadata: AffinityOverrideMetadata | None = None,
+        claim_store_token: ClaimStoreToken | None = None,
     ) -> None:
         self.affinity_warning = affinity_warning
         self.warning_message = warning_message
         self.affinity_override = affinity_override
         self.affinity_warning_metadata = affinity_warning_metadata
         self.affinity_override_metadata = affinity_override_metadata
+        self.claim_store_token = claim_store_token
 
     def __repr__(self) -> str:
         return (
@@ -90,7 +103,8 @@ class ClaimResult:
             f"warning_message={self.warning_message!r}, "
             f"affinity_override={self.affinity_override}, "
             f"affinity_warning_metadata={self.affinity_warning_metadata!r}, "
-            f"affinity_override_metadata={self.affinity_override_metadata!r})"
+            f"affinity_override_metadata={self.affinity_override_metadata!r}, "
+            f"claim_store_token={self.claim_store_token!r})"
         )
 
 

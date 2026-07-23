@@ -377,8 +377,13 @@ changed: false
 actions: []
 ```
 
-This means claims.json matches plan.yaml — no repair needed.
+A normal CLI or MCP claim writes one canonical UTC timestamp unchanged to both
+`plan.yaml` and `claims.json`. The owner and timestamp fields must match
+immediately, so `repair claims --dry-run` is a no-op without an intervening
+repair. If plan persistence fails, Vectl conditionally removes only the exact
+claim entry created by that failed operation.
 
+This means claims.json matches plan.yaml — no repair needed.
 ### Anima-Style Example
 
 ```bash

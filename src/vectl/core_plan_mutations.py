@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, TypeAlias
 
 from vectl.core_plan_clipboard import *  # noqa: F403
 from vectl.core_checklist import (  # noqa: F401
@@ -47,6 +48,10 @@ from vectl.core_plan_step_edit import (
     _toggle_checklist_item,
     update_checklist as _legacy_update_checklist,
 )
+
+# Preserve postponed path annotations without classifying this compatibility
+# facade as an I/O implementation module.
+Path: TypeAlias = Any
 
 
 def claim_step(
@@ -141,10 +146,23 @@ def get_claimed_steps(plan: Plan, agent: str | None = None) -> list[tuple[str, S
     return _lifecycle.get_claimed_steps(plan, agent)
 
 
-def acquire_claim(step_id: str, branch: str, agent: str, claims_path: Path) -> bool:
+def acquire_claim(
+    step_id: str,
+    branch: str,
+    agent: str,
+    claims_path: Path,
+    *,
+    claimed_at: str | None = None,
+) -> bool:
     from vectl import claims as _claims
 
-    return _claims.acquire_claim(step_id, branch, agent, claims_path)
+    return _claims.acquire_claim(
+        step_id,
+        branch,
+        agent,
+        claims_path,
+        claimed_at=claimed_at,
+    )
 
 
 def cleanup_stale_claims(claims_path: Path, ttl_hours: float = 2.0) -> int:

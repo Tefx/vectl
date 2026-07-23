@@ -14,11 +14,11 @@ from rich.console import Console
 from typer.testing import CliRunner
 
 from vectl import __version__
-from vectl.claims import ClaimEntry, load_claims, save_claims
+from vectl.claims import ClaimEntry, load_claims, repair_claims, save_claims
 from vectl.cli import app
 from vectl.io import load_plan_definition, save_plan
 from vectl.io import load_plan_definition as load_plan
-from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, Step, StepStatus
+from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, PlanError, Step, StepStatus
 from vectl.plan_path import resolve_claims_path
 
 runner = CliRunner()
@@ -924,6 +924,32 @@ class TestClaim:
         step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.CLAIMED
         assert step.claimed_by == "bot-1"
+
+        claims_path = resolve_claims_path(plan_file)
+        stored = next(iter(load_claims(claims_path).values()))
+        assert stored.claimed_at == step.claimed_at
+        repair = repair_claims(plan, plan_file, claims_path, dry_run=True)
+        assert repair.changed is False
+        assert repair.actions == ()
+
+    def test_claim_releases_created_claim_when_plan_save_fails(
+        self, plan_file: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def _fail_save(*args: object, **kwargs: object) -> None:
+            raise PlanError("simulated plan save failure")
+
+        monkeypatch.setattr("vectl.cli_plan_lifecycle_commands._save_plan", _fail_save)
+
+        result = runner.invoke(
+            app,
+            ["claim", "s1", "--agent", "bot-1", "--plan", str(plan_file)],
+        )
+
+        assert result.exit_code == 1
+        assert isinstance(result.exception, PlanError)
+        assert load_claims(resolve_claims_path(plan_file)) == {}
+        plan, _ = load_plan(plan_file)
+        assert _must_find_step(plan, "s1").status == StepStatus.PENDING
 
     def test_claim_reject_with_existing_claim_shows_diagnostics(self, plan_file: Path) -> None:
         """Claim rejection due to existing claim shows rich diagnostics."""

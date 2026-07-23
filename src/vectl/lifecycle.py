@@ -12,10 +12,18 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, TypeAlias
 
-# Path is kept as a local typing alias so postponed public annotations remain
-# source-compatible without importing pathlib, which invar classifies as Shell I/O.
-Path: TypeAlias = Any
-
+from vectl.lifecycle_metadata import (
+    AffinityOverrideMetadata,
+    AffinityWarningMetadata,
+    ClaimConflictError,
+    ClaimConflictMetadata as ClaimConflictMetadata,
+    ClaimResult,
+    ClaimStepMetadata as ClaimStepMetadata,
+    ClaimStoreToken,
+    claim_affinity_metadata as claim_affinity_metadata,
+    claim_conflict_metadata as claim_conflict_metadata,
+    claim_step_metadata as claim_step_metadata,
+)
 from vectl.models import (
     AffinityError,
     AffinityMode,
@@ -28,17 +36,10 @@ from vectl.models import (
     StepStatus,
     format_step_selector,
 )
-from vectl.lifecycle_metadata import (
-    claim_step_metadata,
-    claim_conflict_metadata,
-    claim_affinity_metadata,
-    ClaimStepMetadata,
-    ClaimResult,
-    ClaimConflictMetadata,
-    ClaimConflictError,
-    AffinityWarningMetadata,
-    AffinityOverrideMetadata,
-)
+
+# Path is kept as a local typing alias so postponed public annotations remain
+# source-compatible without importing pathlib, which invar classifies as Shell I/O.
+Path: TypeAlias = Any
 
 _logger = logging.getLogger(__name__)
 
@@ -121,12 +122,18 @@ def claim_step(
         result=result,
     )
 
+    claimed_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     if claims_path is not None:
-        _acquire_claim_record(step_id=step_id, agent_name=agent_name, claims_path=claims_path)
+        result.claim_store_token = _acquire_claim_record(
+            step_id=step_id,
+            agent_name=agent_name,
+            claimed_at=claimed_at,
+            claims_path=claims_path,
+        )
 
     step.status = StepStatus.CLAIMED
     step.claimed_by = agent_name
-    step.claimed_at = datetime.now(timezone.utc).isoformat()
+    step.claimed_at = claimed_at
 
     if phase.status in (PhaseStatus.PENDING, PhaseStatus.LOCKED):
         phase.status = PhaseStatus.IN_PROGRESS
@@ -182,7 +189,13 @@ def _apply_claim_affinity(
     )
 
 
-def _acquire_claim_record(*, step_id: str, agent_name: str, claims_path: Path) -> None:
+def _acquire_claim_record(
+    *,
+    step_id: str,
+    agent_name: str,
+    claimed_at: str,
+    claims_path: Path,
+) -> ClaimStoreToken:
     acquire_claim, cleanup_stale_claims, get_current_branch, _, get_claim_info = _claims_api()
     branch = get_current_branch()
     existing = get_claim_info(step_id, branch, claims_path)
@@ -194,9 +207,54 @@ def _acquire_claim_record(*, step_id: str, agent_name: str, claims_path: Path) -
             claimed_at=existing.claimed_at,
         )
     cleanup_stale_claims(claims_path)
-    acquired = acquire_claim(step_id, branch, agent_name, claims_path)
+    acquired = acquire_claim(
+        step_id,
+        branch,
+        agent_name,
+        claims_path,
+        claimed_at=claimed_at,
+    )
     if not acquired:
         raise PlanError(f"Step '{step_id}' is already claimed on branch '{branch}'")
+    return ClaimStoreToken(
+        step_id=step_id,
+        branch=branch,
+        agent=agent_name,
+        claimed_at=claimed_at,
+    )
+
+
+def rollback_claim_record(result: ClaimResult, claims_path: Path) -> bool:
+    """Compensate a failed plan save without deleting a replacement claim."""
+    token = result.claim_store_token
+    if token is None:
+        return False
+
+    from vectl.claims import release_claim_if_matches
+
+    try:
+        released = release_claim_if_matches(
+            token.step_id,
+            token.branch,
+            token.agent,
+            token.claimed_at,
+            claims_path,
+        )
+    except Exception:
+        _logger.exception(
+            "Failed to compensate claim '%s' on branch '%s' after plan save failure",
+            token.step_id,
+            token.branch,
+        )
+        return False
+
+    if not released:
+        _logger.warning(
+            "Skipped compensation for claim '%s' on branch '%s': stored claim no longer matches",
+            token.step_id,
+            token.branch,
+        )
+    return released
 
 
 def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None) -> Plan:

@@ -121431,7 +121431,7 @@ phases:
       mutation; pre-existing untracked `.pi/` remained untouched.'
 - id: atomic-plan-mutation-batch
   name: P1 Atomic Multi-Operation Plan Mutation
-  status: in_progress
+  status: done
   gate: Implementation synchronously delivers the RFC-governed MCP source, focused
     developer tests, tool docstring, README, and DESIGN in one rollback unit; the
     behavior-preserving follow-up removes the implementation-introduced file-size
@@ -121663,7 +121663,7 @@ phases:
       md and not mm, (mr, md, mm)"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]},{"check_id":"changed_invar_guard","command":["uvx","invar-tools","guard","--changed"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]}],"claims":[{"claim_id":"REQ-APMB-INPUT-SHAPE","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-ORDERED-ATOMICITY","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-SAVE-RECEIPT","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-CAS-REPLAY","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-SINGLE-ACTION-COMPAT","check_id":"existing_mcp_io_regression"},{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"changed_invar_guard"},{"claim_id":"REQ-APMB-DOC-SYNC","check_id":"atomic_mutation_docs_contract"}],"unresolved":[],"acceptance_authorizations":[]}'
   - id: verify-atomic-mutation-mcp-seam
     name: Independently verify RFC conformance and real MCP atomicity
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -121797,6 +121797,83 @@ phases:
     agent: integration-verifier
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-26T09:15:52.635649Z'
+    done_at: '2026-07-26T09:23:31.064546+00:00'
+    evidence: 'Independent terminal verification:
+
+      - Immutable target: 9a61a0355269ac9ddb1dd37d3f66f0707c7e42e8
+
+      - Bound Plan SHA-256: 2d7b1e4e58840ba5f0fb554524ec6f5bb51b3bd152ee98dfbaf55929270603d9
+
+      - Production semantic validator: CONFORMANT; semantic_completion_admissible=true;
+      verifier `integration-verifier`
+
+      - Authorized evidence artifact: `/tmp/larva-agent-artifacts/integration-verifier_report.md#sha256=095db590d4dfe951161cc6b53d574cd4d35530184fbc7025d9e14c3718c0a813#bytes=55936#mode=0600`
+      (hash, size, and mode independently confirmed)
+
+      - 7/7 REQ-APMB requirements proven; L3 registered stdio routing/non-racy scenarios;
+      L2 deterministic competing-writer CAS proof; full Invar scan green with errors=0;
+      repository remained clean.
+
+
+      Semantic receipt (unchanged):
+
+      {"schema_version":"vectl.verifier.semantic.v1","verifier_id":"integration-verifier","step_id":"verify-atomic-mutation-mcp-seam","scope":["RFC
+      public input, explicit-ID, error, success, compatibility, documentation, and
+      non-goal requirements","MCP-shell/core/validation/persistence ownership and
+      absence of a duplicate action path","registered stdio MCP ordered explicit-ID
+      success and exact saved hash","request/final-validation/CAS/replay failures
+      preserve authoritative Plan, claims, lock, and Git state","focused and existing
+      regression checks plus repo-wide Invar readiness"],"headline":"PASS","blocking_status":"CLOSED","proof_gap_status":"NONE","verdict":"PASS","gate_open_allowed":true,"orchestrator_action_hint":"COMPLETE","completion_authority":"ORCHESTRATOR_ONLY","blockers":[],"warnings":[],"notes":["Repository
+      final state remained HEAD 9a61a0355269ac9ddb1dd37d3f66f0707c7e42e8, plan SHA-256
+      2d7b1e4e58840ba5f0fb554524ec6f5bb51b3bd152ee98dfbaf55929270603d9, and clean
+      porcelain status.","Registered stdio probes used an isolated Git-backed fixture.
+      The focused deterministic CAS case used the real persistence boundary and is
+      classified L2; public routing, success, replay, and non-racy failures are L3.","Full
+      Invar scan completed green: ok=true, errors=0, review_suggested=false."],"evidence_refs":["/tmp/larva-agent-artifacts/integration-verifier_report.md#sha256=095db590d4dfe951161cc6b53d574cd4d35530184fbc7025d9e14c3718c0a813#bytes=55936#mode=0600"],"requirement_coverage":[{"requirement_id":"REQ-APMB-INPUT-SHAPE","source_ref":"plan.yaml#verify-atomic-mutation-mcp-seam
+      observation_ledger","status":"PROVEN","evidence_refs":["artifact:L3 registered
+      schema and request-indexed failure","command:focused-batch-tests"]},{"requirement_id":"REQ-APMB-ORDERED-ATOMICITY","source_ref":"plan.yaml#verify-atomic-mutation-mcp-seam
+      observation_ledger","status":"PROVEN","evidence_refs":["artifact:L3 ordered
+      success and unchanged failure states","command:focused-batch-tests"]},{"requirement_id":"REQ-APMB-SAVE-RECEIPT","source_ref":"plan.yaml#verify-atomic-mutation-mcp-seam
+      observation_ledger","status":"PROVEN","evidence_refs":["artifact:L3 exact saved-byte
+      plan_hash and one commit increment","command:focused-batch-tests"]},{"requirement_id":"REQ-APMB-CAS-REPLAY","source_ref":"plan.yaml#verify-atomic-mutation-mcp-seam
+      observation_ledger","status":"PROVEN","evidence_refs":["artifact:L2 deterministic
+      competing-writer CAS proof","artifact:L3 explicit-ID replay state preservation","command:focused-cas-test"]},{"requirement_id":"REQ-APMB-SINGLE-ACTION-COMPAT","source_ref":"plan.yaml#verify-atomic-mutation-mcp-seam
+      observation_ledger","status":"PROVEN","evidence_refs":["artifact:L3 registered
+      single-action response","command:existing-mcp-io-tests"]},{"requirement_id":"REQ-APMB-SCOPE-BOUNDARY","source_ref":"plan.yaml#verify-atomic-mutation-mcp-seam
+      observation_ledger","status":"PROVEN","evidence_refs":["artifact:static ownership
+      inspection","command:invar-full-scan"]},{"requirement_id":"REQ-APMB-DOC-SYNC","source_ref":"plan.yaml#verify-atomic-mutation-mcp-seam
+      observation_ledger","status":"PROVEN","evidence_refs":["artifact:README DESIGN
+      and tool-docstring inspection"]}],"specialist_receipt":{"mode":"Full Audit","commands":[{"command":["uv","run","vectl","mcp"],"cwd":"/tmp/apmb-l3-isolated-git-fixture","process":{"kind":"long_running","state_during_probe":"RUNNING","pid":71395,"bound_endpoint":"stdio
+      JSON-RPC","eventual_exit_code":0,"termination":"stdin_closed_after_substantive
+      initialize, tools/list, and tools/call probes"},"evidence_refs":["artifact:Registered
+      MCP lifecycle","artifact:L3 public routing matrix","artifact:MCP process termination"]},{"command":["uv","run","pytest","tests/test_mcp_mutate_batch.py","-q"],"cwd":"/Users/tefx/Projects/vectl","process":{"kind":"one_shot","state_during_probe":"COMPLETED","eventual_exit_code":0,"termination":"17
+      passed in 3.10s"},"evidence_refs":["artifact:L1 focused and regression commands"]},{"command":["uv","run","pytest","tests/test_mcp.py","tests/test_io.py","-q"],"cwd":"/Users/tefx/Projects/vectl","process":{"kind":"one_shot","state_during_probe":"COMPLETED","eventual_exit_code":0,"termination":"218
+      passed in 12.86s"},"evidence_refs":["artifact:L1 focused and regression commands"]},{"command":["uv","run","pytest","tests/test_mcp_mutate_batch.py::test_cas_conflict_preserves_competing_writer_without_batch_commit","-q"],"cwd":"/Users/tefx/Projects/vectl","process":{"kind":"one_shot","state_during_probe":"COMPLETED","eventual_exit_code":0,"termination":"1
+      passed in 1.03s"},"evidence_refs":["artifact:L2 deterministic CAS competing-writer
+      proof"]},{"command":["uvx","invar-tools","guard","--all"],"cwd":"/Users/tefx/Projects/vectl","process":{"kind":"one_shot","state_during_probe":"COMPLETED","eventual_exit_code":0,"termination":"full
+      scan complete: ok=true, errors=0, warnings=26, infos=7, files_checked=58"},"evidence_refs":["artifact:L1
+      focused and regression commands","invar:grd_2a499cc4c79749a49610600c"]}],"evidence_levels":{"L0":"PASS","L1":"PASS","L2":"PASS","L3":"PASS"},"protocols":[{"protocol_id":"P1","status":"PASS","evidence_refs":["artifact:L1
+      focused and regression commands","artifact:L3 public routing matrix"]},{"protocol_id":"P2","status":"PASS","evidence_refs":["artifact:L2
+      deterministic CAS competing-writer proof","artifact:L3 public routing matrix"]},{"protocol_id":"P3","status":"PASS","evidence_refs":["artifact:L3
+      request failure and final-validation failure"]},{"protocol_id":"P5","status":"PASS","evidence_refs":["artifact:Registered
+      MCP lifecycle","artifact:L3 public routing matrix"]},{"protocol_id":"P6","status":"PASS","evidence_refs":["artifact:L2
+      deterministic CAS competing-writer proof","artifact:L3 public routing matrix"]},{"protocol_id":"P8","status":"PASS","evidence_refs":["artifact:Registered
+      MCP lifecycle"]},{"protocol_id":"P9","status":"PASS","evidence_refs":["artifact:MCP
+      process termination","artifact:L3 public routing matrix"]}],"behavioral_proof_register":[{"proof_id":"APMB-1","claim":"The
+      registered stdio server exposes exactly one vectl_mutate tool with requests
+      in its public schema.","status":"PROVEN","evidence_refs":["artifact:Registered
+      MCP lifecycle"]},{"proof_id":"APMB-2","claim":"A public ordered explicit-ID
+      batch returns ordered outcomes and a plan_hash equal to the saved bytes after
+      one Git commit increment.","status":"PROVEN","evidence_refs":["artifact:L3 public
+      routing matrix"]},{"proof_id":"APMB-3","claim":"Public request-stage, final-validation,
+      and replay failures preserve authoritative Plan, claims, and Git state.","status":"PROVEN","evidence_refs":["artifact:L3
+      public routing matrix"]},{"proof_id":"APMB-4","claim":"A deterministic competing
+      writer between load and real CAS save remains authoritative and produces no
+      batch commit.","status":"PROVEN","evidence_refs":["artifact:L2 deterministic
+      CAS competing-writer proof"]},{"proof_id":"APMB-5","claim":"Focused, existing
+      MCP/I/O regressions, and repository-wide Invar readiness pass on immutable integrated
+      bytes.","status":"PROVEN","evidence_refs":["artifact:L1 focused and regression
+      commands"]}]}}'
   - id: restore-atomic-mutation-invar-budget
     name: Restore atomic mutation Invar budget by behavior-preserving module simplification
     status: done

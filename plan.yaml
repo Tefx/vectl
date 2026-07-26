@@ -121797,7 +121797,7 @@ phases:
     agent: integration-verifier
   - id: restore-atomic-mutation-invar-budget
     name: Restore atomic mutation Invar budget by behavior-preserving module simplification
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - Remove the implementation-introduced `# @invar:allow file_size` line from\
@@ -121924,3 +121924,5 @@ phases:
     depends_on:
     - implement-and-test-atomic-mutation-batch
     agent: python-refactor-master
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-07-26T09:01:14.669781Z'

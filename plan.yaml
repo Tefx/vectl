@@ -121434,8 +121434,9 @@ phases:
   status: pending
   gate: Every RFC acceptance criterion is covered by implementation, synchronized
     documentation, independent spec and real-MCP evidence, and a current passing `uvx
-    invar-tools guard --all`; any focused-test xfail/skip/expected-red residue, CAS/atomicity
-    gap, response incompatibility, or unresolved review finding blocks closure.
+    invar-tools guard --all`; any focused-test failure, xfail/skip residue, CAS/atomicity
+    gap, response incompatibility, or unresolved review finding blocks closure. No
+    plan-level expected-red lifecycle is admitted.
   steps:
   - id: implement-and-test-atomic-mutation-batch
     name: Implement atomic batch mutation with test-first contract coverage

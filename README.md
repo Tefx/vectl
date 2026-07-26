@@ -308,12 +308,17 @@ needed, rejects stale receipt revisions, and applies only valid item-id/revision
 requests.
 
 ## Lock Consistency
-
 Lock status is automatically maintained — agents do not need to manage it. After any write operation (`claim`, `complete`, `mutate`, etc.), vectl recalculates lock status automatically. When a recalculation changes a phase's lock state, vectl emits an informational message:
 
 ```
 [vectl] Lock status updated: phase-a (pending)
 ```
+
+### Atomic MCP mutation batches
+
+The MCP `vectl_mutate` tool accepts either its unchanged single-action form or a non-empty `requests` list; callers must select exactly one mode. Batch create requests require an **explicit ID** (`phase_id`, `step_id`, or each `add-steps` entry's `id`) so later requests can use those IDs and replay cannot create suffixed duplicates.
+
+Requests run in order against one deep working copy. A request error is reported with its zero-based index, and the all-or-nothing pre-save boundary discards the working copy when any request or final validation fails. Success performs one lock recalculation and one CAS save, then returns ordered request results, `plan_hash`, and any lock notice. Plan-file persistence remains authoritative; the following Git commit attempt is best effort and has no transactional rollback guarantee. This batch form is MCP-only and does not add CLI parity.
 
 If you edit `plan.yaml` directly (outside of vectl commands), run `uvx vectl recalc-lock` to manually diagnose and repair any lock inconsistencies.
 

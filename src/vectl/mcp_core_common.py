@@ -143,29 +143,21 @@ def _load() -> Result[tuple[Plan, str], str]:
     return load_plan_definition(plan_path)
 
 
-def _save_plan(
+def _save_plan_receipt(
     plan: Plan,
     expected_def_hash: str,
     commit_message: str,
     *,
     recalc_locks: bool = True,
-) -> Result[str, str]:
-    """Save plan.yaml with CAS semantics.
-
-    Args:
-        plan: The plan to persist.
-        expected_def_hash: CAS hash for plan.yaml.
-        commit_message: Git commit message for best-effort plan commit.
-        recalc_locks: Recompute phase lock status before save and include
-            lock-change notice in return value.
-    """
+) -> Result[tuple[str, str], str]:
+    """Save plan.yaml with CAS semantics and return its hash and lock notice."""
     changed: list[str] = []
     if recalc_locks:
         changed = recalc_lock_status(plan)
 
     plan_path = _plan_path()
     try:
-        save_plan(
+        new_plan_hash = save_plan(
             plan,
             plan_path,
             expected_hash=expected_def_hash,
@@ -186,7 +178,24 @@ def _save_plan(
 
         logging.warning("Backup failed", exc_info=True)
 
-    return format_lock_changes(changed, plan)
+    return new_plan_hash, format_lock_changes(changed, plan)
+
+
+def _save_plan(
+    plan: Plan,
+    expected_def_hash: str,
+    commit_message: str,
+    *,
+    recalc_locks: bool = True,
+) -> Result[str, str]:
+    """Save plan.yaml while preserving the existing lock-notice-only response."""
+    _, lock_notice = _save_plan_receipt(
+        plan,
+        expected_def_hash,
+        commit_message,
+        recalc_locks=recalc_locks,
+    )
+    return lock_notice
 
 
 # @shell_complexity: Step formatting preserves existing state, lock, expected-red, claim, and affinity display semantics.

@@ -51,13 +51,16 @@ Slug auto-generation: kebab-case from name. Collision resolved by appending `-2`
 - **Display order**: Within DAG constraints, then alphabetical.
 
 ## CAS (Compare-And-Swap) Safety
-
 All write operations use CAS to prevent concurrent modification:
 
 1. Load plan → get file hash
 2. Modify in memory
 3. Save with expected hash → atomic write (temp file + rename)
 4. If hash mismatch → `CASConflictError`, retry
+
+For MCP `vectl_mutate` batches, the shell deep-copies the loaded Plan into one working copy and applies ordered requests through the same action dispatcher used by single-action mode. It recalculates locks once, performs canonical model and structural final validation, and crosses persistence through a single save with the original CAS hash. The save receipt supplies the exact persisted hash and the precomputed lock notice.
+
+The successful Plan write is the atomic batch boundary. The save path then makes one best-effort Git commit attempt. Best-effort Git failure does not roll back `plan.yaml`, so Git history remains a secondary audit trail rather than part of the Plan transaction. Claims, CLI mutation commands, and external effects remain outside the batch.
 
 ## Architecture
 

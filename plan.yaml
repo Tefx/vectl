@@ -121432,11 +121432,15 @@ phases:
 - id: atomic-plan-mutation-batch
   name: P1 Atomic Multi-Operation Plan Mutation
   status: pending
-  gate: Every RFC acceptance criterion is covered by implementation, synchronized
-    documentation, independent spec and real-MCP evidence, and a current passing `uvx
-    invar-tools guard --all`; any focused-test failure, xfail/skip residue, CAS/atomicity
-    gap, response incompatibility, or unresolved review finding blocks closure. No
-    plan-level expected-red lifecycle is admitted.
+  gate: Implementation synchronously delivers the RFC-governed MCP source, focused
+    developer tests, tool docstring, README, and DESIGN in one rollback unit; terminal
+    independent verification proves all seven REQ-APMB requirements through source
+    and documentation inspection, real registered stdio MCP state transitions, focused
+    and existing regressions, and a current passing `uvx invar-tools guard --all`.
+    Any focused or repo-wide failure, collection error, xfail/skip residue, CAS or
+    atomicity gap, response incompatibility, documentation drift, duplicate mutation
+    path, unsafe fixture state, or unresolved phase-intersecting finding blocks closure.
+    No plan-level expected-red lifecycle is admitted.
   steps:
   - id: implement-and-test-atomic-mutation-batch
     name: Implement atomic batch mutation with synchronized tests and documentation

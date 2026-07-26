@@ -121439,7 +121439,7 @@ phases:
     plan-level expected-red lifecycle is admitted.
   steps:
   - id: implement-and-test-atomic-mutation-batch
-    name: Implement atomic batch mutation with test-first contract coverage
+    name: Implement atomic batch mutation with synchronized tests and documentation
     status: pending
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
@@ -121460,30 +121460,39 @@ phases:
       \ the private save-receipt helper in `src/vectl/mcp_core_common.py`; keep `_save_plan`\
       \ and all single-action response text compatible, expose the exact saved hash\
       \ and precomputed lock notice to batch mode, and preserve best-effort Git semantics.\n\
-      \nBoundary:\n- Owner: `python-senior`. Repository authority is limited to the\
-      \ two MCP shell modules and the focused developer test file. No Plan schema/version,\
+      - In the same repository change, update the `vectl_mutate` docstring, `README.md`\
+      \ near Lock Consistency, and `docs/DESIGN.md` CAS Safety. Document the batch\
+      \ shape, XOR rule, explicit IDs, ordered indexed results, all-or-nothing pre-save\
+      \ boundary, returned `plan_hash`, lock notice, deep working copy, final validation,\
+      \ one CAS save, unchanged single-action mode, and best-effort Git boundary.\
+      \ Do not claim Git transactional rollback or CLI parity, and do not create another\
+      \ documentation artifact or ADR.\n\nBoundary:\n- Owner: `python-senior`. Repository\
+      \ authority is one rollback unit limited to the two MCP shell modules, the focused\
+      \ developer test file, `README.md`, and `docs/DESIGN.md`. No Plan schema/version,\
       \ claims lifecycle, CLI batch surface, generic transaction abstraction, external\
-      \ dependency, symbolic cross-request reference, or Git durability change is\
-      \ authorized.\n- All Plan/claims/Git probes use isolated Git-backed fixtures.\
-      \ A command touching the repository's real `plan.yaml`, `.git/vectl/claims.json`,\
+      \ dependency, symbolic cross-request reference, RFC/ADR change, or Git durability\
+      \ change is authorized.\n- All Plan/claims/Git probes use isolated Git-backed\
+      \ fixtures. A command touching the repository's real `plan.yaml`, `.git/vectl/claims.json`,\
       \ or unrelated Git state is a hard stop.\n- Dispatch requires one admitted `vectl.worker.dispatch.v2`\
       \ envelope under the v2 worker markers; the worker returns only a linted `vectl.worker.execution.v2`\
-      \ receipt.\n\nAdmit:\n- Witnessed inputs: the committed RFC, current tracked\
-      \ source targets, `pyproject.toml`, and current MCP/IO regression tests. `tests/test_mcp_mutate_batch.py`\
-      \ is fixed by the RFC and is produced by this step/check through the developer-test\
-      \ binding below.\n- Plan-level expected-red applicability is explicitly none:\
-      \ `bindings.expected_red.items` and `closes_expected_red` remain empty because\
-      \ the same step owns test definition, implementation, and final green closure.\n\
-      - Evidence must include the transient pre-implementation failing command/fingerprint,\
+      \ receipt.\n\nAdmit:\n- Witnessed inputs: the committed RFC and ADR, current\
+      \ tracked source and documentation targets, `pyproject.toml`, and current MCP/IO\
+      \ regression tests. `tests/test_mcp_mutate_batch.py` is fixed by the RFC and\
+      \ is produced by this step/check through the developer-test binding below.\n\
+      - Plan-level expected-red applicability is explicitly none: `bindings.expected_red.items`\
+      \ and `closes_expected_red` remain empty because the same step owns test definition,\
+      \ implementation, synchronized documentation, and final green closure.\n- Evidence\
+      \ must include the transient pre-implementation failing command/fingerprint,\
       \ the final green focused command with no failure/skip/xfail residue, existing\
-      \ MCP/IO regression output, changed-file inventory, and exact confirmation that\
-      \ failed batches leave Plan bytes, claims bytes, lock statuses, and Git HEAD\
-      \ unchanged.\n\nRecovery:\n- Roll back by reverting this step's repository commit\
-      \ before release. On unknown fixture leakage, partial real Plan/claims/Git state,\
-      \ incorrect RFC test authority, or an unsafe CAS replay, stop without retry,\
+      \ MCP/IO regression output, the documentation artifact check, changed-file inventory,\
+      \ and exact confirmation that failed batches leave Plan bytes, claims bytes,\
+      \ lock statuses, and Git HEAD unchanged.\n\nRecovery:\n- Roll back by reverting\
+      \ this step's repository commit before release. On unknown fixture leakage,\
+      \ partial real Plan/claims/Git state, incorrect RFC test authority, documentation\
+      \ drift from observed behavior, or an unsafe CAS replay, stop without retry,\
       \ preserve raw evidence, and hand reconciliation to the orchestrator; do not\
-      \ rewrite tests to fit implementation.\n\n<vectl_step_policy>\n{\n  \"schema_version\"\
-      : \"vectl.step.policy.v2\",\n  \"step_id\": \"atomic-plan-mutation-batch.implement-and-test-atomic-mutation-batch\"\
+      \ rewrite tests or the RFC to fit implementation.\n\n<vectl_step_policy>\n{\n\
+      \  \"schema_version\": \"vectl.step.policy.v2\",\n  \"step_id\": \"atomic-plan-mutation-batch.implement-and-test-atomic-mutation-batch\"\
       ,\n  \"risk_tier\": \"R2\",\n  \"risk_reasons\": [\n    \"public MCP input and\
       \ response compatibility\",\n    \"plan.yaml CAS persistence and best-effort\
       \ Git boundary\",\n    \"ordered multi-operation all-or-nothing semantics\"\n\
@@ -121492,7 +121501,7 @@ phases:
       : \"REQ-APMB-INPUT-SHAPE\",\n      \"atom\": \"single-action and batch inputs\
       \ obey the RFC XOR, field, explicit-ID, and indexed-error contract\",\n    \
       \  \"modality\": \"interface\",\n      \"seam\": \"static\",\n      \"check_id\"\
-      : \"focused_batch_mutation_contract\",\n      \"independent_step\": \"atomic-plan-mutation-batch.review-atomic-mutation-conformance\"\
+      : \"focused_batch_mutation_contract\",\n      \"independent_step\": \"atomic-plan-mutation-batch.verify-atomic-mutation-mcp-seam\"\
       \n    },\n    {\n      \"requirement_id\": \"REQ-APMB-ORDERED-ATOMICITY\",\n\
       \      \"atom\": \"ordered requests become one visible Plan mutation or leave\
       \ no batch state\",\n      \"modality\": \"runtime\",\n      \"seam\": \"real\"\
@@ -121517,7 +121526,12 @@ phases:
       : \"the implementation reuses existing mutation and persistence owners without\
       \ a parallel transaction layer\",\n      \"modality\": \"architecture\",\n \
       \     \"seam\": \"static\",\n      \"check_id\": \"changed_invar_guard\",\n\
-      \      \"independent_step\": \"atomic-plan-mutation-batch.review-atomic-mutation-conformance\"\
+      \      \"independent_step\": \"atomic-plan-mutation-batch.verify-atomic-mutation-mcp-seam\"\
+      \n    },\n    {\n      \"requirement_id\": \"REQ-APMB-DOC-SYNC\",\n      \"\
+      atom\": \"tool documentation, README, and DESIGN state the implemented batch\
+      \ contract without overstating Git durability or CLI scope\",\n      \"modality\"\
+      : \"artifact\",\n      \"seam\": \"static\",\n      \"check_id\": \"atomic_mutation_docs_contract\"\
+      ,\n      \"independent_step\": \"atomic-plan-mutation-batch.verify-atomic-mutation-mcp-seam\"\
       \n    }\n  ],\n  \"test_authority\": {\n    \"developer_test_globs\": [\n  \
       \    \"tests/test_mcp_mutate_batch.py\",\n      \"tests/test_mcp.py\",\n   \
       \   \"tests/test_io.py\"\n    ],\n    \"acceptance_test_paths\": [],\n    \"\
@@ -121526,11 +121540,12 @@ phases:
       schema_version: intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
       profile: generic\nscope:\n  allowed_paths:\n    - src/vectl/mcp_core_mutation_tools.py\n\
       \    - src/vectl/mcp_core_common.py\n    - tests/test_mcp_mutate_batch.py\n\
-      \  blocked_paths:\n    - plan.yaml\n    - README.md\n    - docs/DESIGN.md\n\
-      \    - src/vectl/core/**\n    - src/vectl/io.py\n  ignored_runtime_paths: [.git/,\
-      \ .vectl/, .agent/, .venv/]\nclaims:\n  - REQ-APMB-INPUT-SHAPE\n  - REQ-APMB-ORDERED-ATOMICITY\n\
+      \    - README.md\n    - docs/DESIGN.md\n  blocked_paths:\n    - plan.yaml\n\
+      \    - src/vectl/core/**\n    - src/vectl/io.py\n    - docs/RFC-atomic-plan-mutation-batch.md\n\
+      \    - docs/ADR-unified-state.md\n  ignored_runtime_paths: [.git/, .vectl/,\
+      \ .agent/, .venv/]\nclaims:\n  - REQ-APMB-INPUT-SHAPE\n  - REQ-APMB-ORDERED-ATOMICITY\n\
       \  - REQ-APMB-SAVE-RECEIPT\n  - REQ-APMB-CAS-REPLAY\n  - REQ-APMB-SINGLE-ACTION-COMPAT\n\
-      \  - REQ-APMB-SCOPE-BOUNDARY\nchecks:\n  - id: focused_batch_mutation_contract\n\
+      \  - REQ-APMB-SCOPE-BOUNDARY\n  - REQ-APMB-DOC-SYNC\nchecks:\n  - id: focused_batch_mutation_contract\n\
       \    run:\n      command: [uv, run, pytest, tests/test_mcp_mutate_batch.py,\
       \ -q]\n      timeout_seconds: 600\n    evidence:\n      mode: command_outcome\n\
       \      path_bindings:\n        - {path: docs/RFC-atomic-plan-mutation-batch.md,\
@@ -121555,20 +121570,38 @@ phases:
       \ green\n      exit_codes: [0]\n      stdout_or_stderr:\n        contains_all:\
       \ [{literal: passed}]\n        contains_any: []\n        forbids: [{literal:\
       \ failed}, {literal: ERROR collecting}]\n    proves:\n      - REQ-APMB-SINGLE-ACTION-COMPAT\n\
-      \      - REQ-APMB-SAVE-RECEIPT\n  - id: changed_invar_guard\n    run:\n    \
-      \  command: [uvx, invar-tools, guard, --changed]\n      timeout_seconds: 1200\n\
-      \    evidence:\n      mode: command_outcome\n      path_bindings:\n        -\
-      \ {path: pyproject.toml, access: read, availability: current}\n      test_bindings:\
-      \ []\n    expect:\n      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\n\
-      \        contains_all: []\n        contains_any: []\n        forbids: []\n \
-      \   proves:\n      - REQ-APMB-SCOPE-BOUNDARY\nbindings:\n  expected_red:\n \
-      \   items: []\n  closes_expected_red: []\n</intent_closure_contract>"
+      \      - REQ-APMB-SAVE-RECEIPT\n  - id: atomic_mutation_docs_contract\n    run:\n\
+      \      command: [uv, run, python, -c, \"from pathlib import Path; r=Path('README.md').read_text().lower();\
+      \ d=Path('docs/DESIGN.md').read_text().lower(); m=Path('src/vectl/mcp_core_mutation_tools.py').read_text().lower();\
+      \ mr=[x for x in ['vectl_mutate','requests','explicit id','all-or-nothing','plan_hash']\
+      \ if x not in r]; md=[x for x in ['working copy','final validation','cas','single\
+      \ save','best-effort git'] if x not in d]; mm=[x for x in ['requests','explicit\
+      \ id','request index','plan_hash'] if x not in m]; assert not mr and not md\
+      \ and not mm, (mr, md, mm)\"]\n      timeout_seconds: 120\n    evidence:\n \
+      \     mode: command_outcome\n      path_bindings:\n        - {path: docs/RFC-atomic-plan-mutation-batch.md,\
+      \ access: read, availability: current}\n        - {path: README.md, access:\
+      \ read, availability: current}\n        - {path: docs/DESIGN.md, access: read,\
+      \ availability: current}\n        - {path: src/vectl/mcp_core_mutation_tools.py,\
+      \ access: read, availability: current}\n        - {path: docs/ADR-unified-state.md,\
+      \ access: read, availability: current}\n      test_bindings: []\n    expect:\n\
+      \      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\n    \
+      \    contains_all: []\n        contains_any: []\n        forbids: [{literal:\
+      \ Traceback}]\n    proves:\n      - REQ-APMB-DOC-SYNC\n  - id: changed_invar_guard\n\
+      \    run:\n      command: [uvx, invar-tools, guard, --changed]\n      timeout_seconds:\
+      \ 1200\n    evidence:\n      mode: command_outcome\n      path_bindings:\n \
+      \       - {path: pyproject.toml, access: read, availability: current}\n    \
+      \  test_bindings: []\n    expect:\n      outcome: green\n      exit_codes: [0]\n\
+      \      stdout_or_stderr:\n        contains_all: []\n        contains_any: []\n\
+      \        forbids: []\n    proves:\n      - REQ-APMB-SCOPE-BOUNDARY\nbindings:\n\
+      \  expected_red:\n    items: []\n  closes_expected_red: []\n</intent_closure_contract>"
     verification: Run the installed Intent-Closure v2 lint/preflight for this exact
       step. Record the transient test-first failing run as same-step development evidence,
       then pass `uv run pytest tests/test_mcp_mutate_batch.py -q`, `uv run pytest
-      tests/test_mcp.py tests/test_io.py -q`, and `uvx invar-tools guard --changed`.
-      Completion evidence must include commands, exits, decisive excerpts, changed
-      paths, and zero residual failure/xfail/skip or plan-level expected-red debt.
+      tests/test_mcp.py tests/test_io.py -q`, the exact `atomic_mutation_docs_contract`
+      command, and `uvx invar-tools guard --changed`. Completion evidence must include
+      commands, exits, decisive excerpts, changed paths and sections, exact unchanged-state
+      assertions for failed batches, and zero residual failure/xfail/skip or plan-level
+      expected-red debt.
     refs:
     - docs/RFC-atomic-plan-mutation-batch.md
     - src/vectl/mcp_core_mutation_tools.py
@@ -121577,6 +121610,8 @@ phases:
     - tests/test_io.py
     - pyproject.toml
     - docs/ADR-unified-state.md
+    - README.md
+    - docs/DESIGN.md
     agent: python-senior
   - id: sync-atomic-mutation-docs
     name: Synchronize README and DESIGN with the implemented batch contract

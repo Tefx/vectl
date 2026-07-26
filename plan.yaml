@@ -121429,3 +121429,10 @@ phases:
 
       - Repository remained at ae3fd5a2e347a8624316d228f6b094863eec9370 with no tracked
       mutation; pre-existing untracked `.pi/` remained untouched.'
+- id: atomic-plan-mutation-batch
+  name: P1 Atomic Multi-Operation Plan Mutation
+  status: pending
+  gate: Every RFC acceptance criterion is covered by implementation, synchronized
+    documentation, independent spec and real-MCP evidence, and a current passing `uvx
+    invar-tools guard --all`; any focused-test xfail/skip/expected-red residue, CAS/atomicity
+    gap, response incompatibility, or unresolved review finding blocks closure.

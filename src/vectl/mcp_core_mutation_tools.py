@@ -6,64 +6,27 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 from __future__ import annotations
 
 from vectl.mcp_core_common import *
+from vectl.mcp_mutation_contracts import (
+    BATCH_FIELDS,
+    BATCH_REQUIRED_FIELDS,
+    BATCH_STEP_FIELDS,
+    BATCH_STEP_REQUIRED_FIELDS,
+    BatchMutationRequest,
+    MutationAction,
+    UNKNOWN_FIELD_HINTS,
+)
 
 # ---------------------------------------------------------------------------
 # vectl_mutate
 # ---------------------------------------------------------------------------
 
 
-_MUTATION_ACTIONS = frozenset(
-    {
-        "add-step",
-        "add-steps",
-        "edit-step",
-        "remove-step",
-        "move-step",
-        "add-phase",
-        "edit-phase",
-        "edit-plan",
-    }
-)
-_BATCH_FIELDS = {
-    "add-phase": frozenset({"action", "phase_id", "name", "depends_on", "gate"}),
-    "add-step": frozenset(
-        {
-            "action",
-            "phase_id",
-            "step_id",
-            "name",
-            "description",
-            "depends_on",
-            "verification",
-            "evidence_template",
-            "status",
-            "evidence",
-            "skipped_reason",
-            "agent",
-        }
-    ),
-    "add-steps": frozenset({"action", "phase_id", "steps"}),
-    "edit-phase": frozenset({"action", "phase_id", "name", "context", "gate", "depends_on"}),
-    "edit-step": frozenset(
-        {
-            "action",
-            "step_id",
-            "new_step_id",
-            "name",
-            "description",
-            "depends_on",
-            "verification",
-            "evidence_template",
-            "agent",
-            "add_refs",
-            "remove_refs",
-            "refs",
-        }
-    ),
-    "remove-step": frozenset({"action", "step_id", "force"}),
-    "move-step": frozenset({"action", "step_id", "target_phase"}),
-    "edit-plan": frozenset({"action", "project_guidance", "strategy_ref", "plan_context"}),
-}
+# Backward-compatible private names used by focused contract tests and diagnostics.
+_BATCH_FIELDS = BATCH_FIELDS
+_BATCH_REQUIRED_FIELDS = BATCH_REQUIRED_FIELDS
+_BATCH_STEP_FIELDS = BATCH_STEP_FIELDS
+_BATCH_STEP_REQUIRED_FIELDS = BATCH_STEP_REQUIRED_FIELDS
+_MUTATION_ACTIONS = frozenset(_BATCH_FIELDS)
 _STRING_FIELDS = frozenset(
     {
         "phase_id",
@@ -86,23 +49,6 @@ _STRING_FIELDS = frozenset(
     }
 )
 _STRING_LIST_FIELDS = frozenset({"depends_on", "add_refs", "remove_refs", "refs"})
-_BATCH_STEP_FIELDS = frozenset(
-    {
-        "id",
-        "name",
-        "description",
-        "desc",
-        "depends_on",
-        "after",
-        "verification",
-        "verify",
-        "refs",
-        "status",
-        "evidence",
-        "skipped_reason",
-        "agent",
-    }
-)
 
 
 # @shell_complexity: Strict action-specific schemas keep malformed batches before Plan load.
@@ -122,9 +68,15 @@ def _validate_batch_requests(requests: object) -> Result[list[dict[str, Any]], s
 
         unknown = sorted(set(request) - _BATCH_FIELDS[action])
         if unknown:
+            hints = dict.fromkeys(
+                UNKNOWN_FIELD_HINTS[(action, field)]
+                for field in unknown
+                if (action, field) in UNKNOWN_FIELD_HINTS
+            )
+            hint = f" {' '.join(hints)}" if hints else ""
             raise PlanError(
-                f"request[{index}] {action}: unknown or irrelevant field(s): "
-                + ", ".join(unknown)
+                f"request[{index}] {action}: unsupported field(s): {', '.join(unknown)}; "
+                f"allowed fields: {', '.join(sorted(_BATCH_FIELDS[action]))}.{hint}"
             )
 
         for field in _STRING_FIELDS & request.keys():
@@ -139,15 +91,9 @@ def _validate_batch_requests(requests: object) -> Result[list[dict[str, Any]], s
         if "force" in request and not isinstance(request["force"], bool):
             raise PlanError(f"request[{index}] {action}: 'force' must be a boolean.")
 
-        required_fields = {
-            "add-phase": ("phase_id", "name"),
-            "add-step": ("phase_id", "step_id", "name"),
-            "add-steps": ("phase_id", "steps"),
-            "edit-phase": ("phase_id",),
-            "edit-step": ("step_id",),
-            "remove-step": ("step_id",),
-            "move-step": ("step_id", "target_phase"),
-        }.get(action, ())
+        required_fields = tuple(
+            field for field in _BATCH_REQUIRED_FIELDS[action] if field != "action"
+        )
         missing = [field for field in required_fields if not request.get(field)]
         if missing:
             explicit = " explicit ID" if action in {"add-phase", "add-step"} else ""
@@ -172,7 +118,16 @@ def _validate_batch_requests(requests: object) -> Result[list[dict[str, Any]], s
                     raise PlanError(f"{prefix} must be a mapping.")
                 step_unknown = sorted(set(entry) - _BATCH_STEP_FIELDS)
                 if step_unknown:
-                    raise PlanError(f"{prefix} unknown field(s): " + ", ".join(step_unknown))
+                    hints = dict.fromkeys(
+                        UNKNOWN_FIELD_HINTS[(action, field)]
+                        for field in step_unknown
+                        if (action, field) in UNKNOWN_FIELD_HINTS
+                    )
+                    hint = f" {' '.join(hints)}" if hints else ""
+                    raise PlanError(
+                        f"{prefix}: unsupported field(s): {', '.join(step_unknown)}; "
+                        f"allowed fields: {', '.join(sorted(_BATCH_STEP_FIELDS))}.{hint}"
+                    )
                 for field in (
                     "id",
                     "name",
@@ -202,10 +157,14 @@ def _validate_batch_requests(requests: object) -> Result[list[dict[str, Any]], s
                     )
                 ):
                     raise PlanError(f"{prefix} 'after' must be a string or list of strings.")
-                if not entry.get("id"):
-                    raise PlanError(f"{prefix} explicit ID 'id' is required.")
-                if not entry.get("name"):
-                    raise PlanError(f"{prefix} 'name' is required.")
+                missing_step_fields = [
+                    field for field in _BATCH_STEP_REQUIRED_FIELDS if not entry.get(field)
+                ]
+                if missing_step_fields:
+                    missing_field = missing_step_fields[0]
+                    if missing_field == "id":
+                        raise PlanError(f"{prefix} explicit ID 'id' is required.")
+                    raise PlanError(f"{prefix} '{missing_field}' is required.")
         validated.append(request)
     return validated
 
@@ -269,6 +228,7 @@ def _apply_mutation_request(
             step_id=step_id or None,
             verification=verification,
             evidence_template=evidence_template,
+            refs=request.get("refs"),
             status=step_status,
             evidence=request.get("evidence") or None,
             skipped_reason=request.get("skipped_reason") or None,
@@ -391,7 +351,7 @@ def _linked_worktree_mutation_error() -> Result[str | None, str]:
 
 
 def _single_request(
-    action: str,
+    action: MutationAction,
     *,
     phase_id: str,
     step_id: str,
@@ -448,17 +408,7 @@ def _single_request(
 
 # @shell_complexity: Mutate coordinates strict batch validation and compatible dispatch.
 def vectl_mutate(
-    action: Literal[
-        "add-step",
-        "add-steps",
-        "edit-step",
-        "remove-step",
-        "move-step",
-        "add-phase",
-        "edit-phase",
-        "edit-plan",
-    ]
-    | None = None,
+    action: MutationAction | None = None,
     phase_id: str = "",
     step_id: str = "",
     name: str = "",
@@ -482,7 +432,7 @@ def vectl_mutate(
     agent: str = "",
     new_step_id: str = "",
     steps: list[dict] | None = None,
-    requests: list[dict] | None = None,
+    requests: list[BatchMutationRequest] | None = None,
 ) -> Result[str, str]:
     """Modify plan structure in single-action or atomic batch mode.
 
@@ -494,18 +444,19 @@ def vectl_mutate(
 
     Args:
         action: The mutation action to perform in compatible single-action mode.
-        requests: Ordered strict request mappings for all-or-nothing batch mode.
-            ``add-phase``, ``add-step``, and each ``add-steps`` entry require an
-            explicit ID. Nested requests and symbolic result references are rejected.
+        requests: Ordered, action-discriminated request mappings for all-or-nothing
+            batch mode. Batch IDs: ``add-phase`` uses ``phase_id``;
+            ``add-step`` uses ``step_id``; each ``add-steps`` entry uses ``id``.
+            Nested requests and symbolic result references are rejected.
         phase_id: Phase ID (for add-step, add-steps, add-phase, edit-phase).
-        step_id: Step ID (for edit-step, remove-step, move-step). Also used
-            as explicit --id for add-step/add-phase if provided.
+        step_id: Step ID (for add-step, edit-step, remove-step, move-step).
         name: Name (for add-step, add-phase, edit-step, edit-phase).
         description: Description (for add-step, edit-step).
         depends_on: Dependencies (for add-step, add-phase, edit-phase, edit-step).
         add_refs: Refs to add (for edit-step).
         remove_refs: Refs to remove (for edit-step).
-        refs: Refs to set (for edit-step, overrides add_refs/remove_refs).
+        refs: Refs for add-step, or replacement refs for edit-step (overrides
+            add_refs/remove_refs).
         target_phase: Target phase (for move-step).
         force: Force remove (clean dep refs) for remove-step.
         gate: Gate criterion (for add-phase, edit-phase).

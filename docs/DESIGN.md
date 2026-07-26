@@ -58,7 +58,9 @@ All write operations use CAS to prevent concurrent modification:
 3. Save with expected hash → atomic write (temp file + rename)
 4. If hash mismatch → `CASConflictError`, retry
 
-For MCP `vectl_mutate` batches, the shell deep-copies the loaded Plan into one working copy and applies ordered requests through the same action dispatcher used by single-action mode. It recalculates locks once, performs canonical model and structural final validation, and crosses persistence through a single save with the original CAS hash. The save receipt supplies the exact persisted hash and the precomputed lock notice.
+For MCP `vectl_mutate` batches, `src/vectl/mcp_mutation_contracts.py` owns the action-discriminated transport types, exact allowed fields, and required identifiers. FastMCP publishes those branches as closed JSON Schema objects, while `mcp_core_mutation_tools.py` uses the derived field sets for indexed pre-load diagnostics. This keeps machine guidance and executable validation aligned; `add-step.refs` travels through the shared dispatcher into the canonical `Step.refs` field in both input modes.
+
+The shell deep-copies the loaded Plan into one working copy and applies ordered requests through the same action dispatcher used by single-action mode. It recalculates locks once, performs canonical model and structural final validation, and crosses persistence through a single save with the original CAS hash. The save receipt supplies the exact persisted hash and the precomputed lock notice.
 
 The successful Plan write is the atomic batch boundary. The save path then makes one best-effort Git commit attempt. Best-effort Git failure does not roll back `plan.yaml`, so Git history remains a secondary audit trail rather than part of the Plan transaction. Claims, CLI mutation commands, and external effects remain outside the batch.
 

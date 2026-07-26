@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import inspect
 import json
 import subprocess
 from collections.abc import Iterator
@@ -10,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
 
 import vectl.io as io_module
 import vectl.mcp_core_mutation_tools as mutation_module
@@ -116,6 +120,256 @@ def _successful_requests() -> list[dict[str, Any]]:
             "description": "Verify the repaired provider",
         },
     ]
+
+
+_README_EXAMPLE_START = "<!-- vectl-mutate-batch-example:start -->"
+_README_EXAMPLE_END = "<!-- vectl-mutate-batch-example:end -->"
+_EXPECTED_BATCH_FIELDS = {
+    "add-phase": {"action", "phase_id", "name", "depends_on", "gate"},
+    "add-step": {
+        "action",
+        "phase_id",
+        "step_id",
+        "name",
+        "description",
+        "depends_on",
+        "verification",
+        "evidence_template",
+        "refs",
+        "status",
+        "evidence",
+        "skipped_reason",
+        "agent",
+    },
+    "add-steps": {"action", "phase_id", "steps"},
+    "edit-phase": {"action", "phase_id", "name", "context", "gate", "depends_on"},
+    "edit-step": {
+        "action",
+        "step_id",
+        "new_step_id",
+        "name",
+        "description",
+        "depends_on",
+        "verification",
+        "evidence_template",
+        "agent",
+        "add_refs",
+        "remove_refs",
+        "refs",
+    },
+    "remove-step": {"action", "step_id", "force"},
+    "move-step": {"action", "step_id", "target_phase"},
+    "edit-plan": {"action", "project_guidance", "strategy_ref", "plan_context"},
+}
+_EXPECTED_BATCH_REQUIRED_FIELDS = {
+    "add-phase": {"action", "phase_id", "name"},
+    "add-step": {"action", "phase_id", "step_id", "name"},
+    "add-steps": {"action", "phase_id", "steps"},
+    "edit-phase": {"action", "phase_id"},
+    "edit-step": {"action", "step_id"},
+    "remove-step": {"action", "step_id"},
+    "move-step": {"action", "step_id", "target_phase"},
+    "edit-plan": {"action"},
+}
+_EXPECTED_BULK_STEP_FIELDS = {
+    "id",
+    "name",
+    "description",
+    "desc",
+    "depends_on",
+    "after",
+    "verification",
+    "verify",
+    "refs",
+    "status",
+    "evidence",
+    "skipped_reason",
+    "agent",
+}
+
+
+def _read_readme_batch_example() -> dict[str, Any]:
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    assert _README_EXAMPLE_START in readme
+    assert _README_EXAMPLE_END in readme
+    example = readme.split(_README_EXAMPLE_START, 1)[1].split(_README_EXAMPLE_END, 1)[0]
+    payload = example.split("```json", 1)[1].split("```", 1)[0]
+    return json.loads(payload)
+
+
+def _tool_result_text(result: Any) -> str:
+    if result.data is not None:
+        return str(result.data)
+    return "\n".join(
+        content.text for content in result.content if hasattr(content, "text")
+    )
+
+
+async def _registered_schema_and_calls(
+    plan_path: Path, payload: dict[str, Any]
+) -> tuple[dict[str, Any], str, str]:
+    transport = StdioTransport(
+        command="uv",
+        args=["run", "vectl", "mcp"],
+        cwd=str(Path(__file__).resolve().parents[1]),
+        env={"VECTL_PLAN_PATH": str(plan_path)},
+    )
+    async with Client(transport) as client:
+        tools = await client.list_tools()
+        mutate = next(tool for tool in tools if tool.name == "vectl_mutate")
+        success = await client.call_tool("vectl_mutate", payload)
+        invalid = await client.call_tool(
+            "vectl_mutate",
+            {
+                "requests": [
+                    {
+                        "action": "add-phase",
+                        "phase_id": "invalid",
+                        "step_id": "invalid",
+                        "name": "Invalid",
+                    }
+                ]
+            },
+        )
+    return (
+        mutate.inputSchema,
+        _tool_result_text(success),
+        _tool_result_text(invalid),
+    )
+
+
+def test_single_add_step_persists_refs(git_plan: tuple[Path, Path, Path]) -> None:
+    _, plan_path, _ = git_plan
+
+    result = vectl_mutate(
+        action="add-step",
+        phase_id="foundation",
+        step_id="foundation.with-refs",
+        name="With refs",
+        refs=["README.md", "src/vectl/mcp_core_mutation_tools.py"],
+    )
+
+    assert "Added step" in result
+    plan, _ = load_plan_definition(plan_path)
+    found = plan.find_step("foundation.with-refs")
+    assert found is not None
+    assert found[1].refs == ["README.md", "src/vectl/mcp_core_mutation_tools.py"]
+
+
+def test_batch_add_step_persists_refs(git_plan: tuple[Path, Path, Path]) -> None:
+    _, plan_path, _ = git_plan
+
+    result = vectl_mutate(
+        requests=[
+            {
+                "action": "add-step",
+                "phase_id": "foundation",
+                "step_id": "foundation.batch-refs",
+                "name": "Batch refs",
+                "refs": ["tests/test_mcp_mutate_batch.py"],
+            }
+        ]
+    )
+
+    assert "requests_applied: 1" in result
+    plan, _ = load_plan_definition(plan_path)
+    found = plan.find_step("foundation.batch-refs")
+    assert found is not None
+    assert found[1].refs == ["tests/test_mcp_mutate_batch.py"]
+
+
+@pytest.mark.parametrize(
+    ("raw_request", "hint"),
+    [
+        (
+            {
+                "action": "add-phase",
+                "phase_id": "demo",
+                "step_id": "demo",
+                "name": "Demo",
+            },
+            "Use 'phase_id' as the explicit ID for add-phase",
+        ),
+        (
+            {
+                "action": "add-step",
+                "phase_id": "foundation",
+                "step_id": "foundation.demo",
+                "name": "Demo",
+                "add_refs": ["README.md"],
+            },
+            "Use 'refs' when creating a step",
+        ),
+    ],
+)
+def test_unknown_batch_fields_are_actionable_before_load(
+    git_plan: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    raw_request: dict[str, Any],
+    hint: str,
+) -> None:
+    called = False
+
+    def fail_load() -> tuple[Plan, str]:
+        nonlocal called
+        called = True
+        raise AssertionError("invalid fields must fail before load")
+
+    monkeypatch.setattr(mutation_module, "_load", fail_load)
+    result = vectl_mutate(requests=[raw_request])
+
+    assert "request[0]" in result
+    assert "allowed fields:" in result
+    assert hint in result
+    assert called is False
+
+
+def test_registered_schema_and_readme_example_match_runtime(
+    git_plan: tuple[Path, Path, Path],
+) -> None:
+    _, plan_path, _ = git_plan
+    payload = _read_readme_batch_example()
+
+    schema, result, invalid_result = asyncio.run(
+        _registered_schema_and_calls(plan_path, payload)
+    )
+
+    request_shapes = schema["properties"]["requests"]["anyOf"]
+    request_array = next(shape for shape in request_shapes if shape.get("type") == "array")
+    item_schema = request_array["items"]
+    branches = {
+        branch["properties"]["action"]["const"]: branch
+        for branch in item_schema["oneOf"]
+    }
+    assert item_schema["discriminator"]["propertyName"] == "action"
+    assert set(branches) == set(_EXPECTED_BATCH_FIELDS)
+    for action, expected_fields in _EXPECTED_BATCH_FIELDS.items():
+        branch = branches[action]
+        assert branch["additionalProperties"] is False
+        assert set(branch["properties"]) == expected_fields
+        assert set(branch["required"]) == _EXPECTED_BATCH_REQUIRED_FIELDS[action]
+    bulk_steps = branches["add-steps"]["properties"]["steps"]
+    assert bulk_steps["items"]["additionalProperties"] is False
+    assert set(bulk_steps["items"]["properties"]) == _EXPECTED_BULK_STEP_FIELDS
+    assert set(bulk_steps["items"]["required"]) == {"id", "name"}
+
+    assert "requests_applied: 3" in result
+    assert "request[0] add-phase" in invalid_result
+    assert "allowed fields:" in invalid_result
+    assert "Use 'phase_id' as the explicit ID for add-phase" in invalid_result
+    plan, _ = load_plan_definition(plan_path)
+    found = plan.find_step("mcp-contract-example.implement")
+    assert found is not None
+    assert found[1].refs == ["src/vectl/mcp_core_mutation_tools.py", "README.md"]
+
+
+def test_mutate_docstring_names_explicit_ids_and_add_step_refs() -> None:
+    docstring = inspect.getdoc(vectl_mutate) or ""
+
+    assert "``add-phase`` uses ``phase_id``" in docstring
+    assert "``add-step`` uses ``step_id``" in docstring
+    assert "for add-step/add-phase" not in docstring
+    assert "Refs for add-step" in docstring
 
 
 def test_ordered_batch_persists_once_with_exact_hash_and_results(

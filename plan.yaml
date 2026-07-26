@@ -121433,14 +121433,18 @@ phases:
   name: P1 Atomic Multi-Operation Plan Mutation
   status: in_progress
   gate: Implementation synchronously delivers the RFC-governed MCP source, focused
-    developer tests, tool docstring, README, and DESIGN in one rollback unit; terminal
+    developer tests, tool docstring, README, and DESIGN in one rollback unit; the
+    behavior-preserving follow-up removes the implementation-introduced file-size
+    escape while preserving the RFC batch owner and public MCP contract; terminal
     independent verification proves all seven REQ-APMB requirements through source
-    and documentation inspection, real registered stdio MCP state transitions, focused
-    and existing regressions, and a current passing `uvx invar-tools guard --all`.
-    Any focused or repo-wide failure, collection error, xfail/skip residue, CAS or
-    atomicity gap, response incompatibility, documentation drift, duplicate mutation
-    path, unsafe fixture state, or unresolved phase-intersecting finding blocks closure.
-    No plan-level expected-red lifecycle is admitted.
+    and documentation inspection, L3 registered stdio MCP routing plus non-racy state
+    transitions, deterministic L2 competing-writer CAS evidence from the immutable
+    focused developer test, focused and existing regressions, and a current passing
+    `uvx invar-tools guard --all`. Any focused or repo-wide failure, collection error,
+    xfail/skip residue, CAS or atomicity gap, response or registration incompatibility,
+    documentation drift, duplicate mutation path, residual file-size escape, unsafe
+    fixture state, or unresolved phase-intersecting finding blocks closure. No plan-level
+    expected-red lifecycle is admitted.
   steps:
   - id: implement-and-test-atomic-mutation-batch
     name: Implement atomic batch mutation with synchronized tests and documentation
@@ -121669,52 +121673,71 @@ phases:
 
       - As `integration-verifier`, independently enumerate every material requirement,
       acceptance criterion, and non-goal in `docs/RFC-atomic-plan-mutation-batch.md`;
-      inspect the integrated source, generated focused developer test, `vectl_mutate`
-      docstring, `README.md`, and `docs/DESIGN.md` without reusing the implementation
-      owner''s conclusions as proof.
+      inspect the integrated implementation and behavior-preserving Invar-budget refactor,
+      generated focused developer test, `vectl_mutate` docstring, `README.md`, and
+      `docs/DESIGN.md` without reusing either implementation owner''s conclusions
+      as proof.
 
       - Trace the shared single/batch dispatcher, deep working-copy boundary, one
       lock recalculation, final canonical/structural validation, save-receipt compatibility,
       indexed errors, replay behavior, exact saved hash, and best-effort Git semantics.
-      Confirm there is no duplicate action or transaction path and that documentation
-      matches observed behavior without claiming CLI parity or Git rollback.
+      Confirm the RFC-required batch validator and shared dispatcher remain co-located
+      with `vectl_mutate`, public MCP registrations and responses remain compatible,
+      no file-size escape remains, and there is no duplicate action or transaction
+      path.
 
       - Launch the project-local registered MCP server (`uv run vectl mcp`) against
       verifier-owned isolated Git-backed Plan and claims fixtures; direct Python calls
-      alone cannot prove public routing. Exercise an existing single-action mutation
-      and the batch form.
+      alone cannot prove public routing. Through real stdio, prove initialize/tools-list/tools-call
+      reachability, an existing single-action mutation, ordered explicit-ID batch
+      success with exact saved-byte `plan_hash`, request-indexed failure, final-validation
+      failure, explicit-ID replay, unchanged authoritative state for those non-racy
+      failure scenarios, and clean process termination.
 
-      - Cover ordered success with same-batch explicit IDs, exact saved-byte `plan_hash`,
-      one lock notice, request-indexed failure with unchanged Plan/claims/lock/Git
-      state, final-validation cycle failure, CAS conflict preserving the competing
-      writer, explicit-ID replay without a second write/commit, and single-action
-      response compatibility.
+      - Prove `REQ-APMB-CAS-REPLAY` deterministically by independently inspecting
+      and executing the producer-fixed focused developer CAS case that inserts the
+      competing writer between load and save and asserts the competing bytes remain
+      authoritative with no batch commit. Classify that CAS state-transition evidence
+      at L2 and combine it with L3 registered-stdio routing plus L3 replay evidence
+      for the public seam. Do not attempt another timing race, introduce a production
+      test hook, weaken the RFC atom, or require the CAS conflict itself to be L3.
 
       - Run `uv run pytest tests/test_mcp_mutate_batch.py -q`, `uv run pytest tests/test_mcp.py
       tests/test_io.py -q`, and the authoritative repo-wide readiness command `uvx
       invar-tools guard --all` on the integrated final bytes. Any failure, collection
-      error, xfail, skip, sentinel, phase-intersecting warning, or semantic receipt
-      gap blocks closure.
+      error, xfail, skip, sentinel, phase-intersecting warning, residual file-size
+      escape, import/registration drift, semantic receipt gap, or repository mutation
+      blocks closure.
 
 
       Boundary:
 
       - Owner: `integration-verifier`. This is read-only verification with authority
       to launch the real local stdio seam and create only verifier-owned temporary
-      fixtures. Do not modify repository files, Plan state, claims, branches, acceptance
-      tests, or external services; ignored test/cache artifacts carry no acceptance
-      authority.
+      fixtures. Do not modify repository files, Plan state, claims, branches, developer
+      or acceptance tests, production hooks, or external services; ignored test/cache
+      artifacts carry no acceptance authority.
 
-      - Mocks may support instrumentation but cannot satisfy registered MCP reachability
-      or state-transition claims. A command touching the repository''s real `plan.yaml`,
-      `.git/vectl/claims.json`, or unrelated Git state is a hard stop.
+      - Mocks may support deterministic instrumentation below the public seam but
+      cannot satisfy registered MCP reachability, public routing, replay, or non-racy
+      state-transition claims. The focused CAS fixture may satisfy the CAS conflict
+      atom only when the verifier independently confirms that the real persistence
+      boundary observes a competing write between load and save and preserves it.
+      A command touching the repository''s real `plan.yaml`, `.git/vectl/claims.json`,
+      or unrelated Git state is a hard stop.
 
 
       Admit:
 
-      - The implementation step and its linted worker receipt must be integrated before
-      verification. The produced `tests/test_mcp_mutate_batch.py` is consumed through
-      that dependency and fixed producer path; the verifier cannot alter it.
+      - Both implementation steps and their linted worker receipts must be integrated
+      before verification. The produced `tests/test_mcp_mutate_batch.py` and current
+      `tests/test_mcp.py`/`tests/test_io.py` are dependency-bound immutable developer
+      evidence; the verifier cannot alter them.
+
+      - Retain the earlier production-valid REJECTED semantic receipt as historical
+      provenance. Its two failed timing races and repo-wide Invar failure remain immutable
+      observations but do not satisfy the repaired proof mechanism or final readiness
+      checks.
 
       - Return one production-validated `vectl.verifier.semantic.v1` receipt for ordered
       scope: ["RFC public input, explicit-ID, error, success, compatibility, documentation,
@@ -121727,8 +121750,9 @@ phases:
       - Include exact commands, cwd/environment bindings, process lifecycle, raw response
       excerpts, before/after hashes, Git HEADs, write/commit counts, artifact sections
       inspected, and L1/L2/L3 classification. PASS requires all seven `REQ-APMB-*`
-      atoms proven, current green commands, zero unresolved blocker, and zero repository
-      mutation.
+      atoms proven, L3 public registration/routing and non-racy runtime scenarios,
+      deterministic L2 CAS conflict proof, current green commands, zero unresolved
+      blocker, and zero repository mutation.
 
       - Historical completed-phase warnings outside this phase neither prove nor block
       this outcome; any new finding intersecting the implementation paths, checks,
@@ -121738,29 +121762,165 @@ phases:
       Recovery:
 
       - Retry only a transport launch that proves no fixture or repository mutation
-      and retains the first failure observation; maximum two attempts. Unknown partial
-      state, repository leakage, unsafe replay, persistence ambiguity, or an unproven
-      requirement stops verification and requires orchestrator reconciliation. Do
-      not implement fixes, edit tests, waive an RFC atom, or add a remediation Plan
-      node from this step.'
+      and retains the first failure observation; maximum two attempts. Do not retry
+      a timing race. Unknown partial state, repository leakage, unsafe replay, persistence
+      ambiguity, a deterministic CAS fixture that bypasses the real persistence boundary,
+      or any unproven requirement stops verification and requires orchestrator reconciliation.
+      Do not implement fixes, edit tests, add a production hook, waive an RFC atom,
+      or add a remediation Plan node from this step.'
     verification: Pass `uv run pytest tests/test_mcp_mutate_batch.py -q`, `uv run
       pytest tests/test_mcp.py tests/test_io.py -q`, and `uvx invar-tools guard --all`;
-      execute the real registered stdio MCP success and high-risk failure matrix in
-      isolated Git-backed fixtures; inspect source and synchronized documentation;
-      then return a production-Gate-validated `vectl.verifier.semantic.v1` receipt.
-      PASS requires 7/7 requirement IDs, exact commands and state hashes, L3 public-tool
-      evidence, no duplicate mutation path, clean process termination, no failure/xfail/skip
-      residue, and zero repository mutation.
+      execute the real registered stdio MCP public routing, success, replay, and non-racy
+      failure matrix in isolated Git-backed fixtures; independently inspect and execute
+      the deterministic focused CAS competing-writer case at L2; inspect source and
+      synchronized documentation; then return a production-Gate-validated `vectl.verifier.semantic.v1`
+      receipt. PASS requires 7/7 requirement IDs, L3 registered public routing and
+      non-racy runtime evidence, deterministic L2 CAS proof, exact commands/state
+      hashes, no duplicate mutation path or residual file-size escape, clean process
+      termination, no failure/xfail/skip residue, and zero repository mutation.
     refs:
     - docs/RFC-atomic-plan-mutation-batch.md
     - src/vectl/mcp_core_mutation_tools.py
     - src/vectl/mcp_core_common.py
+    - src/vectl/mcp_core_read_tools.py
+    - src/vectl/mcp_core_misc_tools.py
+    - src/vectl/mcp_core_tools.py
     - README.md
     - docs/DESIGN.md
     - pyproject.toml
     - docs/ADR-unified-state.md
+    - tests/test_mcp_mutate_batch.py
     - tests/test_mcp.py
     - tests/test_io.py
     depends_on:
-    - implement-and-test-atomic-mutation-batch
+    - restore-atomic-mutation-invar-budget
     agent: integration-verifier
+  - id: restore-atomic-mutation-invar-budget
+    name: Restore atomic mutation Invar budget by behavior-preserving module simplification
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
+      - Remove the implementation-introduced `# @invar:allow file_size` line from\
+      \ `src/vectl/mcp_core_mutation_tools.py` through behavior-preserving simplification\
+      \ so the authoritative `uvx invar-tools guard --all` escape-hatch weighted budget\
+      \ returns within its enforced limit.\n- Preserve the RFC ownership boundary:\
+      \ `vectl_mutate`, batch input validation, the shared single/batch action dispatcher,\
+      \ ordered working-copy execution, final validation, and response formatting\
+      \ remain in `src/vectl/mcp_core_mutation_tools.py`; `_save_plan_receipt` and\
+      \ `_save_plan` remain in `src/vectl/mcp_core_common.py`. Do not add a parallel\
+      \ mutation, transaction, persistence, CAS, retry, or public tool path.\n- Reduce\
+      \ the mutation module only by moving pre-existing non-atomic search, validation,\
+      \ or migration MCP tool bodies into their existing read/misc owner modules and\
+      \ updating the existing `mcp_core_tools` re-export surface as needed. Preserve\
+      \ registered tool names, signatures, docstrings, request/response behavior,\
+      \ imports, and public stdio routing. Do not create a new module or alter the\
+      \ RFC-governed atomic batch behavior.\n- Keep `tests/test_mcp_mutate_batch.py`,\
+      \ `tests/test_mcp.py`, and `tests/test_io.py` unchanged and green. This is a\
+      \ pure behavior-preserving source refactor; README, DESIGN, RFC, ADR, and other\
+      \ documentation remain unchanged because no behavior or public contract changes.\n\
+      \nBoundary:\n- Owner: `python-refactor-master`. Repository authority is one\
+      \ trivial rollback unit limited to `src/vectl/mcp_core_mutation_tools.py`, `src/vectl/mcp_core_read_tools.py`,\
+      \ `src/vectl/mcp_core_misc_tools.py`, and `src/vectl/mcp_core_tools.py`.\n-\
+      \ No test, documentation, Plan, claims, core domain, I/O persistence, MCP registration-server,\
+      \ dependency, schema, external service, or runtime-state mutation is authorized.\
+      \ Test or documentation mutation, a changed public MCP signature/response, a\
+      \ second dispatcher, or movement of RFC-governed batch helpers is a hard stop.\n\
+      - Dispatch requires one admitted `vectl.worker.dispatch.v2` envelope under the\
+      \ exact v2 worker markers; the worker returns only a linted `vectl.worker.execution.v2`\
+      \ receipt.\n\nAdmit:\n- Witnessed inputs are the committed RFC, current tracked\
+      \ MCP modules and re-export surface, `pyproject.toml`, and the three current\
+      \ developer-test files. Tests are immutable consumers, not worker-owned deliverables.\n\
+      - Evidence must prove the file-size escape is absent, the RFC-required private\
+      \ batch validator and shared dispatcher remain co-located with `vectl_mutate`,\
+      \ all focused/existing MCP and I/O regressions pass without failure/skip/xfail\
+      \ residue, the full repo-wide Invar gate passes, and the changed-path inventory\
+      \ stays within the four authorized source files.\n- The downstream `verify-atomic-mutation-mcp-seam`\
+      \ step independently consumes this refactor, reruns the checks, inspects public\
+      \ routing and RFC ownership, and decides phase closure. Plan-level expected-red\
+      \ applicability remains none.\n\nRecovery:\n- Roll back by reverting this step's\
+      \ repository commit. On any changed public behavior, test/documentation drift,\
+      \ import-cycle or registration failure, movement of RFC-governed batch ownership,\
+      \ unexplained Invar failure, or repository/Plan/claims leakage, stop without\
+      \ retry, preserve raw evidence, and hand reconciliation to the orchestrator.\n\
+      \n<vectl_step_policy>\n{\n  \"schema_version\": \"vectl.step.policy.v2\",\n\
+      \  \"step_id\": \"atomic-plan-mutation-batch.restore-atomic-mutation-invar-budget\"\
+      ,\n  \"risk_tier\": \"R2\",\n  \"risk_reasons\": [\n    \"shared MCP public-tool\
+      \ import and re-export surface\",\n    \"RFC-governed atomic mutation module\
+      \ ownership\",\n    \"repository-wide Invar readiness gate\"\n  ],\n  \"primary_outcome\"\
+      : \"REQ-APMB-SCOPE-BOUNDARY\",\n  \"rollback_class\": \"TRIVIAL\",\n  \"observation_ledger\"\
+      : [\n    {\n      \"requirement_id\": \"REQ-APMB-SCOPE-BOUNDARY\",\n      \"\
+      atom\": \"the atomic mutation path preserves RFC ownership and public behavior\
+      \ without a file-size escape or duplicate mutation path\",\n      \"modality\"\
+      : \"architecture\",\n      \"seam\": \"real\",\n      \"check_id\": \"atomic_mutation_refactor_regression\"\
+      ,\n      \"independent_step\": \"atomic-plan-mutation-batch.verify-atomic-mutation-mcp-seam\"\
+      \n    }\n  ],\n  \"test_authority\": {\n    \"developer_test_globs\": [\n  \
+      \    \"tests/test_mcp_mutate_batch.py\",\n      \"tests/test_mcp.py\",\n   \
+      \   \"tests/test_io.py\"\n    ],\n    \"acceptance_test_paths\": [],\n    \"\
+      acceptance_check_ids\": [],\n    \"acceptance_mutation\": \"FORBIDDEN\",\n \
+      \   \"acceptance_authorizations\": []\n  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\n\
+      schema_version: intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
+      profile: generic\nscope:\n  allowed_paths:\n    - src/vectl/mcp_core_mutation_tools.py\n\
+      \    - src/vectl/mcp_core_read_tools.py\n    - src/vectl/mcp_core_misc_tools.py\n\
+      \    - src/vectl/mcp_core_tools.py\n  blocked_paths:\n    - plan.yaml\n    -\
+      \ src/vectl/core/**\n    - src/vectl/io.py\n    - src/vectl/mcp_core_common.py\n\
+      \    - src/vectl/mcp_server.py\n    - tests/**\n    - README.md\n    - docs/**\n\
+      \  ignored_runtime_paths: [.git/, .vectl/, .agent/, .venv/]\nclaims:\n  - REQ-APMB-SCOPE-BOUNDARY\n\
+      checks:\n  - id: atomic_mutation_escape_removed\n    run:\n      command: [uv,\
+      \ run, python, -c, \"from pathlib import Path; p=Path('src/vectl/mcp_core_mutation_tools.py').read_text();\
+      \ assert '@invar:allow file_size' not in p; assert all(x in p for x in ['def\
+      \ _validate_batch_requests', 'def _apply_mutation_request', 'def vectl_mutate'])\"\
+      ]\n      timeout_seconds: 120\n    evidence:\n      mode: command_outcome\n\
+      \      path_bindings:\n        - {path: docs/RFC-atomic-plan-mutation-batch.md,\
+      \ access: read, availability: current}\n        - {path: src/vectl/mcp_core_mutation_tools.py,\
+      \ access: read, availability: current}\n      test_bindings: []\n    expect:\n\
+      \      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\n    \
+      \    contains_all: []\n        contains_any: []\n        forbids: [{literal:\
+      \ Traceback}]\n    proves:\n      - REQ-APMB-SCOPE-BOUNDARY\n  - id: atomic_mutation_refactor_regression\n\
+      \    run:\n      command: [uv, run, pytest, tests/test_mcp_mutate_batch.py,\
+      \ tests/test_mcp.py, tests/test_io.py, -q]\n      timeout_seconds: 1200\n  \
+      \  evidence:\n      mode: command_outcome\n      path_bindings:\n        - {path:\
+      \ docs/RFC-atomic-plan-mutation-batch.md, access: read, availability: current}\n\
+      \        - {path: pyproject.toml, access: read, availability: current}\n   \
+      \     - {path: src/vectl/mcp_core_mutation_tools.py, access: read, availability:\
+      \ current}\n        - {path: src/vectl/mcp_core_read_tools.py, access: read,\
+      \ availability: current}\n        - {path: src/vectl/mcp_core_misc_tools.py,\
+      \ access: read, availability: current}\n        - {path: src/vectl/mcp_core_tools.py,\
+      \ access: read, availability: current}\n      test_bindings:\n        - {path:\
+      \ tests/test_mcp_mutate_batch.py, classification: developer, availability: current}\n\
+      \        - {path: tests/test_mcp.py, classification: developer, availability:\
+      \ current}\n        - {path: tests/test_io.py, classification: developer, availability:\
+      \ current}\n    expect:\n      outcome: green\n      exit_codes: [0]\n     \
+      \ stdout_or_stderr:\n        contains_all: [{literal: passed}]\n        contains_any:\
+      \ []\n        forbids: [{literal: failed}, {literal: skipped}, {literal: xfailed},\
+      \ {literal: ERROR collecting}]\n    proves:\n      - REQ-APMB-SCOPE-BOUNDARY\n\
+      \  - id: repo_wide_invar_readiness\n    run:\n      command: [uvx, invar-tools,\
+      \ guard, --all]\n      timeout_seconds: 1800\n    evidence:\n      mode: command_outcome\n\
+      \      path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n        - {path: src/vectl/mcp_core_mutation_tools.py, access: read,\
+      \ availability: current}\n        - {path: src/vectl/mcp_core_read_tools.py,\
+      \ access: read, availability: current}\n        - {path: src/vectl/mcp_core_misc_tools.py,\
+      \ access: read, availability: current}\n        - {path: src/vectl/mcp_core_tools.py,\
+      \ access: read, availability: current}\n      test_bindings: []\n    expect:\n\
+      \      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\n    \
+      \    contains_all: []\n        contains_any: []\n        forbids: []\n    proves:\n\
+      \      - REQ-APMB-SCOPE-BOUNDARY\nbindings:\n  expected_red:\n    items: []\n\
+      \  closes_expected_red: []\n</intent_closure_contract>"
+    verification: Run the installed Intent-Closure v2 lint/preflight for this exact
+      step; prove the file-size escape is absent while the RFC batch validator, shared
+      dispatcher, and `vectl_mutate` remain co-located; pass `uv run pytest tests/test_mcp_mutate_batch.py
+      tests/test_mcp.py tests/test_io.py -q` and `uvx invar-tools guard --all`; record
+      exact exits, decisive excerpts, changed paths, preserved public signatures/routing,
+      and zero failure/skip/xfail or repository-state leakage.
+    refs:
+    - docs/RFC-atomic-plan-mutation-batch.md
+    - src/vectl/mcp_core_mutation_tools.py
+    - src/vectl/mcp_core_read_tools.py
+    - src/vectl/mcp_core_misc_tools.py
+    - src/vectl/mcp_core_tools.py
+    - tests/test_mcp_mutate_batch.py
+    - tests/test_mcp.py
+    - tests/test_io.py
+    - pyproject.toml
+    depends_on:
+    - implement-and-test-atomic-mutation-batch
+    agent: python-refactor-master

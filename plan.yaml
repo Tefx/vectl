@@ -121431,7 +121431,7 @@ phases:
       mutation; pre-existing untracked `.pi/` remained untouched.'
 - id: atomic-plan-mutation-batch
   name: P1 Atomic Multi-Operation Plan Mutation
-  status: pending
+  status: in_progress
   gate: Implementation synchronously delivers the RFC-governed MCP source, focused
     developer tests, tool docstring, README, and DESIGN in one rollback unit; terminal
     independent verification proves all seven REQ-APMB requirements through source
@@ -121444,7 +121444,7 @@ phases:
   steps:
   - id: implement-and-test-atomic-mutation-batch
     name: Implement atomic batch mutation with synchronized tests and documentation
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - Treat `docs/RFC-atomic-plan-mutation-batch.md` at committed HEAD as immutable\
@@ -121617,6 +121617,8 @@ phases:
     - README.md
     - docs/DESIGN.md
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-07-26T08:11:03.481491Z'
   - id: verify-atomic-mutation-mcp-seam
     name: Independently verify RFC conformance and real MCP atomicity
     status: pending

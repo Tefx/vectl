@@ -143,8 +143,61 @@ def vectl_show(target: str) -> Result[str, str]:
     return f"**Error:** '{target}' not found as step or phase."
 
 
-# ---------------------------------------------------------------------------
-# vectl_claim
-# ---------------------------------------------------------------------------
+# @shell_complexity: Search preserves error, empty, truncation, and match formatting branches.
+def vectl_search(
+    pattern: str, phase_id: str | None = None, regex: bool = False
+) -> Result[str, str]:
+    """Search the plan.
+
+    Args:
+        pattern: Search pattern (substring or regex).
+        phase_id: Restrict search to a specific phase.
+        regex: If True, interpret pattern as regex.
+    """
+    plan, _ = _load()
+
+    try:
+        matches = search_plan(plan, pattern, phase_id=phase_id, use_regex=regex)
+    except PlanError as e:
+        return f"**Error:** {e}"
+
+    if not matches:
+        return f"*No matches for '{pattern}'.*"
+
+    lines = [f"## Search: {pattern}\n", f"**{len(matches)} match(es)**\n"]
+    for match in matches[:20]:
+        loc = match.step_id or match.phase_id
+        lines.append(f"- **{loc}** ({match.field}) — {match.snippet}")
+    if len(matches) > 20:
+        lines.append(f"\n  ... and {len(matches) - 20} more")
+
+    return "\n".join(lines)
+
+
+# @shell_complexity: Validate preserves grouped error/warning Markdown output.
+def vectl_validate(check_refs: bool = False) -> Result[str, str]:
+    """Validate structure and active dependency-closure evidence."""
+    plan, _ = _load()
+    base_path = _plan_path().parent if check_refs else None
+    issues = validate_plan(
+        plan,
+        check_refs=check_refs,
+        base_path=base_path,
+        completed_evidence_scope="active_dependency_closure",
+    )
+
+    parts: list[str] = ["## Validation"]
+    if not issues:
+        parts.append("✓ Plan is valid — 0 errors, 0 warnings")
+        return "\n".join(parts)
+
+    errors = [issue for issue in issues if not issue.is_warning]
+    warnings = [issue for issue in issues if issue.is_warning]
+    for issue in errors:
+        parts.append(f"ERROR: {issue.message}")
+    for issue in warnings:
+        parts.append(f"WARN: {issue.message}")
+    parts.append(f"{len(errors)} error(s), {len(warnings)} warning(s)")
+    return "\n".join(parts)
 
 

@@ -189,9 +189,84 @@ def _vectl_check_deterministic(
 
 
 # ---------------------------------------------------------------------------
-# vectl_recover
+# vectl_migrate_step_id
 # ---------------------------------------------------------------------------
 
+
+def vectl_migrate_step_id(
+    run_mode: Literal["dry-run", "apply"] = "dry-run"
+) -> Result[dict[str, Any], str]:
+    """Expose duplicate step-ID migration dry-run/apply surfaces.
+
+    Source: step `step-id-migration-tooling.surfaces` and contract
+    docs/contracts/duplicate-id-migration-contract.yaml dry_run_schema and
+    migration_evidence_schema.
+    """
+    plan, expected_def_hash = _load()
+    plan_path = _plan_path()
+    claims_path = resolve_claims_path(plan_path)
+    branch = get_current_branch()
+
+    report, _ = build_duplicate_step_id_migration_dry_run(
+        plan,
+        claims_path=claims_path,
+        branch=branch,
+    )
+    preview_evidence = build_duplicate_step_id_migration_evidence(
+        command="vectl_migrate_step_id",
+        command_args=["run_mode=dry-run"],
+        run_mode="dry-run",
+        migrated=False,
+        report=report,
+    )
+
+    if run_mode == "dry-run":
+        return {
+            "ok": True,
+            "status": "recommendation_only",
+            "report": report.to_dict(),
+            "evidence": preview_evidence.to_dict(),
+        }
+
+    try:
+        apply_result = apply_duplicate_step_id_migration(
+            plan_path,
+            expected_hash=expected_def_hash,
+            claims_path=claims_path,
+            branch=branch,
+            command="vectl_migrate_step_id",
+            command_args=["run_mode=apply"],
+            run_mode="apply",
+        )
+    except CASConflictError as e:
+        return {
+            "ok": False,
+            "status": "recommendation_only",
+            "error": (
+                "CAS conflict: plan.yaml was modified by another process since you loaded it. "
+                "Re-read with `vectl_status` or `vectl_show`, then retry migration."
+            ),
+            "raw_error": str(e),
+            "report": report.to_dict(),
+            "evidence": preview_evidence.to_dict(),
+        }
+    except PlanError as e:
+        return {
+            "ok": False,
+            "status": "recommendation_only",
+            "error": str(e),
+            "report": report.to_dict(),
+            "evidence": preview_evidence.to_dict(),
+        }
+
+    return {
+        "ok": True,
+        "status": "repair_applied",
+        "migrated": apply_result.migrated,
+        "new_plan_hash": apply_result.new_plan_hash,
+        "report": apply_result.report.to_dict(),
+        "evidence": apply_result.evidence.to_dict(),
+    }
 
 
 def vectl_decide(

@@ -1,4 +1,3 @@
-# @invar:allow file_size: RFC atomic-batch ownership and dispatched path scope require the public mutation shell and shared dispatcher to remain co-located.
 """Internal implementation slice split from mcp_core_tools.py.
 
 Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
@@ -7,37 +6,6 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 from __future__ import annotations
 
 from vectl.mcp_core_common import *
-
-# @shell_complexity: Search preserves error, empty, truncation, and match formatting branches.
-def vectl_search(
-    pattern: str, phase_id: str | None = None, regex: bool = False
-) -> Result[str, str]:
-    """Search the plan.
-
-    Args:
-        pattern: Search pattern (substring or regex).
-        phase_id: Restrict search to a specific phase.
-        regex: If True, interpret pattern as regex.
-    """
-    plan, _ = _load()
-
-    try:
-        matches = search_plan(plan, pattern, phase_id=phase_id, use_regex=regex)
-    except PlanError as e:
-        return f"**Error:** {e}"
-
-    if not matches:
-        return f"*No matches for '{pattern}'.*"
-
-    lines = [f"## Search: {pattern}\n", f"**{len(matches)} match(es)**\n"]
-    for match in matches[:20]:
-        loc = match.step_id or match.phase_id
-        lines.append(f"- **{loc}** ({match.field}) — {match.snippet}")
-    if len(matches) > 20:
-        lines.append(f"\n  ... and {len(matches) - 20} more")
-
-    return "\n".join(lines)
-
 
 # ---------------------------------------------------------------------------
 # vectl_mutate
@@ -691,114 +659,6 @@ def vectl_mutate(
     if lock_notice:
         lines.extend(["", lock_notice])
     return "\n".join(lines)
-
-
-# @shell_complexity: Validate preserves grouped error/warning Markdown output.
-def vectl_validate(check_refs: bool = False) -> Result[str, str]:
-    """Validate structure and active dependency-closure evidence."""
-    plan, _ = _load()
-    base_path = _plan_path().parent if check_refs else None
-    issues = validate_plan(
-        plan,
-        check_refs=check_refs,
-        base_path=base_path,
-        completed_evidence_scope="active_dependency_closure",
-    )
-
-    parts: list[str] = ["## Validation"]
-    if not issues:
-        parts.append("✓ Plan is valid — 0 errors, 0 warnings")
-        return "\n".join(parts)
-
-    errors = [issue for issue in issues if not issue.is_warning]
-    warnings = [issue for issue in issues if issue.is_warning]
-    for issue in errors:
-        parts.append(f"ERROR: {issue.message}")
-    for issue in warnings:
-        parts.append(f"WARN: {issue.message}")
-    parts.append(f"{len(errors)} error(s), {len(warnings)} warning(s)")
-    return "\n".join(parts)
-
-
-def vectl_migrate_step_id(
-    run_mode: Literal["dry-run", "apply"] = "dry-run"
-) -> Result[dict[str, Any], str]:
-    """Expose duplicate step-ID migration dry-run/apply surfaces.
-
-    Source: step `step-id-migration-tooling.surfaces` and contract
-    docs/contracts/duplicate-id-migration-contract.yaml dry_run_schema and
-    migration_evidence_schema.
-    """
-    plan, expected_def_hash = _load()
-    plan_path = _plan_path()
-    claims_path = resolve_claims_path(plan_path)
-    branch = get_current_branch()
-
-    report, _ = build_duplicate_step_id_migration_dry_run(
-        plan,
-        claims_path=claims_path,
-        branch=branch,
-    )
-    preview_evidence = build_duplicate_step_id_migration_evidence(
-        command="vectl_migrate_step_id",
-        command_args=["run_mode=dry-run"],
-        run_mode="dry-run",
-        migrated=False,
-        report=report,
-    )
-
-    if run_mode == "dry-run":
-        return {
-            "ok": True,
-            "status": "recommendation_only",
-            "report": report.to_dict(),
-            "evidence": preview_evidence.to_dict(),
-        }
-
-    try:
-        apply_result = apply_duplicate_step_id_migration(
-            plan_path,
-            expected_hash=expected_def_hash,
-            claims_path=claims_path,
-            branch=branch,
-            command="vectl_migrate_step_id",
-            command_args=["run_mode=apply"],
-            run_mode="apply",
-        )
-    except CASConflictError as e:
-        return {
-            "ok": False,
-            "status": "recommendation_only",
-            "error": (
-                "CAS conflict: plan.yaml was modified by another process since you loaded it. "
-                "Re-read with `vectl_status` or `vectl_show`, then retry migration."
-            ),
-            "raw_error": str(e),
-            "report": report.to_dict(),
-            "evidence": preview_evidence.to_dict(),
-        }
-    except PlanError as e:
-        return {
-            "ok": False,
-            "status": "recommendation_only",
-            "error": str(e),
-            "report": report.to_dict(),
-            "evidence": preview_evidence.to_dict(),
-        }
-
-    return {
-        "ok": True,
-        "status": "repair_applied",
-        "migrated": apply_result.migrated,
-        "new_plan_hash": apply_result.new_plan_hash,
-        "report": apply_result.report.to_dict(),
-        "evidence": apply_result.evidence.to_dict(),
-    }
-
-
-# ---------------------------------------------------------------------------
-# vectl_guide
-# ---------------------------------------------------------------------------
 
 
 

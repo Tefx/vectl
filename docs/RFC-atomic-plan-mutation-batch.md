@@ -1,12 +1,13 @@
 # RFC: Atomic Multi-Operation Plan Mutation
 
 ## Status
-
-Proposed.
+Implemented.
 
 Priority: P1.
 
-This RFC defines an atomic batch form for the existing MCP `vectl_mutate` tool. It does not authorize implementation by itself; implementation is governed through `plan.yaml`.
+Runtime implementation: `src/vectl/mcp_core_mutation_tools.py` and `src/vectl/mcp_mutation_contracts.py`.
+
+Contract and atomicity verification: `tests/test_mcp_mutate_batch.py`. The registered FastMCP schema, copyable README request, single- and batch-action `refs` persistence, indexed field errors, CAS behavior, and all-or-nothing persistence are executable acceptance evidence.
 
 ## Problem
 
@@ -50,8 +51,9 @@ No existing surface composes phase, step, edit, move, or removal actions into on
 - No Plan schema or version change is permitted.
 
 ## Decision
+Add an optional, typed `requests` parameter to `vectl_mutate`. `requests` is an alternative to the existing top-level single-action form.
 
-Add an optional `requests: list[dict]` parameter to `vectl_mutate`. `requests` is an alternative to the existing top-level single-action form.
+One action-discriminated contract defines each request's exact properties and required identifiers. FastMCP derives the public JSON Schema from that contract, while the pre-load Vectl validator consumes the same allowed and required field sets for direct/internal calls and actionable errors. Runtime extra fields are retained only until that validator rejects them; the advertised schema remains closed with `additionalProperties: false`.
 
 The MCP shell owns input-shape validation, batch coordination, persistence, and response formatting. Existing Plan mutation functions remain the only owners of action semantics.
 
@@ -63,8 +65,8 @@ The batch executes against a deep working copy of the loaded Plan. The working c
 architecture_basis:
   system_layers:
     - layer: mcp_shell
-      owner: src/vectl/mcp_core_mutation_tools.py
-      responsibility: Validate the public input shape, coordinate one batch, and format MCP responses.
+      owner: src/vectl/mcp_mutation_contracts.py and src/vectl/mcp_core_mutation_tools.py
+      responsibility: Publish and validate the public input shape, coordinate one batch, and format MCP responses.
       depends_on: [plan_core, validation_core, persistence_shell]
     - layer: plan_core
       owner: src/vectl/core_plan_step_add.py and src/vectl/core_plan_step_edit.py
@@ -84,6 +86,10 @@ architecture_basis:
       depends_on: []
 
   source_of_truth_matrix:
+    - datum: batch request fields, required identifiers, and machine schema
+      authority: typed request union in src/vectl/mcp_mutation_contracts.py
+      writers: [mcp_shell]
+      readers: [FastMCP registration, pre-load batch validator, contract tests]
     - datum: persisted Plan definition and inline runtime fields
       authority: plan.yaml
       writers: [persistence_shell]
@@ -196,6 +202,10 @@ architecture_basis:
 
   shared_abstractions:
     shared_types:
+      - name: BatchMutationRequest
+        owner_module: src/vectl/mcp_mutation_contracts.py
+        consumers: [FastMCP registration, pre-load batch validator, contract tests]
+        rationale: one authority for action fields, required identifiers, and registered schema
       - name: Plan
         owner_module: src/vectl/models.py
         consumers: [mcp_shell, plan_core, validation_core, persistence_shell]
@@ -213,6 +223,11 @@ architecture_basis:
     decision: Reuse canonical Plan and error types; add only one private save helper required by the batch response.
 
   module_split_recommendations:
+    - module: src/vectl/mcp_mutation_contracts.py
+      owner: mcp_shell
+      change_reason: typed request schemas and validator field sets must share one authority
+      allowed_dependencies: [typing, existing Pydantic]
+      forbidden_dependencies: [Plan mutation, filesystem, claims, Git]
     - module: src/vectl/mcp_core_mutation_tools.py
       owner: mcp_shell
       change_reason: batch input and orchestration change together with the existing MCP mutation surface
@@ -259,16 +274,17 @@ Rationale: this basis preserves the existing dependency direction from MCP shell
 No mutation function may write files, claims, Git state, or external systems.
 
 ## Public Input Contract
-
 Conceptual MCP signature:
 
 ```python
 vectl_mutate(
     action: MutationAction | None = None,
     # existing single-action fields remain unchanged
-    requests: list[dict] | None = None,
+    requests: list[BatchMutationRequest] | None = None,
 )
 ```
+
+`BatchMutationRequest` is an action-discriminated union. Every action branch publishes exact properties, required fields, and `additionalProperties: false`; nested `add-steps` entries are closed schemas as well.
 
 ### Outer-shape rules
 
@@ -277,24 +293,25 @@ vectl_mutate(
 3. When `requests` is present, `action` and every semantically non-default top-level single-action field are rejected.
 4. An explicitly supplied default value that has no mutation effect is equivalent to omission.
 5. Every request must be a mapping with one supported `action`.
-6. Unknown fields and fields irrelevant to the selected action are rejected.
-7. Malformed requests report their zero-based `request[i]` index.
-8. There are no caller-supplied shared batch options.
+6. Unknown fields and fields irrelevant to the selected action are rejected before Plan load.
+7. Malformed requests report their zero-based `request[i]` index when validation reaches the Vectl tool boundary.
+8. Unknown-field errors name the action, rejected fields, allowed fields, and known remediation such as `phase_id` versus `step_id` or `refs` versus edit-only `add_refs`/`remove_refs`.
+9. There are no caller-supplied shared batch options.
 
 ### Per-action fields
 
-| Action | Allowed request fields |
-|---|---|
-| `add-phase` | `phase_id`, `name`, `depends_on`, `gate` |
-| `add-step` | `phase_id`, `step_id`, `name`, `description`, `depends_on`, `verification`, `evidence_template`, `status`, `evidence`, `skipped_reason`, `agent` |
-| `add-steps` | `phase_id`, `steps` |
-| `edit-phase` | `phase_id`, `name`, `context`, `gate`, `depends_on` |
-| `edit-step` | `step_id`, `new_step_id`, `name`, `description`, `depends_on`, `verification`, `evidence_template`, `agent`, `add_refs`, `remove_refs`, `refs` |
-| `remove-step` | `step_id`, `force` |
-| `move-step` | `step_id`, `target_phase` |
-| `edit-plan` | `project_guidance`, `strategy_ref`, `plan_context` |
+| Action | Allowed request fields after `action` | Required fields |
+|---|---|---|
+| `add-phase` | `phase_id`, `name`, `depends_on`, `gate` | `phase_id`, `name` |
+| `add-step` | `phase_id`, `step_id`, `name`, `description`, `depends_on`, `verification`, `evidence_template`, `refs`, `status`, `evidence`, `skipped_reason`, `agent` | `phase_id`, `step_id`, `name` |
+| `add-steps` | `phase_id`, `steps` | `phase_id`, `steps`; every entry requires `id`, `name` |
+| `edit-phase` | `phase_id`, `name`, `context`, `gate`, `depends_on` | `phase_id` |
+| `edit-step` | `step_id`, `new_step_id`, `name`, `description`, `depends_on`, `verification`, `evidence_template`, `agent`, `add_refs`, `remove_refs`, `refs` | `step_id` |
+| `remove-step` | `step_id`, `force` | `step_id` |
+| `move-step` | `step_id`, `target_phase` | `step_id`, `target_phase` |
+| `edit-plan` | `project_guidance`, `strategy_ref`, `plan_context` | at least one metadata field |
 
-The existing single-action form keeps its current permissiveness and interpretation. Stricter action-specific field rejection applies only to `requests`.
+The existing single-action form keeps its current permissiveness and interpretation. `refs` is accepted and persisted when single-action or batch `add-step` creates a step. Incremental `add_refs` and `remove_refs` remain edit-step-only fields. Stricter action-specific field rejection applies to `requests`.
 
 ## Explicit ID and Replay Contract
 
@@ -343,21 +360,17 @@ Completed-evidence validation is excluded because this surface edits Plan struct
 - Intermediate in-memory topology is never externally visible.
 
 ## Internal Interface Changes
+### `src/vectl/mcp_mutation_contracts.py`
+
+Own the internal typed request union for all eight batch actions and the nested `add-steps` entry. Export allowed and required field sets derived from those types so FastMCP schema generation and pre-load validation cannot drift independently. Keep unknown fields available to the Vectl validator for actionable diagnostics while publishing closed object schemas.
+
 
 ### `src/vectl/mcp_core_mutation_tools.py`
+`vectl_mutate` selects single-action or batch mode. Its `requests` annotation references the typed action union so registered clients receive an exact machine schema.
 
-Modify `vectl_mutate` to select single-action or batch mode.
+The pre-load validator derives allowed and required fields from `mcp_mutation_contracts`, preserves indexed Vectl errors for direct/internal calls, and adds allowed-field and remediation details for unknown input. Both modes use the same private action dispatcher. `add-step` forwards optional `refs` to the existing core `add_step` primitive in single and batch modes.
 
-Add private contracts equivalent to:
-
-```text
-_validate_batch_input(...) -> validated request mappings
-_apply_mutation_request(plan, request) -> updated plan and request result
-```
-
-The current action dispatch must be extracted and shared by both modes. A second action implementation path is forbidden.
-
-No new public class, protocol, registry, or MCP tool is required.
+No second action implementation path is permitted.
 
 ### `src/vectl/mcp_core_common.py`
 
@@ -374,18 +387,18 @@ The batch calls the receipt helper after performing its own single lock recalcul
 The batch must not call `save_plan` directly because that would duplicate CAS error translation, backup behavior, and persistence policy.
 
 ## Error Contract
-
 | Failure stage | Response identity | Batch persistence |
 |---|---|---|
 | Conflicting or missing outer shape | `input_shape` | No load or write |
-| Malformed request | `request[i]` and action when available | No write |
+| Unknown/irrelevant request field | `request[i]`, action, rejected fields, allowed fields, remediation when known | No load or write |
+| Other malformed request | `request[i]` and action when available | No write |
 | Unknown or ambiguous target | `request[i]` | No write |
 | Duplicate ID or dependency violation | `request[i]` | No write |
 | Final model or Plan validation | `stage=final_validation` | No write |
 | CAS conflict | Existing actionable CAS conflict message | No batch write or commit |
 | Git commit failure | Existing best-effort behavior and logging | Plan remains written |
 
-Final whole-Plan validation errors are not assigned a fabricated request index. Request-stage errors always include the exact zero-based index.
+FastMCP may reject missing required fields from the typed schema before the Python function executes. Errors produced by Vectl's pre-load validator always include the exact zero-based request index. Final whole-Plan validation errors are not assigned a fabricated request index.
 
 ## Success Response Contract
 
@@ -432,56 +445,50 @@ A concurrent writer may legitimately change the Plan or Git HEAD. The batch guar
 - The CLI has separate mutation commands and no generic `mutate` abstraction, so this RFC adds no CLI batch surface.
 
 ## Test Requirements
-
-Create `tests/test_mcp_mutate_batch.py` rather than extending the already large `tests/test_mcp.py`.
+`tests/test_mcp_mutate_batch.py` owns the focused contract instead of extending the already large `tests/test_mcp.py`.
 
 Required cases:
 
-1. **Ordered success:** add one explicit phase, add three explicit steps with dependencies, edit the phase, and edit one step. The final Plan validates and contains every change.
+1. **Ordered success:** add one explicit phase, add explicit steps with dependencies, edit the phase, and edit one step. The final Plan validates and contains every change.
 2. **Single execution boundary:** instrument `_load`, `recalc_lock_status`, the save helper, and `_git_commit_plan`; each is called once on success.
 3. **Returned hash:** `plan_hash` equals the SHA-256 of the saved `plan.yaml` bytes.
-4. **Request failure:** request 4 of 5 contains an invalid dependency or duplicate ID; the error identifies `request[3]`, while Plan bytes, claims bytes, persisted lock statuses, and Git HEAD remain unchanged.
+4. **Request failure:** a later request contains an invalid dependency or duplicate ID; the error identifies its request index, while Plan bytes, claims bytes, persisted lock statuses, and Git HEAD remain unchanged.
 5. **Final validation failure:** an ordered edit introduces a phase cycle; the response identifies `stage=final_validation`, with no write or commit.
 6. **CAS conflict:** another writer changes `plan.yaml` between load and save; the writer's bytes remain authoritative and the batch produces no commit.
 7. **Mixed input:** `requests` combined with `action` or a meaningful top-level single-action field fails before load.
 8. **Replay:** a successful explicit-ID batch fails safely on the second execution without a second write or commit.
-9. **Single-action characterization:** the existing `action="edit-step"` behavior and response remain unchanged.
-10. **Existing suite:** all current mutation, CAS, Git, linked-worktree, validation, and add-steps tests remain green.
+9. **Single-action characterization:** existing response text remains unchanged.
+10. **Refs persistence:** single-action and batch `add-step` both persist `refs` exactly.
+11. **Actionable strict errors:** unknown fields fail before load and report request index, action, allowed fields, and identifier/ref remediation.
+12. **Registered schema:** a real stdio `uv run vectl mcp` session exposes an action-discriminated union with exact fields, required IDs, closed action objects, and closed `add-steps` entries.
+13. **Executable documentation:** the marked README JSON example is parsed without modification, sent through that registered stdio tool, and its persisted refs are asserted.
+14. **Existing suite:** all current mutation, CAS, Git, linked-worktree, validation, and add-steps tests remain green.
 
 Verification must use the repository's Invar gate. Final readiness requires the repo-wide regression command, not only focused tests.
 
 ## Documentation Requirements
+Implementation synchronously maintains:
 
-Implementation must synchronously update:
-
-- `README.md`: add an atomic Plan mutation batch section near Lock Consistency, including the all-or-nothing boundary and explicit-ID rule.
-- `docs/DESIGN.md`: extend CAS Safety with the working-copy, final-validation, and single-save flow.
-- `vectl_mutate` docstring: document `requests`, the XOR rule, explicit IDs, request indexing, and batch response fields.
+- `README.md`: all-or-nothing boundary, exact ID rules, per-action field matrix, ref semantics, and one marked copyable request executed by tests.
+- `docs/DESIGN.md`: working-copy/final-validation/single-save flow plus typed-schema and pre-load validation ownership.
+- `vectl_mutate` docstring: XOR rule, action-specific explicit IDs, `add-step` refs, request indexing, and batch response fields.
+- this RFC: implemented status, typed schema source, error responsibility, and executable acceptance evidence.
 
 No new ADR is required while Git durability remains governed by `docs/ADR-unified-state.md`.
 
 ## Implementation Target Map
-
 Primary targets:
 
-- `src/vectl/mcp_core_mutation_tools.py::vectl_mutate`
-- private batch input validator and shared action dispatcher in the same module
-- `src/vectl/mcp_core_common.py::_save_plan`
-- one new private save receipt helper
-- `tests/test_mcp_mutate_batch.py`
-- `README.md`
-- `docs/DESIGN.md`
+- `src/vectl/mcp_mutation_contracts.py`: canonical action-discriminated request types and derived field sets.
+- `src/vectl/mcp_core_mutation_tools.py::vectl_mutate`: typed public annotation, pre-load diagnostics, shared dispatch, and `add-step` refs forwarding.
+- `src/vectl/mcp_core_common.py::_save_plan` and its existing private save receipt helper.
+- `tests/test_mcp_mutate_batch.py`: direct contract, atomicity, real stdio schema, and executable README evidence.
+- `README.md`, `docs/DESIGN.md`, and this RFC.
 
-Existing primitives to reuse without parallel implementations:
+Existing primitives remain the only action owners:
 
-- `src/vectl/core_plan_step_add.py::add_phase`
-- `src/vectl/core_plan_step_add.py::add_step`
-- `src/vectl/core_plan_step_add.py::add_steps_bulk`
-- `src/vectl/core_plan_step_edit.py::edit_phase`
-- `src/vectl/core_plan_step_edit.py::edit_step`
-- `src/vectl/core_plan_step_edit.py::edit_plan`
-- `src/vectl/core_plan_step_edit.py::remove_step`
-- `src/vectl/core_plan_step_edit.py::move_step`
+- `src/vectl/core_plan_step_add.py::{add_phase,add_step,add_steps_bulk}`
+- `src/vectl/core_plan_step_edit.py::{edit_phase,edit_step,edit_plan,remove_step,move_step}`
 - `src/vectl/core_plan_queries.py::recalc_lock_status`
 - `src/vectl/core_plan_validation.py::validate_plan`
 - `src/vectl/io.py::save_plan`
@@ -532,16 +539,18 @@ Cost: the batch response does not report completed-evidence findings.
 Failure condition: callers requiring evidence validation must run the existing validation or gate surfaces after mutation.
 
 ## Acceptance Criteria
-
 The RFC is satisfied when all of the following hold:
 
 - one successful multi-operation batch performs one load, one lock recalculation, one final validation stage, one CAS save, and one Git commit attempt;
 - later requests can target explicit phase and step IDs created earlier in the same batch;
-- request-level failures identify the exact index and persist no batch state;
-- final validation and CAS failures persist no batch state;
+- registered FastMCP clients see an action-discriminated, closed schema with exact fields and required IDs;
+- single-action and batch `add-step` persist optional `refs` without loss;
+- unknown-field failures identify the request index, action, rejected fields, allowed fields, and known remediation before Plan load;
+- request-level, final-validation, and CAS failures persist no batch state;
 - replay does not create suffixed duplicate phases or steps;
 - existing single-action calls and responses do not regress;
 - final response contains ordered request outcomes, the saved Plan hash, and any lock notice;
+- the copyable README request passes unmodified through the real registered stdio MCP tool;
 - README, design documentation, tool documentation, tests, and repo-wide verification remain synchronized.
 
 ## Open Questions

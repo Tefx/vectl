@@ -315,10 +315,54 @@ Lock status is automatically maintained — agents do not need to manage it. Aft
 ```
 
 ### Atomic MCP mutation batches
+The MCP `vectl_mutate` tool accepts either its single-action form or a non-empty `requests` list; callers must select exactly one mode. Every batch request is selected by `action`, and create operations require an explicit ID: `add-phase` uses `phase_id`, `add-step` uses `step_id`, and each `add-steps` entry uses `id`.
 
-The MCP `vectl_mutate` tool accepts either its unchanged single-action form or a non-empty `requests` list; callers must select exactly one mode. Batch create requests require an **explicit ID** (`phase_id`, `step_id`, or each `add-steps` entry's `id`) so later requests can use those IDs and replay cannot create suffixed duplicates.
+| Batch action | Allowed fields after `action` |
+|---|---|
+| `add-phase` | `phase_id`, `name`, `depends_on`, `gate` |
+| `add-step` | `phase_id`, `step_id`, `name`, `description`, `depends_on`, `verification`, `evidence_template`, `refs`, `status`, `evidence`, `skipped_reason`, `agent` |
+| `add-steps` | `phase_id`, `steps` (`id` and `name` required per entry) |
+| `edit-phase` | `phase_id`, `name`, `context`, `gate`, `depends_on` |
+| `edit-step` | `step_id`, `new_step_id`, `name`, `description`, `depends_on`, `verification`, `evidence_template`, `agent`, `add_refs`, `remove_refs`, `refs` |
+| `remove-step` | `step_id`, `force` |
+| `move-step` | `step_id`, `target_phase` |
+| `edit-plan` | `project_guidance`, `strategy_ref`, `plan_context` |
 
-Requests run in order against one deep working copy. A request error is reported with its zero-based index, and the all-or-nothing pre-save boundary discards the working copy when any request or final validation fails. Success performs one lock recalculation and one CAS save, then returns ordered request results, `plan_hash`, and any lock notice. Plan-file persistence remains authoritative; the following Git commit attempt is best effort and has no transactional rollback guarantee. This batch form is MCP-only and does not add CLI parity.
+This complete payload creates a phase and two ordered steps. The first step persists file references through `refs`; `add_refs` and `remove_refs` apply only to `edit-step`.
+
+<!-- vectl-mutate-batch-example:start -->
+```json
+{
+  "requests": [
+    {
+      "action": "add-phase",
+      "phase_id": "mcp-contract-example",
+      "name": "MCP Contract Example"
+    },
+    {
+      "action": "add-step",
+      "phase_id": "mcp-contract-example",
+      "step_id": "mcp-contract-example.implement",
+      "name": "Implement the contract",
+      "refs": [
+        "src/vectl/mcp_core_mutation_tools.py",
+        "README.md"
+      ]
+    },
+    {
+      "action": "add-step",
+      "phase_id": "mcp-contract-example",
+      "step_id": "mcp-contract-example.verify",
+      "name": "Verify the contract",
+      "depends_on": ["mcp-contract-example.implement"],
+      "refs": ["tests/test_mcp_mutate_batch.py"]
+    }
+  ]
+}
+```
+<!-- vectl-mutate-batch-example:end -->
+
+Requests run in order against one deep working copy. Shape errors are rejected before Plan load and identify the zero-based request index, action, allowed fields, and common field-remediation hints. Any request or final-validation failure discards the working copy without writing Plan or claim state. Success performs one lock recalculation and one CAS save, then returns ordered request results, `plan_hash`, and any lock notice. Plan-file persistence remains authoritative; the following Git commit attempt is best effort and has no transactional rollback guarantee. This batch form is MCP-only and does not add a generic CLI batch command.
 
 If you edit `plan.yaml` directly (outside of vectl commands), run `uvx vectl recalc-lock` to manually diagnose and repair any lock inconsistencies.
 

@@ -121444,7 +121444,7 @@ phases:
   steps:
   - id: implement-and-test-atomic-mutation-batch
     name: Implement atomic batch mutation with synchronized tests and documentation
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - Treat `docs/RFC-atomic-plan-mutation-batch.md` at committed HEAD as immutable\
@@ -121619,6 +121619,44 @@ phases:
     agent: python-senior
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-26T08:14:05.962611Z'
+    done_at: '2026-07-26T08:36:13.213115+00:00'
+    evidence: 'Artifact:
+
+      - Integrated commit: 59e61959797645c047fc8ee03e01421b2ddc6933 (`feat: add atomic
+      plan mutation batch`)
+
+      - Integrated paths: README.md; docs/DESIGN.md; src/vectl/mcp_core_common.py;
+      src/vectl/mcp_core_mutation_tools.py; tests/test_mcp_mutate_batch.py
+
+      - Immutable dispatch base: 9a69940a6633137758987ff21be88f238867403f
+
+      - Production Gate admitted the exact dispatch and exact worker receipt as CONFORMANT.
+
+
+      Integrated verification at Main HEAD 59e61959797645c047fc8ee03e01421b2ddc6933:
+
+      - `uv run pytest tests/test_mcp_mutate_batch.py -q` -> exit 0, 17 passed
+
+      - `uv run pytest tests/test_mcp.py tests/test_io.py -q` -> exit 0, 218 passed
+
+      - `atomic_mutation_docs_contract` exact command -> exit 0
+
+      - `uvx invar-tools guard --changed` -> exit 0, passed=true, errors=0, warnings=0
+
+      - Failed-batch atomicity, CAS/replay, exact hash, single-action compatibility,
+      documentation sync, and scope claims are bound to the unchanged receipt below.
+
+
+      Worker receipt (unchanged):
+
+      {"schema_version":"vectl.worker.execution.v2","status":"PASS","worker_id":"python-senior","step_id":"implement-and-test-atomic-mutation-batch","worktree":"/Users/tefx/Projects/vectl/.vectl/workspaces/atomic-plan-mutation-batch.implement-and-test-atomic-mutation-batch","base_commit":"9a69940a6633137758987ff21be88f238867403f","claim_ids":["claim:109d608bd70d66a37a3f1e19011803f04648e06c0dd4de97da7f4170a3c0b8eb"],"changed_files":["README.md","docs/DESIGN.md","src/vectl/mcp_core_common.py","src/vectl/mcp_core_mutation_tools.py","tests/test_mcp_mutate_batch.py"],"check_evidence":[{"check_id":"focused_batch_mutation_contract","command":["uv","run","pytest","tests/test_mcp_mutate_batch.py","-q"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]},{"check_id":"existing_mcp_io_regression","command":["uv","run","pytest","tests/test_mcp.py","tests/test_io.py","-q"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]},{"check_id":"atomic_mutation_docs_contract","command":["uv","run","python","-c","from
+      pathlib import Path; r=Path(''README.md'').read_text().lower(); d=Path(''docs/DESIGN.md'').read_text().lower();
+      m=Path(''src/vectl/mcp_core_mutation_tools.py'').read_text().lower(); mr=[x
+      for x in [''vectl_mutate'',''requests'',''explicit id'',''all-or-nothing'',''plan_hash'']
+      if x not in r]; md=[x for x in [''working copy'',''final validation'',''cas'',''single
+      save'',''best-effort git''] if x not in d]; mm=[x for x in [''requests'',''explicit
+      id'',''request index'',''plan_hash''] if x not in m]; assert not mr and not
+      md and not mm, (mr, md, mm)"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]},{"check_id":"changed_invar_guard","command":["uvx","invar-tools","guard","--changed"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]}],"claims":[{"claim_id":"REQ-APMB-INPUT-SHAPE","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-ORDERED-ATOMICITY","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-SAVE-RECEIPT","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-CAS-REPLAY","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-SINGLE-ACTION-COMPAT","check_id":"existing_mcp_io_regression"},{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"changed_invar_guard"},{"claim_id":"REQ-APMB-DOC-SYNC","check_id":"atomic_mutation_docs_contract"}],"unresolved":[],"acceptance_authorizations":[]}'
   - id: verify-atomic-mutation-mcp-seam
     name: Independently verify RFC conformance and real MCP atomicity
     status: pending

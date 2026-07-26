@@ -121775,21 +121775,26 @@ phases:
       \ spec-verifier receipt, and integration-verifier receipt.\n- Execute the authoritative\
       \ repo-wide readiness command `uvx invar-tools guard --all` on the integrated\
       \ final bytes. Also execute `uv run pytest tests/test_mcp_mutate_batch.py -q`\
-      \ and reject any focused-test xfail, skip, expected-red sentinel, collection\
-      \ error, or failure.\n\nBoundary:\n- Owner: `gate-reviewer`. Review and verification\
-      \ only; no repository, plan, claims, runtime, or external mutation beyond isolated\
-      \ test fixtures. The gate cannot authorize fixes or waive a hard RFC atom.\n\
-      \nAdmit:\n- OPEN requires current raw command evidence, exhaustive positive\
-      \ coverage for every requirement ID below, PASS receipts from both independent\
-      \ consumers, README/DESIGN parity, one shared mutation path, and no unresolved\
-      \ blocker or orphan. Historical warnings outside this phase do not prove or\
-      \ disprove this phase; any new warning intersecting this phase blocks.\n\nRecovery:\n\
-      - On any command failure, ungoverned expected-red/xfail/skip debt, unproven\
-      \ runtime seam, persistence ambiguity, or review finding, return BLOCKED/FAIL\
-      \ with the owning step and stop. Do not add a remediation step or retry unsafe\
-      \ stateful probes inside the gate.\n\n<vectl_gate_scope>\n{\n  \"schema_version\"\
-      : \"vectl.gate.scope.v2\",\n  \"phase_id\": \"atomic-plan-mutation-batch\",\n\
-      \  \"requirement_ids\": [\n    \"REQ-APMB-INPUT-SHAPE\",\n    \"REQ-APMB-ORDERED-ATOMICITY\"\
+      \ and reject any focused-test failure, xfail, skip, sentinel, collection error,\
+      \ or other non-green residue.\n- Treat the implementation owner's pre-code failing\
+      \ run only as transient same-step test-first evidence. No plan-level expected-red\
+      \ lifecycle, adapter, manifest, or future-red admission exists or is required.\n\
+      \nBoundary:\n- Owner: `gate-reviewer`. Review and verification only; no repository,\
+      \ plan, claims, runtime, or external mutation beyond isolated test fixtures.\
+      \ The gate cannot authorize fixes or waive a hard RFC atom.\n\nAdmit:\n- OPEN\
+      \ requires current raw command evidence, exhaustive positive coverage for every\
+      \ requirement ID below, PASS receipts from both independent consumers, README/DESIGN\
+      \ parity, one shared mutation path, and no unresolved blocker or orphan.\n-\
+      \ `admitted_future_expected_red` is empty. Any residual xfail, skip, failing\
+      \ sentinel, or non-green focused result blocks; an empty plan-level expected-red\
+      \ binding set is the intended compact topology and creates no debt.\n- Historical\
+      \ warnings outside this phase do not prove or disprove this phase; any new warning\
+      \ intersecting this phase blocks.\n\nRecovery:\n- On any command failure, residual\
+      \ non-green test debt, unproven runtime seam, persistence ambiguity, or review\
+      \ finding, return BLOCKED/FAIL with the owning step and stop. Do not add a remediation\
+      \ step or retry unsafe stateful probes inside the gate.\n\n<vectl_gate_scope>\n\
+      {\n  \"schema_version\": \"vectl.gate.scope.v2\",\n  \"phase_id\": \"atomic-plan-mutation-batch\"\
+      ,\n  \"requirement_ids\": [\n    \"REQ-APMB-INPUT-SHAPE\",\n    \"REQ-APMB-ORDERED-ATOMICITY\"\
       ,\n    \"REQ-APMB-SAVE-RECEIPT\",\n    \"REQ-APMB-CAS-REPLAY\",\n    \"REQ-APMB-SINGLE-ACTION-COMPAT\"\
       ,\n    \"REQ-APMB-SCOPE-BOUNDARY\",\n    \"REQ-APMB-DOC-SYNC\"\n  ],\n  \"integrated_steps\"\
       : [\n    \"atomic-plan-mutation-batch.implement-and-test-atomic-mutation-batch\"\
@@ -121800,8 +121805,9 @@ phases:
     verification: Run `uv run pytest tests/test_mcp_mutate_batch.py -q` and authoritative
       `uvx invar-tools guard --all`; inspect raw evidence from all integrated steps;
       then return a production-Gate-validated `vectl.verifier.semantic.v1` Full Gate
-      receipt. OPEN requires 7/7 requirement IDs proven, no orphans, no focused xfail/skip/expected-red
-      debt, both independent receipts PASS, and zero unresolved blockers.
+      receipt. OPEN requires 7/7 requirement IDs proven, no orphans, no focused failure/xfail/skip
+      residue, no plan-level expected-red debt, both independent receipts PASS, and
+      zero unresolved blockers.
     refs:
     - docs/RFC-atomic-plan-mutation-batch.md
     - src/vectl/mcp_core_mutation_tools.py

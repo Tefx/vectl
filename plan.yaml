@@ -121659,7 +121659,7 @@ phases:
       md and not mm, (mr, md, mm)"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]},{"check_id":"changed_invar_guard","command":["uvx","invar-tools","guard","--changed"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]}],"claims":[{"claim_id":"REQ-APMB-INPUT-SHAPE","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-ORDERED-ATOMICITY","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-SAVE-RECEIPT","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-CAS-REPLAY","check_id":"focused_batch_mutation_contract"},{"claim_id":"REQ-APMB-SINGLE-ACTION-COMPAT","check_id":"existing_mcp_io_regression"},{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"changed_invar_guard"},{"claim_id":"REQ-APMB-DOC-SYNC","check_id":"atomic_mutation_docs_contract"}],"unresolved":[],"acceptance_authorizations":[]}'
   - id: verify-atomic-mutation-mcp-seam
     name: Independently verify RFC conformance and real MCP atomicity
-    status: claimed
+    status: pending
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -121764,5 +121764,3 @@ phases:
     depends_on:
     - implement-and-test-atomic-mutation-batch
     agent: integration-verifier
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-07-26T08:37:01.890720Z'

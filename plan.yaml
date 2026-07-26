@@ -121448,10 +121448,11 @@ phases:
       \ ownership and every non-goal.\n- In `tests/test_mcp_mutate_batch.py`, define\
       \ the RFC input-shape, explicit-ID/replay, ordered-result, atomicity, final-validation,\
       \ CAS, save/hash/commit-count, linked-worktree, and single-action compatibility\
-      \ cases before editing production source. Capture the initial expected-red fingerprint\
-      \ caused by the missing batch surface, then close it in this same step; completion\
-      \ permits no xfail, skip, sentinel, or residual expected-red state.\n- Extend\
-      \ only the existing `vectl_mutate` path in `src/vectl/mcp_core_mutation_tools.py`:\
+      \ cases before editing production source. Record the initial focused failing\
+      \ run caused by the missing batch surface as transient same-step development\
+      \ evidence, then close it before completion. It creates no plan-level expected-red\
+      \ state, adapter, manifest, downstream lifecycle, xfail, skip, or sentinel.\n\
+      - Extend only the existing `vectl_mutate` path in `src/vectl/mcp_core_mutation_tools.py`:\
       \ XOR single-action versus non-empty `requests`, strict batch request schemas\
       \ and indexed errors, one deep working Plan, one shared action dispatcher, one\
       \ lock recalculation, one final canonical/structural validation, and one CAS\
@@ -121470,15 +121471,18 @@ phases:
       \ receipt.\n\nAdmit:\n- Witnessed inputs: the committed RFC, current tracked\
       \ source targets, `pyproject.toml`, and current MCP/IO regression tests. `tests/test_mcp_mutate_batch.py`\
       \ is fixed by the RFC and is produced by this step/check through the developer-test\
-      \ binding below.\n- Evidence must include the pre-implementation red command/fingerprint,\
-      \ the final green focused command with no skip/xfail, existing MCP/IO regression\
-      \ output, changed-file inventory, and exact confirmation that failed batches\
-      \ leave Plan bytes, claims bytes, lock statuses, and Git HEAD unchanged.\n\n\
-      Recovery:\n- Roll back by reverting this step's repository commit before release.\
-      \ On unknown fixture leakage, partial real Plan/claims/Git state, incorrect\
-      \ RFC test authority, or an unsafe CAS replay, stop without retry, preserve\
-      \ raw evidence, and hand reconciliation to the orchestrator; do not rewrite\
-      \ tests to fit implementation.\n\n<vectl_step_policy>\n{\n  \"schema_version\"\
+      \ binding below.\n- Plan-level expected-red applicability is explicitly none:\
+      \ `bindings.expected_red.items` and `closes_expected_red` remain empty because\
+      \ the same step owns test definition, implementation, and final green closure.\n\
+      - Evidence must include the transient pre-implementation failing command/fingerprint,\
+      \ the final green focused command with no failure/skip/xfail residue, existing\
+      \ MCP/IO regression output, changed-file inventory, and exact confirmation that\
+      \ failed batches leave Plan bytes, claims bytes, lock statuses, and Git HEAD\
+      \ unchanged.\n\nRecovery:\n- Roll back by reverting this step's repository commit\
+      \ before release. On unknown fixture leakage, partial real Plan/claims/Git state,\
+      \ incorrect RFC test authority, or an unsafe CAS replay, stop without retry,\
+      \ preserve raw evidence, and hand reconciliation to the orchestrator; do not\
+      \ rewrite tests to fit implementation.\n\n<vectl_step_policy>\n{\n  \"schema_version\"\
       : \"vectl.step.policy.v2\",\n  \"step_id\": \"atomic-plan-mutation-batch.implement-and-test-atomic-mutation-batch\"\
       ,\n  \"risk_tier\": \"R2\",\n  \"risk_reasons\": [\n    \"public MCP input and\
       \ response compatibility\",\n    \"plan.yaml CAS persistence and best-effort\
@@ -121560,11 +121564,11 @@ phases:
       \   proves:\n      - REQ-APMB-SCOPE-BOUNDARY\nbindings:\n  expected_red:\n \
       \   items: []\n  closes_expected_red: []\n</intent_closure_contract>"
     verification: Run the installed Intent-Closure v2 lint/preflight for this exact
-      step, capture the required test-first red evidence, then pass `uv run pytest
-      tests/test_mcp_mutate_batch.py -q`, `uv run pytest tests/test_mcp.py tests/test_io.py
-      -q`, and `uvx invar-tools guard --changed`. Completion evidence must include
-      commands, exits, decisive excerpts, changed paths, and no unresolved expected-red/xfail/skip
-      debt.
+      step. Record the transient test-first failing run as same-step development evidence,
+      then pass `uv run pytest tests/test_mcp_mutate_batch.py -q`, `uv run pytest
+      tests/test_mcp.py tests/test_io.py -q`, and `uvx invar-tools guard --changed`.
+      Completion evidence must include commands, exits, decisive excerpts, changed
+      paths, and zero residual failure/xfail/skip or plan-level expected-red debt.
     refs:
     - docs/RFC-atomic-plan-mutation-batch.md
     - src/vectl/mcp_core_mutation_tools.py

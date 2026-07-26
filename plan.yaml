@@ -121737,7 +121737,7 @@ phases:
     - implement-and-test-atomic-mutation-batch
     agent: spec-verifier
   - id: verify-atomic-mutation-mcp-seam
-    name: Verify atomic batch behavior through the real registered MCP seam
+    name: Independently verify RFC conformance and real MCP atomicity
     status: pending
     description: 'step_type: verification
 
@@ -121746,58 +121746,100 @@ phases:
 
       Deliver:
 
-      - As `integration-verifier`, launch the project-local registered MCP server
-      (`uv run vectl mcp`) against isolated Git-backed Plan and claims fixtures; do
-      not prove routing through direct Python calls alone.
+      - As `integration-verifier`, independently enumerate every material requirement,
+      acceptance criterion, and non-goal in `docs/RFC-atomic-plan-mutation-batch.md`;
+      inspect the integrated source, generated focused developer test, `vectl_mutate`
+      docstring, `README.md`, and `docs/DESIGN.md` without reusing the implementation
+      owner''s conclusions as proof.
 
-      - Exercise one existing single-action mutation and the new batch form. The batch
-      scenarios must cover ordered success with same-batch explicit IDs, exact saved-byte
-      `plan_hash`, one lock notice, request-indexed failure with unchanged Plan/claims/lock/Git
+      - Trace the shared single/batch dispatcher, deep working-copy boundary, one
+      lock recalculation, final canonical/structural validation, save-receipt compatibility,
+      indexed errors, replay behavior, exact saved hash, and best-effort Git semantics.
+      Confirm there is no duplicate action or transaction path and that documentation
+      matches observed behavior without claiming CLI parity or Git rollback.
+
+      - Launch the project-local registered MCP server (`uv run vectl mcp`) against
+      verifier-owned isolated Git-backed Plan and claims fixtures; direct Python calls
+      alone cannot prove public routing. Exercise an existing single-action mutation
+      and the batch form.
+
+      - Cover ordered success with same-batch explicit IDs, exact saved-byte `plan_hash`,
+      one lock notice, request-indexed failure with unchanged Plan/claims/lock/Git
       state, final-validation cycle failure, CAS conflict preserving the competing
       writer, explicit-ID replay without a second write/commit, and single-action
       response compatibility.
 
-      - Record load/recalc/save/Git-commit counts through the focused test evidence
-      and independently establish L3 public-tool reachability and state transitions
-      through the real stdio transport.
+      - Run `uv run pytest tests/test_mcp_mutate_batch.py -q`, `uv run pytest tests/test_mcp.py
+      tests/test_io.py -q`, and the authoritative repo-wide readiness command `uvx
+      invar-tools guard --all` on the integrated final bytes. Any failure, collection
+      error, xfail, skip, sentinel, phase-intersecting warning, or semantic receipt
+      gap blocks closure.
 
 
       Boundary:
 
-      - Verification only. Use verifier-owned temporary directories, plans, claims
-      stores, and Git repositories. No repository file, real plan, real claims store,
-      branch, or external service may change. Mocks cannot satisfy the registered
-      MCP seam claim.
+      - Owner: `integration-verifier`. This is read-only verification with authority
+      to launch the real local stdio seam and create only verifier-owned temporary
+      fixtures. Do not modify repository files, Plan state, claims, branches, acceptance
+      tests, or external services; ignored test/cache artifacts carry no acceptance
+      authority.
+
+      - Mocks may support instrumentation but cannot satisfy registered MCP reachability
+      or state-transition claims. A command touching the repository''s real `plan.yaml`,
+      `.git/vectl/claims.json`, or unrelated Git state is a hard stop.
 
 
       Admit:
 
+      - The implementation step and its linted worker receipt must be integrated before
+      verification. The produced `tests/test_mcp_mutate_batch.py` is consumed through
+      that dependency and fixed producer path; the verifier cannot alter it.
+
       - Return one production-validated `vectl.verifier.semantic.v1` receipt for ordered
-      scope: ["registered stdio MCP single-action compatibility", "registered stdio
-      MCP ordered explicit-ID batch success and saved hash", "request and final-validation
-      failures preserve Plan, claims, lock status, and Git HEAD", "CAS conflict and
-      replay preserve authoritative bytes and avoid extra commits"]. Include exact
-      commands, cwd/environment bindings, process lifecycle, raw response excerpts,
-      before/after hashes, Git HEADs, commit counts, and L1/L2/L3 classification.
+      scope: ["RFC public input, explicit-ID, error, success, compatibility, documentation,
+      and non-goal requirements", "MCP-shell/core/validation/persistence ownership
+      and absence of a duplicate action path", "registered stdio MCP ordered explicit-ID
+      success and exact saved hash", "request/final-validation/CAS/replay failures
+      preserve authoritative Plan, claims, lock, and Git state", "focused and existing
+      regression checks plus repo-wide Invar readiness"].
+
+      - Include exact commands, cwd/environment bindings, process lifecycle, raw response
+      excerpts, before/after hashes, Git HEADs, write/commit counts, artifact sections
+      inspected, and L1/L2/L3 classification. PASS requires all seven `REQ-APMB-*`
+      atoms proven, current green commands, zero unresolved blocker, and zero repository
+      mutation.
+
+      - Historical completed-phase warnings outside this phase neither prove nor block
+      this outcome; any new finding intersecting the implementation paths, checks,
+      RFC, or documentation blocks closure.
 
 
       Recovery:
 
       - Retry only a transport launch that proves no fixture or repository mutation
       and retains the first failure observation; maximum two attempts. Unknown partial
-      state, repository leakage, or unsafe replay stops verification and blocks the
-      gate pending orchestrator reconciliation.'
-    verification: Return a production-Gate-validated `vectl.verifier.semantic.v1`
-      receipt from `integration-verifier`. PASS requires L1 plus L3 real-stdio evidence
-      for all ordered scope entries, exact commands and state hashes, a high-risk
-      failure path, clean verifier-owned process termination, and zero repository
-      mutation.
+      state, repository leakage, unsafe replay, persistence ambiguity, or an unproven
+      requirement stops verification and requires orchestrator reconciliation. Do
+      not implement fixes, edit tests, waive an RFC atom, or add a remediation Plan
+      node from this step.'
+    verification: Pass `uv run pytest tests/test_mcp_mutate_batch.py -q`, `uv run
+      pytest tests/test_mcp.py tests/test_io.py -q`, and `uvx invar-tools guard --all`;
+      execute the real registered stdio MCP success and high-risk failure matrix in
+      isolated Git-backed fixtures; inspect source and synchronized documentation;
+      then return a production-Gate-validated `vectl.verifier.semantic.v1` receipt.
+      PASS requires 7/7 requirement IDs, exact commands and state hashes, L3 public-tool
+      evidence, no duplicate mutation path, clean process termination, no failure/xfail/skip
+      residue, and zero repository mutation.
     refs:
     - docs/RFC-atomic-plan-mutation-batch.md
     - src/vectl/mcp_core_mutation_tools.py
     - src/vectl/mcp_core_common.py
+    - README.md
+    - docs/DESIGN.md
     - pyproject.toml
     - docs/ADR-unified-state.md
+    - tests/test_mcp.py
+    - tests/test_io.py
     depends_on:
     - implement-and-test-atomic-mutation-batch
     agent: integration-verifier

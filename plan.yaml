@@ -121797,7 +121797,7 @@ phases:
     agent: integration-verifier
   - id: restore-atomic-mutation-invar-budget
     name: Restore atomic mutation Invar budget by behavior-preserving module simplification
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - Remove the implementation-introduced `# @invar:allow file_size` line from\
@@ -121926,3 +121926,37 @@ phases:
     agent: python-refactor-master
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-26T09:01:14.669781Z'
+    done_at: '2026-07-26T09:15:18.892912+00:00'
+    evidence: 'Artifact:
+
+      - Integrated commit: 8dc66ca77715750aac7a9f5505dca3195c92b729 (`refactor: restore
+      atomic mutation invar budget`)
+
+      - Integrated paths: src/vectl/mcp_core_misc_tools.py; src/vectl/mcp_core_mutation_tools.py;
+      src/vectl/mcp_core_read_tools.py; src/vectl/mcp_core_tools.py
+
+      - Immutable dispatch base: 0aad34c0c8422d7168b0b511eb33d93320d13cfe
+
+      - Production Gate admitted the exact dispatch and exact worker receipt as CONFORMANT.
+
+
+      Integrated verification at Main HEAD 8dc66ca77715750aac7a9f5505dca3195c92b729:
+
+      - `atomic_mutation_escape_removed` exact command -> exit 0
+
+      - `uv run pytest tests/test_mcp_mutate_batch.py tests/test_mcp.py tests/test_io.py
+      -q` -> exit 0, 235 passed
+
+      - `uvx invar-tools guard --all` -> exit 0, passed=true, errors=0 (26 non-blocking
+      warnings)
+
+      - Changed paths stayed within the four authorized MCP source modules; tests
+      and documentation remained unchanged.
+
+
+      Worker receipt (unchanged):
+
+      {"schema_version":"vectl.worker.execution.v2","status":"PASS","worker_id":"python-refactor-master","step_id":"restore-atomic-mutation-invar-budget","worktree":"/Users/tefx/Projects/vectl/.vectl/workspaces/atomic-plan-mutation-batch.restore-atomic-mutation-invar-budget","base_commit":"0aad34c0c8422d7168b0b511eb33d93320d13cfe","claim_ids":["claim:5d10c744a1ff3a64400993697d1b9eeac417067c450f348e8bd4631e0d0b74b7"],"changed_files":["src/vectl/mcp_core_misc_tools.py","src/vectl/mcp_core_mutation_tools.py","src/vectl/mcp_core_read_tools.py","src/vectl/mcp_core_tools.py"],"check_evidence":[{"check_id":"atomic_mutation_escape_removed","command":["uv","run","python","-c","from
+      pathlib import Path; p=Path(''src/vectl/mcp_core_mutation_tools.py'').read_text();
+      assert ''@invar:allow file_size'' not in p; assert all(x in p for x in [''def
+      _validate_batch_requests'', ''def _apply_mutation_request'', ''def vectl_mutate''])"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]},{"check_id":"atomic_mutation_refactor_regression","command":["uv","run","pytest","tests/test_mcp_mutate_batch.py","tests/test_mcp.py","tests/test_io.py","-q"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]},{"check_id":"repo_wide_invar_readiness","command":["uvx","invar-tools","guard","--all"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]}],"claims":[{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"atomic_mutation_escape_removed"},{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"atomic_mutation_refactor_regression"},{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"repo_wide_invar_readiness"}],"unresolved":[],"acceptance_authorizations":[]}'

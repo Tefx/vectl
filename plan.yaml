@@ -122052,7 +122052,7 @@ phases:
   steps:
   - id: admitted-mutation-contract.baseline-and-rfc
     name: Capture baseline and ratify the NARROW V1 RFC
-    status: claimed
+    status: pending
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - Before any repository edit, capture immutable HEAD, clean porcelain status,\
@@ -122176,8 +122176,6 @@ phases:
     - docs/RFC-atomic-plan-mutation-batch.md
     - docs/ADR-unified-state.md
     agent: python-senior
-    claimed_by: python-senior
-    claimed_at: '2026-08-11T18:06:17.928718Z'
   - id: admitted-mutation-contract.protocol-tests
     name: Define expected-red exact-byte, adapter, receipt, and bypass tests
     status: pending

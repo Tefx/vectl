@@ -9,6 +9,7 @@ intentional-red surface with rationale.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import io
 import json
 import sys
@@ -19,6 +20,8 @@ import pytest
 
 EXPECTED_RED_LIFECYCLE: Final = "must_flip_or_retire_or_explicitly_preserve_with_rationale"
 EXPECTED_RED_REQUIRED_FIELDS: Final = ("owner", "rationale", "lifecycle")
+ADMITTED_MUTATION_CHECK_ID: Final = "admitted_mutation_expected_red"
+_OBSERVATION_BYTE_LIMIT: Final = 48 * 1024
 
 
 def expected_red_module(*, owner: str, rationale: str) -> pytest.MarkDecorator:
@@ -98,6 +101,36 @@ def _emit(payload: dict[str, object]) -> None:
     print(json.dumps(payload, sort_keys=True, separators=(",", ":")))
 
 
+def _identity_digest(identities: list[str]) -> str:
+    """Hash the canonical identity envelope expected by the production Gate."""
+
+    encoded = json.dumps(
+        {"identities": identities},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8", "surrogateescape")
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def _bounded_observations(*streams: str, identities: list[str]) -> list[str]:
+    """Retain unique failure fingerprints without overflowing the evidence envelope."""
+
+    observations: list[str] = []
+    seen: set[str] = set()
+    used = 0
+    for value in [*identities, *(line.strip() for stream in streams for line in stream.splitlines())]:
+        if not value or value in seen:
+            continue
+        encoded_size = len(value.encode("utf-8", "surrogateescape"))
+        if used + encoded_size > _OBSERVATION_BYTE_LIMIT:
+            break
+        seen.add(value)
+        observations.append(value)
+        used += encoded_size
+    return observations
+
+
 def _copy_terminal_output(stdout: str, stderr: str) -> None:
     """Preserve pytest diagnostics outside the machine-readable stdout stream."""
 
@@ -123,10 +156,13 @@ def main(argv: list[str] | None = None) -> int:
     collection_code, collection, collection_stdout, collection_stderr = _invoke_pytest(
         ["--collect-only", "-q", *requested_ids]
     )
+    selected_ids = sorted(collection.selected_ids)
     _emit(
         {
             "schema_version": "vectl.check.selection.v1",
-            "selected_ids": collection.selected_ids,
+            "check_id": ADMITTED_MUTATION_CHECK_ID,
+            "identities": selected_ids,
+            "digest": _identity_digest(selected_ids),
         }
     )
     if collection_code != 0:
@@ -137,16 +173,24 @@ def main(argv: list[str] | None = None) -> int:
 
     run_code, execution, run_stdout, run_stderr = _invoke_pytest(requested_ids)
     _copy_terminal_output(run_stdout, run_stderr)
+    executed_ids = sorted(execution.executed_ids)
     _emit(
         {
             "schema_version": "vectl.check.evidence.v1",
-            "selected_ids": collection.selected_ids,
-            "executed_ids": execution.executed_ids,
+            "check_id": ADMITTED_MUTATION_CHECK_ID,
+            "selected_ids": selected_ids,
+            "executed_ids": executed_ids,
             "exit_code": run_code,
             "outcome": "green" if run_code == 0 else "red",
+            "observations": _bounded_observations(
+                run_stdout,
+                run_stderr,
+                identities=executed_ids,
+            ),
+            "artifacts": [],
         }
     )
-    return run_code
+    return 0
 
 
 if __name__ == "__main__":

@@ -818,6 +818,21 @@ class TestExpectedRedSelectedExecutionObserver:
             timeout=30,
         )
 
+    @staticmethod
+    def _selection_envelope(node_id: str) -> dict[str, object]:
+        encoded = json.dumps(
+            {"identities": [node_id]},
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8", "surrogateescape")
+        return {
+            "schema_version": "vectl.check.selection.v1",
+            "check_id": "admitted_mutation_expected_red",
+            "identities": [node_id],
+            "digest": "sha256:" + hashlib.sha256(encoded).hexdigest(),
+        }
+
     def test_select_collects_without_executing_test_body(self, tmp_path: Path) -> None:
         node_id, sentinel = self._write_probe(tmp_path)
 
@@ -825,10 +840,7 @@ class TestExpectedRedSelectedExecutionObserver:
 
         assert result.returncode == 0, result.stderr
         assert not sentinel.exists()
-        assert json.loads(result.stdout) == {
-            "schema_version": "vectl.check.selection.v1",
-            "selected_ids": [node_id],
-        }
+        assert json.loads(result.stdout) == self._selection_envelope(node_id)
 
     def test_run_emits_matching_selected_and_executed_ids(self, tmp_path: Path) -> None:
         node_id, sentinel = self._write_probe(tmp_path)
@@ -838,17 +850,15 @@ class TestExpectedRedSelectedExecutionObserver:
         assert result.returncode == 0, result.stderr
         assert sentinel.read_text(encoding="utf-8") == "executed"
         selection, evidence = [json.loads(line) for line in result.stdout.splitlines()]
-        assert selection == {
-            "schema_version": "vectl.check.selection.v1",
-            "selected_ids": [node_id],
-        }
-        assert evidence == {
-            "schema_version": "vectl.check.evidence.v1",
-            "selected_ids": [node_id],
-            "executed_ids": [node_id],
-            "exit_code": 0,
-            "outcome": "green",
-        }
+        assert selection == self._selection_envelope(node_id)
+        assert evidence["schema_version"] == "vectl.check.evidence.v1"
+        assert evidence["check_id"] == "admitted_mutation_expected_red"
+        assert evidence["selected_ids"] == [node_id]
+        assert evidence["executed_ids"] == [node_id]
+        assert evidence["exit_code"] == 0
+        assert evidence["outcome"] == "green"
+        assert node_id in evidence["observations"]
+        assert evidence["artifacts"] == []
 
 
 def test_admitted_plan_mutation_rfc_fixes_narrow_v1_contract() -> None:

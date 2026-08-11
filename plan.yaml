@@ -122424,7 +122424,79 @@ phases:
     - tests/test_cli.py
     depends_on:
     - admitted-mutation-contract.baseline-and-rfc
+    - admitted-mutation-contract.baseline-evidence-disposition
     agent: python-senior
+  - id: admitted-mutation-contract.baseline-evidence-disposition
+    name: Record admitted baseline evidence disposition
+    status: done
+    description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
+      Deliver:\n- Record only the already-admitted nonblocking expected-red disposition\
+      \ for `admitted-mutation-contract.baseline-and-rfc`. This historical audit closure\
+      \ creates no new product acceptance, quality waiver, implementation authority,\
+      \ or executable product outcome.\n- Preserve the admitted baseline atoms: one\
+      \ stable MCP schema pytest node is expected red; ruff has the fixed 2015-diagnostic\
+      \ signature; mypy has the fixed 1261-diagnostic/31-file signature; Invar, diff-check,\
+      \ Vectl validation, and RFC/observer checks are green; and the parent-admitted\
+      \ Worker-v2 receipt is CONFORMANT.\n- Supply the completed-evidence validator\
+      \ with a supported same-phase closure record. `admitted-mutation-verification.integration-gate`\
+      \ remains the independent consumer and must perform its complete integrated-byte\
+      \ comparison; this audit record cannot replace, narrow, or satisfy that later\
+      \ verification.\n\nBoundary:\n- Owner: `vectl-orchestrator`; this imported audit\
+      \ disposition records already-admitted lifecycle evidence only. It authorizes\
+      \ no repository, Plan, claims, Git, runtime, credential, paid-service, external-service,\
+      \ or acceptance-test mutation.\n- Repository and runtime effects are absent.\
+      \ The deterministic validation check is read-only against the current Plan and\
+      \ witnessed project entrypoint; every repository delta remains forbidden by\
+      \ `no_repo_change`.\n\nAdmit:\n- Witnessed inputs are the completed `admitted-mutation-contract.baseline-and-rfc`\
+      \ evidence, its parent-admitted CONFORMANT receipt, the current clean Plan,\
+      \ and the existing `admitted-mutation-verification.integration-gate` comparison\
+      \ obligation.\n- `REQ-AMV1-BASELINE-EVIDENCE-DISPOSITION` is established only\
+      \ by the exact owner, lifecycle, gate-intersection, bounded baseline-parity,\
+      \ and phase-local closure evidence imported with this step plus `baseline_evidence_disposition_validation`\
+      \ returning zero active validation errors.\n- This step owns no expected-red\
+      \ item and changes no existing expected-red binding, check, path/test authority,\
+      \ or downstream acceptance contract.\n\nRecovery:\n- If any imported atom conflicts\
+      \ with the admitted receipt, the baseline signatures, the later integration\
+      \ obligation, or current validation, stop with the exact discrepancy. Do not\
+      \ claim this step, rewrite completed product evidence, weaken later verification,\
+      \ or create another closure layer.\n\n<vectl_step_policy>\n{\n  \"schema_version\"\
+      : \"vectl.step.policy.v2\",\n  \"step_id\": \"admitted-mutation-contract.baseline-evidence-disposition\"\
+      ,\n  \"risk_tier\": \"R0\",\n  \"risk_reasons\": [\n    \"read-only historical\
+      \ evidence disposition with no repository or runtime effect\"\n  ],\n  \"primary_outcome\"\
+      : \"REQ-AMV1-BASELINE-EVIDENCE-DISPOSITION\",\n  \"rollback_class\": \"TRIVIAL\"\
+      ,\n  \"observation_ledger\": [],\n  \"test_authority\": {\n    \"developer_test_globs\"\
+      : [],\n    \"acceptance_test_paths\": [],\n    \"acceptance_check_ids\": [],\n\
+      \    \"acceptance_mutation\": \"FORBIDDEN\",\n    \"acceptance_authorizations\"\
+      : []\n  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\nschema_version:\
+      \ intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
+      profile: generic\nscope:\n  allowed_paths:\n    - plan.yaml\n    - pyproject.toml\n\
+      \  blocked_paths:\n    - src/**\n    - tests/**\n    - docs/**\n    - README.md\n\
+      \    - README_zh.md\n  ignored_runtime_paths: [.git/, .vectl/, .agent/, .venv/]\n\
+      claims:\n  - REQ-AMV1-BASELINE-EVIDENCE-DISPOSITION\nchecks:\n  - id: baseline_evidence_disposition_validation\n\
+      \    run:\n      command: [uv, run, vectl, validate]\n      timeout_seconds:\
+      \ 600\n    evidence:\n      mode: command_outcome\n      path_bindings:\n  \
+      \      - {path: plan.yaml, access: read, availability: current}\n        - {path:\
+      \ pyproject.toml, access: read, availability: current}\n      test_bindings:\
+      \ []\n    expect:\n      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\n\
+      \        contains_all: [{literal: \"0 error(s)\"}]\n        contains_any: []\n\
+      \        forbids: []\n    proves: [REQ-AMV1-BASELINE-EVIDENCE-DISPOSITION]\n\
+      bindings:\n  expected_red:\n    items: []\n  closes_expected_red: []\n</intent_closure_contract>"
+    verification: Run `baseline_evidence_disposition_validation`; require `vectl validate`
+      to report 0 active errors, allow only historical warnings, preserve every existing
+      contract/policy/binding, and retain `admitted-mutation-verification.integration-gate`
+      as the full comparison authority.
+    depends_on:
+    - admitted-mutation-contract.baseline-and-rfc
+    agent: vectl-orchestrator
+    evidence: 'Expected-red non-blocking disposition. Owner: separately authorized
+      repository quality-debt remediation. Lifecycle: tracked comparison/revalidation
+      at admitted-mutation-verification.integration-gate. Gate-intersection proof:
+      the immutable baseline evidence remains outside gate closure and supplies no
+      global quality waiver. Closure: admitted parent receipt CONFORMANT; bounded
+      baseline parity established; OPEN=false; gate_open_allowed=true for this phase
+      only. Baseline atoms: expected red is exactly one stable MCP schema pytest node;
+      ruff signature is 2015 diagnostics; mypy signature is 1261 diagnostics across
+      31 files; Invar, diff-check, Vectl validation, and RFC/observer tests are green.'
 - id: admitted-mutation-implementation
   name: 'Admitted Plan Mutation: Minimal Implementation'
   status: locked

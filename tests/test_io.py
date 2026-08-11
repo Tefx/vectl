@@ -849,8 +849,9 @@ class TestExpectedRedSelectedExecutionObserver:
 
         assert result.returncode == 0, result.stderr
         assert sentinel.read_text(encoding="utf-8") == "executed"
-        selection, evidence = [json.loads(line) for line in result.stdout.splitlines()]
-        assert selection == self._selection_envelope(node_id)
+        lines = result.stdout.splitlines()
+        assert len(lines) == 1
+        evidence = json.loads(lines[0])
         assert evidence["schema_version"] == "vectl.check.evidence.v1"
         assert evidence["check_id"] == "admitted_mutation_expected_red"
         assert evidence["selected_ids"] == [node_id]

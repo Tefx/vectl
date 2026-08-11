@@ -157,18 +157,18 @@ def main(argv: list[str] | None = None) -> int:
         ["--collect-only", "-q", *requested_ids]
     )
     selected_ids = sorted(collection.selected_ids)
-    _emit(
-        {
-            "schema_version": "vectl.check.selection.v1",
-            "check_id": ADMITTED_MUTATION_CHECK_ID,
-            "identities": selected_ids,
-            "digest": _identity_digest(selected_ids),
-        }
-    )
     if collection_code != 0:
         _copy_terminal_output(collection_stdout, collection_stderr)
         return collection_code
     if mode == "select":
+        _emit(
+            {
+                "schema_version": "vectl.check.selection.v1",
+                "check_id": ADMITTED_MUTATION_CHECK_ID,
+                "identities": selected_ids,
+                "digest": _identity_digest(selected_ids),
+            }
+        )
         return 0
 
     run_code, execution, run_stdout, run_stderr = _invoke_pytest(requested_ids)

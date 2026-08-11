@@ -122039,3 +122039,244 @@ phases:
       pathlib import Path; p=Path(''src/vectl/mcp_core_mutation_tools.py'').read_text();
       assert ''@invar:allow file_size'' not in p; assert all(x in p for x in [''def
       _validate_batch_requests'', ''def _apply_mutation_request'', ''def vectl_mutate''])"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]},{"check_id":"atomic_mutation_refactor_regression","command":["uv","run","pytest","tests/test_mcp_mutate_batch.py","tests/test_mcp.py","tests/test_io.py","-q"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]},{"check_id":"repo_wide_invar_readiness","command":["uvx","invar-tools","guard","--all"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]}],"claims":[{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"atomic_mutation_escape_removed"},{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"atomic_mutation_refactor_regression"},{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"repo_wide_invar_readiness"}],"unresolved":[],"acceptance_authorizations":[]}'
+- id: admitted-mutation-contract
+  name: 'Admitted Plan Mutation: Baseline and Contract'
+  status: pending
+  gate: NARROW V1 scope is fixed in RFC and executable contract tests; full-suite
+    baseline is recorded before source changes; any pre-existing failures or completed-evidence
+    findings are explicitly classified and do not silently become this feature's regressions.
+  context: Freeze the smallest approved contract before changing Vectl's own persistence
+    path. Public Preview, caller digest tokens, repository context scanning, registries,
+    ledgers, daemons, caches, claims reconciliation, and project-specific semantics
+    remain out of scope.
+  steps:
+  - id: admitted-mutation-contract.baseline-and-rfc
+    name: Capture baseline and ratify the NARROW V1 RFC
+    status: pending
+    description: Before source edits, record the clean Git/Plan state and run the
+      repository's current full verification commands. Author docs/RFC-admitted-plan-mutation.md
+      with the exact optional startup configuration, fixed argv, verdict schema, bounded
+      reason/error rules, minimum receipt fields, covered public definition-mutation
+      surfaces, excluded writers, cooperative same-UID trust statement, raw-byte CAS/exact-byte
+      invariant, Git best-effort behavior, rollout/rollback, and rejected full Preview
+      design. Treat current vectl review completed-history findings as pre-existing
+      baseline debt unless an active-closure or command regression proves otherwise.
+      Do not edit plan.yaml directly.
+    verification: git status --short; uv run pytest; uv run invar guard; uv run ruff
+      check .; uv run mypy src; git diff --check; uv run vectl validate
+    evidence_template: Paste command/exit summaries, HEAD, clean-state evidence, the
+      classified baseline gap list, RFC path, and confirmation that no source file
+      changed.
+    refs:
+    - AGENTS.md
+    - INVAR.md
+    - src/vectl/io.py
+    - src/vectl/mcp_core_mutation_tools.py
+    - src/vectl/mcp_mutation_contracts.py
+    - src/vectl/cli_plan_mutation_commands.py
+    - src/vectl/cli_plan_lock_commands.py
+    - docs/RFC-atomic-plan-mutation-batch.md
+    - docs/ADR-unified-state.md
+    - docs/RFC-admitted-plan-mutation.md
+    agent: python-senior
+  - id: admitted-mutation-contract.protocol-tests
+    name: Define expected-red exact-byte, adapter, receipt, and bypass tests
+    status: pending
+    description: Add focused tests and a repository-local fake adapter that define
+      the contract before implementation. Cover raw-byte load identity including CRLF,
+      one serialization buffer, no-adapter compatibility, complete configured adapter
+      approval, partial configuration fail-closed, rejection/timeout/crash/malformed/hash
+      mismatch/identity drift zero Plan and Git writes, Plan-applied/Git-failed receipt,
+      MCP registered single/batch behavior, all eight CLI definition-mutation commands
+      reaching the shared private transaction, no public definition-mutation bypass,
+      unrelated staged-file isolation, and synthetic machine-contract/provenance rejection
+      without AurisPi or runner semantics. Expected-red failures must map only to
+      missing NARROW V1 behavior and name the later implementation owner/lifecycle.
+    verification: Run the new focused test module(s); record the exact expected-red
+      failures and also rerun tests/test_io.py and tests/test_mcp_mutate_batch.py
+      to prove existing behavior remains green.
+    evidence_template: List test files, fake-adapter protocol fixture, expected-red
+      test IDs/reasons, existing focused green counts, and confirmation that no production
+      implementation was added.
+    refs:
+    - tests/test_io.py
+    - tests/test_mcp_mutate_batch.py
+    - tests/test_cli.py
+    - tests/test_mcp.py
+    - docs/RFC-admitted-plan-mutation.md
+    depends_on:
+    - admitted-mutation-contract.baseline-and-rfc
+    agent: python-senior
+- id: admitted-mutation-implementation
+  name: 'Admitted Plan Mutation: Minimal Implementation'
+  status: locked
+  gate: The unique serializer and one private finalization/admission/persistence transaction
+    satisfy focused tests; no-adapter mode preserves existing behavior; configured
+    adapter failures cannot write Plan or invoke Git; MCP single/batch and covered
+    CLI commands converge without public API redesign.
+  context: Implement only the NARROW V1 persistence seam. Keep existing action parsing
+    and mutation primitives authoritative. Source, focused tests, RFC, README.md,
+    and README_zh.md move together in each implementation step.
+  depends_on:
+  - admitted-mutation-contract
+  steps:
+  - id: admitted-mutation-implementation.exact-byte-adapter-transaction
+    name: Implement exact-byte serialization and optional admission transaction
+    status: pending
+    description: Implement the smallest shared private persistence boundary. Use raw
+      plan bytes for base CAS; deep-copy/finalize the supplied in-memory candidate;
+      recalculate locks; run the existing explicitly selected structural validation
+      policy; serialize the final managed Plan exactly once; compute candidate_hash;
+      optionally invoke a startup-frozen adapter using mode-0600 repository-external
+      immutable base/candidate/verdict files, fixed shell=false argv, sanitized output,
+      bounded timeout, executable identity checks, and strict verdict binding; atomically
+      persist the identical approved byte buffer; expose Plan-applied and Git-commit
+      status separately. All adapter fields absent is supported admission=not_configured;
+      any adapter field present requires a complete valid configuration and never
+      silently downgrades. Reuse existing modules where simpler; add no registry,
+      protocol hierarchy, daemon, ledger, cache, database, context scanner, or project
+      semantics. Update focused tests and RFC/docs in the same change.
+    verification: New exact-byte/adapter/receipt focused tests pass; tests/test_io.py
+      passes; adapter rejection/failure state comparisons prove unchanged Plan bytes,
+      Git HEAD/index, backups, claims, and persisted locks; serializer output hash
+      equals persisted raw bytes.
+    evidence_template: Paste focused command outputs, exact-byte hash equality evidence,
+      zero-write failure matrix, changed files, and explicit confirmation of no new
+      third-party dependency or deferred feature.
+    refs:
+    - src/vectl/io.py
+    - src/vectl/mcp_core_common.py
+    - src/vectl/shell
+    - tests/test_io.py
+    - docs/RFC-admitted-plan-mutation.md
+    - README.md
+    - README_zh.md
+    agent: python-senior
+  - id: admitted-mutation-implementation.public-surface-wiring
+    name: Route covered MCP and CLI definition mutations through the shared transaction
+    status: pending
+    description: Wire existing MCP vectl_mutate single-action and requests batch plus
+      CLI add-step, add-steps, edit-step, remove-step, move-step, add-phase, edit-phase,
+      and edit-plan to the shared private transaction. Preserve each documented surface's
+      parsing and mutation semantics, including omission versus explicit empty values,
+      auto versus explicit IDs, dependency operation mode, existing response prefix
+      where practical, linked-worktree behavior, and Plan-only best-effort Git policy.
+      Append only the minimum stable receipt fields. Remove every covered public direct-save
+      bypass without changing lifecycle, checklist, clipboard, init, recovery, migration,
+      merge-driver, claimed-step policy, or low-level helper behavior. Update MCP/CLI
+      tests and English/Chinese docs synchronously.
+    verification: Focused MCP schema/single/batch tests and CLI mutation tests pass
+      in configured and unconfigured modes; static writer inventory proves the listed
+      public definition mutations share one transaction; unrelated surfaces retain
+      existing tests.
+    evidence_template: Paste MCP/CLI focused outputs, covered-surface inventory, compatibility
+      evidence, receipt samples for no-adapter/approved/rejected/Git-failed cases,
+      and excluded-writer confirmation.
+    refs:
+    - src/vectl/mcp_core_mutation_tools.py
+    - src/vectl/mcp_mutation_contracts.py
+    - src/vectl/mcp_core_common.py
+    - src/vectl/cli_plan_mutation_commands.py
+    - src/vectl/cli_plan_lock_commands.py
+    - src/vectl/cli_plan_common.py
+    - tests/test_mcp_mutate_batch.py
+    - tests/test_mcp.py
+    - tests/test_cli.py
+    - README.md
+    - README_zh.md
+    - docs/RFC-admitted-plan-mutation.md
+    depends_on:
+    - admitted-mutation-implementation.exact-byte-adapter-transaction
+    agent: python-senior
+- id: admitted-mutation-verification
+  name: 'Admitted Plan Mutation: Verification and Review'
+  status: locked
+  gate: Repo-wide verification, real CLI/FastMCP seams, concurrent CAS, exact-byte
+    and zero-write evidence pass; all required independent reviewers pass after any
+    fixes; one final local commit exists and nothing is pushed. The pre-existing completed-evidence
+    review findings remain explicitly baseline-classified and no new active-closure
+    error is introduced.
+  context: 'Close the feature with real public-surface evidence and fresh review.
+    A review finding is not self-approved: apply complete reference-grounded MUST_FIX
+    obligations, rerun all affected checks, and use a fresh reviewer after fixes.'
+  depends_on:
+  - admitted-mutation-implementation
+  steps:
+  - id: admitted-mutation-verification.integration-gate
+    name: Run full regression and real CLI/FastMCP/concurrency verification
+    status: pending
+    description: 'Run focused and full verification after implementation: candidate/adapter/IO/MCP/CLI
+      tests, full pytest, Invar, ruff, mypy, git diff --check, FastMCP real stdio
+      schema plus configured/unconfigured approval/rejection smoke, CLI mutation smoke,
+      synthetic concurrent CAS where two candidates share one base and only one persists,
+      synthetic machine-contract/provenance rejection, Git failure semantics, and
+      final raw-byte readback. Compare against the baseline captured before source
+      changes; do not absorb unrelated historical completed-evidence debt into this
+      feature. Do not commit yet.'
+    verification: All listed commands and smoke cases pass, or any pre-existing exception
+      exactly matches the ratified baseline policy with owner/lifecycle; no new active
+      dependency-closure error; git diff --check clean.
+    evidence_template: Paste command matrix with exit codes/counts, stdio/CLI transcripts,
+      concurrent winner/loser evidence, exact persisted hash, zero-write rejection
+      state, baseline comparison, and remaining gaps.
+    refs:
+    - tests
+    - src/vectl
+    - docs/RFC-admitted-plan-mutation.md
+    - README.md
+    - README_zh.md
+    - INVAR.md
+    - pyproject.toml
+    agent: integration-verifier
+  - id: admitted-mutation-verification.fresh-review-loop
+    name: Complete fresh independent security and conformance review
+    status: pending
+    description: Use fresh independent reviewers to audit CAS/lock ordering, exact-byte
+      identity, adapter trust/config/temporary-file/subprocess handling, zero-write
+      failure branches, public bypass inventory, MCP/CLI parity, Git applied-versus-committed
+      semantics, bounded output/no secret leakage, KISS/non-goals, and RFC/test/documentation
+      parity. Any complete reference-grounded MUST_FIX finding must be fixed with
+      synchronized tests/docs, affected verification rerun, then reviewed by a new
+      fresh reviewer without relying on pre-fix approval context. Advisory items remain
+      explicitly classified.
+    verification: Final fresh reviewer verdicts pass with no unresolved MUST_FIX;
+      include reviewer identities, covered files/requirements, findings and dispositions,
+      fix verification, and explicit scope/non-goal confirmation.
+    evidence_template: Attach final fresh-review receipts, requirement coverage matrix,
+      all MUST_FIX dispositions, post-fix command outputs, and explicit PASS/no-unresolved-MUST_FIX
+      statement.
+    refs:
+    - docs/RFC-admitted-plan-mutation.md
+    - src/vectl/io.py
+    - src/vectl/mcp_core_mutation_tools.py
+    - src/vectl/cli_plan_mutation_commands.py
+    - tests
+    depends_on:
+    - admitted-mutation-verification.integration-gate
+    agent: gate-reviewer
+  - id: admitted-mutation-verification.final-gate-and-commit
+    name: Reconcile final state and create the authorized local commit
+    status: pending
+    description: After fresh review passes, rerun the final required command set,
+      reread Git status and all authoritative receipt fields, verify no AurisPi or
+      dotfiles/agent file changed, confirm no dependency or deferred feature entered
+      the diff, and create one local commit containing the approved Vectl code/tests/docs
+      plus managed Plan updates. Do not push. Record the commit SHA and notify the
+      downstream integration owner only after every check and the final state reread
+      succeeds.
+    verification: Focused/full pytest, Invar, ruff, mypy, git diff --check, FastMCP/CLI
+      smoke, and final state checks pass; git show --stat/--name-only proves scoped
+      commit; git status is clean after commit; no push occurred.
+    evidence_template: 'Paste final command summary, commit SHA, committed file list,
+      clean Git status, downstream handoff artifacts, and confirmations: no AurisPi
+      change, no dotfiles/agent change, no push.'
+    refs:
+    - docs/RFC-admitted-plan-mutation.md
+    - README.md
+    - README_zh.md
+    - src/vectl
+    - tests
+    - plan.yaml
+    depends_on:
+    - admitted-mutation-verification.fresh-review-loop
+    agent: python-senior

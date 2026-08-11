@@ -122366,47 +122366,47 @@ phases:
       \      - tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\n\
       \      - tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\n\
       \      downstream_step: admitted-mutation-implementation.exact-byte-adapter-transaction\n\
-      \      downstream_check: exact_byte_closure\n      owner_policy:\n        mode:\
-      \ single\n    - requirement_id: REQ-AMV1-ADMISSION-FAIL-CLOSED\n      fingerprint:\
-      \ tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\n\
+      \      downstream_check: admitted_mutation_expected_red\n      owner_policy:\n\
+      \        mode: single\n    - requirement_id: REQ-AMV1-ADMISSION-FAIL-CLOSED\n\
+      \      fingerprint: tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\n\
       \      source_check: admitted_mutation_expected_red\n      selection_ids: *id001\n\
       \      downstream_step: admitted-mutation-implementation.exact-byte-adapter-transaction\n\
-      \      downstream_check: exact_byte_closure\n      owner_policy:\n        mode:\
-      \ single\n    - requirement_id: REQ-AMV1-APPLIED-GIT-RECEIPT\n      fingerprint:\
-      \ tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\n\
+      \      downstream_check: admitted_mutation_expected_red\n      owner_policy:\n\
+      \        mode: single\n    - requirement_id: REQ-AMV1-APPLIED-GIT-RECEIPT\n\
+      \      fingerprint: tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\n\
       \      source_check: admitted_mutation_expected_red\n      selection_ids: *id001\n\
       \      downstream_step: admitted-mutation-implementation.exact-byte-adapter-transaction\n\
-      \      downstream_check: exact_byte_closure\n      owner_policy:\n        mode:\
-      \ single\n    - requirement_id: REQ-AMV1-EXACT-DOC-SYNC\n      fingerprint:\
-      \ tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\n\
+      \      downstream_check: admitted_mutation_expected_red\n      owner_policy:\n\
+      \        mode: single\n    - requirement_id: REQ-AMV1-EXACT-DOC-SYNC\n     \
+      \ fingerprint: tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\n\
       \      source_check: admitted_mutation_expected_red\n      selection_ids: *id001\n\
       \      downstream_step: admitted-mutation-implementation.exact-byte-adapter-transaction\n\
-      \      downstream_check: exact_byte_closure\n      owner_policy:\n        mode:\
-      \ single\n    - requirement_id: REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n     \
-      \ fingerprint: tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\n\
+      \      downstream_check: admitted_mutation_expected_red\n      owner_policy:\n\
+      \        mode: single\n    - requirement_id: REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n\
+      \      fingerprint: tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\n\
       \      source_check: admitted_mutation_expected_red\n      selection_ids: &id002\n\
       \      - tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\n\
       \      - tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\n\
       \      - tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\n\
       \      - tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\n\
       \      downstream_step: admitted-mutation-implementation.public-surface-wiring\n\
-      \      downstream_check: public_surface_closure\n      owner_policy:\n     \
-      \   mode: single\n    - requirement_id: REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
+      \      downstream_check: admitted_mutation_expected_red\n      owner_policy:\n\
+      \        mode: single\n    - requirement_id: REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
       \      fingerprint: tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\n\
       \      source_check: admitted_mutation_expected_red\n      selection_ids: *id002\n\
       \      downstream_step: admitted-mutation-implementation.public-surface-wiring\n\
-      \      downstream_check: public_surface_closure\n      owner_policy:\n     \
-      \   mode: single\n    - requirement_id: REQ-AMV1-REGISTERED-MCP-RECEIPT\n  \
-      \    fingerprint: tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\n\
+      \      downstream_check: admitted_mutation_expected_red\n      owner_policy:\n\
+      \        mode: single\n    - requirement_id: REQ-AMV1-REGISTERED-MCP-RECEIPT\n\
+      \      fingerprint: tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\n\
       \      source_check: admitted_mutation_expected_red\n      selection_ids: *id002\n\
       \      downstream_step: admitted-mutation-implementation.public-surface-wiring\n\
-      \      downstream_check: public_surface_closure\n      owner_policy:\n     \
-      \   mode: single\n    - requirement_id: REQ-AMV1-PUBLIC-DOC-SYNC\n      fingerprint:\
-      \ tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\n\
+      \      downstream_check: admitted_mutation_expected_red\n      owner_policy:\n\
+      \        mode: single\n    - requirement_id: REQ-AMV1-PUBLIC-DOC-SYNC\n    \
+      \  fingerprint: tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\n\
       \      source_check: admitted_mutation_expected_red\n      selection_ids: *id002\n\
       \      downstream_step: admitted-mutation-implementation.public-surface-wiring\n\
-      \      downstream_check: public_surface_closure\n      owner_policy:\n     \
-      \   mode: single\n  closes_expected_red: []\n</intent_closure_contract>"
+      \      downstream_check: admitted_mutation_expected_red\n      owner_policy:\n\
+      \        mode: single\n  closes_expected_red: []\n</intent_closure_contract>"
     verification: Run admitted_mutation_expected_red through the tracked selected-execution
       observer; require the exact eight selected/executed node IDs, red exit 1, only
       the eight bound missing-behavior fingerprints, no infrastructure fingerprint,
@@ -122585,7 +122585,7 @@ phases:
       \    - tests/test_cli.py\n  ignored_runtime_paths: [.git/, .vectl/, .agent/,\
       \ .venv/]\nclaims:\n  - REQ-AMV1-EXACT-BYTE-TRANSACTION\n  - REQ-AMV1-ADMISSION-FAIL-CLOSED\n\
       \  - REQ-AMV1-APPLIED-GIT-RECEIPT\n  - REQ-AMV1-EXACT-DOC-SYNC\nchecks:\n  -\
-      \ id: exact_byte_closure\n    run:\n      command: [\"tests/expected_red.py\"\
+      \ id: admitted_mutation_expected_red\n    run:\n      command: [\"tests/expected_red.py\"\
       , \"run\", \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
       , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
       , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
@@ -122635,17 +122635,18 @@ phases:
       \ [], forbids: []}\n    proves: [REQ-AMV1-EXACT-BYTE-TRANSACTION]\nbindings:\n\
       \  expected_red:\n    items: []\n  closes_expected_red:\n  - requirement_id:\
       \ REQ-AMV1-EXACT-BYTE-TRANSACTION\n    source_step: admitted-mutation-contract.protocol-tests\n\
-      \    downstream_check: exact_byte_closure\n  - requirement_id: REQ-AMV1-ADMISSION-FAIL-CLOSED\n\
+      \    downstream_check: admitted_mutation_expected_red\n  - requirement_id: REQ-AMV1-ADMISSION-FAIL-CLOSED\n\
       \    source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
-      \ exact_byte_closure\n  - requirement_id: REQ-AMV1-APPLIED-GIT-RECEIPT\n   \
-      \ source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
-      \ exact_byte_closure\n  - requirement_id: REQ-AMV1-EXACT-DOC-SYNC\n    source_step:\
-      \ admitted-mutation-contract.protocol-tests\n    downstream_check: exact_byte_closure\n\
-      </intent_closure_contract>"
-    verification: Pass exact_byte_closure, existing_io_regression, and exact_invar_guard;
-      prove persisted bytes equal the approved serialization hash, every configured-adapter
-      failure leaves Plan/Git/backup/claims/locks unchanged, applied and Git status
-      remain separate, docs are synchronized, and the Worker-v2 receipt is admitted.
+      \ admitted_mutation_expected_red\n  - requirement_id: REQ-AMV1-APPLIED-GIT-RECEIPT\n\
+      \    source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
+      \ admitted_mutation_expected_red\n  - requirement_id: REQ-AMV1-EXACT-DOC-SYNC\n\
+      \    source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
+      \ admitted_mutation_expected_red\n</intent_closure_contract>"
+    verification: Pass admitted_mutation_expected_red, existing_io_regression, and
+      exact_invar_guard; prove persisted bytes equal the approved serialization hash,
+      every configured-adapter failure leaves Plan/Git/backup/claims/locks unchanged,
+      applied and Git status remain separate, docs are synchronized, and the Worker-v2
+      receipt is admitted.
     evidence_template: Paste focused command outputs, exact-byte hash equality evidence,
       zero-write failure matrix, changed files, and explicit confirmation of no new
       third-party dependency or deferred feature.
@@ -122714,7 +122715,7 @@ phases:
       \    - tests/test_io.py\n  ignored_runtime_paths: [.git/, .vectl/, .agent/,\
       \ .venv/]\nclaims:\n  - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n  - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
       \  - REQ-AMV1-REGISTERED-MCP-RECEIPT\n  - REQ-AMV1-PUBLIC-DOC-SYNC\nchecks:\n\
-      \  - id: public_surface_closure\n    run:\n      command: [\"python3\", \"tests/expected_red.py\"\
+      \  - id: admitted_mutation_expected_red\n    run:\n      command: [\"tests/expected_red.py\"\
       , \"run\", \"pytest\", \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
       , \"tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\"\
       , \"tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\"\
@@ -122726,8 +122727,7 @@ phases:
       \ developer, availability: current}\n        - {path: tests/test_mcp.py, classification:\
       \ developer, availability: current}\n        - {path: tests/test_mcp_mutate_batch.py,\
       \ classification: developer, availability: current}\n      selection:\n    \
-      \    command: [\"python3\", \"tests/expected_red.py\", \"select\", \"pytest\"\
-      , \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
+      \    command: [\"tests/expected_red.py\", \"select\", \"pytest\", \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
       , \"tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\"\
       , \"tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\"\
       , \"tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\"\
@@ -122771,13 +122771,13 @@ phases:
       \ []}\n    proves: [REQ-AMV1-MCP-TRANSACTION-CONVERGENCE]\nbindings:\n  expected_red:\n\
       \    items: []\n  closes_expected_red:\n  - requirement_id: REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n\
       \    source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
-      \ public_surface_closure\n  - requirement_id: REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
+      \ admitted_mutation_expected_red\n  - requirement_id: REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
       \    source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
-      \ public_surface_closure\n  - requirement_id: REQ-AMV1-REGISTERED-MCP-RECEIPT\n\
+      \ admitted_mutation_expected_red\n  - requirement_id: REQ-AMV1-REGISTERED-MCP-RECEIPT\n\
       \    source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
-      \ public_surface_closure\n  - requirement_id: REQ-AMV1-PUBLIC-DOC-SYNC\n   \
-      \ source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
-      \ public_surface_closure\n</intent_closure_contract>"
+      \ admitted_mutation_expected_red\n  - requirement_id: REQ-AMV1-PUBLIC-DOC-SYNC\n\
+      \    source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
+      \ admitted_mutation_expected_red\n</intent_closure_contract>"
     verification: Pass public_surface_closure, existing_mcp_cli_regression, and public_invar_guard
       in configured and unconfigured modes; prove registered MCP single/batch and
       all eight CLI definition mutations share one transaction, no covered direct-save

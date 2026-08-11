@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Helpers for durable intentional-red test metadata.
 
 This module centralizes the marker shape used by ``*_red.py`` tests so future

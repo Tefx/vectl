@@ -122585,7 +122585,7 @@ phases:
       \    - tests/test_cli.py\n  ignored_runtime_paths: [.git/, .vectl/, .agent/,\
       \ .venv/]\nclaims:\n  - REQ-AMV1-EXACT-BYTE-TRANSACTION\n  - REQ-AMV1-ADMISSION-FAIL-CLOSED\n\
       \  - REQ-AMV1-APPLIED-GIT-RECEIPT\n  - REQ-AMV1-EXACT-DOC-SYNC\nchecks:\n  -\
-      \ id: exact_byte_closure\n    run:\n      command: [\"python3\", \"tests/expected_red.py\"\
+      \ id: exact_byte_closure\n    run:\n      command: [\"tests/expected_red.py\"\
       , \"run\", \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
       , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
       , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
@@ -122595,7 +122595,7 @@ phases:
       \ availability: current}\n        - {path: pyproject.toml, access: read, availability:\
       \ current}\n      test_bindings:\n        - {path: tests/test_io.py, classification:\
       \ developer, availability: current}\n      selection:\n        command: [\"\
-      python3\", \"tests/expected_red.py\", \"select\", \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      tests/expected_red.py\", \"select\", \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
       , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
       , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
       , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\

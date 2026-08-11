@@ -122053,57 +122053,300 @@ phases:
   - id: admitted-mutation-contract.baseline-and-rfc
     name: Capture baseline and ratify the NARROW V1 RFC
     status: pending
-    description: Before source edits, record the clean Git/Plan state and run the
-      repository's current full verification commands. Author docs/RFC-admitted-plan-mutation.md
-      with the exact optional startup configuration, fixed argv, verdict schema, bounded
-      reason/error rules, minimum receipt fields, covered public definition-mutation
-      surfaces, excluded writers, cooperative same-UID trust statement, raw-byte CAS/exact-byte
-      invariant, Git best-effort behavior, rollout/rollback, and rejected full Preview
-      design. Treat current vectl review completed-history findings as pre-existing
-      baseline debt unless an active-closure or command regression proves otherwise.
-      Do not edit plan.yaml directly.
-    verification: git status --short; uv run pytest; uv run invar guard; uv run ruff
-      check .; uv run mypy src; git diff --check; uv run vectl validate
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
+      - Before any repository edit, capture immutable HEAD, clean porcelain status,\
+      \ Plan SHA-256, and outputs for the repository's full pytest, Invar, ruff, mypy,\
+      \ diff-check, and Vectl validation entrypoints. Classify the existing completed-evidence\
+      \ warnings as baseline-only unless a new active-closure or command regression\
+      \ appears.\n- Author `docs/RFC-admitted-plan-mutation.md` as the NARROW V1 authority.\
+      \ Fix the optional startup configuration, complete-or-fail-closed adapter configuration,\
+      \ fixed `shell=false` invocation contract, strict verdict and bounded error/reason\
+      \ model, minimum applied/Git receipt, covered MCP/CLI definition mutations,\
+      \ excluded writers, cooperative same-UID trust statement, raw-byte CAS and exact\
+      \ approved-byte invariant, Git best-effort boundary, rollout/rollback, and rejected\
+      \ full Preview design.\n- Extend the existing tracked `tests/expected_red.py`\
+      \ helper with one test-only, side-effect-free `select|run pytest <node-id>...`\
+      \ observer that emits the installed selected-execution envelopes. Keep ordinary\
+      \ marker behavior compatible. Add focused developer coverage in `tests/test_io.py`;\
+      \ the RFC documents this proof-only observer and forbids its use as product\
+      \ admission logic.\n\nBoundary:\n- Owner: `python-senior`; the RFC, persistence\
+      \ boundary, and durable expected-red observer require architecture authority.\
+      \ `python-executor` lacks that authority, while `toolsmith` lacks Worker-v2\
+      \ repository execution authority.\n- Repository changes are one trivial rollback\
+      \ unit limited to `docs/RFC-admitted-plan-mutation.md`, `tests/expected_red.py`,\
+      \ and `tests/test_io.py`. Product source, README files, Plan/claims lifecycle\
+      \ state, user Git state, external services, registries, caches, daemons, and\
+      \ project-specific semantics are forbidden.\n- Never edit `plan.yaml` directly.\
+      \ Baseline probes are read-only; no push, paid service, credential, or external\
+      \ effect is authorized.\n\nAdmit:\n- Witnessed current inputs are `AGENTS.md`,\
+      \ `INVAR.md`, `pyproject.toml`, the existing persistence/MCP/CLI modules, `tests/expected_red.py`,\
+      \ `tests/test_io.py`, `docs/RFC-atomic-plan-mutation-batch.md`, and `docs/ADR-unified-state.md`.\n\
+      - Completion evidence preserves the pre-edit command outputs separately from\
+      \ final green focused checks, identifies every baseline warning, proves the\
+      \ observer performs side-effect-free collection before execution, and records\
+      \ changed paths plus RFC sections. `docs/RFC-admitted-plan-mutation.md` is produced\
+      \ only by this step.\n- Dispatch uses one admitted `vectl.worker.dispatch.v2`\
+      \ envelope; the worker returns only a linted `vectl.worker.execution.v2` receipt.\n\
+      \nRecovery:\n- Revert this step's repository commit. On baseline drift, observer\
+      \ execution during selection, malformed envelopes, accidental product/Plan/Git\
+      \ mutation, or an unclassified new active-closure error, stop and hand exact\
+      \ evidence to the orchestrator; do not weaken the baseline or RFC.\n\n<vectl_step_policy>\n\
+      {\n  \"schema_version\": \"vectl.step.policy.v2\",\n  \"step_id\": \"admitted-mutation-contract.baseline-and-rfc\"\
+      ,\n  \"risk_tier\": \"R1\",\n  \"risk_reasons\": [\n    \"reversible RFC and\
+      \ test-observer changes\",\n    \"repository-wide baseline classification before\
+      \ product source edits\"\n  ],\n  \"primary_outcome\": \"REQ-AMV1-RFC-CONTRACT\"\
+      ,\n  \"rollback_class\": \"TRIVIAL\",\n  \"observation_ledger\": [],\n  \"test_authority\"\
+      : {\n    \"developer_test_globs\": [\n      \"tests/test_io.py\"\n    ],\n \
+      \   \"acceptance_test_paths\": [],\n    \"acceptance_check_ids\": [],\n    \"\
+      acceptance_mutation\": \"FORBIDDEN\",\n    \"acceptance_authorizations\": []\n\
+      \  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\nschema_version:\
+      \ intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
+      profile: generic\nscope:\n  allowed_paths:\n    - docs/RFC-admitted-plan-mutation.md\n\
+      \    - tests/expected_red.py\n    - tests/test_io.py\n  blocked_paths:\n   \
+      \ - plan.yaml\n    - src/**\n    - README.md\n    - README_zh.md\n  ignored_runtime_paths:\
+      \ [.git/, .vectl/, .agent/, .venv/]\nclaims:\n  - REQ-AMV1-BASELINE-CLASSIFIED\n\
+      \  - REQ-AMV1-RFC-CONTRACT\n  - REQ-AMV1-EXPECTED-RED-OBSERVER\nchecks:\n  -\
+      \ id: baseline_full_pytest\n    run:\n      command: [uv, run, pytest]\n   \
+      \   timeout_seconds: 1800\n    evidence:\n      mode: command_outcome\n    \
+      \  path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n      test_bindings: []\n    expect:\n      outcome: green\n   \
+      \   exit_codes: [0]\n      stdout_or_stderr: {contains_all: [], contains_any:\
+      \ [], forbids: []}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n  - id: baseline_invar_guard\n\
+      \    run:\n      command: [uv, run, invar, guard]\n      timeout_seconds: 1800\n\
+      \    evidence:\n      mode: command_outcome\n      path_bindings:\n        -\
+      \ {path: pyproject.toml, access: read, availability: current}\n        - {path:\
+      \ INVAR.md, access: read, availability: current}\n      test_bindings: []\n\
+      \    expect:\n      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\
+      \ {contains_all: [], contains_any: [], forbids: []}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n\
+      \  - id: baseline_ruff\n    run:\n      command: [uv, run, ruff, check, .]\n\
+      \      timeout_seconds: 600\n    evidence:\n      mode: command_outcome\n  \
+      \    path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n      test_bindings: []\n    expect:\n      outcome: green\n   \
+      \   exit_codes: [0]\n      stdout_or_stderr: {contains_all: [], contains_any:\
+      \ [], forbids: []}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n  - id: baseline_mypy\n\
+      \    run:\n      command: [uv, run, mypy, src]\n      timeout_seconds: 900\n\
+      \    evidence:\n      mode: command_outcome\n      path_bindings:\n        -\
+      \ {path: pyproject.toml, access: read, availability: current}\n      test_bindings:\
+      \ []\n    expect:\n      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\
+      \ {contains_all: [], contains_any: [], forbids: []}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n\
+      \  - id: baseline_diff_check\n    run:\n      command: [git, diff, --check]\n\
+      \      timeout_seconds: 120\n    evidence:\n      mode: command_outcome\n  \
+      \    path_bindings:\n        - {path: AGENTS.md, access: read, availability:\
+      \ current}\n      test_bindings: []\n    expect:\n      outcome: green\n   \
+      \   exit_codes: [0]\n      stdout_or_stderr: {contains_all: [], contains_any:\
+      \ [], forbids: []}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n  - id: baseline_vectl_validate\n\
+      \    run:\n      command: [uv, run, vectl, validate]\n      timeout_seconds:\
+      \ 600\n    evidence:\n      mode: command_outcome\n      path_bindings:\n  \
+      \      - {path: pyproject.toml, access: read, availability: current}\n     \
+      \ test_bindings: []\n    expect:\n      outcome: green\n      exit_codes: [0]\n\
+      \      stdout_or_stderr:\n        contains_all: [{literal: \"0 error(s)\"}]\n\
+      \        contains_any: []\n        forbids: []\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n\
+      \  - id: rfc_and_observer_contract\n    run:\n      command: [uv, run, pytest,\
+      \ tests/test_io.py, -q]\n      timeout_seconds: 900\n    evidence:\n      mode:\
+      \ command_outcome\n      path_bindings:\n        - {path: pyproject.toml, access:\
+      \ read, availability: current}\n        - {path: tests/expected_red.py, access:\
+      \ execute, availability: current}\n        - {path: docs/RFC-admitted-plan-mutation.md,\
+      \ access: read, availability: produced_by_step}\n      test_bindings:\n    \
+      \    - {path: tests/test_io.py, classification: developer, availability: current}\n\
+      \    expect:\n      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\n\
+      \        contains_all: [{literal: passed}]\n        contains_any: []\n     \
+      \   forbids: [{literal: failed}, {literal: ERROR collecting}]\n    proves:\n\
+      \      - REQ-AMV1-RFC-CONTRACT\n      - REQ-AMV1-EXPECTED-RED-OBSERVER\nbindings:\n\
+      \  expected_red:\n    items: []\n  closes_expected_red: []\n</intent_closure_contract>"
+    verification: Capture pre-edit HEAD/status/Plan hash and run baseline_full_pytest,
+      baseline_invar_guard, baseline_ruff, baseline_mypy, baseline_diff_check, and
+      baseline_vectl_validate before edits; then pass rfc_and_observer_contract and
+      record baseline classification, changed paths, RFC sections, observer select/run
+      proof, and an admitted Worker-v2 receipt.
     evidence_template: Paste command/exit summaries, HEAD, clean-state evidence, the
       classified baseline gap list, RFC path, and confirmation that no source file
       changed.
     refs:
     - AGENTS.md
     - INVAR.md
+    - pyproject.toml
     - src/vectl/io.py
     - src/vectl/mcp_core_mutation_tools.py
     - src/vectl/mcp_mutation_contracts.py
     - src/vectl/cli_plan_mutation_commands.py
     - src/vectl/cli_plan_lock_commands.py
+    - tests/expected_red.py
+    - tests/test_io.py
     - docs/RFC-atomic-plan-mutation-batch.md
     - docs/ADR-unified-state.md
-    - docs/RFC-admitted-plan-mutation.md
     agent: python-senior
   - id: admitted-mutation-contract.protocol-tests
     name: Define expected-red exact-byte, adapter, receipt, and bypass tests
     status: pending
-    description: Add focused tests and a repository-local fake adapter that define
-      the contract before implementation. Cover raw-byte load identity including CRLF,
-      one serialization buffer, no-adapter compatibility, complete configured adapter
-      approval, partial configuration fail-closed, rejection/timeout/crash/malformed/hash
-      mismatch/identity drift zero Plan and Git writes, Plan-applied/Git-failed receipt,
-      MCP registered single/batch behavior, all eight CLI definition-mutation commands
-      reaching the shared private transaction, no public definition-mutation bypass,
-      unrelated staged-file isolation, and synthetic machine-contract/provenance rejection
-      without AurisPi or runner semantics. Expected-red failures must map only to
-      missing NARROW V1 behavior and name the later implementation owner/lifecycle.
-    verification: Run the new focused test module(s); record the exact expected-red
-      failures and also rerun tests/test_io.py and tests/test_mcp_mutate_batch.py
-      to prove existing behavior remains green.
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
+      - Add contract-first developer tests only in the existing `tests/test_io.py`,\
+      \ `tests/test_mcp_mutate_batch.py`, `tests/test_cli.py`, and `tests/test_mcp.py`.\
+      \ Keep the repository-local fake admission adapter inside this test authority\
+      \ and create no product implementation.\n- Cover CRLF/raw-load identity, one\
+      \ final serialization buffer, no-adapter compatibility, complete configured\
+      \ approval, partial configuration fail-closed, rejection/timeout/crash/malformed/hash-mismatch/executable-identity-drift\
+      \ with zero Plan or Git writes, Plan-applied/Git-failed receipt, MCP registered\
+      \ single/batch behavior, all eight CLI definition-mutation commands reaching\
+      \ one private transaction, no public bypass, unrelated staged-file isolation,\
+      \ and synthetic machine-contract/provenance rejection without AurisPi or runner\
+      \ semantics.\n- Use the tracked observer produced by `baseline-and-rfc` to collect\
+      \ and run the exact eight node IDs in the contract. The red result must contain\
+      \ only those missing NARROW V1 behaviors; collection/import/fixture/provider\
+      \ failures are forbidden.\n\nBoundary:\n- Owner: `python-senior`; these tests\
+      \ fix persistence, subprocess, receipt, and public-surface semantics and therefore\
+      \ require the same design authority as the RFC. Product source, README/RFC mutation,\
+      \ Plan/claims lifecycle, external systems, and project-specific semantics are\
+      \ forbidden.\n- Repository changes are one trivial rollback unit limited to\
+      \ the four current developer-test files. Do not weaken existing tests, add xfail/skip/sentinel\
+      \ behavior, or turn the fake adapter into a product registry, daemon, cache,\
+      \ or provider hierarchy.\n\nAdmit:\n- `baseline-and-rfc` must complete first.\
+      \ The exact expected-red lifecycle is machine-bound below: four requirement\
+      \ IDs close in `exact-byte-adapter-transaction.exact_byte_closure`; four close\
+      \ in `public-surface-wiring.public_surface_closure`.\n- Evidence records selected\
+      \ and executed node IDs, eight distinct missing-behavior fingerprints, exact\
+      \ red exit, no infrastructure fingerprint, unchanged product source, and the\
+      \ repository-local fake adapter behavior. The worker returns one admitted Worker-v2\
+      \ receipt.\n\nRecovery:\n- Revert this step's test-only commit. If red output\
+      \ includes an infrastructure error, existing green regression, ambiguous fixture\
+      \ state, product-source change, or any extra selected test, stop and preserve\
+      \ evidence; do not reinterpret it as expected red.\n\n<vectl_step_policy>\n\
+      {\n  \"schema_version\": \"vectl.step.policy.v2\",\n  \"step_id\": \"admitted-mutation-contract.protocol-tests\"\
+      ,\n  \"risk_tier\": \"R1\",\n  \"risk_reasons\": [\n    \"reversible developer-test\
+      \ definitions only\",\n    \"durable expected-red ownership across two implementation\
+      \ steps\"\n  ],\n  \"primary_outcome\": \"REQ-AMV1-CONTRACT-TESTS\",\n  \"rollback_class\"\
+      : \"TRIVIAL\",\n  \"observation_ledger\": [],\n  \"test_authority\": {\n   \
+      \ \"developer_test_globs\": [\n      \"tests/test_io.py\",\n      \"tests/test_mcp_mutate_batch.py\"\
+      ,\n      \"tests/test_cli.py\",\n      \"tests/test_mcp.py\"\n    ],\n    \"\
+      acceptance_test_paths\": [],\n    \"acceptance_check_ids\": [],\n    \"acceptance_mutation\"\
+      : \"FORBIDDEN\",\n    \"acceptance_authorizations\": []\n  }\n}\n</vectl_step_policy>\n\
+      \n<intent_closure_contract>\nschema_version: intent_closure.contract.v2\nmatcher_semantics:\
+      \ intent_closure.matchers.v2\nprofile: expected_red_definition\nscope:\n  allowed_paths:\n\
+      \    - tests/test_io.py\n    - tests/test_mcp_mutate_batch.py\n    - tests/test_cli.py\n\
+      \    - tests/test_mcp.py\n  blocked_paths:\n    - plan.yaml\n    - src/**\n\
+      \    - README.md\n    - README_zh.md\n    - docs/**\n    - tests/expected_red.py\n\
+      \  ignored_runtime_paths: [.git/, .vectl/, .agent/, .venv/]\nclaims:\n  - REQ-AMV1-CONTRACT-TESTS\n\
+      \  - REQ-AMV1-EXACT-BYTE-TRANSACTION\n  - REQ-AMV1-ADMISSION-FAIL-CLOSED\n \
+      \ - REQ-AMV1-APPLIED-GIT-RECEIPT\n  - REQ-AMV1-EXACT-DOC-SYNC\n  - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n\
+      \  - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n  - REQ-AMV1-REGISTERED-MCP-RECEIPT\n\
+      \  - REQ-AMV1-PUBLIC-DOC-SYNC\nchecks:\n  - id: admitted_mutation_expected_red\n\
+      \    run:\n      command: [\"python3\", \"tests/expected_red.py\", \"run\",\
+      \ \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
+      , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
+      , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
+      , \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
+      , \"tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\"\
+      , \"tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\"\
+      , \"tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\"\
+      ]\n      timeout_seconds: 900\n    evidence:\n      mode: selected_execution\n\
+      \      path_bindings:\n        - {path: tests/expected_red.py, access: execute,\
+      \ availability: current}\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n      test_bindings:\n        - {path: tests/test_cli.py, classification:\
+      \ developer, availability: current}\n        - {path: tests/test_io.py, classification:\
+      \ developer, availability: current}\n        - {path: tests/test_mcp.py, classification:\
+      \ developer, availability: current}\n        - {path: tests/test_mcp_mutate_batch.py,\
+      \ classification: developer, availability: current}\n      selection:\n    \
+      \    command: [\"python3\", \"tests/expected_red.py\", \"select\", \"pytest\"\
+      , \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
+      , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
+      , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
+      , \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
+      , \"tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\"\
+      , \"tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\"\
+      , \"tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\"\
+      ]\n        timeout_seconds: 180\n        cardinality: {exact: 8}\n        required_ids:\n\
+      \          - tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\n\
+      \          - tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\n\
+      \          - tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\n\
+      \          - tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\n\
+      \          - tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\n\
+      \          - tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\n\
+      \          - tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\n\
+      \          - tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\n\
+      \        forbidden_ids: []\n    expect:\n      outcome: red\n      exit_codes:\
+      \ [1]\n      stdout_or_stderr:\n        contains_all:\n          - {literal:\
+      \ \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      }\n          - {literal: \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
+      }\n          - {literal: \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
+      }\n          - {literal: \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
+      }\n          - {literal: \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
+      }\n          - {literal: \"tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\"\
+      }\n          - {literal: \"tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\"\
+      }\n          - {literal: \"tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\"\
+      }\n        contains_any: []\n        forbids:\n          - {literal: \"ModuleNotFoundError\"\
+      }\n          - {literal: \"ImportError\"}\n          - {literal: \"ERROR collecting\"\
+      }\n          - {literal: \"No such file or directory\"}\n    proves:\n     \
+      \ - REQ-AMV1-CONTRACT-TESTS\n      - REQ-AMV1-EXACT-BYTE-TRANSACTION\n     \
+      \ - REQ-AMV1-ADMISSION-FAIL-CLOSED\n      - REQ-AMV1-APPLIED-GIT-RECEIPT\n \
+      \     - REQ-AMV1-EXACT-DOC-SYNC\n      - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n\
+      \      - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n      - REQ-AMV1-REGISTERED-MCP-RECEIPT\n\
+      \      - REQ-AMV1-PUBLIC-DOC-SYNC\nbindings:\n  expected_red:\n    items:\n\
+      \    - requirement_id: REQ-AMV1-EXACT-BYTE-TRANSACTION\n      fingerprint: tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\n\
+      \      source_check: admitted_mutation_expected_red\n      selection_ids: &id001\n\
+      \      - tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\n\
+      \      - tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\n\
+      \      - tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\n\
+      \      - tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\n\
+      \      downstream_step: admitted-mutation-implementation.exact-byte-adapter-transaction\n\
+      \      downstream_check: exact_byte_closure\n      owner_policy:\n        mode:\
+      \ single\n    - requirement_id: REQ-AMV1-ADMISSION-FAIL-CLOSED\n      fingerprint:\
+      \ tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\n\
+      \      source_check: admitted_mutation_expected_red\n      selection_ids: *id001\n\
+      \      downstream_step: admitted-mutation-implementation.exact-byte-adapter-transaction\n\
+      \      downstream_check: exact_byte_closure\n      owner_policy:\n        mode:\
+      \ single\n    - requirement_id: REQ-AMV1-APPLIED-GIT-RECEIPT\n      fingerprint:\
+      \ tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\n\
+      \      source_check: admitted_mutation_expected_red\n      selection_ids: *id001\n\
+      \      downstream_step: admitted-mutation-implementation.exact-byte-adapter-transaction\n\
+      \      downstream_check: exact_byte_closure\n      owner_policy:\n        mode:\
+      \ single\n    - requirement_id: REQ-AMV1-EXACT-DOC-SYNC\n      fingerprint:\
+      \ tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\n\
+      \      source_check: admitted_mutation_expected_red\n      selection_ids: *id001\n\
+      \      downstream_step: admitted-mutation-implementation.exact-byte-adapter-transaction\n\
+      \      downstream_check: exact_byte_closure\n      owner_policy:\n        mode:\
+      \ single\n    - requirement_id: REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n     \
+      \ fingerprint: tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\n\
+      \      source_check: admitted_mutation_expected_red\n      selection_ids: &id002\n\
+      \      - tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\n\
+      \      - tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\n\
+      \      - tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\n\
+      \      - tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\n\
+      \      downstream_step: admitted-mutation-implementation.public-surface-wiring\n\
+      \      downstream_check: public_surface_closure\n      owner_policy:\n     \
+      \   mode: single\n    - requirement_id: REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
+      \      fingerprint: tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\n\
+      \      source_check: admitted_mutation_expected_red\n      selection_ids: *id002\n\
+      \      downstream_step: admitted-mutation-implementation.public-surface-wiring\n\
+      \      downstream_check: public_surface_closure\n      owner_policy:\n     \
+      \   mode: single\n    - requirement_id: REQ-AMV1-REGISTERED-MCP-RECEIPT\n  \
+      \    fingerprint: tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\n\
+      \      source_check: admitted_mutation_expected_red\n      selection_ids: *id002\n\
+      \      downstream_step: admitted-mutation-implementation.public-surface-wiring\n\
+      \      downstream_check: public_surface_closure\n      owner_policy:\n     \
+      \   mode: single\n    - requirement_id: REQ-AMV1-PUBLIC-DOC-SYNC\n      fingerprint:\
+      \ tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\n\
+      \      source_check: admitted_mutation_expected_red\n      selection_ids: *id002\n\
+      \      downstream_step: admitted-mutation-implementation.public-surface-wiring\n\
+      \      downstream_check: public_surface_closure\n      owner_policy:\n     \
+      \   mode: single\n  closes_expected_red: []\n</intent_closure_contract>"
+    verification: Run admitted_mutation_expected_red through the tracked selected-execution
+      observer; require the exact eight selected/executed node IDs, red exit 1, only
+      the eight bound missing-behavior fingerprints, no infrastructure fingerprint,
+      no product-source delta, and reciprocal ownership by exact_byte_closure and
+      public_surface_closure.
     evidence_template: List test files, fake-adapter protocol fixture, expected-red
       test IDs/reasons, existing focused green counts, and confirmation that no production
       implementation was added.
     refs:
+    - pyproject.toml
+    - tests/expected_red.py
     - tests/test_io.py
     - tests/test_mcp_mutate_batch.py
-    - tests/test_cli.py
     - tests/test_mcp.py
-    - docs/RFC-admitted-plan-mutation.md
+    - tests/test_cli.py
     depends_on:
     - admitted-mutation-contract.baseline-and-rfc
     agent: python-senior
@@ -122123,160 +122366,563 @@ phases:
   - id: admitted-mutation-implementation.exact-byte-adapter-transaction
     name: Implement exact-byte serialization and optional admission transaction
     status: pending
-    description: Implement the smallest shared private persistence boundary. Use raw
-      plan bytes for base CAS; deep-copy/finalize the supplied in-memory candidate;
-      recalculate locks; run the existing explicitly selected structural validation
-      policy; serialize the final managed Plan exactly once; compute candidate_hash;
-      optionally invoke a startup-frozen adapter using mode-0600 repository-external
-      immutable base/candidate/verdict files, fixed shell=false argv, sanitized output,
-      bounded timeout, executable identity checks, and strict verdict binding; atomically
-      persist the identical approved byte buffer; expose Plan-applied and Git-commit
-      status separately. All adapter fields absent is supported admission=not_configured;
-      any adapter field present requires a complete valid configuration and never
-      silently downgrades. Reuse existing modules where simpler; add no registry,
-      protocol hierarchy, daemon, ledger, cache, database, context scanner, or project
-      semantics. Update focused tests and RFC/docs in the same change.
-    verification: New exact-byte/adapter/receipt focused tests pass; tests/test_io.py
-      passes; adapter rejection/failure state comparisons prove unchanged Plan bytes,
-      Git HEAD/index, backups, claims, and persisted locks; serializer output hash
-      equals persisted raw bytes.
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
+      - Implement one private finalization/admission/persistence transaction. Load\
+      \ and retain the authoritative raw Plan bytes for base CAS, deep-copy and finalize\
+      \ the supplied candidate, recalculate locks, apply the existing selected structural\
+      \ validation policy, serialize the managed Plan exactly once, compute the candidate\
+      \ hash, and persist the identical approved byte buffer atomically.\n- Optional\
+      \ admission is startup-frozen and complete-or-fail-closed. Invoke the configured\
+      \ adapter with fixed `shell=false` arguments and mode-0600 repository-external\
+      \ immutable base/candidate/verdict files; enforce bounded timeout, executable\
+      \ identity, strict verdict/candidate binding, bounded sanitized output, and\
+      \ zero Plan/Git writes on partial configuration, rejection, timeout, crash,\
+      \ malformed output, hash mismatch, or identity drift. All adapter fields absent\
+      \ remains supported as `not_configured`.\n- Return Plan-applied and Git-committed\
+      \ status separately. Preserve best-effort Git semantics and unrelated staged\
+      \ files. Update `tests/test_io.py`, the RFC, README.md, and README_zh.md in\
+      \ the same rollback unit. Add no registry, protocol hierarchy, daemon, ledger,\
+      \ cache, database, context scanner, or project semantics.\n\nBoundary:\n- Owner:\
+      \ `python-senior`; the persistence/CAS/subprocess boundary is architecture-heavy\
+      \ and not suitable for `python-executor`. Repository authority is limited to\
+      \ `src/vectl/io.py`, `src/vectl/mcp_core_common.py`, an optional private module\
+      \ under `src/vectl/shell/**`, `tests/test_io.py`, `docs/RFC-admitted-plan-mutation.md`,\
+      \ `README.md`, and `README_zh.md`.\n- MCP/CLI public wiring, other tests, Plan/claims\
+      \ lifecycle state, real user Plan files, external services, credentials, cost,\
+      \ and push are forbidden. All Plan/Git failure probes use isolated Git-backed\
+      \ fixtures.\n\nAdmit:\n- The completed contract phase provides the RFC, tracked\
+      \ observer, and immutable expected-red tests. The exact selected-execution check\
+      \ must flip its four bound requirements green without changing node identity\
+      \ or weakening assertions.\n- Evidence includes raw base/candidate/persisted\
+      \ hashes, exact unchanged-state comparisons for every failure branch, applied/Git\
+      \ receipt fields, changed-file inventory, synchronized documentation sections,\
+      \ and admitted Worker-v2 receipt.\n\nRecovery:\n- Revert this step's repository\
+      \ commit. Unknown writes to a real Plan, claims, index, HEAD, backup, or lock\
+      \ state; ambiguous adapter execution identity; or any failure that cannot prove\
+      \ zero effect requires an immediate stop and orchestrator reconciliation. Do\
+      \ not retry an unknown or externally unreconciled write.\n\n<vectl_step_policy>\n\
+      {\n  \"schema_version\": \"vectl.step.policy.v2\",\n  \"step_id\": \"admitted-mutation-implementation.exact-byte-adapter-transaction\"\
+      ,\n  \"risk_tier\": \"R1\",\n  \"risk_reasons\": [\n    \"reversible local persistence-boundary\
+      \ implementation\",\n    \"fail-closed optional subprocess admission with isolated\
+      \ developer tests\"\n  ],\n  \"primary_outcome\": \"REQ-AMV1-EXACT-BYTE-TRANSACTION\"\
+      ,\n  \"rollback_class\": \"TRIVIAL\",\n  \"observation_ledger\": [],\n  \"test_authority\"\
+      : {\n    \"developer_test_globs\": [\n      \"tests/test_io.py\"\n    ],\n \
+      \   \"acceptance_test_paths\": [],\n    \"acceptance_check_ids\": [],\n    \"\
+      acceptance_mutation\": \"FORBIDDEN\",\n    \"acceptance_authorizations\": []\n\
+      \  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\nschema_version:\
+      \ intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
+      profile: implementation_closes_expected_red\nscope:\n  allowed_paths:\n    -\
+      \ src/vectl/io.py\n    - src/vectl/mcp_core_common.py\n    - src/vectl/shell/**\n\
+      \    - tests/test_io.py\n    - docs/RFC-admitted-plan-mutation.md\n    - README.md\n\
+      \    - README_zh.md\n  blocked_paths:\n    - plan.yaml\n    - src/vectl/mcp_core_mutation_tools.py\n\
+      \    - src/vectl/mcp_mutation_contracts.py\n    - src/vectl/cli_plan_mutation_commands.py\n\
+      \    - src/vectl/cli_plan_lock_commands.py\n    - src/vectl/cli_plan_common.py\n\
+      \    - tests/expected_red.py\n    - tests/test_mcp_mutate_batch.py\n    - tests/test_mcp.py\n\
+      \    - tests/test_cli.py\n  ignored_runtime_paths: [.git/, .vectl/, .agent/,\
+      \ .venv/]\nclaims:\n  - REQ-AMV1-EXACT-BYTE-TRANSACTION\n  - REQ-AMV1-ADMISSION-FAIL-CLOSED\n\
+      \  - REQ-AMV1-APPLIED-GIT-RECEIPT\n  - REQ-AMV1-EXACT-DOC-SYNC\nchecks:\n  -\
+      \ id: exact_byte_closure\n    run:\n      command: [\"python3\", \"tests/expected_red.py\"\
+      , \"run\", \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
+      , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
+      , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
+      ]\n      timeout_seconds: 900\n    evidence:\n      mode: selected_execution\n\
+      \      path_bindings:\n        - {path: tests/expected_red.py, access: execute,\
+      \ availability: current}\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n      test_bindings:\n        - {path: tests/test_io.py, classification:\
+      \ developer, availability: current}\n      selection:\n        command: [\"\
+      python3\", \"tests/expected_red.py\", \"select\", \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
+      , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
+      , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
+      ]\n        timeout_seconds: 180\n        cardinality: {exact: 4}\n        required_ids:\n\
+      \          - tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\n\
+      \          - tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\n\
+      \          - tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\n\
+      \          - tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\n\
+      \        forbidden_ids: []\n    expect:\n      outcome: green\n      exit_codes:\
+      \ [0]\n      stdout_or_stderr:\n        contains_all:\n          - {literal:\
+      \ \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      }\n          - {literal: \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
+      }\n          - {literal: \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
+      }\n          - {literal: \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
+      }\n        contains_any: []\n        forbids:\n          - {literal: \"ModuleNotFoundError\"\
+      }\n          - {literal: \"ImportError\"}\n          - {literal: \"ERROR collecting\"\
+      }\n          - {literal: \"No such file or directory\"}\n    proves:\n     \
+      \ - REQ-AMV1-EXACT-BYTE-TRANSACTION\n      - REQ-AMV1-ADMISSION-FAIL-CLOSED\n\
+      \      - REQ-AMV1-APPLIED-GIT-RECEIPT\n      - REQ-AMV1-EXACT-DOC-SYNC\n  -\
+      \ id: existing_io_regression\n    run:\n      command: [uv, run, pytest, tests/test_io.py,\
+      \ -q]\n      timeout_seconds: 900\n    evidence:\n      mode: command_outcome\n\
+      \      path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n        - {path: src/vectl/io.py, access: read, availability: current}\n\
+      \        - {path: src/vectl/mcp_core_common.py, access: read, availability:\
+      \ current}\n      test_bindings:\n        - {path: tests/test_io.py, classification:\
+      \ developer, availability: current}\n    expect:\n      outcome: green\n   \
+      \   exit_codes: [0]\n      stdout_or_stderr:\n        contains_all: [{literal:\
+      \ passed}]\n        contains_any: []\n        forbids: [{literal: failed}, {literal:\
+      \ ERROR collecting}]\n    proves:\n      - REQ-AMV1-EXACT-BYTE-TRANSACTION\n\
+      \      - REQ-AMV1-ADMISSION-FAIL-CLOSED\n      - REQ-AMV1-APPLIED-GIT-RECEIPT\n\
+      \      - REQ-AMV1-EXACT-DOC-SYNC\n  - id: exact_invar_guard\n    run:\n    \
+      \  command: [uv, run, invar, guard]\n      timeout_seconds: 1800\n    evidence:\n\
+      \      mode: command_outcome\n      path_bindings:\n        - {path: pyproject.toml,\
+      \ access: read, availability: current}\n        - {path: INVAR.md, access: read,\
+      \ availability: current}\n      test_bindings: []\n    expect:\n      outcome:\
+      \ green\n      exit_codes: [0]\n      stdout_or_stderr: {contains_all: [], contains_any:\
+      \ [], forbids: []}\n    proves: [REQ-AMV1-EXACT-BYTE-TRANSACTION]\nbindings:\n\
+      \  expected_red:\n    items: []\n  closes_expected_red:\n  - requirement_id:\
+      \ REQ-AMV1-EXACT-BYTE-TRANSACTION\n    source_step: admitted-mutation-contract.protocol-tests\n\
+      \    downstream_check: exact_byte_closure\n  - requirement_id: REQ-AMV1-ADMISSION-FAIL-CLOSED\n\
+      \    source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
+      \ exact_byte_closure\n  - requirement_id: REQ-AMV1-APPLIED-GIT-RECEIPT\n   \
+      \ source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
+      \ exact_byte_closure\n  - requirement_id: REQ-AMV1-EXACT-DOC-SYNC\n    source_step:\
+      \ admitted-mutation-contract.protocol-tests\n    downstream_check: exact_byte_closure\n\
+      </intent_closure_contract>"
+    verification: Pass exact_byte_closure, existing_io_regression, and exact_invar_guard;
+      prove persisted bytes equal the approved serialization hash, every configured-adapter
+      failure leaves Plan/Git/backup/claims/locks unchanged, applied and Git status
+      remain separate, docs are synchronized, and the Worker-v2 receipt is admitted.
     evidence_template: Paste focused command outputs, exact-byte hash equality evidence,
       zero-write failure matrix, changed files, and explicit confirmation of no new
       third-party dependency or deferred feature.
     refs:
+    - INVAR.md
+    - pyproject.toml
     - src/vectl/io.py
     - src/vectl/mcp_core_common.py
     - src/vectl/shell
+    - tests/expected_red.py
     - tests/test_io.py
-    - docs/RFC-admitted-plan-mutation.md
     - README.md
     - README_zh.md
     agent: python-senior
   - id: admitted-mutation-implementation.public-surface-wiring
     name: Route covered MCP and CLI definition mutations through the shared transaction
     status: pending
-    description: Wire existing MCP vectl_mutate single-action and requests batch plus
-      CLI add-step, add-steps, edit-step, remove-step, move-step, add-phase, edit-phase,
-      and edit-plan to the shared private transaction. Preserve each documented surface's
-      parsing and mutation semantics, including omission versus explicit empty values,
-      auto versus explicit IDs, dependency operation mode, existing response prefix
-      where practical, linked-worktree behavior, and Plan-only best-effort Git policy.
-      Append only the minimum stable receipt fields. Remove every covered public direct-save
-      bypass without changing lifecycle, checklist, clipboard, init, recovery, migration,
-      merge-driver, claimed-step policy, or low-level helper behavior. Update MCP/CLI
-      tests and English/Chinese docs synchronously.
-    verification: Focused MCP schema/single/batch tests and CLI mutation tests pass
-      in configured and unconfigured modes; static writer inventory proves the listed
-      public definition mutations share one transaction; unrelated surfaces retain
-      existing tests.
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
+      - Route the existing MCP `vectl_mutate` single-action and `requests` batch modes\
+      \ plus CLI add-step, add-steps, edit-step, remove-step, move-step, add-phase,\
+      \ edit-phase, and edit-plan through the private transaction completed by the\
+      \ prior step.\n- Preserve omission versus explicit empty values, auto versus\
+      \ explicit IDs, dependency operation modes, single-action response compatibility\
+      \ where practical, linked-worktree behavior, and Plan-only best-effort Git policy.\
+      \ Append only the minimum stable applied/admission/Git receipt fields and remove\
+      \ every covered public direct-save bypass.\n- Do not change lifecycle, checklist,\
+      \ clipboard, init, recovery, migration, merge-driver, claimed-step policy, low-level\
+      \ helper semantics, or public API shape beyond the admitted receipt. Update\
+      \ MCP/CLI developer tests, the RFC, README.md, and README_zh.md synchronously.\n\
+      \nBoundary:\n- Owner: `python-senior`; this cross-surface persistence routing\
+      \ remains one architecture and rollback unit. Repository authority is limited\
+      \ to the named MCP/CLI modules, three developer-test files, RFC, and bilingual\
+      \ README files.\n- The completed exact-byte transaction is an input. Do not\
+      \ redesign it, mutate `tests/expected_red.py`, change Plan/claims lifecycle\
+      \ state, touch real user Plan/Git state, add dependencies/services, or push.\n\
+      \nAdmit:\n- The public selected-execution check must flip its four exact requirement\
+      \ IDs green while existing MCP/CLI regressions remain green in configured and\
+      \ unconfigured modes. Static inventory and real registered MCP/CLI evidence\
+      \ must show no covered direct-save bypass.\n- Evidence includes exact public\
+      \ schemas/responses, all eight CLI routes, single/batch transaction identity,\
+      \ applied/Git receipt fields, changed paths, synchronized docs, and one admitted\
+      \ Worker-v2 receipt.\n\nRecovery:\n- Revert this step's repository commit. Any\
+      \ public compatibility drift outside the RFC, duplicate transaction path, real\
+      \ Plan/index/HEAD leakage, or inability to identify a bypass deterministically\
+      \ stops execution for orchestrator reconciliation; do not widen the public surface.\n\
+      \n<vectl_step_policy>\n{\n  \"schema_version\": \"vectl.step.policy.v2\",\n\
+      \  \"step_id\": \"admitted-mutation-implementation.public-surface-wiring\",\n\
+      \  \"risk_tier\": \"R1\",\n  \"risk_reasons\": [\n    \"reversible MCP and CLI\
+      \ routing changes\",\n    \"single shared transaction preserves existing public\
+      \ parsing semantics\"\n  ],\n  \"primary_outcome\": \"REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\"\
+      ,\n  \"rollback_class\": \"TRIVIAL\",\n  \"observation_ledger\": [],\n  \"test_authority\"\
+      : {\n    \"developer_test_globs\": [\n      \"tests/test_mcp_mutate_batch.py\"\
+      ,\n      \"tests/test_mcp.py\",\n      \"tests/test_cli.py\"\n    ],\n    \"\
+      acceptance_test_paths\": [],\n    \"acceptance_check_ids\": [],\n    \"acceptance_mutation\"\
+      : \"FORBIDDEN\",\n    \"acceptance_authorizations\": []\n  }\n}\n</vectl_step_policy>\n\
+      \n<intent_closure_contract>\nschema_version: intent_closure.contract.v2\nmatcher_semantics:\
+      \ intent_closure.matchers.v2\nprofile: implementation_closes_expected_red\n\
+      scope:\n  allowed_paths:\n    - src/vectl/mcp_core_mutation_tools.py\n    -\
+      \ src/vectl/mcp_mutation_contracts.py\n    - src/vectl/mcp_core_common.py\n\
+      \    - src/vectl/cli_plan_mutation_commands.py\n    - src/vectl/cli_plan_lock_commands.py\n\
+      \    - src/vectl/cli_plan_common.py\n    - tests/test_mcp_mutate_batch.py\n\
+      \    - tests/test_mcp.py\n    - tests/test_cli.py\n    - docs/RFC-admitted-plan-mutation.md\n\
+      \    - README.md\n    - README_zh.md\n  blocked_paths:\n    - plan.yaml\n  \
+      \  - src/vectl/io.py\n    - src/vectl/shell/**\n    - tests/expected_red.py\n\
+      \    - tests/test_io.py\n  ignored_runtime_paths: [.git/, .vectl/, .agent/,\
+      \ .venv/]\nclaims:\n  - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n  - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
+      \  - REQ-AMV1-REGISTERED-MCP-RECEIPT\n  - REQ-AMV1-PUBLIC-DOC-SYNC\nchecks:\n\
+      \  - id: public_surface_closure\n    run:\n      command: [\"python3\", \"tests/expected_red.py\"\
+      , \"run\", \"pytest\", \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
+      , \"tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\"\
+      , \"tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\"\
+      , \"tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\"\
+      ]\n      timeout_seconds: 900\n    evidence:\n      mode: selected_execution\n\
+      \      path_bindings:\n        - {path: tests/expected_red.py, access: execute,\
+      \ availability: current}\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n      test_bindings:\n        - {path: tests/test_cli.py, classification:\
+      \ developer, availability: current}\n        - {path: tests/test_mcp.py, classification:\
+      \ developer, availability: current}\n        - {path: tests/test_mcp_mutate_batch.py,\
+      \ classification: developer, availability: current}\n      selection:\n    \
+      \    command: [\"python3\", \"tests/expected_red.py\", \"select\", \"pytest\"\
+      , \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
+      , \"tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\"\
+      , \"tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\"\
+      , \"tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\"\
+      ]\n        timeout_seconds: 180\n        cardinality: {exact: 4}\n        required_ids:\n\
+      \          - tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\n\
+      \          - tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\n\
+      \          - tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\n\
+      \          - tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\n\
+      \        forbidden_ids: []\n    expect:\n      outcome: green\n      exit_codes:\
+      \ [0]\n      stdout_or_stderr:\n        contains_all:\n          - {literal:\
+      \ \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
+      }\n          - {literal: \"tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\"\
+      }\n          - {literal: \"tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\"\
+      }\n          - {literal: \"tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\"\
+      }\n        contains_any: []\n        forbids:\n          - {literal: \"ModuleNotFoundError\"\
+      }\n          - {literal: \"ImportError\"}\n          - {literal: \"ERROR collecting\"\
+      }\n          - {literal: \"No such file or directory\"}\n    proves:\n     \
+      \ - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n      - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
+      \      - REQ-AMV1-REGISTERED-MCP-RECEIPT\n      - REQ-AMV1-PUBLIC-DOC-SYNC\n\
+      \  - id: existing_mcp_cli_regression\n    run:\n      command: [uv, run, pytest,\
+      \ tests/test_mcp_mutate_batch.py, tests/test_mcp.py, tests/test_cli.py, -q]\n\
+      \      timeout_seconds: 1200\n    evidence:\n      mode: command_outcome\n \
+      \     path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n        - {path: src/vectl/mcp_core_mutation_tools.py, access: read,\
+      \ availability: current}\n        - {path: src/vectl/cli_plan_mutation_commands.py,\
+      \ access: read, availability: current}\n      test_bindings:\n        - {path:\
+      \ tests/test_mcp_mutate_batch.py, classification: developer, availability: current}\n\
+      \        - {path: tests/test_mcp.py, classification: developer, availability:\
+      \ current}\n        - {path: tests/test_cli.py, classification: developer, availability:\
+      \ current}\n    expect:\n      outcome: green\n      exit_codes: [0]\n     \
+      \ stdout_or_stderr:\n        contains_all: [{literal: passed}]\n        contains_any:\
+      \ []\n        forbids: [{literal: failed}, {literal: ERROR collecting}]\n  \
+      \  proves:\n      - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n      - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
+      \      - REQ-AMV1-REGISTERED-MCP-RECEIPT\n      - REQ-AMV1-PUBLIC-DOC-SYNC\n\
+      \  - id: public_invar_guard\n    run:\n      command: [uv, run, invar, guard]\n\
+      \      timeout_seconds: 1800\n    evidence:\n      mode: command_outcome\n \
+      \     path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n        - {path: INVAR.md, access: read, availability: current}\n\
+      \      test_bindings: []\n    expect:\n      outcome: green\n      exit_codes:\
+      \ [0]\n      stdout_or_stderr: {contains_all: [], contains_any: [], forbids:\
+      \ []}\n    proves: [REQ-AMV1-MCP-TRANSACTION-CONVERGENCE]\nbindings:\n  expected_red:\n\
+      \    items: []\n  closes_expected_red:\n  - requirement_id: REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n\
+      \    source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
+      \ public_surface_closure\n  - requirement_id: REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
+      \    source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
+      \ public_surface_closure\n  - requirement_id: REQ-AMV1-REGISTERED-MCP-RECEIPT\n\
+      \    source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
+      \ public_surface_closure\n  - requirement_id: REQ-AMV1-PUBLIC-DOC-SYNC\n   \
+      \ source_step: admitted-mutation-contract.protocol-tests\n    downstream_check:\
+      \ public_surface_closure\n</intent_closure_contract>"
+    verification: Pass public_surface_closure, existing_mcp_cli_regression, and public_invar_guard
+      in configured and unconfigured modes; prove registered MCP single/batch and
+      all eight CLI definition mutations share one transaction, no covered direct-save
+      bypass remains, receipt/docs are synchronized, and the Worker-v2 receipt is
+      admitted.
     evidence_template: Paste MCP/CLI focused outputs, covered-surface inventory, compatibility
       evidence, receipt samples for no-adapter/approved/rejected/Git-failed cases,
       and excluded-writer confirmation.
     refs:
+    - INVAR.md
+    - pyproject.toml
     - src/vectl/mcp_core_mutation_tools.py
     - src/vectl/mcp_mutation_contracts.py
     - src/vectl/mcp_core_common.py
     - src/vectl/cli_plan_mutation_commands.py
     - src/vectl/cli_plan_lock_commands.py
     - src/vectl/cli_plan_common.py
+    - tests/expected_red.py
     - tests/test_mcp_mutate_batch.py
     - tests/test_mcp.py
     - tests/test_cli.py
     - README.md
     - README_zh.md
-    - docs/RFC-admitted-plan-mutation.md
     depends_on:
     - admitted-mutation-implementation.exact-byte-adapter-transaction
     agent: python-senior
 - id: admitted-mutation-verification
   name: 'Admitted Plan Mutation: Verification and Review'
   status: locked
-  gate: Repo-wide verification, real CLI/FastMCP seams, concurrent CAS, exact-byte
-    and zero-write evidence pass; all required independent reviewers pass after any
-    fixes; one final local commit exists and nothing is pushed. The pre-existing completed-evidence
-    review findings remain explicitly baseline-classified and no new active-closure
-    error is introduced.
-  context: 'Close the feature with real public-surface evidence and fresh review.
-    A review finding is not self-approved: apply complete reference-grounded MUST_FIX
-    obligations, rerun all affected checks, and use a fresh reviewer after fixes.'
+  gate: Repo-wide verification, real CLI/FastMCP seams, deterministic competing-candidate
+    CAS, exact-byte identity, and zero-write evidence pass; the terminal spec-verifier
+    review passes after every required remediation and fresh re-review; no new active-closure
+    error is introduced. The pre-existing completed-evidence findings remain baseline-classified.
+    Product Plan closure does not perform Git integration or commit; the authorized
+    local commit and final clean-state proof belong to vectl-orchestrator after admission,
+    and no push is allowed.
+  context: 'Close the feature with real public-surface evidence and fresh adversarial
+    review. A finding is not self-approved: route complete reference-grounded MUST_FIX
+    obligations to the original implementation authority, rerun affected verification,
+    and use a new fresh reviewer. Final integration and local Git durability remain
+    vectl-orchestrator actions after admitted Plan evidence.'
   depends_on:
   - admitted-mutation-implementation
   steps:
   - id: admitted-mutation-verification.integration-gate
-    name: Run full regression and real CLI/FastMCP/concurrency verification
+    name: Run integration verification for full regression and public seams
     status: pending
-    description: 'Run focused and full verification after implementation: candidate/adapter/IO/MCP/CLI
-      tests, full pytest, Invar, ruff, mypy, git diff --check, FastMCP real stdio
-      schema plus configured/unconfigured approval/rejection smoke, CLI mutation smoke,
-      synthetic concurrent CAS where two candidates share one base and only one persists,
-      synthetic machine-contract/provenance rejection, Git failure semantics, and
-      final raw-byte readback. Compare against the baseline captured before source
-      changes; do not absorb unrelated historical completed-evidence debt into this
-      feature. Do not commit yet.'
-    verification: All listed commands and smoke cases pass, or any pre-existing exception
-      exactly matches the ratified baseline policy with owner/lifecycle; no new active
-      dependency-closure error; git diff --check clean.
+    description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
+      Deliver:\n- As `integration-verifier`, independently run the eight focused NARROW\
+      \ V1 nodes and the full pytest, Invar, ruff, mypy, diff-check, and Vectl validation\
+      \ set on integrated bytes. Compare every result with the pre-edit baseline and\
+      \ keep historical completed-evidence warnings baseline-classified unless a new\
+      \ active closure intersects this feature.\n- Use verifier-owned isolated Git-backed\
+      \ fixtures to exercise the real registered FastMCP stdio schema and configured/unconfigured\
+      \ approval/rejection calls, real CLI mutation commands, two candidates sharing\
+      \ one base where only one persists, synthetic machine-contract/provenance rejection,\
+      \ Git failure semantics, unrelated staged-file isolation, and final raw-byte\
+      \ readback. Direct Python calls and seam mocks cannot prove public routing.\n\
+      - Produce one production-validated `vectl.verifier.semantic.v1` receipt. Ordered\
+      \ lifecycle scope is exactly: [\"exact-byte finalization, base CAS, candidate\
+      \ hash, and persisted-byte identity\", \"configured admission approval and zero-write\
+      \ rejection, timeout, crash, malformed, hash-mismatch, and identity-drift branches\"\
+      , \"MCP single and batch plus eight CLI definition mutations through one shared\
+      \ transaction\", \"Plan-applied and Git-committed receipt separation, unrelated\
+      \ staged-file isolation, and no-push boundary\", \"full repository checks, registered\
+      \ FastMCP stdio, CLI smoke, and deterministic competing-candidate CAS\"].\n\n\
+      Boundary:\n- Owner: `integration-verifier`. Repository and Plan files are read-only.\
+      \ Temporary fixtures, local subprocesses, and local stdio are allowed; repository\
+      \ mutation, lifecycle mutation, commits, push, external services, credentials,\
+      \ and paid effects are forbidden.\n- Any probe that could reach the real repository\
+      \ Plan, claims, index, or unrelated Git state is a hard stop. Cleanly terminate\
+      \ retained processes and remove verifier-owned fixtures.\n\nAdmit:\n- Requirement\
+      \ IDs are the eight `REQ-AMV1-*` feature atoms below plus `REQ-AMV1-INTEGRATION-PROOF`\
+      \ and `REQ-AMV1-REPO-REGRESSION`. Authorized evidence refs are the exact inspected\
+      \ repository paths and `artifact:admitted-mutation-integration-verification`;\
+      \ run-local hashes and paths remain receipt evidence rather than Plan identity.\n\
+      - PASS requires L1 full checks, L2 deterministic state transitions, L3 registered\
+      \ MCP/CLI routing, direct zero-write operands for every negative branch, exact\
+      \ process/cwd/exit/raw excerpts, clean final repository state, and a Gate-valid\
+      \ semantic receipt with no blocker.\n\nRecovery:\n- Retry only a local transport\
+      \ launch after proving zero repository/fixture ambiguity and preserving the\
+      \ first observation. Unknown writes, ambiguous CAS winner, leaked process, unproven\
+      \ zero-write branch, or repeated normalized failure stops verification for orchestrator\
+      \ reconciliation. Do not implement fixes or mutate tests/docs.\n\n<vectl_step_policy>\n\
+      {\n  \"schema_version\": \"vectl.step.policy.v2\",\n  \"step_id\": \"admitted-mutation-verification.integration-gate\"\
+      ,\n  \"risk_tier\": \"R1\",\n  \"risk_reasons\": [\n    \"read-only repository\
+      \ and isolated-fixture runtime verification\",\n    \"real FastMCP, CLI, and\
+      \ competing-candidate CAS observation\"\n  ],\n  \"primary_outcome\": \"REQ-AMV1-INTEGRATION-PROOF\"\
+      ,\n  \"rollback_class\": \"TRIVIAL\",\n  \"observation_ledger\": [],\n  \"test_authority\"\
+      : {\n    \"developer_test_globs\": [\n      \"tests/test_io.py\",\n      \"\
+      tests/test_mcp_mutate_batch.py\",\n      \"tests/test_mcp.py\",\n      \"tests/test_cli.py\"\
+      \n    ],\n    \"acceptance_test_paths\": [],\n    \"acceptance_check_ids\":\
+      \ [],\n    \"acceptance_mutation\": \"FORBIDDEN\",\n    \"acceptance_authorizations\"\
+      : []\n  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\nschema_version:\
+      \ intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
+      profile: generic\nscope:\n  allowed_paths:\n    - src/vectl/**\n    - tests/**\n\
+      \    - docs/RFC-admitted-plan-mutation.md\n    - README.md\n    - README_zh.md\n\
+      \    - INVAR.md\n    - pyproject.toml\n  blocked_paths:\n    - plan.yaml\n \
+      \ ignored_runtime_paths: [.git/, .vectl/, .agent/, .venv/]\nclaims:\n  - REQ-AMV1-EXACT-BYTE-TRANSACTION\n\
+      \  - REQ-AMV1-ADMISSION-FAIL-CLOSED\n  - REQ-AMV1-APPLIED-GIT-RECEIPT\n  - REQ-AMV1-EXACT-DOC-SYNC\n\
+      \  - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n  - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
+      \  - REQ-AMV1-REGISTERED-MCP-RECEIPT\n  - REQ-AMV1-PUBLIC-DOC-SYNC\n  - REQ-AMV1-INTEGRATION-PROOF\n\
+      \  - REQ-AMV1-REPO-REGRESSION\nchecks:\n  - id: integration_feature_matrix\n\
+      \    run:\n      command: [\"python3\", \"tests/expected_red.py\", \"run\",\
+      \ \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
+      , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
+      , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
+      , \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
+      , \"tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\"\
+      , \"tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\"\
+      , \"tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\"\
+      ]\n      timeout_seconds: 900\n    evidence:\n      mode: selected_execution\n\
+      \      path_bindings:\n        - {path: tests/expected_red.py, access: execute,\
+      \ availability: current}\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n      test_bindings:\n        - {path: tests/test_cli.py, classification:\
+      \ developer, availability: current}\n        - {path: tests/test_io.py, classification:\
+      \ developer, availability: current}\n        - {path: tests/test_mcp.py, classification:\
+      \ developer, availability: current}\n        - {path: tests/test_mcp_mutate_batch.py,\
+      \ classification: developer, availability: current}\n      selection:\n    \
+      \    command: [\"python3\", \"tests/expected_red.py\", \"select\", \"pytest\"\
+      , \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
+      , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
+      , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
+      , \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
+      , \"tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\"\
+      , \"tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\"\
+      , \"tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\"\
+      ]\n        timeout_seconds: 180\n        cardinality: {exact: 8}\n        required_ids:\n\
+      \          - tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\n\
+      \          - tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\n\
+      \          - tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\n\
+      \          - tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\n\
+      \          - tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\n\
+      \          - tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\n\
+      \          - tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\n\
+      \          - tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\n\
+      \        forbidden_ids: []\n    expect:\n      outcome: green\n      exit_codes:\
+      \ [0]\n      stdout_or_stderr:\n        contains_all:\n          - {literal:\
+      \ \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      }\n          - {literal: \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
+      }\n          - {literal: \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
+      }\n          - {literal: \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
+      }\n          - {literal: \"tests/test_mcp_mutate_batch.py::test_admitted_mutation_mcp_single_and_batch_share_transaction\"\
+      }\n          - {literal: \"tests/test_cli.py::test_admitted_mutation_all_definition_commands_share_transaction\"\
+      }\n          - {literal: \"tests/test_mcp.py::test_admitted_mutation_registered_mcp_schema_and_receipt\"\
+      }\n          - {literal: \"tests/test_cli.py::test_admitted_mutation_public_surface_docs_match_contract\"\
+      }\n        contains_any: []\n        forbids:\n          - {literal: \"ModuleNotFoundError\"\
+      }\n          - {literal: \"ImportError\"}\n          - {literal: \"ERROR collecting\"\
+      }\n          - {literal: \"No such file or directory\"}\n    proves:\n     \
+      \ - REQ-AMV1-EXACT-BYTE-TRANSACTION\n      - REQ-AMV1-ADMISSION-FAIL-CLOSED\n\
+      \      - REQ-AMV1-APPLIED-GIT-RECEIPT\n      - REQ-AMV1-EXACT-DOC-SYNC\n   \
+      \   - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n      - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
+      \      - REQ-AMV1-REGISTERED-MCP-RECEIPT\n      - REQ-AMV1-PUBLIC-DOC-SYNC\n\
+      \      - REQ-AMV1-INTEGRATION-PROOF\n  - id: integration_full_pytest\n    run:\n\
+      \      command: [uv, run, pytest]\n      timeout_seconds: 1800\n    evidence:\n\
+      \      mode: command_outcome\n      path_bindings:\n        - {path: pyproject.toml,\
+      \ access: read, availability: current}\n      test_bindings: []\n    expect:\n\
+      \      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr: {contains_all:\
+      \ [], contains_any: [], forbids: []}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n\
+      \  - id: integration_invar_guard\n    run:\n      command: [uv, run, invar,\
+      \ guard]\n      timeout_seconds: 1800\n    evidence:\n      mode: command_outcome\n\
+      \      path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n        - {path: INVAR.md, access: read, availability: current}\n\
+      \      test_bindings: []\n    expect:\n      outcome: green\n      exit_codes:\
+      \ [0]\n      stdout_or_stderr: {contains_all: [], contains_any: [], forbids:\
+      \ []}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n  - id: integration_ruff\n  \
+      \  run:\n      command: [uv, run, ruff, check, .]\n      timeout_seconds: 600\n\
+      \    evidence:\n      mode: command_outcome\n      path_bindings:\n        -\
+      \ {path: pyproject.toml, access: read, availability: current}\n      test_bindings:\
+      \ []\n    expect:\n      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\
+      \ {contains_all: [], contains_any: [], forbids: []}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n\
+      \  - id: integration_mypy\n    run:\n      command: [uv, run, mypy, src]\n \
+      \     timeout_seconds: 900\n    evidence:\n      mode: command_outcome\n   \
+      \   path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n      test_bindings: []\n    expect:\n      outcome: green\n   \
+      \   exit_codes: [0]\n      stdout_or_stderr: {contains_all: [], contains_any:\
+      \ [], forbids: []}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n  - id: integration_diff_check\n\
+      \    run:\n      command: [git, diff, --check]\n      timeout_seconds: 120\n\
+      \    evidence:\n      mode: command_outcome\n      path_bindings:\n        -\
+      \ {path: AGENTS.md, access: read, availability: current}\n      test_bindings:\
+      \ []\n    expect:\n      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\
+      \ {contains_all: [], contains_any: [], forbids: []}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n\
+      \  - id: integration_vectl_validate\n    run:\n      command: [uv, run, vectl,\
+      \ validate]\n      timeout_seconds: 600\n    evidence:\n      mode: command_outcome\n\
+      \      path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n      test_bindings: []\n    expect:\n      outcome: green\n   \
+      \   exit_codes: [0]\n      stdout_or_stderr:\n        contains_all: [{literal:\
+      \ \"0 error(s)\"}]\n        contains_any: []\n        forbids: []\n    proves:\
+      \ [REQ-AMV1-REPO-REGRESSION]\nbindings:\n  expected_red:\n    items: []\n  closes_expected_red:\
+      \ []\n</intent_closure_contract>"
+    verification: Pass integration_feature_matrix and the full pytest/Invar/ruff/mypy/diff/Vectl
+      checks; execute real registered FastMCP stdio, CLI, deterministic competing-candidate
+      CAS, configured failure, Git-failure, staged-file-isolation, and byte-readback
+      probes in isolated fixtures; return a production-Gate-valid integration-verifier
+      semantic receipt for the exact ordered scope and ten requirement IDs.
     evidence_template: Paste command matrix with exit codes/counts, stdio/CLI transcripts,
       concurrent winner/loser evidence, exact persisted hash, zero-write rejection
       state, baseline comparison, and remaining gaps.
     refs:
-    - tests
-    - src/vectl
-    - docs/RFC-admitted-plan-mutation.md
-    - README.md
-    - README_zh.md
+    - AGENTS.md
     - INVAR.md
     - pyproject.toml
+    - src/vectl
+    - tests
+    - tests/expected_red.py
+    - README.md
+    - README_zh.md
     agent: integration-verifier
   - id: admitted-mutation-verification.fresh-review-loop
     name: Complete fresh independent security and conformance review
     status: pending
-    description: Use fresh independent reviewers to audit CAS/lock ordering, exact-byte
-      identity, adapter trust/config/temporary-file/subprocess handling, zero-write
-      failure branches, public bypass inventory, MCP/CLI parity, Git applied-versus-committed
-      semantics, bounded output/no secret leakage, KISS/non-goals, and RFC/test/documentation
-      parity. Any complete reference-grounded MUST_FIX finding must be fixed with
-      synchronized tests/docs, affected verification rerun, then reviewed by a new
-      fresh reviewer without relying on pre-fix approval context. Advisory items remain
-      explicitly classified.
-    verification: Final fresh reviewer verdicts pass with no unresolved MUST_FIX;
-      include reviewer identities, covered files/requirements, findings and dispositions,
-      fix verification, and explicit scope/non-goal confirmation.
+    description: "step_type: review\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - As a fresh `spec-verifier`, enumerate the authoritative NARROW V1 RFC requirements\
+      \ and non-goals before inspecting implementation. Audit CAS/lock ordering, exact-byte\
+      \ identity, adapter trust/config/temp-file/subprocess handling, zero-write failures,\
+      \ public bypass inventory, MCP/CLI parity, applied-versus-Git receipt semantics,\
+      \ bounded output and secret leakage, KISS, and source/test/bilingual-documentation\
+      \ parity.\n- Consume but independently assess the integration-verifier receipt.\
+      \ Ordered lifecycle scope is exactly: [\"authoritative NARROW V1 RFC requirements\
+      \ and rejected full Preview design\", \"CAS and lock ordering, exact-byte identity,\
+      \ adapter trust/configuration/temp-file/subprocess safety, and zero-write failures\"\
+      , \"MCP and CLI bypass inventory plus applied-versus-Git receipt semantics\"\
+      , \"bounded output, secret-leakage resistance, KISS/non-goals, and source-test-documentation\
+      \ parity\", \"integration-verifier evidence and every reference-grounded MUST_FIX\
+      \ disposition after fresh re-review\"].\n- Return one production-validated `vectl.verifier.semantic.v1`\
+      \ receipt for `fresh-review-loop`. Every complete reference-grounded MUST_FIX\
+      \ obligation is blocking. The reviewer never edits: the orchestrator routes\
+      \ the obligation to the exact original implementation owner and authority, requires\
+      \ synchronized source/tests/docs plus affected integration reruns, then dispatches\
+      \ a new fresh `spec-verifier` without pre-fix approval context. Advisory findings\
+      \ stay explicitly classified.\n\nBoundary:\n- Owner: `spec-verifier`. This terminal\
+      \ review is read-only and `no_repo_change`; it may inspect repository bytes,\
+      \ run read-only checks, and consume authorized artifacts. It cannot mutate source/tests/docs/Plan/lifecycle/Git,\
+      \ approve its own fix, commit, push, use credentials, or cause external cost.\n\
+      - Remediation remains inside the original modifying step's allowed paths, authority,\
+      \ and rollback. A finding that requires a new outcome, protected state, owner,\
+      \ external effect, or rollback boundary stops for Planner authority rather than\
+      \ being smuggled through review.\n\nAdmit:\n- Required IDs are the eight feature\
+      \ atoms plus `REQ-AMV1-SECURITY-CONFORMANCE`, `REQ-AMV1-KISS-NONGOALS`, and\
+      \ `REQ-AMV1-DOC-TEST-PARITY`. Authorized evidence refs are exact repository\
+      \ paths, `artifact:admitted-mutation-integration-verification`, and the final\
+      \ fresh-review artifact; transient reviewer prose is not completion authority.\n\
+      - PASS requires every material requirement `CONFORMS` or an explicitly authorized\
+      \ evolution, unchanged downstream contracts, no unresolved MUST_FIX, exact finding\
+      \ dispositions, fresh reviewer identity after every fix, green affected checks,\
+      \ and production semantic-receipt admission.\n\nRecovery:\n- On MUST_FIX, emit\
+      \ a rejected/blocking semantic receipt and return control to the orchestrator\
+      \ for bounded remediation and re-verification. On authoritative-source conflict,\
+      \ missing integration evidence, or a repeated/cyclic finding state, stop with\
+      \ exact blockers. Never mutate the repository or waive an obligation.\n\n<vectl_step_policy>\n\
+      {\n  \"schema_version\": \"vectl.step.policy.v2\",\n  \"step_id\": \"admitted-mutation-verification.fresh-review-loop\"\
+      ,\n  \"risk_tier\": \"R0\",\n  \"risk_reasons\": [\n    \"read-only adversarial\
+      \ specification and security review\"\n  ],\n  \"primary_outcome\": \"REQ-AMV1-SECURITY-CONFORMANCE\"\
+      ,\n  \"rollback_class\": \"TRIVIAL\",\n  \"observation_ledger\": [],\n  \"test_authority\"\
+      : {\n    \"developer_test_globs\": [\n      \"tests/test_io.py\",\n      \"\
+      tests/test_mcp_mutate_batch.py\",\n      \"tests/test_mcp.py\",\n      \"tests/test_cli.py\"\
+      \n    ],\n    \"acceptance_test_paths\": [],\n    \"acceptance_check_ids\":\
+      \ [],\n    \"acceptance_mutation\": \"FORBIDDEN\",\n    \"acceptance_authorizations\"\
+      : []\n  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\nschema_version:\
+      \ intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
+      profile: generic\nscope:\n  allowed_paths:\n    - src/vectl/**\n    - tests/**\n\
+      \    - docs/RFC-admitted-plan-mutation.md\n    - README.md\n    - README_zh.md\n\
+      \    - INVAR.md\n    - pyproject.toml\n  blocked_paths:\n    - plan.yaml\n \
+      \ ignored_runtime_paths: [.git/, .vectl/, .agent/, .venv/]\nclaims:\n  - REQ-AMV1-EXACT-BYTE-TRANSACTION\n\
+      \  - REQ-AMV1-ADMISSION-FAIL-CLOSED\n  - REQ-AMV1-APPLIED-GIT-RECEIPT\n  - REQ-AMV1-EXACT-DOC-SYNC\n\
+      \  - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n  - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
+      \  - REQ-AMV1-REGISTERED-MCP-RECEIPT\n  - REQ-AMV1-PUBLIC-DOC-SYNC\n  - REQ-AMV1-SECURITY-CONFORMANCE\n\
+      \  - REQ-AMV1-KISS-NONGOALS\n  - REQ-AMV1-DOC-TEST-PARITY\nchecks:\n  - id:\
+      \ review_focused_regression\n    run:\n      command: [uv, run, pytest, tests/test_io.py,\
+      \ tests/test_mcp_mutate_batch.py, tests/test_mcp.py, tests/test_cli.py, -q]\n\
+      \      timeout_seconds: 1500\n    evidence:\n      mode: command_outcome\n \
+      \     path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n        - {path: src/vectl/io.py, access: read, availability: current}\n\
+      \        - {path: src/vectl/mcp_core_mutation_tools.py, access: read, availability:\
+      \ current}\n        - {path: src/vectl/cli_plan_mutation_commands.py, access:\
+      \ read, availability: current}\n      test_bindings:\n        - {path: tests/test_io.py,\
+      \ classification: developer, availability: current}\n        - {path: tests/test_mcp_mutate_batch.py,\
+      \ classification: developer, availability: current}\n        - {path: tests/test_mcp.py,\
+      \ classification: developer, availability: current}\n        - {path: tests/test_cli.py,\
+      \ classification: developer, availability: current}\n    expect:\n      outcome:\
+      \ green\n      exit_codes: [0]\n      stdout_or_stderr:\n        contains_all:\
+      \ [{literal: passed}]\n        contains_any: []\n        forbids: [{literal:\
+      \ failed}, {literal: ERROR collecting}]\n    proves:\n      - REQ-AMV1-EXACT-BYTE-TRANSACTION\n\
+      \      - REQ-AMV1-ADMISSION-FAIL-CLOSED\n      - REQ-AMV1-APPLIED-GIT-RECEIPT\n\
+      \      - REQ-AMV1-EXACT-DOC-SYNC\n      - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n\
+      \      - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n      - REQ-AMV1-REGISTERED-MCP-RECEIPT\n\
+      \      - REQ-AMV1-PUBLIC-DOC-SYNC\n      - REQ-AMV1-SECURITY-CONFORMANCE\n \
+      \     - REQ-AMV1-KISS-NONGOALS\n      - REQ-AMV1-DOC-TEST-PARITY\nbindings:\n\
+      \  expected_red:\n    items: []\n  closes_expected_red: []\n</intent_closure_contract>"
+    verification: Pass review_focused_regression and return a production-Gate-valid
+      spec-verifier semantic receipt for the exact ordered scope and eleven requirement
+      IDs. No unresolved MUST_FIX is allowed; every fix uses original implementation
+      authority, synchronized tests/docs, affected integration reruns, and a new fresh
+      reviewer.
     evidence_template: Attach final fresh-review receipts, requirement coverage matrix,
       all MUST_FIX dispositions, post-fix command outputs, and explicit PASS/no-unresolved-MUST_FIX
       statement.
     refs:
-    - docs/RFC-admitted-plan-mutation.md
-    - src/vectl/io.py
-    - src/vectl/mcp_core_mutation_tools.py
-    - src/vectl/cli_plan_mutation_commands.py
-    - tests
-    depends_on:
-    - admitted-mutation-verification.integration-gate
-    agent: gate-reviewer
-  - id: admitted-mutation-verification.final-gate-and-commit
-    name: Reconcile final state and create the authorized local commit
-    status: pending
-    description: After fresh review passes, rerun the final required command set,
-      reread Git status and all authoritative receipt fields, verify no AurisPi or
-      dotfiles/agent file changed, confirm no dependency or deferred feature entered
-      the diff, and create one local commit containing the approved Vectl code/tests/docs
-      plus managed Plan updates. Do not push. Record the commit SHA and notify the
-      downstream integration owner only after every check and the final state reread
-      succeeds.
-    verification: Focused/full pytest, Invar, ruff, mypy, git diff --check, FastMCP/CLI
-      smoke, and final state checks pass; git show --stat/--name-only proves scoped
-      commit; git status is clean after commit; no push occurred.
-    evidence_template: 'Paste final command summary, commit SHA, committed file list,
-      clean Git status, downstream handoff artifacts, and confirmations: no AurisPi
-      change, no dotfiles/agent change, no push.'
-    refs:
-    - docs/RFC-admitted-plan-mutation.md
-    - README.md
-    - README_zh.md
+    - AGENTS.md
+    - INVAR.md
+    - pyproject.toml
     - src/vectl
     - tests
-    - plan.yaml
+    - tests/expected_red.py
+    - README.md
+    - README_zh.md
     depends_on:
-    - admitted-mutation-verification.fresh-review-loop
-    agent: python-senior
+    - admitted-mutation-verification.integration-gate
+    agent: spec-verifier

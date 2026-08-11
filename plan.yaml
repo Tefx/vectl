@@ -122515,7 +122515,7 @@ phases:
       31 files; Invar, diff-check, Vectl validation, and RFC/observer tests are green.'
 - id: admitted-mutation-implementation
   name: 'Admitted Plan Mutation: Minimal Implementation'
-  status: pending
+  status: in_progress
   gate: The unique serializer and one private finalization/admission/persistence transaction
     satisfy focused tests; no-adapter mode preserves existing behavior; configured
     adapter failures cannot write Plan or invoke Git; MCP single/batch and covered
@@ -122528,7 +122528,7 @@ phases:
   steps:
   - id: admitted-mutation-implementation.exact-byte-adapter-transaction
     name: Implement exact-byte serialization and optional admission transaction
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - Implement one private finalization/admission/persistence transaction. Load\
@@ -122661,6 +122661,8 @@ phases:
     - README.md
     - README_zh.md
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-08-11T21:30:47.372517Z'
   - id: admitted-mutation-implementation.public-surface-wiring
     name: Route covered MCP and CLI definition mutations through the shared transaction
     status: pending

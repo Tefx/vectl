@@ -15,6 +15,8 @@ from typer.testing import CliRunner
 
 from vectl import __version__
 from vectl.claims import ClaimEntry, load_claims, repair_claims, save_claims
+import vectl.cli_plan_common as cli_plan_common
+import vectl.io as io_module
 from vectl.cli import app
 from vectl.io import load_plan_definition, save_plan
 from vectl.io import load_plan_definition as load_plan
@@ -4494,3 +4496,146 @@ def test_cli_claim_many_rollback_on_save_failure(plan_file: Path, monkeypatch: p
         assert False, f"claim-many missing implementation: exit {result.exit_code} output {result.output}"
     if result.exit_code == 0:
         assert False, f"claim-many rollback test passed but should have failed due to CAS error (or it's stubbed)"
+
+
+def test_admitted_mutation_all_definition_commands_share_transaction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transaction = getattr(io_module, "_finalize_admitted_plan_mutation", None)
+    assert callable(transaction), (
+        "REQ-AMV1-CLI-TRANSACTION-CONVERGENCE missing: eight CLI definition commands "
+        "do not reach one admitted mutation transaction"
+    )
+    for key in (
+        "VECTL_PLAN_ADMISSION_EXECUTABLE",
+        "VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256",
+        "VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    calls: list[str] = []
+
+    def observed_transaction(*args: object, **kwargs: object) -> object:
+        message = kwargs.get("commit_message", args[3] if len(args) > 3 else "")
+        calls.append(str(message))
+        return transaction(*args, **kwargs)
+
+    monkeypatch.setattr(
+        io_module,
+        "_finalize_admitted_plan_mutation",
+        observed_transaction,
+    )
+    if hasattr(cli_plan_common, "_finalize_admitted_plan_mutation"):
+        monkeypatch.setattr(
+            cli_plan_common,
+            "_finalize_admitted_plan_mutation",
+            observed_transaction,
+        )
+
+    seed = Plan(
+        project="admitted-cli",
+        context="seed",
+        phases=[
+            Phase(
+                id="p1",
+                name="Phase 1",
+                status=PhaseStatus.PENDING,
+                steps=[Step(id="s1", name="Step 1", status=StepStatus.PENDING)],
+            ),
+            Phase(
+                id="p2",
+                name="Phase 2",
+                status=PhaseStatus.PENDING,
+                steps=[],
+            ),
+        ],
+    )
+    plan_path = tmp_path / "plan.yaml"
+    cases = (
+        (
+            "add-step",
+            ["add-step", "--phase", "p1", "--name", "Added", "--id", "added"],
+            None,
+        ),
+        (
+            "add-steps",
+            ["add-steps", "--phase", "p1"],
+            "- id: bulk-added\n  name: Bulk Added\n",
+        ),
+        ("edit-step", ["edit-step", "s1", "--name", "Renamed"], None),
+        ("remove-step", ["remove-step", "s1"], None),
+        ("move-step", ["move-step", "s1", "--to-phase", "p2"], None),
+        (
+            "add-phase",
+            ["add-phase", "--name", "Phase 3", "--id", "p3"],
+            None,
+        ),
+        ("edit-phase", ["edit-phase", "p1", "--name", "Renamed phase"], None),
+        ("edit-plan", ["edit-plan", "--context", "Updated context"], None),
+    )
+
+    for command_name, arguments, stdin in cases:
+        save_plan(seed.model_copy(deep=True), plan_path)
+        result = runner.invoke(
+            app,
+            [*arguments, "--plan", str(plan_path)],
+            input=stdin,
+        )
+        assert result.exit_code == 0, f"{command_name}: {result.output}"
+
+    assert len(calls) == 8
+    for command_name in (
+        "add step",
+        "add steps",
+        "edit step",
+        "remove step",
+        "move step",
+        "add phase",
+        "edit phase",
+        "edit plan",
+    ):
+        assert any(command_name in message for message in calls), command_name
+
+
+def test_admitted_mutation_public_surface_docs_match_contract() -> None:
+    root = Path(__file__).parents[1]
+    readmes = {
+        "README.md": (root / "README.md").read_text(encoding="utf-8"),
+        "README_zh.md": (root / "README_zh.md").read_text(encoding="utf-8"),
+    }
+    required_machine_terms = (
+        "VECTL_PLAN_ADMISSION_EXECUTABLE",
+        "VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256",
+        "VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS",
+        "vectl.plan-mutation.receipt.v1",
+        "plan_applied",
+        "git_committed",
+    )
+    for name, content in readmes.items():
+        for term in required_machine_terms:
+            assert term in content, (
+                f"REQ-AMV1-PUBLIC-DOC-SYNC missing: {name} omits admitted mutation term {term}"
+            )
+
+    help_result = runner.invoke(app, ["--help"])
+    assert help_result.exit_code == 0, help_result.output
+    for command in (
+        "add-step",
+        "add-steps",
+        "edit-step",
+        "remove-step",
+        "move-step",
+        "add-phase",
+        "edit-phase",
+        "edit-plan",
+    ):
+        assert command in help_result.output
+    lowered_help = help_result.output.lower()
+    for forbidden_bypass in (
+        "preview-mutation",
+        "approve-by-digest",
+        "candidate-sha256",
+        "admission-executable",
+    ):
+        assert forbidden_bypass not in lowered_help

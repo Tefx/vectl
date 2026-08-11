@@ -16,6 +16,7 @@ from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
 import vectl.io as io_module
+import vectl.mcp_core_common as mcp_common
 import vectl.mcp_core_mutation_tools as mutation_module
 from vectl.io import load_plan_definition, save_plan
 from vectl.mcp_server import vectl_mutate as mutate_tool
@@ -615,3 +616,65 @@ def test_linked_worktree_guard_precedes_batch_load(
 
     assert "Mutate blocked" in result
     assert "linked worktree" in result
+
+
+def test_admitted_mutation_mcp_single_and_batch_share_transaction(
+    git_plan: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transaction = getattr(io_module, "_finalize_admitted_plan_mutation", None)
+    assert callable(transaction), (
+        "REQ-AMV1-MCP-TRANSACTION-CONVERGENCE missing: MCP single and batch modes "
+        "have no shared admitted mutation transaction"
+    )
+    for key in (
+        "VECTL_PLAN_ADMISSION_EXECUTABLE",
+        "VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256",
+        "VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    calls: list[str] = []
+
+    def observed_transaction(*args: object, **kwargs: object) -> object:
+        message = kwargs.get("commit_message", args[3] if len(args) > 3 else "")
+        calls.append(str(message))
+        return transaction(*args, **kwargs)
+
+    monkeypatch.setattr(
+        io_module,
+        "_finalize_admitted_plan_mutation",
+        observed_transaction,
+    )
+    if hasattr(mcp_common, "_finalize_admitted_plan_mutation"):
+        monkeypatch.setattr(
+            mcp_common,
+            "_finalize_admitted_plan_mutation",
+            observed_transaction,
+        )
+
+    single_result = vectl_mutate(
+        action="add-step",
+        phase_id="foundation",
+        step_id="foundation.admitted-single",
+        name="Admitted single",
+    )
+    batch_result = vectl_mutate(
+        requests=[
+            {
+                "action": "edit-plan",
+                "plan_context": "admitted batch",
+            }
+        ]
+    )
+
+    assert "Error" not in single_result
+    assert "Error" not in batch_result
+    assert len(calls) == 2, "single and batch mutation must each reach the one private transaction"
+    assert "mutate add-step" in calls[0]
+    assert "mutate batch" in calls[1]
+    for result in (single_result, batch_result):
+        assert "vectl.plan-mutation.receipt.v1" in result
+        assert "plan_applied" in result
+        assert "candidate_sha256" in result
+        assert "persisted_sha256" in result

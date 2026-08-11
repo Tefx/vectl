@@ -7,6 +7,7 @@ pointing to a temporary plan file.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import subprocess
@@ -16,6 +17,8 @@ from pathlib import Path
 
 import pytest
 import yaml
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
 
 from vectl.claims import get_current_branch as _claims_current_branch
 from vectl.claims import load_claims, repair_claims
@@ -3628,6 +3631,60 @@ def test_batch_claim_expected_red_mcp_strict_error_rolls_back_without_ghost_clai
     from vectl.plan_path import resolve_claims_path
     claims = load_claims(resolve_claims_path(plan_file))
     assert "a.1" not in claims
+
+
+async def _registered_admitted_mutation_call(plan_path: Path) -> tuple[dict, str]:
+    transport = StdioTransport(
+        command="uv",
+        args=["run", "vectl", "mcp"],
+        cwd=str(Path(__file__).resolve().parents[1]),
+        env={"VECTL_PLAN_PATH": str(plan_path)},
+    )
+    async with Client(transport) as client:
+        tools = await client.list_tools()
+        mutate = next(tool for tool in tools if tool.name == "vectl_mutate")
+        result = await client.call_tool(
+            "vectl_mutate",
+            {
+                "action": "edit-plan",
+                "plan_context": "registered admitted mutation",
+            },
+        )
+    if result.data is not None:
+        text = str(result.data)
+    else:
+        text = "\n".join(
+            content.text for content in result.content if hasattr(content, "text")
+        )
+    return mutate.inputSchema, text
+
+
+def test_admitted_mutation_registered_mcp_schema_and_receipt(plan_file: Path) -> None:
+    schema, result = asyncio.run(_registered_admitted_mutation_call(plan_file))
+    serialized_schema = json.dumps(schema, sort_keys=True).lower()
+    for forbidden_bypass in (
+        "preview_mutation",
+        "approve_by_digest",
+        "candidate_sha256",
+        "admission_executable",
+        "admission_timeout",
+    ):
+        assert forbidden_bypass not in serialized_schema
+
+    for receipt_term in (
+        "vectl.plan-mutation.receipt.v1",
+        "plan_applied",
+        "base_sha256",
+        "candidate_sha256",
+        "persisted_sha256",
+        "admission_status",
+        "git_attempted",
+        "git_committed",
+    ):
+        assert receipt_term in result, (
+            "REQ-AMV1-REGISTERED-MCP-RECEIPT missing: registered vectl_mutate "
+            f"response omits {receipt_term}"
+        )
 
 
 

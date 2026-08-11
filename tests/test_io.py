@@ -1,6 +1,8 @@
 """Tests for YAML I/O, CAS behavior, and backup handling."""
 
 import ast
+from dataclasses import asdict, is_dataclass
+import hashlib
 import inspect
 import json
 import os
@@ -13,6 +15,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+import vectl.io as io_module
 from vectl.io import (
     _backup_definition,
     _clean_dict,
@@ -883,3 +886,361 @@ def test_admitted_plan_mutation_rfc_fixes_narrow_v1_contract() -> None:
         "vectl.check.evidence.v1",
     ):
         assert contract_term in content
+
+
+def _receipt_payload(receipt: object) -> dict[str, object]:
+    if isinstance(receipt, dict):
+        return receipt
+    if is_dataclass(receipt) and not isinstance(receipt, type):
+        return asdict(receipt)
+    model_dump = getattr(receipt, "model_dump", None)
+    assert callable(model_dump), "admitted mutation receipt must expose machine fields"
+    payload = model_dump(mode="json")
+    assert isinstance(payload, dict)
+    return payload
+
+
+def _require_admitted_transaction(message: str):
+    transaction = getattr(io_module, "_finalize_admitted_plan_mutation", None)
+    assert callable(transaction), message
+    return transaction
+
+
+def _freeze_admission_config(environment: dict[str, str], message: str):
+    freeze = getattr(io_module, "_freeze_plan_admission_config", None)
+    assert callable(freeze), message
+    return freeze(environment)
+
+
+def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if check:
+        assert result.returncode == 0, result.stderr
+    return result
+
+
+def _seed_admitted_mutation_repo(root: Path, sample_plan: Plan) -> tuple[Path, Path]:
+    repo = root / "repo"
+    repo.mkdir(parents=True)
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "admission-test@example.invalid")
+    _git(repo, "config", "user.name", "Admission Test")
+    plan_path = repo / "plan.yaml"
+    save_plan(sample_plan, plan_path)
+    _git(repo, "add", "plan.yaml")
+    _git(repo, "commit", "-q", "-m", "seed")
+    return repo, plan_path
+
+
+def _write_fake_admission_adapter(path: Path, *, invalid_shebang: bool = False) -> Path:
+    if invalid_shebang:
+        path.write_text("#!/missing/vectl-test-interpreter\n", encoding="utf-8")
+    else:
+        path.write_text(
+            "#!/usr/bin/env python3\n"
+            "import argparse\n"
+            "import hashlib\n"
+            "import json\n"
+            "import os\n"
+            "import time\n"
+            "from pathlib import Path\n\n"
+            "parser = argparse.ArgumentParser()\n"
+            "parser.add_argument('--base', required=True)\n"
+            "parser.add_argument('--candidate', required=True)\n"
+            "parser.add_argument('--verdict', required=True)\n"
+            "args = parser.parse_args()\n"
+            "mode = os.environ.get('VECTL_TEST_ADMISSION_MODE', 'approve')\n"
+            "candidate = Path(args.candidate)\n"
+            "verdict = Path(args.verdict)\n"
+            "candidate_bytes = candidate.read_bytes()\n"
+            "candidate_sha256 = 'sha256:' + hashlib.sha256(candidate_bytes).hexdigest()\n"
+            "if mode == 'timeout':\n"
+            "    time.sleep(2)\n"
+            "elif mode == 'crash':\n"
+            "    raise SystemExit(23)\n"
+            "elif mode == 'malformed':\n"
+            "    verdict.write_text('{', encoding='utf-8')\n"
+            "elif mode == 'too-large':\n"
+            "    verdict.write_bytes(b'x' * 17000)\n"
+            "elif mode == 'hash-mismatch':\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'approve',\n"
+            "        'candidate_sha256': 'sha256:' + ('0' * 64),\n"
+            "    }), encoding='utf-8')\n"
+            "elif mode == 'mutate-candidate':\n"
+            "    candidate.write_bytes(candidate_bytes + b'\\n# adapter mutation\\n')\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'approve',\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "    }), encoding='utf-8')\n"
+            "elif mode == 'reject':\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'reject',\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "        'reason': 'synthetic policy rejection',\n"
+            "    }), encoding='utf-8')\n"
+            "else:\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'approve',\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "    }), encoding='utf-8')\n",
+            encoding="utf-8",
+        )
+    path.chmod(0o755)
+    return path
+
+
+def _configured_admission_environment(adapter: Path, *, timeout: int = 1) -> dict[str, str]:
+    digest = hashlib.sha256(adapter.read_bytes()).hexdigest()
+    return {
+        "VECTL_PLAN_ADMISSION_EXECUTABLE": str(adapter.resolve()),
+        "VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256": f"sha256:{digest}",
+        "VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS": str(timeout),
+    }
+
+
+def test_admitted_mutation_exact_byte_cas_and_persisted_hash(
+    tmp_path: Path,
+    sample_plan: Plan,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    save_plan(sample_plan, plan_path)
+    crlf_bytes = plan_path.read_bytes().replace(b"\n", b"\r\n")
+    plan_path.write_bytes(crlf_bytes)
+
+    loaded, loaded_hash = load_plan(plan_path)
+    raw_hash = hashlib.sha256(crlf_bytes).hexdigest()
+    assert loaded_hash == raw_hash, (
+        "REQ-AMV1-EXACT-BYTE-TRANSACTION missing: load CAS identity normalizes CRLF "
+        "instead of hashing authoritative raw bytes"
+    )
+
+    transaction = _require_admitted_transaction(
+        "REQ-AMV1-EXACT-BYTE-TRANSACTION missing: private finalization/admission/"
+        "persistence transaction is absent"
+    )
+    admission = _freeze_admission_config(
+        {},
+        "REQ-AMV1-EXACT-BYTE-TRANSACTION missing: startup-frozen not-configured state is absent",
+    )
+    candidate = loaded.model_copy(deep=True)
+    candidate.context = "approved exact bytes"
+
+    dump_calls = 0
+    original_dump = io_module.yaml.dump
+
+    def counted_dump(*args: object, **kwargs: object) -> str:
+        nonlocal dump_calls
+        dump_calls += 1
+        return original_dump(*args, **kwargs)
+
+    monkeypatch.setattr(io_module.yaml, "dump", counted_dump)
+    receipt = transaction(
+        candidate,
+        plan_path,
+        expected_hash=loaded_hash,
+        commit_message=None,
+        admission_config=admission,
+    )
+    payload = _receipt_payload(receipt)
+    persisted_bytes = plan_path.read_bytes()
+    persisted_sha256 = "sha256:" + hashlib.sha256(persisted_bytes).hexdigest()
+
+    assert dump_calls == 1, "candidate Plan must be serialized exactly once"
+    assert payload["schema_version"] == "vectl.plan-mutation.receipt.v1"
+    assert payload["base_sha256"] == f"sha256:{raw_hash}"
+    assert payload["candidate_sha256"] == persisted_sha256
+    assert payload["persisted_sha256"] == persisted_sha256
+    assert payload["admission_status"] == "not_configured"
+    assert payload["plan_applied"] is True
+    assert payload["git_attempted"] is False
+    assert payload["git_committed"] is False
+
+    stale_hash = loaded_hash
+    plan_path.write_bytes(persisted_bytes + b"# competing raw-byte writer\n")
+    competing_bytes = plan_path.read_bytes()
+    with pytest.raises(CASConflictError):
+        transaction(
+            candidate,
+            plan_path,
+            expected_hash=stale_hash,
+            commit_message=None,
+            admission_config=admission,
+        )
+    assert plan_path.read_bytes() == competing_bytes
+
+
+def test_admitted_mutation_configured_adapter_failure_is_zero_write(
+    tmp_path: Path,
+    sample_plan: Plan,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transaction = _require_admitted_transaction(
+        "REQ-AMV1-ADMISSION-FAIL-CLOSED missing: configured adapter transaction is absent"
+    )
+    freeze = getattr(io_module, "_freeze_plan_admission_config", None)
+    assert callable(freeze), (
+        "REQ-AMV1-ADMISSION-FAIL-CLOSED missing: startup configuration is not frozen "
+        "into not_configured/configured/configuration_invalid state"
+    )
+
+    cases = (
+        ("partial", "configuration_invalid", False),
+        ("reject", "rejected", False),
+        ("timeout", "adapter_timeout", False),
+        ("crash", "adapter_crash", False),
+        ("malformed", "malformed_verdict", False),
+        ("too-large", "adapter_output_too_large", False),
+        ("hash-mismatch", "candidate_identity_mismatch", False),
+        ("mutate-candidate", "candidate_identity_mismatch", False),
+        ("identity-drift", "executable_identity_mismatch", False),
+        ("launch-failure", "adapter_crash", True),
+    )
+    for mode, expected_code, invalid_shebang in cases:
+        case_root = tmp_path / mode
+        repo, plan_path = _seed_admitted_mutation_repo(case_root, sample_plan)
+        adapter = _write_fake_admission_adapter(
+            case_root / "adapter.py",
+            invalid_shebang=invalid_shebang,
+        )
+        if mode == "partial":
+            admission = freeze({"VECTL_PLAN_ADMISSION_EXECUTABLE": str(adapter.resolve())})
+        else:
+            admission = freeze(_configured_admission_environment(adapter))
+        if mode == "identity-drift":
+            adapter.write_bytes(adapter.read_bytes() + b"# identity drift\n")
+        monkeypatch.setenv("VECTL_TEST_ADMISSION_MODE", mode)
+
+        loaded, loaded_hash = load_plan(plan_path)
+        candidate = loaded.model_copy(deep=True)
+        candidate.context = f"candidate for {mode}"
+        plan_before = plan_path.read_bytes()
+        head_before = _git(repo, "rev-parse", "HEAD").stdout.strip()
+        status_before = _git(repo, "status", "--porcelain=v1").stdout
+        backup = repo / ".git" / "vectl" / "plan.yaml.bak"
+        backup_before = backup.read_bytes() if backup.exists() else None
+
+        with pytest.raises(Exception) as raised:
+            transaction(
+                candidate,
+                plan_path,
+                expected_hash=loaded_hash,
+                commit_message=f"admitted test: {mode}",
+                admission_config=admission,
+            )
+
+        assert getattr(raised.value, "code", None) == expected_code, mode
+        assert plan_path.read_bytes() == plan_before, mode
+        assert _git(repo, "rev-parse", "HEAD").stdout.strip() == head_before, mode
+        assert _git(repo, "status", "--porcelain=v1").stdout == status_before, mode
+        assert (backup.read_bytes() if backup.exists() else None) == backup_before, mode
+
+    approved_root = tmp_path / "approved"
+    approved_repo, approved_path = _seed_admitted_mutation_repo(approved_root, sample_plan)
+    approved_adapter = _write_fake_admission_adapter(approved_root / "adapter.py")
+    approved_config = freeze(_configured_admission_environment(approved_adapter))
+    monkeypatch.setenv("VECTL_TEST_ADMISSION_MODE", "approve")
+    approved_plan, approved_hash = load_plan(approved_path)
+    approved_plan.context = "configured approval"
+    approved_receipt = _receipt_payload(
+        transaction(
+            approved_plan,
+            approved_path,
+            expected_hash=approved_hash,
+            commit_message="admitted test: approved",
+            admission_config=approved_config,
+        )
+    )
+    assert approved_receipt["admission_status"] == "approved"
+    assert approved_receipt["plan_applied"] is True
+    assert approved_receipt["git_committed"] is True
+    assert _git(approved_repo, "rev-list", "--count", "HEAD").stdout.strip() == "2"
+
+
+def test_admitted_mutation_applied_and_git_receipt_are_separate(
+    tmp_path: Path,
+    sample_plan: Plan,
+) -> None:
+    transaction = _require_admitted_transaction(
+        "REQ-AMV1-APPLIED-GIT-RECEIPT missing: no private transaction returns separate "
+        "Plan-application and Git status"
+    )
+    admission = _freeze_admission_config(
+        {},
+        "REQ-AMV1-APPLIED-GIT-RECEIPT missing: not-configured compatibility state is absent",
+    )
+    repo, plan_path = _seed_admitted_mutation_repo(tmp_path, sample_plan)
+    unrelated = repo / "unrelated.txt"
+    unrelated.write_text("preserve staged content\n", encoding="utf-8")
+    _git(repo, "add", "unrelated.txt")
+
+    loaded, loaded_hash = load_plan(plan_path)
+    candidate = loaded.model_copy(deep=True)
+    candidate.context = "Plan applies even when Git fails"
+    head_before = _git(repo, "rev-parse", "HEAD").stdout.strip()
+    index_lock = repo / ".git" / "index.lock"
+    index_lock.write_text("force bounded Git failure", encoding="utf-8")
+    try:
+        receipt = transaction(
+            candidate,
+            plan_path,
+            expected_hash=loaded_hash,
+            commit_message="admitted test: Git failure receipt",
+            admission_config=admission,
+        )
+    finally:
+        index_lock.unlink(missing_ok=True)
+
+    payload = _receipt_payload(receipt)
+    assert payload["schema_version"] == "vectl.plan-mutation.receipt.v1"
+    assert payload["plan_applied"] is True
+    assert payload["git_attempted"] is True
+    assert payload["git_committed"] is False
+    assert payload["candidate_sha256"] == payload["persisted_sha256"]
+    assert _git(repo, "rev-parse", "HEAD").stdout.strip() == head_before
+    assert _git(repo, "diff", "--cached", "--name-only").stdout.splitlines() == [
+        "unrelated.txt"
+    ]
+    persisted, _ = load_plan(plan_path)
+    assert persisted.context == "Plan applies even when Git fails"
+
+
+def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
+    transaction = getattr(io_module, "_finalize_admitted_plan_mutation", None)
+    assert callable(transaction), (
+        "REQ-AMV1-EXACT-DOC-SYNC missing: RFC private transaction has no documented "
+        "implementation surface"
+    )
+    implementation_contract = inspect.getdoc(transaction) or ""
+    rfc_path = Path(__file__).parents[1] / "docs" / "RFC-admitted-plan-mutation.md"
+    rfc_contract = rfc_path.read_text(encoding="utf-8")
+
+    shared_terms = (
+        "raw bytes",
+        "serialize",
+        "candidate_sha256",
+        "admission",
+        "CAS",
+        "persisted_sha256",
+        "git_committed",
+    )
+    for term in shared_terms:
+        assert term.lower() in rfc_contract.lower(), f"RFC omits {term}"
+        assert term.lower() in implementation_contract.lower(), (
+            f"private transaction docstring omits RFC invariant {term}"
+        )
+    assert "serialize the finalized managed Plan exactly once" in rfc_contract
+    assert "git commit --only --no-verify plan.yaml" in rfc_contract
+    assert "configuration_invalid" in rfc_contract
+    assert "candidate_identity_mismatch" in rfc_contract

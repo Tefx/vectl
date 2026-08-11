@@ -122057,24 +122057,32 @@ phases:
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - Before any repository edit, capture immutable HEAD, clean porcelain status,\
       \ Plan SHA-256, and outputs for the repository's full pytest, Invar, ruff, mypy,\
-      \ diff-check, and Vectl validation entrypoints. Classify the existing completed-evidence\
-      \ warnings as baseline-only unless a new active-closure or command regression\
-      \ appears.\n- Author `docs/RFC-admitted-plan-mutation.md` as the NARROW V1 authority.\
-      \ Fix the optional startup configuration, complete-or-fail-closed adapter configuration,\
-      \ fixed `shell=false` invocation contract, strict verdict and bounded error/reason\
-      \ model, minimum applied/Git receipt, covered MCP/CLI definition mutations,\
-      \ excluded writers, cooperative same-UID trust statement, raw-byte CAS and exact\
-      \ approved-byte invariant, Git best-effort boundary, rollout/rollback, and rejected\
-      \ full Preview design.\n- Extend the existing tracked `tests/expected_red.py`\
-      \ helper with one test-only, side-effect-free `select|run pytest <node-id>...`\
-      \ observer that emits the installed selected-execution envelopes. Keep ordinary\
-      \ marker behavior compatible. Add focused developer coverage in `tests/test_io.py`;\
-      \ the RFC documents this proof-only observer and forbids its use as product\
-      \ admission logic.\n\nBoundary:\n- Owner: `python-senior`; the RFC, persistence\
-      \ boundary, and durable expected-red observer require architecture authority.\
-      \ `python-executor` lacks that authority, while `toolsmith` lacks Worker-v2\
-      \ repository execution authority.\n- Repository changes are one trivial rollback\
-      \ unit limited to `docs/RFC-admitted-plan-mutation.md`, `tests/expected_red.py`,\
+      \ diff-check, and Vectl validation entrypoints. Preserve those six pre-edit\
+      \ outputs as the ratified baseline; after the candidate changes, rerun the same\
+      \ six commands and compare current evidence with that baseline. `baseline_full_pytest`\
+      \ accepts only exit 1 with the single witnessed schema/README node, `KeyError:\
+      \ 'discriminator'`, and one-failure summary; `baseline_ruff` accepts only exit\
+      \ 1 with the bounded 2015-error signature; `baseline_mypy` accepts only exit\
+      \ 1 with the bounded 1261-error/31-file signature. Any additional or substituted\
+      \ failing node, error total, source-file total, active-closure error, or command\
+      \ regression fails the step. Invar, diff-check, and Vectl validation remain\
+      \ green. Classify the existing completed-evidence warnings as baseline-only\
+      \ unless a new active-closure or command regression appears.\n- Author `docs/RFC-admitted-plan-mutation.md`\
+      \ as the NARROW V1 authority. Fix the optional startup configuration, complete-or-fail-closed\
+      \ adapter configuration, fixed `shell=false` invocation contract, strict verdict\
+      \ and bounded error/reason model, minimum applied/Git receipt, covered MCP/CLI\
+      \ definition mutations, excluded writers, cooperative same-UID trust statement,\
+      \ raw-byte CAS and exact approved-byte invariant, Git best-effort boundary,\
+      \ rollout/rollback, and rejected full Preview design.\n- Extend the existing\
+      \ tracked `tests/expected_red.py` helper with one test-only, side-effect-free\
+      \ `select|run pytest <node-id>...` observer that emits the installed selected-execution\
+      \ envelopes. Keep ordinary marker behavior compatible. Add focused developer\
+      \ coverage in `tests/test_io.py`; the RFC documents this proof-only observer\
+      \ and forbids its use as product admission logic.\n\nBoundary:\n- Owner: `python-senior`;\
+      \ the RFC, persistence boundary, and durable expected-red observer require architecture\
+      \ authority. `python-executor` lacks that authority, while `toolsmith` lacks\
+      \ Worker-v2 repository execution authority.\n- Repository changes are one trivial\
+      \ rollback unit limited to `docs/RFC-admitted-plan-mutation.md`, `tests/expected_red.py`,\
       \ and `tests/test_io.py`. Product source, README files, Plan/claims lifecycle\
       \ state, user Git state, external services, registries, caches, daemons, and\
       \ project-specific semantics are forbidden.\n- Never edit `plan.yaml` directly.\
@@ -122082,26 +122090,37 @@ phases:
       \ effect is authorized.\n\nAdmit:\n- Witnessed current inputs are `AGENTS.md`,\
       \ `INVAR.md`, `pyproject.toml`, the existing persistence/MCP/CLI modules, `tests/expected_red.py`,\
       \ `tests/test_io.py`, `docs/RFC-atomic-plan-mutation-batch.md`, and `docs/ADR-unified-state.md`.\n\
-      - Completion evidence preserves the pre-edit command outputs separately from\
-      \ final green focused checks, identifies every baseline warning, proves the\
-      \ observer performs side-effect-free collection before execution, and records\
-      \ changed paths plus RFC sections. `docs/RFC-admitted-plan-mutation.md` is produced\
-      \ only by this step.\n- Dispatch uses one admitted `vectl.worker.dispatch.v2`\
-      \ envelope; the worker returns only a linted `vectl.worker.execution.v2` receipt.\n\
-      \nRecovery:\n- Revert this step's repository commit. On baseline drift, observer\
-      \ execution during selection, malformed envelopes, accidental product/Plan/Git\
-      \ mutation, or an unclassified new active-closure error, stop and hand exact\
-      \ evidence to the orchestrator; do not weaken the baseline or RFC.\n\n<vectl_step_policy>\n\
-      {\n  \"schema_version\": \"vectl.step.policy.v2\",\n  \"step_id\": \"admitted-mutation-contract.baseline-and-rfc\"\
-      ,\n  \"risk_tier\": \"R1\",\n  \"risk_reasons\": [\n    \"reversible RFC and\
-      \ test-observer changes\",\n    \"repository-wide baseline classification before\
-      \ product source edits\"\n  ],\n  \"primary_outcome\": \"REQ-AMV1-RFC-CONTRACT\"\
-      ,\n  \"rollback_class\": \"TRIVIAL\",\n  \"observation_ledger\": [],\n  \"test_authority\"\
-      : {\n    \"developer_test_globs\": [\n      \"tests/test_io.py\"\n    ],\n \
-      \   \"acceptance_test_paths\": [],\n    \"acceptance_check_ids\": [],\n    \"\
-      acceptance_mutation\": \"FORBIDDEN\",\n    \"acceptance_authorizations\": []\n\
-      \  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\nschema_version:\
-      \ intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
+      - Completion evidence preserves the six pre-edit command outputs separately\
+      \ from current post-candidate reruns and final green focused checks, identifies\
+      \ every baseline warning, proves the observer performs side-effect-free collection\
+      \ before execution, and records changed paths plus RFC sections. `docs/RFC-admitted-plan-mutation.md`\
+      \ is produced only by this step.\n- `REQ-AMV1-BASELINE-CLASSIFIED` is proved\
+      \ only when the preserved pre-edit evidence and fresh post-candidate reruns\
+      \ show the same known debt with no additional failing node, substituted fingerprint,\
+      \ increased error/file total, new active-closure error, or command regression.\
+      \ Prior failed-attempt evidence remains provenance and cannot satisfy current\
+      \ completion.\n- Debt owner/lifecycle: the accepted pytest, ruff, and mypy red\
+      \ remains repository quality debt outside this step and requires separately\
+      \ authorized repository-debt remediation. This classification supplies no general\
+      \ quality waiver and no final NARROW V1 gate policy. `admitted-mutation-verification.integration-gate`\
+      \ remains the independent consumer and must rerun the full checks on integrated\
+      \ bytes and compare them with this ratified baseline.\n- Dispatch uses one admitted\
+      \ `vectl.worker.dispatch.v2` envelope; the worker returns only a linted `vectl.worker.execution.v2`\
+      \ receipt.\n\nRecovery:\n- Revert this step's repository commit. On baseline\
+      \ drift, an additional or substituted pytest failure, a changed ruff/mypy bounded\
+      \ signature, observer execution during selection, malformed envelopes, accidental\
+      \ product/Plan/Git mutation, or an unclassified new active-closure error, stop\
+      \ and hand exact evidence to the orchestrator; do not weaken the baseline or\
+      \ RFC.\n\n<vectl_step_policy>\n{\n  \"schema_version\": \"vectl.step.policy.v2\"\
+      ,\n  \"step_id\": \"admitted-mutation-contract.baseline-and-rfc\",\n  \"risk_tier\"\
+      : \"R1\",\n  \"risk_reasons\": [\n    \"reversible RFC and test-observer changes\"\
+      ,\n    \"repository-wide baseline classification before product source edits\"\
+      \n  ],\n  \"primary_outcome\": \"REQ-AMV1-RFC-CONTRACT\",\n  \"rollback_class\"\
+      : \"TRIVIAL\",\n  \"observation_ledger\": [],\n  \"test_authority\": {\n   \
+      \ \"developer_test_globs\": [\n      \"tests/test_io.py\"\n    ],\n    \"acceptance_test_paths\"\
+      : [],\n    \"acceptance_check_ids\": [],\n    \"acceptance_mutation\": \"FORBIDDEN\"\
+      ,\n    \"acceptance_authorizations\": []\n  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\n\
+      schema_version: intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
       profile: generic\nscope:\n  allowed_paths:\n    - docs/RFC-admitted-plan-mutation.md\n\
       \    - tests/expected_red.py\n    - tests/test_io.py\n  blocked_paths:\n   \
       \ - plan.yaml\n    - src/**\n    - README.md\n    - README_zh.md\n  ignored_runtime_paths:\
@@ -122110,26 +122129,44 @@ phases:
       \ id: baseline_full_pytest\n    run:\n      command: [uv, run, pytest]\n   \
       \   timeout_seconds: 1800\n    evidence:\n      mode: command_outcome\n    \
       \  path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
-      \ current}\n      test_bindings: []\n    expect:\n      outcome: green\n   \
-      \   exit_codes: [0]\n      stdout_or_stderr: {contains_all: [], contains_any:\
-      \ [], forbids: []}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n  - id: baseline_invar_guard\n\
-      \    run:\n      command: [uv, run, invar, guard]\n      timeout_seconds: 1800\n\
+      \ current}\n      test_bindings: []\n    expect:\n      outcome: red\n     \
+      \ exit_codes: [1]\n      stdout_or_stderr:\n        contains_all:\n        \
+      \  - {literal: \"FAILED tests/test_mcp_mutate_batch.py::test_registered_schema_and_readme_example_match_runtime\"\
+      }\n          - {literal: \"KeyError: 'discriminator'\"}\n          - {literal:\
+      \ \"1 failed, 1295 passed, 15 skipped\"}\n        contains_any: []\n       \
+      \ forbids:\n          - {literal: \"ModuleNotFoundError\"}\n          - {literal:\
+      \ \"ImportError\"}\n          - {literal: \"ERROR collecting\"}\n          -\
+      \ {literal: \"No such file or directory\"}\n          - {literal: \"Traceback\
+      \ (most recent call last)\"}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n \
+      \ - id: baseline_invar_guard\n    run:\n      command: [uv, run, invar, guard]\n\
+      \      timeout_seconds: 1800\n    evidence:\n      mode: command_outcome\n \
+      \     path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n        - {path: INVAR.md, access: read, availability: current}\n\
+      \      test_bindings: []\n    expect:\n      outcome: green\n      exit_codes:\
+      \ [0]\n      stdout_or_stderr: {contains_all: [], contains_any: [], forbids:\
+      \ []}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n  - id: baseline_ruff\n \
+      \   run:\n      command: [uv, run, ruff, check, .]\n      timeout_seconds: 600\n\
       \    evidence:\n      mode: command_outcome\n      path_bindings:\n        -\
-      \ {path: pyproject.toml, access: read, availability: current}\n        - {path:\
-      \ INVAR.md, access: read, availability: current}\n      test_bindings: []\n\
-      \    expect:\n      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\
-      \ {contains_all: [], contains_any: [], forbids: []}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n\
-      \  - id: baseline_ruff\n    run:\n      command: [uv, run, ruff, check, .]\n\
-      \      timeout_seconds: 600\n    evidence:\n      mode: command_outcome\n  \
-      \    path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
-      \ current}\n      test_bindings: []\n    expect:\n      outcome: green\n   \
-      \   exit_codes: [0]\n      stdout_or_stderr: {contains_all: [], contains_any:\
-      \ [], forbids: []}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n  - id: baseline_mypy\n\
+      \ {path: pyproject.toml, access: read, availability: current}\n      test_bindings:\
+      \ []\n    expect:\n      outcome: red\n      exit_codes: [1]\n      stdout_or_stderr:\n\
+      \        contains_all:\n          - {literal: \"src/vectl/agents_md.py:3:1\"\
+      }\n          - {literal: \"tests/test_validation.py:549:101\"}\n          -\
+      \ {literal: \"Found 2015 errors.\"}\n        contains_any: []\n        forbids:\n\
+      \          - {literal: \"ModuleNotFoundError\"}\n          - {literal: \"ImportError\"\
+      }\n          - {literal: \"ERROR collecting\"}\n          - {literal: \"No such\
+      \ file or directory\"}\n          - {literal: \"Traceback (most recent call\
+      \ last)\"}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n  - id: baseline_mypy\n\
       \    run:\n      command: [uv, run, mypy, src]\n      timeout_seconds: 900\n\
       \    evidence:\n      mode: command_outcome\n      path_bindings:\n        -\
       \ {path: pyproject.toml, access: read, availability: current}\n      test_bindings:\
-      \ []\n    expect:\n      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\
-      \ {contains_all: [], contains_any: [], forbids: []}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n\
+      \ []\n    expect:\n      outcome: red\n      exit_codes: [1]\n      stdout_or_stderr:\n\
+      \        contains_all:\n          - {literal: \"src/vectl/agents_md.py:143:\
+      \ error:\"}\n          - {literal: \"src/vectl/cli.py:115: error:\"}\n     \
+      \     - {literal: \"Found 1261 errors in 31 files (checked 59 source files)\"\
+      }\n        contains_any: []\n        forbids:\n          - {literal: \"ModuleNotFoundError\"\
+      }\n          - {literal: \"ImportError\"}\n          - {literal: \"ERROR collecting\"\
+      }\n          - {literal: \"No such file or directory\"}\n          - {literal:\
+      \ \"Traceback (most recent call last)\"}\n    proves: [REQ-AMV1-BASELINE-CLASSIFIED]\n\
       \  - id: baseline_diff_check\n    run:\n      command: [git, diff, --check]\n\
       \      timeout_seconds: 120\n    evidence:\n      mode: command_outcome\n  \
       \    path_bindings:\n        - {path: AGENTS.md, access: read, availability:\
@@ -122154,11 +122191,19 @@ phases:
       \   forbids: [{literal: failed}, {literal: ERROR collecting}]\n    proves:\n\
       \      - REQ-AMV1-RFC-CONTRACT\n      - REQ-AMV1-EXPECTED-RED-OBSERVER\nbindings:\n\
       \  expected_red:\n    items: []\n  closes_expected_red: []\n</intent_closure_contract>"
-    verification: Capture pre-edit HEAD/status/Plan hash and run baseline_full_pytest,
+    verification: 'Preserve pre-edit HEAD/status/Plan hash and the baseline_full_pytest,
       baseline_invar_guard, baseline_ruff, baseline_mypy, baseline_diff_check, and
-      baseline_vectl_validate before edits; then pass rfc_and_observer_contract and
-      record baseline classification, changed paths, RFC sections, observer select/run
-      proof, and an admitted Worker-v2 receipt.
+      baseline_vectl_validate outputs. Completion requires fresh post-candidate reruns:
+      baseline_full_pytest, baseline_ruff, and baseline_mypy must match their exact
+      or bounded red fingerprints and the baseline comparison must show the same known
+      debt with no additional failing node, substituted fingerprint, increased error/file
+      total, new active-closure error, or command regression; baseline_invar_guard,
+      baseline_diff_check, baseline_vectl_validate, and rfc_and_observer_contract
+      must remain green. Record changed paths, RFC sections, observer select/run proof,
+      and an admitted Worker-v2 receipt. Prior failed-attempt evidence is provenance
+      only. The accepted red remains separately owned repository debt, supplies no
+      general waiver or final NARROW V1 gate policy, and must be rerun and compared
+      by admitted-mutation-verification.integration-gate.'
     evidence_template: Paste command/exit summaries, HEAD, clean-state evidence, the
       classified baseline gap list, RFC path, and confirmation that no source file
       changed.

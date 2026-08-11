@@ -122255,12 +122255,19 @@ phases:
       \ semantics.\n- Use the tracked observer produced by `baseline-and-rfc` to collect\
       \ and run the exact eight node IDs in the contract. The red result must contain\
       \ only those missing NARROW V1 behaviors; collection/import/fixture/provider\
-      \ failures are forbidden.\n\nBoundary:\n- Owner: `python-senior`; these tests\
-      \ fix persistence, subprocess, receipt, and public-surface semantics and therefore\
-      \ require the same design authority as the RFC. Product source, README/RFC mutation,\
-      \ Plan/claims lifecycle, external systems, and project-specific semantics are\
-      \ forbidden.\n- Repository changes are one trivial rollback unit limited to\
-      \ the four current developer-test files. Do not weaken existing tests, add xfail/skip/sentinel\
+      \ failures are forbidden.\n- Make the existing tracked `tests/expected_red.py`\
+      \ observer directly executable only by prepending a stable tracked Python shebang\
+      \ and setting its Git mode to `100755`. Do not change observer behavior except\
+      \ adjustments strictly required by the exact eight current tests.\n\nBoundary:\n\
+      - Owner: `python-senior`; these tests fix persistence, subprocess, receipt,\
+      \ and public-surface semantics and therefore require the same design authority\
+      \ as the RFC. Product source, README/RFC mutation, Plan/claims lifecycle, external\
+      \ systems, and project-specific semantics are forbidden.\n- Repository changes\
+      \ are one trivial test-only rollback unit limited to `tests/test_io.py`, `tests/test_mcp_mutate_batch.py`,\
+      \ `tests/test_cli.py`, `tests/test_mcp.py`, and `tests/expected_red.py`. The\
+      \ observer change is limited to prepending a stable tracked Python shebang,\
+      \ setting its Git mode to `100755`, and behavior adjustments strictly required\
+      \ by the exact eight current tests. Do not weaken existing tests, add xfail/skip/sentinel\
       \ behavior, or turn the fake adapter into a product registry, daemon, cache,\
       \ or provider hierarchy.\n\nAdmit:\n- `baseline-and-rfc` must complete first.\
       \ The exact expected-red lifecycle is machine-bound below: four requirement\
@@ -122269,31 +122276,39 @@ phases:
       \ and executed node IDs, eight distinct missing-behavior fingerprints, exact\
       \ red exit, no infrastructure fingerprint, unchanged product source, and the\
       \ repository-local fake adapter behavior. The worker returns one admitted Worker-v2\
-      \ receipt.\n\nRecovery:\n- Revert this step's test-only commit. If red output\
-      \ includes an infrastructure error, existing green regression, ambiguous fixture\
-      \ state, product-source change, or any extra selected test, stop and preserve\
-      \ evidence; do not reinterpret it as expected red.\n\n<vectl_step_policy>\n\
-      {\n  \"schema_version\": \"vectl.step.policy.v2\",\n  \"step_id\": \"admitted-mutation-contract.protocol-tests\"\
-      ,\n  \"risk_tier\": \"R1\",\n  \"risk_reasons\": [\n    \"reversible developer-test\
-      \ definitions only\",\n    \"durable expected-red ownership across two implementation\
-      \ steps\"\n  ],\n  \"primary_outcome\": \"REQ-AMV1-CONTRACT-TESTS\",\n  \"rollback_class\"\
+      \ receipt.\n- Before implementation, Gate preflight may report only that `tests/expected_red.py`\
+      \ lacks the authorized stable tracked Python shebang and executable Git mode.\
+      \ After the worker applies that provenance change, the selection and run commands\
+      \ must invoke the same tracked observer directly and Gate preflight must report\
+      \ no reason.\n\nRecovery:\n- Revert this step's test-only commit. If pre-implementation\
+      \ Gate preflight reports any reason outside the authorized missing-shebang/executable-mode\
+      \ state, or if Gate preflight reports any reason after the provenance change,\
+      \ stop and preserve evidence. If red output includes an infrastructure error,\
+      \ existing green regression, ambiguous fixture state, product-source change,\
+      \ or any extra selected test, stop and preserve evidence; do not reinterpret\
+      \ it as expected red.\n\n<vectl_step_policy>\n{\n  \"schema_version\": \"vectl.step.policy.v2\"\
+      ,\n  \"step_id\": \"admitted-mutation-contract.protocol-tests\",\n  \"risk_tier\"\
+      : \"R1\",\n  \"risk_reasons\": [\n    \"reversible developer-test definitions\
+      \ only\",\n    \"durable expected-red ownership across two implementation steps\"\
+      \n  ],\n  \"primary_outcome\": \"REQ-AMV1-CONTRACT-TESTS\",\n  \"rollback_class\"\
       : \"TRIVIAL\",\n  \"observation_ledger\": [],\n  \"test_authority\": {\n   \
       \ \"developer_test_globs\": [\n      \"tests/test_io.py\",\n      \"tests/test_mcp_mutate_batch.py\"\
-      ,\n      \"tests/test_cli.py\",\n      \"tests/test_mcp.py\"\n    ],\n    \"\
-      acceptance_test_paths\": [],\n    \"acceptance_check_ids\": [],\n    \"acceptance_mutation\"\
-      : \"FORBIDDEN\",\n    \"acceptance_authorizations\": []\n  }\n}\n</vectl_step_policy>\n\
-      \n<intent_closure_contract>\nschema_version: intent_closure.contract.v2\nmatcher_semantics:\
-      \ intent_closure.matchers.v2\nprofile: expected_red_definition\nscope:\n  allowed_paths:\n\
-      \    - tests/test_io.py\n    - tests/test_mcp_mutate_batch.py\n    - tests/test_cli.py\n\
-      \    - tests/test_mcp.py\n  blocked_paths:\n    - plan.yaml\n    - src/**\n\
-      \    - README.md\n    - README_zh.md\n    - docs/**\n    - tests/expected_red.py\n\
-      \  ignored_runtime_paths: [.git/, .vectl/, .agent/, .venv/]\nclaims:\n  - REQ-AMV1-CONTRACT-TESTS\n\
+      ,\n      \"tests/test_cli.py\",\n      \"tests/test_mcp.py\",\n      \"tests/expected_red.py\"\
+      \n    ],\n    \"acceptance_test_paths\": [],\n    \"acceptance_check_ids\":\
+      \ [],\n    \"acceptance_mutation\": \"FORBIDDEN\",\n    \"acceptance_authorizations\"\
+      : []\n  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\nschema_version:\
+      \ intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
+      profile: expected_red_definition\nscope:\n  allowed_paths:\n    - tests/test_io.py\n\
+      \    - tests/test_mcp_mutate_batch.py\n    - tests/test_cli.py\n    - tests/test_mcp.py\n\
+      \    - tests/expected_red.py\n  blocked_paths:\n    - plan.yaml\n    - src/**\n\
+      \    - README.md\n    - README_zh.md\n    - docs/**\n  ignored_runtime_paths:\
+      \ [.git/, .vectl/, .agent/, .venv/]\nclaims:\n  - REQ-AMV1-CONTRACT-TESTS\n\
       \  - REQ-AMV1-EXACT-BYTE-TRANSACTION\n  - REQ-AMV1-ADMISSION-FAIL-CLOSED\n \
       \ - REQ-AMV1-APPLIED-GIT-RECEIPT\n  - REQ-AMV1-EXACT-DOC-SYNC\n  - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n\
       \  - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n  - REQ-AMV1-REGISTERED-MCP-RECEIPT\n\
       \  - REQ-AMV1-PUBLIC-DOC-SYNC\nchecks:\n  - id: admitted_mutation_expected_red\n\
-      \    run:\n      command: [\"python3\", \"tests/expected_red.py\", \"run\",\
-      \ \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      \    run:\n      command: [\"tests/expected_red.py\", \"run\", \"pytest\", \"\
+      tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
       , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
       , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
       , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
@@ -122309,8 +122324,7 @@ phases:
       \ developer, availability: current}\n        - {path: tests/test_mcp.py, classification:\
       \ developer, availability: current}\n        - {path: tests/test_mcp_mutate_batch.py,\
       \ classification: developer, availability: current}\n      selection:\n    \
-      \    command: [\"python3\", \"tests/expected_red.py\", \"select\", \"pytest\"\
-      , \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      \    command: [\"tests/expected_red.py\", \"select\", \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
       , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
       , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
       , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\

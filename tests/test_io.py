@@ -2,8 +2,10 @@
 
 import ast
 import inspect
+import json
 import os
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -785,3 +787,99 @@ class TestAnimaIncidentReproducer:
         )
 
         # This is the split-brain: claims.json says claimed, plan.yaml says pending
+
+
+class TestExpectedRedSelectedExecutionObserver:
+    @staticmethod
+    def _write_probe(tmp_path: Path) -> tuple[str, Path]:
+        sentinel = tmp_path / "executed.txt"
+        probe = tmp_path / "test_observer_probe.py"
+        probe.write_text(
+            "from pathlib import Path\n\n"
+            "def test_observed():\n"
+            f"    Path({str(sentinel)!r}).write_text('executed', encoding='utf-8')\n",
+            encoding="utf-8",
+        )
+        return "test_observer_probe.py::test_observed", sentinel
+
+    @staticmethod
+    def _invoke_observer(
+        tmp_path: Path, mode: str, node_id: str
+    ) -> subprocess.CompletedProcess[str]:
+        observer = Path(__file__).with_name("expected_red.py")
+        return subprocess.run(
+            [sys.executable, str(observer), mode, "pytest", node_id],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+    def test_select_collects_without_executing_test_body(self, tmp_path: Path) -> None:
+        node_id, sentinel = self._write_probe(tmp_path)
+
+        result = self._invoke_observer(tmp_path, "select", node_id)
+
+        assert result.returncode == 0, result.stderr
+        assert not sentinel.exists()
+        assert json.loads(result.stdout) == {
+            "schema_version": "vectl.check.selection.v1",
+            "selected_ids": [node_id],
+        }
+
+    def test_run_emits_matching_selected_and_executed_ids(self, tmp_path: Path) -> None:
+        node_id, sentinel = self._write_probe(tmp_path)
+
+        result = self._invoke_observer(tmp_path, "run", node_id)
+
+        assert result.returncode == 0, result.stderr
+        assert sentinel.read_text(encoding="utf-8") == "executed"
+        selection, evidence = [json.loads(line) for line in result.stdout.splitlines()]
+        assert selection == {
+            "schema_version": "vectl.check.selection.v1",
+            "selected_ids": [node_id],
+        }
+        assert evidence == {
+            "schema_version": "vectl.check.evidence.v1",
+            "selected_ids": [node_id],
+            "executed_ids": [node_id],
+            "exit_code": 0,
+            "outcome": "green",
+        }
+
+
+def test_admitted_plan_mutation_rfc_fixes_narrow_v1_contract() -> None:
+    rfc = Path(__file__).parents[1] / "docs" / "RFC-admitted-plan-mutation.md"
+    content = rfc.read_text(encoding="utf-8")
+
+    for heading in (
+        "## Pre-edit baseline classification",
+        "## Startup configuration",
+        "## Private transaction",
+        "## Admission process contract",
+        "## Cooperative same-UID trust boundary",
+        "## Mutation receipt",
+        "## Covered writers",
+        "## Excluded writers",
+        "## Expected-red selected-execution observer",
+        "## Rollout",
+        "## Rollback and recovery",
+        "## Rejected full Preview design",
+    ):
+        assert heading in content
+
+    for contract_term in (
+        "VECTL_PLAN_ADMISSION_EXECUTABLE",
+        "VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256",
+        "VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS",
+        '"schema_version": "vectl.plan-mutation-admission.v1"',
+        '"schema_version": "vectl.plan-mutation.receipt.v1"',
+        '"plan_applied": true',
+        '"git_committed": false',
+        "shell=False",
+        "candidate_sha256",
+        "persisted_sha256 == candidate_sha256",
+        "vectl.check.selection.v1",
+        "vectl.check.evidence.v1",
+    ):
+        assert contract_term in content

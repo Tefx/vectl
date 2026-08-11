@@ -122041,7 +122041,7 @@ phases:
       _validate_batch_requests'', ''def _apply_mutation_request'', ''def vectl_mutate''])"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]},{"check_id":"atomic_mutation_refactor_regression","command":["uv","run","pytest","tests/test_mcp_mutate_batch.py","tests/test_mcp.py","tests/test_io.py","-q"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]},{"check_id":"repo_wide_invar_readiness","command":["uvx","invar-tools","guard","--all"],"exit_code":0,"outcome":"green","selected_ids":[],"executed_ids":[]}],"claims":[{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"atomic_mutation_escape_removed"},{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"atomic_mutation_refactor_regression"},{"claim_id":"REQ-APMB-SCOPE-BOUNDARY","check_id":"repo_wide_invar_readiness"}],"unresolved":[],"acceptance_authorizations":[]}'
 - id: admitted-mutation-contract
   name: 'Admitted Plan Mutation: Baseline and Contract'
-  status: in_progress
+  status: done
   gate: NARROW V1 scope is fixed in RFC and executable contract tests; full-suite
     baseline is recorded before source changes; any pre-existing failures or completed-evidence
     findings are explicitly classified and do not silently become this feature's regressions.
@@ -122239,7 +122239,7 @@ phases:
       => clean. No external effect and no push.'
   - id: admitted-mutation-contract.protocol-tests
     name: Define expected-red exact-byte, adapter, receipt, and bypass tests
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - Add contract-first developer tests only in the existing `tests/test_io.py`,\
@@ -122428,6 +122428,20 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-08-11T20:04:29.690807Z'
+    done_at: '2026-08-11T21:05:05.707503+00:00'
+    evidence: 'Integrated exact test-only candidate at Main commit 38a6288a8ab515708554504e43afe0e592d566a3
+      (tree 0cd0a65311819a456368bb03f733640ee32560e2), changed only tests/expected_red.py,
+      tests/test_cli.py, tests/test_io.py, tests/test_mcp.py, and tests/test_mcp_mutate_batch.py;
+      no src/docs/README change. Worker-v2 dispatch sha256:8089b1436b47c42a868e885f4763dd0a428c9ad716a578c9ced198b063dc9705
+      and receipt sha256:837bfbdf4a5586429a5ec228132cd7fae5e464b7bbb66842e6210547818c06d8
+      were independently parent-admitted CONFORMANT at .vectl/artifacts/admitted-mutation-contract.protocol-tests/parent-verdict.json.
+      Production rerun selected and executed the exact eight bound node IDs with exit
+      1/outcome red, all required fingerprints, and no forbidden infrastructure fingerprints.
+      Post-setup preflight CONFORMANT; direct tracked observer is mode 100755 and
+      hash-bound. Focused observer developer tests: 2 passed. Changed test collection:
+      512 collected. `uv run invar guard`: passed. `git diff --check 097b7795..38a6288a`:
+      clean. Parent production checks left candidate clean; Main and candidate trees
+      matched exactly before completion.'
   - id: admitted-mutation-contract.baseline-evidence-disposition
     name: Record admitted baseline evidence disposition
     status: done
@@ -122501,7 +122515,7 @@ phases:
       31 files; Invar, diff-check, Vectl validation, and RFC/observer tests are green.'
 - id: admitted-mutation-implementation
   name: 'Admitted Plan Mutation: Minimal Implementation'
-  status: locked
+  status: pending
   gate: The unique serializer and one private finalization/admission/persistence transaction
     satisfy focused tests; no-adapter mode preserves existing behavior; configured
     adapter failures cannot write Plan or invoke Git; MCP single/batch and covered

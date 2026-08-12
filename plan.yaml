@@ -124880,7 +124880,7 @@ phases:
       rerun. Repository/Plan/lifecycle clean and unchanged; no push.'
   - id: admitted-mutation-verification.identity-authorization-remediation
     name: Close initial identity and Authorization diagnostic failures
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - As `python-senior`, close the two production-admitted NARROW V1 defects as\
@@ -125137,6 +125137,24 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-08-12T16:27:05.753159Z'
+    done_at: '2026-08-12T17:18:33.899283+00:00'
+    evidence: 'Integrated python-senior Worker-v2 candidate commits 5ab56f4cc8543bc00d526c421e2612137a3e455b
+      and causal harness correction 1e524e1338afe20663970bdb58311951eec84e9b as Main
+      be8d27bed309349b3e7fe2708c769c3e85631841 and aa3bfab182a78f59b53851c10e75f701cd5b6b52.
+      Exact seven product/test/doc blobs match isolated worktree. Dispatch canonical
+      sha256:1fbc80562fb1ea93a0ebf3c90e834b35f23f2cd06b46311387699403a0c94e3a; PASS
+      receipt canonical sha256:b31ede3a46708383f47c9d93a3eb07f4f94c2c14e30de08135a28dec031e074f;
+      parent Gate CONFORMANT verdict file SHA 73f58cf3e77c8b588f9b49ab4f42a3e30cf983abdd346a1ce72eb28ee7e6d227.
+      Source converts initial base/candidate identity lstat/read and verdict lstat
+      OSError/PlanAdmissionError to fixed adapter_crash reason; sanitizer redacts
+      complete short Bearer/Basic/Digest Authorization value. Direct tests plus isolated
+      real CLI and direct project-entrypoint registered FastMCP cover five initial-identity
+      branches and six Authorization crash/reject forms with bounded non-disclosure,
+      no adapter launch for identity failures, protected Plan/backup/HEAD/index/staging/status/descendant
+      equality, workspace cleanup, and awaited transport task reaping. RFC and bilingual
+      READMEs synchronized. Parent integrated checks: exact eight green; focused 538
+      passed; full 1330 passed/15 skipped; Invar/diff green; Vectl 0 errors/45 historical
+      warnings; ruff 1946 and mypy 1200/31 unchanged. Repository clean; no push.'
   - id: admitted-mutation-verification.identity-authorization-integration-rerun
     name: Rerun initial identity and Authorization integration
     status: pending

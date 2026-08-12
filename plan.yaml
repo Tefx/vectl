@@ -125157,7 +125157,7 @@ phases:
       warnings; ruff 1946 and mypy 1200/31 unchanged. Repository clean; no push.'
   - id: admitted-mutation-verification.identity-authorization-integration-rerun
     name: Rerun initial identity and Authorization integration
-    status: claimed
+    status: done
     description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
       Deliver:\n- As `integration-verifier`, independently rerun the exact eight focused\
       \ NARROW V1 selected/executed nodes, the affected four-file developer regression,\
@@ -125402,3 +125402,19 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-08-12T17:19:00.311677Z'
+    done_at: '2026-08-12T17:46:51.382533+00:00'
+    evidence: 'Independent integration-verifier PASS_WITH_DEBT at immutable target
+      cf3a738e4c73aa8c182afd116014cec876a504b5. Semantic receipt file SHA 9a0e0d582378171d99ac2da89b14496143cb17eb2ed44df9c8a83d4e37d309d8;
+      canonical sha256:1b6b310dae80a6046a03a58ff83658151106a84734b0b71d3fb4bb37c810b9d5.
+      Child and parent production Gate CONFORMANT, completion admissible; parent verdict
+      SHA 8c9bd5d05928e025f9f2659f94db93d7a7688f7d09368ca86d41dba215094934. Exact
+      eight selected/executed green; focused 538 passed; full 1330 passed/15 skipped;
+      Invar/diff green; Vectl 0 errors/45 historical warnings; ruff 1946 and mypy
+      1200/31 unchanged. Fresh 22/22 real public matrix: ten initial base/candidate
+      lstat/read and verdict lstat cases plus twelve short Bearer/Basic/Digest crash/reject
+      cases across configured CLI and registered direct-entrypoint FastMCP. Fixed
+      typed codes/reasons, useful bounded context, no OS/path/Plan/credential disclosure,
+      exact Plan/backup/HEAD/index/staging/status/descendant equality, cleanup, no
+      adapter launch for identity cases, and all MCP PID reaping proven. Installed
+      Gate and tracked observer unchanged; exact eight identity and completed-receipt
+      compatibility verified. Repository/Plan/lifecycle read-only; no push.'

@@ -33,6 +33,23 @@ def _git(repo: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def _mutation_receipt(result: str) -> dict[str, object]:
+    marker = "mutation_receipt: "
+    line = next(line for line in result.splitlines() if line.startswith(marker))
+    payload = json.loads(line.removeprefix(marker))
+    assert set(payload) == {
+        "schema_version",
+        "plan_applied",
+        "base_sha256",
+        "candidate_sha256",
+        "persisted_sha256",
+        "admission_status",
+        "git_attempted",
+        "git_committed",
+    }
+    return payload
+
+
 @pytest.fixture
 def git_plan(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -381,7 +398,7 @@ def test_ordered_batch_persists_once_with_exact_hash_and_results(
 
     original_load = mutation_module._load
     original_recalc = mutation_module.recalc_lock_status
-    original_save = mutation_module._save_plan_receipt
+    original_save = mutation_module._save_admitted_plan_receipt
     original_commit = io_module._git_commit_plan
 
     def counted_load() -> tuple[Plan, str]:
@@ -392,7 +409,7 @@ def test_ordered_batch_persists_once_with_exact_hash_and_results(
         counts["recalc"] += 1
         return original_recalc(plan)
 
-    def counted_save(*args: Any, **kwargs: Any) -> tuple[str, str]:
+    def counted_save(*args: Any, **kwargs: Any) -> tuple[dict[str, object], str]:
         counts["save"] += 1
         return original_save(*args, **kwargs)
 
@@ -402,7 +419,7 @@ def test_ordered_batch_persists_once_with_exact_hash_and_results(
 
     monkeypatch.setattr(mutation_module, "_load", counted_load)
     monkeypatch.setattr(mutation_module, "recalc_lock_status", counted_recalc)
-    monkeypatch.setattr(mutation_module, "_save_plan_receipt", counted_save)
+    monkeypatch.setattr(mutation_module, "_save_admitted_plan_receipt", counted_save)
     monkeypatch.setattr(io_module, "_git_commit_plan", counted_commit)
 
     result = vectl_mutate(requests=_successful_requests())
@@ -592,10 +609,17 @@ def test_registered_tool_preserves_single_action_response(
         step_id="foundation.seed",
         name="Renamed seed",
     )
-    assert result == (
+    assert result.startswith(
         "**Updated step:** foundation.seed\n\n"
-        "→ Use `vectl_search` to verify plan consistency."
+        "→ Use `vectl_search` to verify plan consistency.\n\n"
+        "mutation_receipt: "
     )
+    receipt = _mutation_receipt(result)
+    assert receipt["schema_version"] == "vectl.plan-mutation.receipt.v1"
+    assert receipt["plan_applied"] is True
+    assert receipt["candidate_sha256"] == receipt["persisted_sha256"]
+    assert receipt["admission_status"] == "not_configured"
+    assert receipt["git_attempted"] is True
     plan, _ = load_plan_definition(plan_path)
     assert plan.find_step("foundation.seed")[1].name == "Renamed seed"  # type: ignore[index]
 
@@ -674,7 +698,9 @@ def test_admitted_mutation_mcp_single_and_batch_share_transaction(
     assert "mutate add-step" in calls[0]
     assert "mutate batch" in calls[1]
     for result in (single_result, batch_result):
-        assert "vectl.plan-mutation.receipt.v1" in result
-        assert "plan_applied" in result
-        assert "candidate_sha256" in result
-        assert "persisted_sha256" in result
+        receipt = _mutation_receipt(result)
+        assert receipt["schema_version"] == "vectl.plan-mutation.receipt.v1"
+        assert receipt["plan_applied"] is True
+        assert receipt["candidate_sha256"] == receipt["persisted_sha256"]
+        assert receipt["admission_status"] == "not_configured"
+        assert receipt["git_attempted"] is True

@@ -92,7 +92,7 @@ def add_step_cmd(
         _die(str(e))
         return  # unreachable, for type checker
 
-    _save_plan(p, plan_path, def_h, f"vectl: add step {generated_id}")
+    _save_admitted_plan(p, plan_path, def_h, f"vectl: add step {generated_id}")
 
     out.print(f"[green]Added step:[/] {generated_id} → phase [bold]{phase}[/]")
 
@@ -136,7 +136,7 @@ def add_phase_cmd(
         _die(str(e))
         return  # unreachable, for type checker
 
-    _save_plan(p, plan_path, def_h, f"vectl: add phase {generated_id}")
+    _save_admitted_plan(p, plan_path, def_h, f"vectl: add phase {generated_id}")
 
     # Show status based on auto-determined initial status
     ph = p.find_phase(generated_id)
@@ -226,7 +226,7 @@ def edit_plan_cmd(
         _die(str(e))
         return  # unreachable
 
-    _save_plan(p, plan_path, def_h, "vectl: edit plan metadata")
+    _save_admitted_plan(p, plan_path, def_h, "vectl: edit plan metadata")
     out.print("[green]Updated plan metadata[/]")
     out.print("[dim]→ vectl status                      See plan overview[/]")
 
@@ -357,7 +357,7 @@ def edit_step_cmd(
     except PlanError as e:
         _die(str(e))
 
-    _save_plan(p, plan_path, def_h, f"vectl: edit step {step_id}")
+    _save_admitted_plan(p, plan_path, def_h, f"vectl: edit step {step_id}")
 
     out.print(f"[green]Edited:[/] {step_id}")
     out.print()
@@ -408,7 +408,7 @@ def edit_phase_cmd(
     except PlanError as e:
         _die(str(e))
 
-    _save_plan(p, plan_path, def_h, f"vectl: edit phase {phase_id}")
+    _save_admitted_plan(p, plan_path, def_h, f"vectl: edit phase {phase_id}")
 
     out.print(f"[green]Edited phase:[/] {phase_id}")
     out.print()
@@ -430,7 +430,7 @@ def remove_step_cmd(
         p = remove_step(p, step_id, force=force)
     except PlanError as e:
         _die(str(e))
-    _save_plan(p, plan_path, def_h, f"vectl: remove step {step_id}")
+    _save_admitted_plan(p, plan_path, def_h, f"vectl: remove step {step_id}")
     out.print(f"[yellow]Removed:[/] {step_id}")
     if force:
         out.print("[dim]  Dependency references cleaned up in remaining steps.[/]")
@@ -457,7 +457,7 @@ def move_step_cmd(
         p = move_step(p, step_id, to_phase)
     except PlanError as e:
         _die(str(e))
-    _save_plan(p, plan_path, def_h, f"vectl: move step {step_id} to {to_phase}")
+    _save_admitted_plan(p, plan_path, def_h, f"vectl: move step {step_id} to {to_phase}")
     out.print(f"[green]Moved:[/] {step_id} → {to_phase}")
     if cleared_deps:
         out.print(f"[yellow]⚠ Cleared {len(cleared_deps)} dep(s):[/] {', '.join(cleared_deps)}")

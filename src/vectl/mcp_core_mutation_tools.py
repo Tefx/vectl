@@ -5,6 +5,8 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 
 from __future__ import annotations
 
+import json
+
 from vectl.mcp_core_common import *
 from vectl.mcp_mutation_contracts import (
     BATCH_FIELDS,
@@ -439,8 +441,9 @@ def vectl_mutate(
     Exactly one of ``action`` or a non-empty ``requests`` list selects the mode.
     Batch create requests require an explicit ID, errors include the zero-based
     request index, and success returns ordered results plus ``plan_hash``. The batch
-    uses one deep working copy, final validation, and one CAS save; single-action
-    response text and best-effort Git behavior remain unchanged.
+    uses one deep working copy, final validation, and one admitted transaction;
+    single-action response text keeps its existing prefix and appends the transaction
+    receipt.
 
     Args:
         action: The mutation action to perform in compatible single-action mode.
@@ -574,15 +577,16 @@ def vectl_mutate(
             blocking_issue = next((issue for issue in issues if not issue.is_warning), None)
             if blocking_issue is not None:
                 return f"**Error:** stage=final_validation: {blocking_issue.message}"
-            plan_hash, _ = _save_plan_receipt(
+            receipt_payload, _ = _save_admitted_plan_receipt(
                 working_plan,
                 expected_def_hash,
                 f"mcp: mutate batch ({len(normalized_requests)} requests)",
                 recalc_locks=False,
             )
+            plan_hash = str(receipt_payload["persisted_sha256"]).removeprefix("sha256:")
         else:
             commit_target = step_id or phase_id or action
-            lock_notice = _save_plan(
+            receipt_payload, lock_notice = _save_admitted_plan_receipt(
                 working_plan,
                 expected_def_hash,
                 f"mcp: mutate {action} {commit_target}",
@@ -590,11 +594,12 @@ def vectl_mutate(
     except PlanError as error:
         return f"**Error:** {error}"
 
+    receipt_text = json.dumps(receipt_payload, sort_keys=True)
     if not batch_mode:
         result = results[0][1] + "\n\n→ Use `vectl_search` to verify plan consistency."
         if lock_notice:
             result += f"\n\n{lock_notice}"
-        return result
+        return result + f"\n\nmutation_receipt: {receipt_text}"
 
     lines = ["## Plan mutation batch", ""]
     for index, (request_action, message) in enumerate(results):
@@ -605,6 +610,7 @@ def vectl_mutate(
             "",
             f"requests_applied: {len(results)}",
             f"plan_hash: {plan_hash}",
+            f"mutation_receipt: {receipt_text}",
         ]
     )
     if lock_notice:

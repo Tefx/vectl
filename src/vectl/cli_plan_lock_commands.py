@@ -185,7 +185,7 @@ def add_steps_cmd(
         _die(str(e))
         return  # unreachable
 
-    _save_plan(p, plan_path, def_h, f"vectl: add steps to phase {phase}")
+    _save_admitted_plan(p, plan_path, def_h, f"vectl: add steps to phase {phase}")
 
     out.print(f"[green]Added {len(generated_ids)} step(s)[/] to phase [bold]{phase}[/]:")
     for gid in generated_ids:

@@ -16,8 +16,9 @@ Plan path: resolved via shared plan_path.resolve_plan_path() —
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from fastmcp import FastMCP
 from pydantic import BaseModel
@@ -68,6 +69,7 @@ from vectl.duplicate_step_id_format import (
 )
 from vectl.io import (
     _backup_definition,
+    _finalize_admitted_plan_mutation,
     _resolve_git_dir,
     load_plan_definition,
     save_plan,
@@ -89,6 +91,7 @@ from vectl.models import (
     PhaseStatus,
     Plan,
     PlanError,
+    PlanIOError,
     RunningTask,
     Step,
     StepStatus,
@@ -196,6 +199,40 @@ def _save_plan(
         recalc_locks=recalc_locks,
     )
     return lock_notice
+
+
+# @shell_complexity: Preserves transaction diagnostics, receipt validation, and lock notices.
+def _save_admitted_plan_receipt(
+    plan: Plan,
+    expected_def_hash: str,
+    commit_message: str,
+    *,
+    recalc_locks: bool = True,
+) -> Result[tuple[dict[str, object], str], str]:
+    """Persist one covered definition mutation through the admitted transaction."""
+    changed: list[str] = []
+    if recalc_locks:
+        changed = recalc_lock_status(plan)
+
+    try:
+        receipt = _finalize_admitted_plan_mutation(
+            plan,
+            _plan_path(),
+            expected_hash=expected_def_hash,
+            commit_message=commit_message,
+        )
+    except CASConflictError as err:
+        raise PlanError(
+            "CAS conflict: plan.yaml was modified by another process since you loaded it. "
+            "Re-read with `vectl_status` or `vectl_show`, then retry your mutation."
+        ) from err
+    except PlanIOError as err:
+        raise PlanError(str(err)) from err
+
+    if not is_dataclass(receipt) or isinstance(receipt, type):
+        raise PlanError("Admitted Plan mutation returned an invalid receipt.")
+    payload = cast(dict[str, object], asdict(receipt))
+    return payload, format_lock_changes(changed, plan)
 
 
 # @shell_complexity: Step formatting preserves existing state, lock, expected-red, claim, and affinity display semantics.

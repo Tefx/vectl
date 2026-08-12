@@ -3671,8 +3671,13 @@ def test_admitted_mutation_registered_mcp_schema_and_receipt(plan_file: Path) ->
     ):
         assert forbidden_bypass not in serialized_schema
 
-    for receipt_term in (
-        "vectl.plan-mutation.receipt.v1",
+    marker = "mutation_receipt: "
+    receipt_line = next(
+        line for line in result.splitlines() if line.startswith(marker)
+    )
+    receipt = json.loads(receipt_line.removeprefix(marker))
+    assert set(receipt) == {
+        "schema_version",
         "plan_applied",
         "base_sha256",
         "candidate_sha256",
@@ -3680,11 +3685,12 @@ def test_admitted_mutation_registered_mcp_schema_and_receipt(plan_file: Path) ->
         "admission_status",
         "git_attempted",
         "git_committed",
-    ):
-        assert receipt_term in result, (
-            "REQ-AMV1-REGISTERED-MCP-RECEIPT missing: registered vectl_mutate "
-            f"response omits {receipt_term}"
-        )
+    }, "REQ-AMV1-REGISTERED-MCP-RECEIPT missing: receipt fields drifted"
+    assert receipt["schema_version"] == "vectl.plan-mutation.receipt.v1"
+    assert receipt["plan_applied"] is True
+    assert receipt["candidate_sha256"] == receipt["persisted_sha256"]
+    assert receipt["admission_status"] == "not_configured"
+    assert receipt["git_attempted"] is True
 
 
 

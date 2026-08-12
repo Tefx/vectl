@@ -26,6 +26,23 @@ from vectl.plan_path import resolve_claims_path
 runner = CliRunner()
 
 
+def _mutation_receipt(output: str) -> dict[str, object]:
+    marker = "mutation_receipt: "
+    line = next(line for line in output.splitlines() if line.startswith(marker))
+    payload = json.loads(line.removeprefix(marker))
+    assert set(payload) == {
+        "schema_version",
+        "plan_applied",
+        "base_sha256",
+        "candidate_sha256",
+        "persisted_sha256",
+        "admission_status",
+        "git_attempted",
+        "git_committed",
+    }
+    return payload
+
+
 def _must_find_step(plan: Plan, step_id: str) -> Step:
     found = plan.find_step(step_id)
     assert found is not None
@@ -4515,6 +4532,7 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
         monkeypatch.delenv(key, raising=False)
 
     calls: list[str] = []
+    monkeypatch.setattr(cli_plan_common, "_should_autosave_commit", lambda _: True)
 
     def observed_transaction(*args: object, **kwargs: object) -> object:
         message = kwargs.get("commit_message", args[3] if len(args) > 3 else "")
@@ -4583,6 +4601,12 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
             input=stdin,
         )
         assert result.exit_code == 0, f"{command_name}: {result.output}"
+        receipt = _mutation_receipt(result.output)
+        assert receipt["schema_version"] == "vectl.plan-mutation.receipt.v1"
+        assert receipt["plan_applied"] is True
+        assert receipt["candidate_sha256"] == receipt["persisted_sha256"]
+        assert receipt["admission_status"] == "not_configured"
+        assert receipt["git_attempted"] is True
 
     assert len(calls) == 8
     for command_name in (

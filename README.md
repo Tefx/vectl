@@ -376,7 +376,7 @@ export VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256=sha256:<64-lowercase-hex>
 export VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS=30
 ```
 
-A partial or invalid tuple fails closed. The private transaction hashes the authoritative raw Plan bytes for CAS, serializes the finalized candidate once, requires adapter approval bound to `candidate_sha256`, and atomically persists those identical bytes. Its receipt reports `plan_applied` and `git_committed` separately because Git remains best effort. The adapter is trusted same-UID local configuration rather than a sandbox; the exact fixed argv, verdict schema, failure codes, and excluded writers are specified in [the admitted mutation RFC](docs/RFC-admitted-plan-mutation.md).
+A partial or invalid tuple fails closed. The private transaction hashes the authoritative raw Plan bytes for CAS, serializes the finalized candidate once, requires adapter approval bound to `candidate_sha256`, and atomically persists those identical bytes. MCP `vectl_mutate` (single and batch) and CLI `add-step`, `add-steps`, `edit-step`, `remove-step`, `move-step`, `add-phase`, `edit-phase`, and `edit-plan` use this transaction. Successful commands append `mutation_receipt: <JSON>` with schema `vectl.plan-mutation.receipt.v1`; its `plan_applied` and `git_committed` fields remain separate because Git is best effort. Explicit CLI Plan paths outside the current repository remain Plan-only and report `git_attempted: false`. The adapter is trusted same-UID local configuration rather than a sandbox; the exact fixed argv, verdict schema, failure codes, and excluded writers are specified in [the admitted mutation RFC](docs/RFC-admitted-plan-mutation.md).
 
 ## Claim Recovery (Ghost Claims & Split-Brain)
 

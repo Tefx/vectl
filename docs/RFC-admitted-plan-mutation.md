@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-Status: ratified contract for the `admitted-mutation-*` phases. The private exact-byte transaction is implemented; covered MCP/CLI routing remains assigned to the following implementation step.
+Status: ratified and implemented contract for the `admitted-mutation-*` phases. The private exact-byte transaction and the covered MCP/CLI routing are implemented as separate rollback units.
 
 This RFC fixes the smallest approved persistence seam for optional, local admission of Vectl Plan-definition mutations. Its authority comes from:
 
@@ -88,7 +88,7 @@ The private transaction accepts an already parsed in-memory mutation result and 
 12. Create the existing backup according to current linked-worktree policy and attempt the existing `git commit --only --no-verify plan.yaml ...` path.
 13. Return the receipt defined below.
 
-`src/vectl/io.py::_finalize_admitted_plan_mutation` implements this boundary. Its module-import configuration snapshot freezes the adapter tuple once per CLI/MCP process; callers in the next implementation step can pass that snapshot into the private transaction without changing the public mutation schema.
+`src/vectl/io.py::_finalize_admitted_plan_mutation` implements this boundary. Its module-import configuration snapshot freezes the adapter tuple once per CLI/MCP process. Covered callers pass their parsed in-memory candidate into this transaction without adding admission controls to the public mutation schema.
 
 The exact-byte invariant is:
 
@@ -181,13 +181,13 @@ A successful private transaction returns this minimum machine receipt:
 
 `git_attempted` reflects whether the caller supplied the existing commit-message path. `git_committed` reports the observed best-effort Git result. A successful Plan write remains applied when Git fails, matching `docs/ADR-unified-state.md`. The receipt never equates `plan_applied` with `git_committed`.
 
-Configured failures return a bounded typed error and no success receipt. CAS failure retains the existing CAS error identity. Public MCP/CLI formatting may append stable receipt fields, but it must preserve this distinction and must not claim rollback after a Git failure.
+Configured failures return a bounded typed error and no success receipt. CAS failure retains the existing CAS error identity. Successful covered MCP and CLI commands append `mutation_receipt: <JSON>` with the complete receipt fields above. MCP batch mode also retains its existing unprefixed `plan_hash`, derived from `persisted_sha256`. The existing human-readable response prefix remains unchanged. CLI commands pass a commit message only when the selected Plan belongs to the current repository/worktree; other explicit Plan paths remain Plan-only and report `git_attempted: false`. No surface claims rollback after a Git failure.
 
 The Git helper continues using `git commit --only --no-verify plan.yaml`; unrelated staged files remain untouched.
 
 ## Covered writers
 
-The implementation phase routes exactly these definition mutations through the private transaction:
+NARROW V1 routes exactly these definition mutations through the private transaction:
 
 - MCP `vectl_mutate` single-action mode;
 - MCP `vectl_mutate` `requests` batch mode;
@@ -245,7 +245,7 @@ This observer is proof-only developer-test infrastructure. Product admission cod
 1. Land this RFC, observer, and focused observer tests with no product-source change.
 2. Add expected-red contract tests with fixed node IDs and owners.
 3. Implement the exact-byte private transaction and flip its four assigned nodes. This repository step supplies that implementation.
-4. Route the covered MCP/CLI writers and flip the remaining four nodes. This remains a separate rollback unit.
+4. Route the covered MCP/CLI writers and flip the remaining four nodes. This repository step supplies that separate rollback unit.
 5. Run integrated selected-execution, real registered MCP/CLI seams, competing-candidate CAS, full regression comparisons, and fresh review.
 6. Keep the adapter tuple absent by default. Operators enable all three fields together only after validating the local adapter digest and behavior.
 

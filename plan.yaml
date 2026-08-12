@@ -123403,7 +123403,7 @@ phases:
       Evidence logs and comparison JSON are mode 0600 under .vectl/artifacts/admitted-mutation-verification.static-baseline-remediation/.'
   - id: admitted-mutation-verification.diagnostic-redaction-remediation
     name: Prevent admitted-mutation diagnostic disclosure
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - As `python-senior`, close the production-proved `REQ-AMV1-SECURITY-CONFORMANCE`\
@@ -123619,6 +123619,8 @@ phases:
     depends_on:
     - admitted-mutation-verification.integration-gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-08-12T08:55:06.295319Z'
   - id: admitted-mutation-verification.diagnostic-redaction-integration-rerun
     name: Rerun integration verification after diagnostic remediation
     status: pending

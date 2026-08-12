@@ -122858,7 +122858,7 @@ phases:
   steps:
   - id: admitted-mutation-verification.integration-gate
     name: Run integration verification for full regression and public seams
-    status: claimed
+    status: done
     description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
       Deliver:\n- As `integration-verifier`, independently run the eight focused NARROW\
       \ V1 nodes and the full pytest, Invar, ruff, mypy, diff-check, and Vectl validation\
@@ -123025,6 +123025,22 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-08-12T06:50:35.639991Z'
+    done_at: '2026-08-12T08:03:08.021600+00:00'
+    evidence: 'Fresh integration-verifier semantic receipt at .vectl/artifacts/admitted-mutation-verification.integration-gate/semantic-receipt.json
+      is production-Gate CONFORMANT; receipt SHA sha256:67c556a970d9c480a21952e6bdd8d9cf8b012034ff44d913b4379cb7899367a7.
+      Parent independent validator reproduced CONFORMANT in parent-semantic-verdict.json.
+      Immutable target c10c9ab615bf794ed729a1504ecd929a4d4c770c, Plan SHA sha256:84c3ce4a4c039bac05254ceb474c726bfee83ceb0edf8e9199582db99381be53.
+      L1: exact 8 selected/executed nodes passed; full pytest 1305 passed/15 skipped;
+      Invar 0 errors/0 warnings/doctest pass; diff check green; Vectl 0 errors/45
+      historical warnings; ratified parity improved with zero normalized additions
+      (ruff 2015→1946, mypy 1261/31→1200/31). L2/L3: fresh verifier-owned Git fixtures
+      proved exact-byte/CAS one-winner persistence, all fail-closed zero-write branches,
+      four live registered FastMCP stdio sessions, all eight CLI definition mutations,
+      applied-vs-Git receipt separation, unrelated staged-file isolation, cleanup,
+      and no push. Current report: integration-report.current.md; runtime proof: runtime-probe.current.json;
+      evidence index: evidence-index.current.json. Repository/index remained clean,
+      fixture root removed, no child PIDs lingered, no product/Plan bytes changed
+      by verifier.'
   - id: admitted-mutation-verification.fresh-review-loop
     name: Complete fresh independent security and conformance review
     status: pending

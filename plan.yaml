@@ -122840,7 +122840,7 @@ phases:
       and public compatibility.'
 - id: admitted-mutation-verification
   name: 'Admitted Plan Mutation: Verification and Review'
-  status: in_progress
+  status: done
   gate: Repo-wide verification, real CLI/FastMCP seams, deterministic competing-candidate
     CAS, exact-byte identity, and zero-write evidence pass; the terminal spec-verifier
     review passes after every required remediation and fresh re-review; no new active-closure
@@ -123043,7 +123043,7 @@ phases:
       by verifier.'
   - id: admitted-mutation-verification.fresh-review-loop
     name: Complete fresh independent security and conformance review
-    status: claimed
+    status: done
     description: "step_type: review\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - As a fresh `spec-verifier`, enumerate the authoritative NARROW V1 RFC requirements\
       \ and non-goals before inspecting implementation. Audit CAS/lock ordering, exact-byte\
@@ -123144,6 +123144,21 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-08-12T19:34:29.430390Z'
+    done_at: '2026-08-12T19:44:50.535217+00:00'
+    evidence: Genuinely fresh spec-verifier PASS_WITH_DEBT / INTENT_MET at immutable
+      target 8d39bd6c0638d25b6a3e5611972572d88902e211. All exact eleven requirements
+      CONFORMS; no unresolved MUST_FIX. Receipt file SHA da01b22d470d58e0a8bc741fb236c76c00a2452a52e717df879d4324ed4b026f;
+      canonical sha256:f3961d689bbcef72a56b32b6b8a671c7475d50fd36997f449ace329eb64588cf.
+      Child and parent production Gate CONFORMANT completion-admissible; parent verdict
+      SHA 42e7af953e54c28e1ea7a11c7c182496ec6a5d7326ef425997c5d754b3971683. Focused
+      regression 538 passed. Fresh reviewer independently enumerated RFC/non-goals
+      then audited exact-byte/CAS/lock ordering, typed zero-write adapter boundary,
+      complete multi-parameter Digest redaction, MCP/CLI writer inventory and receipts,
+      all-eight CLI prefix/notices/hints/final receipt and failure omission, bounded
+      non-disclosure, KISS, RFC/tests/bilingual docs, integration compatibility, and
+      every prior finding. All prior MUST_FIX dispositions CLOSED. Historical ruff/mypy/completed-history
+      debt remains advisory under existing ownership; no normalized feature addition.
+      Repository/Plan/Git/lifecycle read-only; no push.
   - id: admitted-mutation-verification.static-baseline-remediation
     name: Restore NARROW V1 feature-local static baseline parity
     status: done

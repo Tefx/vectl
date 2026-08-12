@@ -122680,7 +122680,7 @@ phases:
       added.'
   - id: admitted-mutation-implementation.public-surface-wiring
     name: Route covered MCP and CLI definition mutations through the shared transaction
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - Route the existing MCP `vectl_mutate` single-action and `requests` batch modes\
@@ -122821,6 +122821,8 @@ phases:
     depends_on:
     - admitted-mutation-implementation.exact-byte-adapter-transaction
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-08-12T02:12:31.682620Z'
 - id: admitted-mutation-verification
   name: 'Admitted Plan Mutation: Verification and Review'
   status: locked

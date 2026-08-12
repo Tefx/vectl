@@ -125687,7 +125687,7 @@ phases:
       ruff 1946 and mypy 1200/31 unchanged. Repository clean; no push.
   - id: admitted-mutation-verification.cli-receipt-ordering-remediation
     name: Restore all-eight CLI prefix-first receipt-last output
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - As `python-senior`, close MUST_FIX-FRESH-2 at the public CLI output boundary\
@@ -125941,6 +125941,8 @@ phases:
     depends_on:
     - admitted-mutation-verification.digest-authorization-redaction-remediation
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-08-12T18:46:05.040775Z'
   - id: admitted-mutation-verification.fresh-defects-integration-rerun
     name: Rerun Digest redaction and CLI output integration
     status: pending

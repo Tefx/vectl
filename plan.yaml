@@ -122528,7 +122528,7 @@ phases:
   steps:
   - id: admitted-mutation-implementation.exact-byte-adapter-transaction
     name: Implement exact-byte serialization and optional admission transaction
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - Implement one private finalization/admission/persistence transaction. Load\
@@ -122663,6 +122663,21 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-08-11T21:30:47.372517Z'
+    done_at: '2026-08-12T02:09:44.275862+00:00'
+    evidence: 'Integrated commit ea1cfe9fa0a3f1249aa6942f8b5efc066a5a64e1 on Main
+      (tree c650617332f0d07825ff64b173bf7f94c141a3cc; exact candidate-tree match).
+      Changed only README.md, README_zh.md, docs/RFC-admitted-plan-mutation.md, src/vectl/io.py,
+      new src/vectl/shell/admitted_plan_mutation.py, and tests/test_io.py; dependency
+      manifests and blocked paths unchanged. Worker-v2 dispatch sha256:567ee49bbb9d15791e71bfeb6dd2967b991a4938ba6715eda9baaeb431b8a9a8;
+      receipt sha256:a3b16802c21103aa9eaae7eeb96d46bd0d3d9c61b9854eb780b0905f63f69176;
+      independent parent production admission CONFORMANT at .vectl/artifacts/admitted-mutation-implementation.exact-byte-adapter-transaction/parent-verdict-committed.json.
+      Checks: exact selected-execution 4/4 selected/executed green exit 0; tests/test_io.py
+      39 passed; `uv run invar guard` passed; `git diff --check` clean. Integrated
+      rerun repeated exact 4/4 green, 39 passed, Invar passed, clean status. Tests
+      prove raw-byte CAS/persisted candidate hash equality, fail-closed configured
+      adapter zero-write branches, separate applied/Git receipt fields, and synchronized
+      RFC/bilingual README contract. No third-party dependency or deferred feature
+      added.'
   - id: admitted-mutation-implementation.public-surface-wiring
     name: Route covered MCP and CLI definition mutations through the shared transaction
     status: pending

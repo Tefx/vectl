@@ -124955,7 +124955,7 @@ phases:
       \ payload disclosure through configured adapter diagnostics\",\n    \"reversible\
       \ feature-local correction to typed private-file identity failures with independent\
       \ runtime and fresh security judgment\"\n  ],\n  \"primary_outcome\": \"REQ-AMV1-ADMISSION-FAIL-CLOSED\"\
-      ,\n  \"rollback_class\": \"TRIVIAL\",\n  \"observation_ledger\": [\n    {\n\
+      ,\n  \"rollback_class\": \"NONTRIVIAL\",\n  \"observation_ledger\": [\n    {\n\
       \      \"requirement_id\": \"REQ-AMV1-ADMISSION-FAIL-CLOSED\",\n      \"atom\"\
       : \"real configured CLI and registered FastMCP evidence for initial base/candidate/verdict\
       \ identity I/O failures and short Authorization crash/reject diagnostics with\

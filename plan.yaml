@@ -125420,7 +125420,7 @@ phases:
       compatibility verified. Repository/Plan/lifecycle read-only; no push.'
   - id: admitted-mutation-verification.digest-authorization-redaction-remediation
     name: Complete multi-parameter Authorization diagnostic redaction
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - As `python-senior`, close MUST_FIX-FRESH-1 at the private adapter diagnostic\
@@ -125671,6 +125671,20 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-08-12T18:20:15.294364Z'
+    done_at: '2026-08-12T18:45:41.864797+00:00'
+    evidence: Integrated python-senior Worker-v2 candidate 0432636c67ed3b509cbbfe22f52c9cf2ec6040bf
+      as Main 1c9636c4f935c9cc216ae45bcddfd1a4f793c9b8; exact seven blobs match isolated
+      worktree. Production dispatch canonical sha256:0d2cfc454a93097a17fb38f32159d25aa208b6b4b8d32817b6049cb8c5945d6a;
+      PASS receipt canonical sha256:72beb4c4f12f1912c22a3ebbd5cd15b730daf890d758cd819cb4956e999ac007;
+      parent Gate CONFORMANT verdict SHA bfa1e37018ce3d466e9846a97e281edacd2c248874e0b7bcedb4047267236a20.
+      Sanitizer now consumes complete multi-parameter Digest values through field
+      terminator while preserving suffix context. Direct, real configured CLI, and
+      registered direct-entrypoint FastMCP crash/reject tests cover username/realm/nonce/URI/response/algorithm/qop/nc/cnonce
+      omission, useful suffix, typed code, bounds, zero writes, exact protected-state
+      equality, cleanup and reaping; one-token cases remain covered. RFC and bilingual
+      READMEs synchronized. Integrated exact eight green; focused 538 passed; full
+      1330 passed/15 skipped; Invar/diff green; Vectl 0 errors/45 historical warnings;
+      ruff 1946 and mypy 1200/31 unchanged. Repository clean; no push.
   - id: admitted-mutation-verification.cli-receipt-ordering-remediation
     name: Restore all-eight CLI prefix-first receipt-last output
     status: pending

@@ -123927,12 +123927,6 @@ phases:
       \ cleanup\",\n      \"modality\": \"dynamic integration verification\",\n  \
       \    \"seam\": \"real\",\n      \"check_id\": \"admitted_mutation_expected_red\"\
       ,\n      \"independent_step\": \"admitted-mutation-verification.input-workspace-zero-write-integration-rerun\"\
-      \n    },\n    {\n      \"requirement_id\": \"REQ-AMV1-SECURITY-CONFORMANCE\"\
-      ,\n      \"atom\": \"fresh RFC security and specification judgment over both\
-      \ MUST_FIX dispositions, all eleven requirements, and unchanged NARROW V1 non-goals\"\
-      ,\n      \"modality\": \"independent adversarial review\",\n      \"seam\":\
-      \ \"static\",\n      \"check_id\": \"admitted_mutation_expected_red\",\n   \
-      \   \"independent_step\": \"admitted-mutation-verification.fresh-review-loop\"\
       \n    }\n  ],\n  \"test_authority\": {\n    \"developer_test_globs\": [\n  \
       \    \"tests/expected_red.py\",\n      \"tests/test_io.py\",\n      \"tests/test_mcp_mutate_batch.py\"\
       ,\n      \"tests/test_mcp.py\",\n      \"tests/test_cli.py\"\n    ],\n    \"\

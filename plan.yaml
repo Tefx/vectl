@@ -124346,7 +124346,7 @@ phases:
       Repository/Plan/lifecycle unchanged and clean; no push.'
   - id: admitted-mutation-verification.adapter-io-observer-transport-remediation
     name: Close adapter I/O failures and observer red transport parity
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - As `python-senior`, close the two production-admitted NARROW V1 defects as\
@@ -124599,6 +124599,23 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-08-12T14:40:27.046921Z'
+    done_at: '2026-08-12T15:01:30.714807+00:00'
+    evidence: 'Integrated isolated python-senior Worker-v2 candidate 0c4b332021f6cc0c937e1f6ee23e28cdd62d0b47
+      as Main commit f48095000040596e37fbfbddedf511e009255299; exact five changed
+      blobs match candidate: src/vectl/shell/admitted_plan_mutation.py, tests/test_io.py,
+      docs/RFC-admitted-plan-mutation.md, README.md, README_zh.md. Production Gate
+      dispatch sha256:4e00efbeb3749b0364b5105702b896b46dba0cd6d2dd7cb9e602e5c16e836f1a
+      and PASS receipt sha256:84bc4813fa07358609e686810c52dded84628c32bc4d36a523fd7639a1540d7c
+      are CONFORMANT; parent verdict SHA-256 da4bedf07cbf93fd7ade18aa6e5acb83fa9dec4967c218bfbc40783cae42c1c2.
+      Implementation validates decision string type before membership, maps private-file
+      setup/write OSError to fixed adapter_crash, and verdict-read OSError to fixed
+      malformed_verdict. Tests add compound array/object decisions, workspace creation,
+      all private files at create/write stages, verdict read, complete zero-write/non-disclosure/cleanup,
+      and outer-0/inner-red observer evidence. RFC and bilingual READMEs ratify exact
+      failure reasons and Gate transport semantics. Integrated reruns: exact eight
+      green; focused 527 passed; full 1319 passed/15 skipped; Invar/diff green; Vectl
+      0 errors/45 historical warnings; ruff 1946 and mypy 1200/31 match baseline.
+      Repository clean; no push.'
   - id: admitted-mutation-verification.adapter-io-observer-transport-integration-rerun
     name: Rerun adapter I/O and observer transport integration
     status: pending

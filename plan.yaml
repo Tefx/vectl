@@ -124618,7 +124618,7 @@ phases:
       Repository clean; no push.'
   - id: admitted-mutation-verification.adapter-io-observer-transport-integration-rerun
     name: Rerun adapter I/O and observer transport integration
-    status: claimed
+    status: done
     description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
       Deliver:\n- As `integration-verifier`, independently rerun the exact eight focused\
       \ NARROW V1 selected/executed nodes, the affected four-file developer regression,\
@@ -124861,3 +124861,20 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-08-12T15:01:57.168970Z'
+    done_at: '2026-08-12T15:49:29.598151+00:00'
+    evidence: 'Independent integration-verifier PASS_WITH_DEBT at immutable target
+      c4bd4c1c78a86f23f5dc5be67c8b88162ddbaf03. Semantic receipt file SHA-256 d55cf6054c5f3d9b1a06785093b9e2d30636179f2c74c97fb8d861774a185ff7;
+      canonical receipt sha256:9670844d35cae9346e86b9282d474e0078ef555105783563eab31f97b056217f.
+      Child/parent production Gate CONFORMANT and semantic_completion_admissible=true;
+      parent verdict SHA-256 f774c0a86a63899d0004461a93b0d469c5696c121aed2c240ffc2c4b70990300.
+      Exact eight selected/executed nodes passed; focused 527 passed; full 1319 passed/15
+      skipped; Invar/diff green; Vectl 0 errors/45 historical warnings; ruff 1946
+      and mypy 1200/31 exactly ratified. Fresh isolated matrix passed 20/20: ten real
+      configured CLI and ten direct project-entrypoint registered FastMCP sessions
+      for array/object decisions, verdict-read EIO, workspace-create EIO, and base/candidate/verdict
+      setup/write EIO. Fixed classifications/reasons, 0600 inputs, bounded non-disclosure,
+      exact Plan/backup/HEAD/index/staging/status/descendant equality, cleanup, and
+      reaped transports proven. Unchanged installed Gate parsed copied tracked observer
+      outer 0 plus inner exit 1/red and exact identity as CONFORMANT; Gate/observer
+      bytes unchanged. Historical receipts kept as provenance and every affected branch
+      rerun. Repository/Plan/lifecycle clean and unchanged; no push.'

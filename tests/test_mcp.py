@@ -3710,11 +3710,7 @@ async def _registered_admitted_mutation_call(
             },
             raise_on_error=False,
         )
-    missing = object()
-    reaped = (
-        getattr(transport, "_session", missing) is None
-        and getattr(transport, "_connect_task", missing) is None
-    )
+    reaped = getattr(transport, "_connect_task", object()) is None
     if result.data is not None:
         text = str(result.data)
     else:

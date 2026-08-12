@@ -123639,7 +123639,7 @@ phases:
       Repository clean; no push.'
   - id: admitted-mutation-verification.diagnostic-redaction-integration-rerun
     name: Rerun integration verification after diagnostic remediation
-    status: claimed
+    status: done
     description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
       Deliver:\n- As `integration-verifier`, independently rerun the eight focused\
       \ NARROW V1 nodes and the full pytest, Invar, ruff, mypy, diff-check, and Vectl\
@@ -123827,3 +123827,23 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-08-12T10:09:11.340673Z'
+    done_at: '2026-08-12T12:26:39.459586+00:00'
+    evidence: 'Independent integration-verifier semantic receipt at immutable target
+      986843a581c21bdb532adff5ade91e13a0336ada is PASS and parent production Gate
+      CONFORMANT/semantic_completion_admissible=true. Receipt .vectl/artifacts/admitted-mutation-verification.diagnostic-redaction-integration-rerun/semantic-receipt.json
+      (file SHA-256 9124b63f50e5090683afd9a73ce5054c8bd1a5593786f421dbde8781f4ace4f2;
+      admitted semantic SHA sha256:f00766860bb5ab2f161d56bc78f2c913dc989ac5413251c1c52690a20a4b9acd);
+      parent verdict SHA-256 a9ed6e9e55d7534075edba93d722e8d7bdd2034186b60d6169cbc76e8a29b954.
+      Exact eight selected/executed nodes passed. Corrected full-suite observation
+      (ordinary /tmp avoids harness-induced Rich wrapping) passed 1310 tests, 15 skipped,
+      log SHA-256 3c0a2bbad2470c5d4847bb14dce02c09e99ef282f05e2a1d988ea5f278acf609.
+      Preserved checks: Invar green; diff-check green; Vectl 0 errors/45 historical
+      warnings; ruff 1946 and mypy 1200/31 match ratified debt. Fresh isolated real-process
+      recovery used verified direct .venv/bin/vectl entrypoint: registered FastMCP
+      unconfigured single/batch plus schema zero-write, configured approval, configured
+      rejection non-disclosure/zero-write all passed with actual server PIDs live
+      then cleanly absent. Deterministic same-base competing candidates produced exactly
+      one persisted winner and one typed CAS loser. Targeted runtime evidence SHA-256
+      c622bc6a59150da7720db6f85e19a21a8235e6e3feaa5c36247616433e533ad5. Prior failed
+      observation attempts retained as provenance. Final repository/Plan/index/diffs
+      clean and unchanged; fixtures/processes removed; no push.'

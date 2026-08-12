@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import typer
+
 from vectl.cli_plan_common import *
+from vectl.cli_plan_common import _save_admitted_plan
+from vectl.models import StepStatus
+
 
 def add_step_cmd(
     phase: str = typer.Option(..., "--phase", help="Phase ID to add step to."),

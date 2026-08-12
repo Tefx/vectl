@@ -119,7 +119,8 @@ def _bounded_observations(*streams: str, identities: list[str]) -> list[str]:
     observations: list[str] = []
     seen: set[str] = set()
     used = 0
-    for value in [*identities, *(line.strip() for stream in streams for line in stream.splitlines())]:
+    stream_lines = (line.strip() for stream in streams for line in stream.splitlines())
+    for value in [*identities, *stream_lines]:
         if not value or value in seen:
             continue
         encoded_size = len(value.encode("utf-8", "surrogateescape"))

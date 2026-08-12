@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import typer
+
 from vectl.cli_plan_common import *
+from vectl.cli_plan_common import _save_admitted_plan
+
 
 def unlock(
     phase_id: str = typer.Argument(help="Phase ID to unlock."),

@@ -13,7 +13,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import yaml
 from returns.result import Result
@@ -25,12 +25,23 @@ from vectl.models import (
     Step,
 )
 from vectl.shell.admitted_plan_mutation import (
-    PLAN_ADMISSION_CONFIG as _PLAN_ADMISSION_CONFIG,
+    PLAN_ADMISSION_CONFIG as _RAW_PLAN_ADMISSION_CONFIG,
+)
+from vectl.shell.admitted_plan_mutation import (
     PlanAdmissionConfig as _PlanAdmissionConfig,
+)
+from vectl.shell.admitted_plan_mutation import (
     admit_candidate_bytes as _admit_candidate_bytes,
-    freeze_plan_admission_config as _freeze_plan_admission_config,
+)
+from vectl.shell.admitted_plan_mutation import (
+    freeze_plan_admission_config as _freeze_plan_admission_config_impl,
+)
+from vectl.shell.admitted_plan_mutation import (
     sha256_digest as _sha256_digest,
 )
+
+_PLAN_ADMISSION_CONFIG = cast(_PlanAdmissionConfig, _RAW_PLAN_ADMISSION_CONFIG)
+_freeze_plan_admission_config = _freeze_plan_admission_config_impl
 
 _PLAN_YAML_HEADER = """\
 # =============================================================
@@ -216,14 +227,17 @@ def _finalize_admitted_plan_mutation(
     if blocking_issue is not None:
         raise PlanIOError(f"Plan final validation failed: {blocking_issue.message}")
 
-    candidate_bytes = _serialize_plan_bytes(finalized)
-    candidate_sha256 = _sha256_digest(candidate_bytes)
-    admission_status = _admit_candidate_bytes(
-        config=admission_config,
-        plan_path=plan_path,
-        base_bytes=base_bytes,
-        candidate_bytes=candidate_bytes,
-        candidate_sha256=candidate_sha256,
+    candidate_bytes = cast(bytes, _serialize_plan_bytes(finalized))
+    candidate_sha256 = cast(str, _sha256_digest(candidate_bytes))
+    admission_status = cast(
+        Literal["not_configured", "approved"],
+        _admit_candidate_bytes(
+            config=admission_config,
+            plan_path=plan_path,
+            base_bytes=base_bytes,
+            candidate_bytes=candidate_bytes,
+            candidate_sha256=candidate_sha256,
+        ),
     )
 
     with _locked_plan_file(plan_path):
@@ -232,7 +246,7 @@ def _finalize_admitted_plan_mutation(
             raise CASConflictError(plan_path)
         _write_plan_bytes(plan_path, candidate_bytes)
         persisted_bytes = plan_path.read_bytes()
-        persisted_sha256 = _sha256_digest(persisted_bytes)
+        persisted_sha256 = cast(str, _sha256_digest(persisted_bytes))
         if persisted_sha256 != candidate_sha256:
             raise PlanIOError(
                 "Persisted Plan bytes do not match the admitted candidate_sha256"
@@ -251,7 +265,7 @@ def _finalize_admitted_plan_mutation(
     return _PlanMutationReceipt(
         schema_version="vectl.plan-mutation.receipt.v1",
         plan_applied=True,
-        base_sha256=_sha256_digest(base_bytes),
+        base_sha256=cast(str, _sha256_digest(base_bytes)),
         candidate_sha256=candidate_sha256,
         persisted_sha256=persisted_sha256,
         admission_status=admission_status,

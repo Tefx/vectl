@@ -1,7 +1,6 @@
 """Tests for YAML I/O, CAS behavior, and backup handling."""
 
 import ast
-from dataclasses import asdict, is_dataclass
 import hashlib
 import inspect
 import json
@@ -10,6 +9,7 @@ import subprocess
 import sys
 import threading
 import time
+from dataclasses import asdict, is_dataclass
 from pathlib import Path
 
 import pytest

@@ -217,7 +217,7 @@ def _save_admitted_plan_receipt(
     try:
         receipt = _finalize_admitted_plan_mutation(
             plan,
-            _plan_path(),
+            cast(Path, _plan_path()),
             expected_hash=expected_def_hash,
             commit_message=commit_message,
         )
@@ -232,7 +232,10 @@ def _save_admitted_plan_receipt(
     if not is_dataclass(receipt) or isinstance(receipt, type):
         raise PlanError("Admitted Plan mutation returned an invalid receipt.")
     payload = cast(dict[str, object], asdict(receipt))
-    return payload, format_lock_changes(changed, plan)
+    return cast(
+        Result[tuple[dict[str, object], str], str],
+        (payload, format_lock_changes(changed, plan)),
+    )
 
 
 # @shell_complexity: Step formatting preserves existing state, lock, expected-red, claim, and affinity display semantics.

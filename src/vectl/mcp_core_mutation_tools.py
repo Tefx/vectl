@@ -6,8 +6,10 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 from __future__ import annotations
 
 import json
+from typing import cast
 
 from vectl.mcp_core_common import *
+from vectl.mcp_core_common import _save_admitted_plan_receipt
 from vectl.mcp_mutation_contracts import (
     BATCH_FIELDS,
     BATCH_REQUIRED_FIELDS,
@@ -577,19 +579,25 @@ def vectl_mutate(
             blocking_issue = next((issue for issue in issues if not issue.is_warning), None)
             if blocking_issue is not None:
                 return f"**Error:** stage=final_validation: {blocking_issue.message}"
-            receipt_payload, _ = _save_admitted_plan_receipt(
-                working_plan,
-                expected_def_hash,
-                f"mcp: mutate batch ({len(normalized_requests)} requests)",
-                recalc_locks=False,
+            receipt_payload, _ = cast(
+                tuple[dict[str, object], str],
+                _save_admitted_plan_receipt(
+                    working_plan,
+                    expected_def_hash,
+                    f"mcp: mutate batch ({len(normalized_requests)} requests)",
+                    recalc_locks=False,
+                ),
             )
             plan_hash = str(receipt_payload["persisted_sha256"]).removeprefix("sha256:")
         else:
             commit_target = step_id or phase_id or action
-            receipt_payload, lock_notice = _save_admitted_plan_receipt(
-                working_plan,
-                expected_def_hash,
-                f"mcp: mutate {action} {commit_target}",
+            receipt_payload, lock_notice = cast(
+                tuple[dict[str, object], str],
+                _save_admitted_plan_receipt(
+                    working_plan,
+                    expected_def_hash,
+                    f"mcp: mutate {action} {commit_target}",
+                ),
             )
     except PlanError as error:
         return f"**Error:** {error}"

@@ -441,11 +441,13 @@ def _check_claim_mismatch(p: Plan, plan_path: Path):
         - ghost_claims: claims entries with no corresponding claimed step in plan
         - stale_plan_claims: claimed steps in plan with no entry in claims.json
     """
-    from vectl.claims import get_current_branch, load_claims, resolve_claims_path
+    from vectl.claims import get_current_branch as current_branch
+    from vectl.claims import load_claims
+    from vectl.claims import resolve_claims_path as claims_path_resolver
 
-    claims_path = resolve_claims_path(plan_path)
+    claims_path = claims_path_resolver(plan_path)
     claims = load_claims(claims_path)
-    branch = get_current_branch()
+    branch = current_branch()
 
     # Build current branch's claimed steps from plan
     plan_claimed: set[str] = set()

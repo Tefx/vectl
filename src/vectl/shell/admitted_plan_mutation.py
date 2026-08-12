@@ -13,7 +13,7 @@ import threading
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import BinaryIO, Literal
+from typing import BinaryIO, Literal, cast
 
 from returns.result import Result
 
@@ -82,7 +82,7 @@ def _inspect_executable(path: Path) -> ExecutableIdentity | Result[ExecutableIde
         size=metadata.st_size,
         modified_ns=metadata.st_mtime_ns,
         changed_ns=metadata.st_ctime_ns,
-        sha256=sha256_digest(path.read_bytes()),
+        sha256=cast(str, sha256_digest(path.read_bytes())),
     )
 
 
@@ -113,7 +113,7 @@ def freeze_plan_admission_config(
         return PlanAdmissionConfig(state="configuration_invalid")
 
     try:
-        identity = _inspect_executable(executable)
+        identity = cast(ExecutableIdentity, _inspect_executable(executable))
     except OSError:
         return PlanAdmissionConfig(state="configuration_invalid")
     if identity.sha256 != digest_value:
@@ -225,7 +225,7 @@ def _input_file_identity(
         metadata.st_size,
         metadata.st_mtime_ns,
         metadata.st_ctime_ns,
-        sha256_digest(path.read_bytes()),
+        cast(str, sha256_digest(path.read_bytes())),
     )
 
 
@@ -240,6 +240,7 @@ def _write_private_file(path: Path, content: bytes) -> None | Result[None, str]:
             os.fsync(file.fileno())
     finally:
         os.close(descriptor)
+    return None
 
 
 def _drain_bounded(stream: BinaryIO, retained: bytearray) -> None:
@@ -331,7 +332,7 @@ def admit_candidate_bytes(
             "plan admission configuration is incomplete or invalid",
         )
 
-    repository_root = _repository_root(plan_path)
+    repository_root = cast(Path, _repository_root(plan_path))
     with tempfile.TemporaryDirectory(prefix="vectl-plan-admission-") as temporary:
         temporary_path = Path(temporary).resolve()
         try:
@@ -377,10 +378,13 @@ def admit_candidate_bytes(
             str(verdict_path),
         ]
         try:
-            returncode, stdout, stderr = _run_adapter(
-                command,
-                cwd=repository_root,
-                timeout_seconds=timeout_seconds,
+            returncode, stdout, stderr = cast(
+                tuple[int, bytes, bytes],
+                _run_adapter(
+                    command,
+                    cwd=repository_root,
+                    timeout_seconds=timeout_seconds,
+                ),
             )
         except subprocess.TimeoutExpired as exc:
             raise PlanAdmissionError(
@@ -430,7 +434,10 @@ def admit_candidate_bytes(
                 "admission verdict exceeds 16 KiB",
             )
 
-        verdict = _parse_admission_verdict(verdict_path.read_bytes())
+        verdict = cast(
+            dict[str, str],
+            _parse_admission_verdict(verdict_path.read_bytes()),
+        )
         if verdict["candidate_sha256"] != candidate_sha256:
             raise PlanAdmissionError(
                 "candidate_identity_mismatch",
@@ -439,6 +446,6 @@ def admit_candidate_bytes(
         if verdict["decision"] == "reject":
             raise PlanAdmissionError(
                 "rejected",
-                _sanitize_diagnostic(verdict["reason"], temporary_path),
+                cast(str, _sanitize_diagnostic(verdict["reason"], temporary_path)),
             )
         return "approved"

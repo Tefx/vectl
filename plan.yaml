@@ -122515,7 +122515,7 @@ phases:
       31 files; Invar, diff-check, Vectl validation, and RFC/observer tests are green.'
 - id: admitted-mutation-implementation
   name: 'Admitted Plan Mutation: Minimal Implementation'
-  status: in_progress
+  status: done
   gate: The unique serializer and one private finalization/admission/persistence transaction
     satisfy focused tests; no-adapter mode preserves existing behavior; configured
     adapter failures cannot write Plan or invoke Git; MCP single/batch and covered
@@ -122680,7 +122680,7 @@ phases:
       added.'
   - id: admitted-mutation-implementation.public-surface-wiring
     name: Route covered MCP and CLI definition mutations through the shared transaction
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - Route the existing MCP `vectl_mutate` single-action and `requests` batch modes\
@@ -122823,9 +122823,24 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-08-12T02:12:31.682620Z'
+    done_at: '2026-08-12T02:52:06.072772+00:00'
+    evidence: 'Integrated commit 68f711ee9b3d9f1ba670ee44ea102301f366e17d on Main
+      (tree 10fb22272dd1cd6e2ba310e47695e2a0aa11689c; exact candidate-tree match).
+      Changed exactly the 12 allowed MCP/CLI source, developer-test, RFC, and bilingual
+      README paths; blocked transaction/observer/io-test paths and dependency manifests
+      unchanged. Worker-v2 dispatch sha256:77629072ce4e521eb618294ae3d1169b0b730ae1d8d2167520dea708c2443e36;
+      receipt sha256:6c11b62dbf6916bda7786416389b3a79462732f41a57a8a392e04906de94175f;
+      independent parent production admission CONFORMANT at .vectl/artifacts/admitted-mutation-implementation.public-surface-wiring/parent-verdict-committed.json.
+      Checks: exact registered public selected-execution 4/4 selected/executed green
+      exit 0; MCP/CLI regression 474 passed; `uv run invar guard` passed; `git diff
+      --check` clean. Integrated rerun repeated exact 4/4 green, 474 passed, Invar
+      passed, clean status. Covered routes are MCP single/batch plus CLI add-step/add-steps/edit-step/remove-step/move-step/add-phase/edit-phase/edit-plan;
+      low-level/lifecycle lock/recalc save paths remain excluded per contract. Tests
+      and docs cover no-adapter receipt, registered schema, shared transaction identity,
+      and public compatibility.'
 - id: admitted-mutation-verification
   name: 'Admitted Plan Mutation: Verification and Review'
-  status: locked
+  status: pending
   gate: Repo-wide verification, real CLI/FastMCP seams, deterministic competing-candidate
     CAS, exact-byte identity, and zero-write evidence pass; the terminal spec-verifier
     review passes after every required remediation and fresh re-review; no new active-closure

@@ -123043,7 +123043,7 @@ phases:
       by verifier.'
   - id: admitted-mutation-verification.fresh-review-loop
     name: Complete fresh independent security and conformance review
-    status: claimed
+    status: pending
     description: "step_type: review\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - As a fresh `spec-verifier`, enumerate the authoritative NARROW V1 RFC requirements\
       \ and non-goals before inspecting implementation. Audit CAS/lock ordering, exact-byte\
@@ -123142,8 +123142,6 @@ phases:
     depends_on:
     - admitted-mutation-verification.input-workspace-zero-write-integration-rerun
     agent: spec-verifier
-    claimed_by: spec-verifier
-    claimed_at: '2026-08-12T14:03:31.138115Z'
   - id: admitted-mutation-verification.static-baseline-remediation
     name: Restore NARROW V1 feature-local static baseline parity
     status: done

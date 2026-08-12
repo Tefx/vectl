@@ -122858,7 +122858,7 @@ phases:
   steps:
   - id: admitted-mutation-verification.integration-gate
     name: Run integration verification for full regression and public seams
-    status: claimed
+    status: pending
     description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
       Deliver:\n- As `integration-verifier`, independently run the eight focused NARROW\
       \ V1 nodes and the full pytest, Invar, ruff, mypy, diff-check, and Vectl validation\
@@ -123021,8 +123021,6 @@ phases:
     - README.md
     - README_zh.md
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-08-12T03:04:26.418529Z'
   - id: admitted-mutation-verification.fresh-review-loop
     name: Complete fresh independent security and conformance review
     status: pending

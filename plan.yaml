@@ -125157,7 +125157,7 @@ phases:
       warnings; ruff 1946 and mypy 1200/31 unchanged. Repository clean; no push.'
   - id: admitted-mutation-verification.identity-authorization-integration-rerun
     name: Rerun initial identity and Authorization integration
-    status: pending
+    status: claimed
     description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
       Deliver:\n- As `integration-verifier`, independently rerun the exact eight focused\
       \ NARROW V1 selected/executed nodes, the affected four-file developer regression,\
@@ -125400,3 +125400,5 @@ phases:
     depends_on:
     - admitted-mutation-verification.identity-authorization-remediation
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-08-12T17:19:00.311677Z'

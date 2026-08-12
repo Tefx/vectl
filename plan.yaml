@@ -123403,7 +123403,7 @@ phases:
       Evidence logs and comparison JSON are mode 0600 under .vectl/artifacts/admitted-mutation-verification.static-baseline-remediation/.'
   - id: admitted-mutation-verification.diagnostic-redaction-remediation
     name: Prevent admitted-mutation diagnostic disclosure
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - As `python-senior`, close the production-proved `REQ-AMV1-SECURITY-CONFORMANCE`\
@@ -123621,6 +123621,22 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-08-12T08:55:06.295319Z'
+    done_at: '2026-08-12T10:08:43.521917+00:00'
+    evidence: 'Integrated five-path remediation as local commit 4707bdd27b38b9d7c6b1d157ae1c6c5e56af0ccf
+      after disjoint Plan proof-binding commit 97afca2fc77e6daa08f22ff21c46b4912c930cc2;
+      integrated bytes exactly match isolated candidate 33c4bc049a63d4c9575949718620664028b2fe6b.
+      Parent production Gate admitted fresh dispatch and PASS receipt CONFORMANT:
+      dispatch SHA sha256:3fc3c4cca8c950583292172caa30d5b0e3e3ad5582f59a006a5199f7995c0d9f;
+      receipt SHA sha256:63033f0d79b18b15343170bad46f92f66ce696539c441d645c5723369de66303;
+      verdict .vectl/artifacts/admitted-mutation-verification.diagnostic-redaction-remediation/parent-receipt-verdict.json.
+      Changed exactly src/vectl/shell/admitted_plan_mutation.py, tests/test_io.py,
+      docs/RFC-admitted-plan-mutation.md, README.md, README_zh.md. Added bounded path/secret/opaque/Plan-fragment
+      redaction, direct stdout/stderr/reject leakage and zero-write tests, and synchronized
+      RFC/English/Chinese docs. Integrated reruns: exact eight selected/executed green;
+      tests/test_io.py 44 passed; Invar green; git diff --check green; Vectl validate
+      0 errors/45 historical warnings; static debt unchanged from remediated baseline
+      (ruff 1946, mypy 1200/31) with no diagnostics in changed source/test paths.
+      Repository clean; no push.'
   - id: admitted-mutation-verification.diagnostic-redaction-integration-rerun
     name: Rerun integration verification after diagnostic remediation
     status: pending

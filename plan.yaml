@@ -124106,7 +124106,7 @@ phases:
       match ratified baseline with no new debt. Repository clean; no push.'
   - id: admitted-mutation-verification.input-workspace-zero-write-integration-rerun
     name: Rerun affected immutable-input and workspace integration
-    status: pending
+    status: claimed
     description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
       Deliver:\n- As `integration-verifier`, independently rerun the exact eight focused\
       \ NARROW V1 nodes, the affected four-file developer regression, full pytest,\
@@ -124325,3 +124325,5 @@ phases:
     depends_on:
     - admitted-mutation-verification.input-workspace-zero-write-remediation
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-08-12T13:36:11.304541Z'

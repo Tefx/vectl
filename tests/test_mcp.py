@@ -7,6 +7,8 @@ pointing to a temporary plan file.
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import json
 import os
 import subprocess
@@ -16,6 +18,8 @@ from pathlib import Path
 
 import pytest
 import yaml
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
 
 from vectl.claims import get_current_branch as _claims_current_branch
 from vectl.claims import load_claims, repair_claims
@@ -3629,5 +3633,407 @@ def test_batch_claim_expected_red_mcp_strict_error_rolls_back_without_ghost_clai
     claims = load_claims(resolve_claims_path(plan_file))
     assert "a.1" not in claims
 
+
+def _write_registered_identity_process_seam(
+    case_root: Path,
+) -> tuple[Path, Path, Path]:
+    launch_marker = case_root / "adapter-launched"
+    adapter = case_root / "adapter.py"
+    adapter.write_text(
+        "#!/usr/bin/env python3\n"
+        "import argparse, hashlib, json, os\n"
+        "from pathlib import Path\n"
+        "Path(os.environ['VECTL_TEST_ADAPTER_LAUNCH_MARKER']).write_text('launched')\n"
+        "parser = argparse.ArgumentParser()\n"
+        "parser.add_argument('--base', required=True)\n"
+        "parser.add_argument('--candidate', required=True)\n"
+        "parser.add_argument('--verdict', required=True)\n"
+        "args = parser.parse_args()\n"
+        "candidate = Path(args.candidate).read_bytes()\n"
+        "Path(args.verdict).write_text(json.dumps({\n"
+        "    'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+        "    'decision': 'approve',\n"
+        "    'candidate_sha256': 'sha256:' + hashlib.sha256(candidate).hexdigest(),\n"
+        "}), encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    adapter.chmod(0o755)
+    seam_root = case_root / "process-seam"
+    seam_root.mkdir()
+    (seam_root / "sitecustomize.py").write_text(
+        "import os\n"
+        "from pathlib import Path\n"
+        "target = os.environ['VECTL_TEST_IDENTITY_TARGET']\n"
+        "operation = os.environ['VECTL_TEST_IDENTITY_OPERATION']\n"
+        "diagnostic = os.environ['VECTL_TEST_IDENTITY_DIAGNOSTIC']\n"
+        "original_lstat = Path.lstat\n"
+        "original_read_bytes = Path.read_bytes\n"
+        "def selected(path):\n"
+        "    return (path.name == target and\n"
+        "            path.parent.name.startswith('vectl-plan-admission-'))\n"
+        "def fail_lstat(path):\n"
+        "    if operation == 'lstat' and selected(path):\n"
+        "        raise OSError(diagnostic)\n"
+        "    return original_lstat(path)\n"
+        "def fail_read_bytes(path):\n"
+        "    if operation == 'read_bytes' and selected(path):\n"
+        "        raise OSError(diagnostic)\n"
+        "    return original_read_bytes(path)\n"
+        "Path.lstat = fail_lstat\n"
+        "Path.read_bytes = fail_read_bytes\n",
+        encoding="utf-8",
+    )
+    return adapter, seam_root, launch_marker
+
+
+async def _registered_admitted_mutation_call(
+    plan_path: Path,
+    *,
+    environment: dict[str, str] | None = None,
+) -> tuple[dict, str, bool, bool]:
+    project_root = Path(__file__).resolve().parents[1]
+    transport = StdioTransport(
+        command=str(project_root / ".venv" / "bin" / "vectl"),
+        args=["mcp"],
+        cwd=str(project_root),
+        env={"VECTL_PLAN_PATH": str(plan_path), **(environment or {})},
+        keep_alive=False,
+    )
+    async with Client(transport) as client:
+        tools = await client.list_tools()
+        mutate = next(tool for tool in tools if tool.name == "vectl_mutate")
+        result = await client.call_tool(
+            "vectl_mutate",
+            {
+                "action": "edit-plan",
+                "plan_context": "registered admitted mutation",
+            },
+            raise_on_error=False,
+        )
+    reaped = getattr(transport, "_connect_task", object()) is None
+    if result.data is not None:
+        text = str(result.data)
+    else:
+        text = "\n".join(
+            content.text for content in result.content if hasattr(content, "text")
+        )
+    return mutate.inputSchema, text, bool(result.is_error), reaped
+
+
+def test_admitted_mutation_registered_mcp_schema_and_receipt(plan_file: Path) -> None:
+    schema, result, is_error, reaped = asyncio.run(
+        _registered_admitted_mutation_call(plan_file)
+    )
+    assert not is_error
+    assert reaped
+    serialized_schema = json.dumps(schema, sort_keys=True).lower()
+    for forbidden_bypass in (
+        "preview_mutation",
+        "approve_by_digest",
+        "candidate_sha256",
+        "admission_executable",
+        "admission_timeout",
+    ):
+        assert forbidden_bypass not in serialized_schema
+
+    marker = "mutation_receipt: "
+    receipt_line = next(
+        line for line in result.splitlines() if line.startswith(marker)
+    )
+    receipt = json.loads(receipt_line.removeprefix(marker))
+    assert set(receipt) == {
+        "schema_version",
+        "plan_applied",
+        "base_sha256",
+        "candidate_sha256",
+        "persisted_sha256",
+        "admission_status",
+        "git_attempted",
+        "git_committed",
+    }, "REQ-AMV1-REGISTERED-MCP-RECEIPT missing: receipt fields drifted"
+    assert receipt["schema_version"] == "vectl.plan-mutation.receipt.v1"
+    assert receipt["plan_applied"] is True
+    assert receipt["candidate_sha256"] == receipt["persisted_sha256"]
+    assert receipt["admission_status"] == "not_configured"
+    assert receipt["git_attempted"] is True
+
+    public_root = plan_file.parent / "public-mcp-authorization"
+    for mode, expected_code in (("crash", "adapter_crash"), ("reject", "rejected")):
+        for scheme in ("Bearer", "Basic", "Digest"):
+            case_root = public_root / f"{mode}-{scheme.lower()}"
+            repo = case_root / "repo"
+            repo.mkdir(parents=True)
+            for git_args in (
+                ("init", "-q"),
+                ("config", "user.email", "public-mcp@example.invalid"),
+                ("config", "user.name", "Public MCP Test"),
+            ):
+                git_result = subprocess.run(
+                    ["git", *git_args],
+                    cwd=repo,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                assert git_result.returncode == 0, git_result.stderr
+            public_plan = repo / "plan.yaml"
+            public_plan.write_bytes(plan_file.read_bytes())
+            subprocess.run(["git", "add", "plan.yaml"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "seed"],
+                cwd=repo,
+                check=True,
+            )
+            unrelated = repo / "unrelated.txt"
+            unrelated.write_text("preserve staged public MCP content\n", encoding="utf-8")
+            subprocess.run(["git", "add", "unrelated.txt"], cwd=repo, check=True)
+
+            adapter = case_root / "adapter.py"
+            adapter.write_text(
+                "#!/usr/bin/env python3\n"
+                "import argparse, hashlib, json, os, sys\n"
+                "from pathlib import Path\n"
+                "parser = argparse.ArgumentParser()\n"
+                "parser.add_argument('--base', required=True)\n"
+                "parser.add_argument('--candidate', required=True)\n"
+                "parser.add_argument('--verdict', required=True)\n"
+                "args = parser.parse_args()\n"
+                "candidate = Path(args.candidate).read_bytes()\n"
+                "digest = 'sha256:' + hashlib.sha256(candidate).hexdigest()\n"
+                "diagnostic = 'policy denied ' + os.environ['VECTL_TEST_AUTHORIZATION']\n"
+                "if os.environ['VECTL_TEST_ADMISSION_MODE'] == 'crash':\n"
+                "    print(diagnostic, file=sys.stderr)\n"
+                "    raise SystemExit(23)\n"
+                "Path(args.verdict).write_text(json.dumps({\n"
+                "    'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+                "    'decision': 'reject',\n"
+                "    'candidate_sha256': digest,\n"
+                "    'reason': diagnostic,\n"
+                "}), encoding='utf-8')\n",
+                encoding="utf-8",
+            )
+            adapter.chmod(0o755)
+            adapter_digest = hashlib.sha256(adapter.read_bytes()).hexdigest()
+            external_tmp = case_root / "external-tmp"
+            external_tmp.mkdir()
+            useful_suffix = "operator review remains available"
+            if scheme == "Digest":
+                protected_parameters = (
+                    'username="mcp-digest-user-v8"',
+                    'realm="mcp-digest-realm-v8"',
+                    'nonce="mcp-digest-nonce-v8"',
+                    'uri="urn:vectl:mcp-digest-v8"',
+                    'response="mcp-digest-response-v8"',
+                    "algorithm=SHA-512-256-sess",
+                    "qop=auth-int",
+                    "nc=00000003",
+                    'cnonce="mcp-digest-cnonce-v8"',
+                )
+                payload = ", ".join(protected_parameters)
+            else:
+                protected_parameters = ()
+                payload = f"mcp-{mode}-v7"
+            authorization = f"Authorization: {scheme} {payload}; {useful_suffix}"
+            environment = {
+                "TMPDIR": str(external_tmp),
+                "VECTL_PLAN_ADMISSION_EXECUTABLE": str(adapter.resolve()),
+                "VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256": f"sha256:{adapter_digest}",
+                "VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS": "5",
+                "VECTL_TEST_ADMISSION_MODE": mode,
+                "VECTL_TEST_AUTHORIZATION": authorization,
+            }
+
+            backup = repo / ".git" / "vectl" / "plan.yaml.bak"
+            before = (
+                public_plan.read_bytes(),
+                backup.read_bytes() if backup.exists() else None,
+                subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=repo,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout,
+                (repo / ".git" / "index").read_bytes(),
+                unrelated.read_bytes(),
+                subprocess.run(
+                    ["git", "status", "--porcelain=v1"],
+                    cwd=repo,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout,
+                frozenset(item.relative_to(repo) for item in repo.rglob("*")),
+            )
+            _, public_result, public_is_error, reaped = asyncio.run(
+                _registered_admitted_mutation_call(
+                    public_plan,
+                    environment=environment,
+                )
+            )
+
+            assert not public_is_error
+            assert reaped
+            assert expected_code in public_result
+            assert "policy denied" in public_result
+            assert useful_suffix in public_result
+            assert "<redacted>" in public_result
+            assert len(public_result) <= 2048
+            for protected in (
+                payload,
+                authorization,
+                *protected_parameters,
+                str(case_root),
+                str(public_plan),
+            ):
+                assert protected not in public_result
+            assert public_plan.read_bytes() == before[0]
+            assert (backup.read_bytes() if backup.exists() else None) == before[1]
+            assert subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout == before[2]
+            assert (repo / ".git" / "index").read_bytes() == before[3]
+            assert unrelated.read_bytes() == before[4]
+            assert subprocess.run(
+                ["git", "status", "--porcelain=v1"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout == before[5]
+            assert frozenset(item.relative_to(repo) for item in repo.rglob("*")) == before[6]
+            assert list(external_tmp.iterdir()) == []
+
+    identity_cases = (
+        ("base.plan.yaml", "lstat"),
+        ("base.plan.yaml", "read_bytes"),
+        ("candidate.plan.yaml", "lstat"),
+        ("candidate.plan.yaml", "read_bytes"),
+        ("verdict.json", "lstat"),
+    )
+    public_root = plan_file.parent / "public-mcp-initial-identity"
+    for filename, operation in identity_cases:
+        case_root = public_root / f"{filename}-{operation}"
+        repo = case_root / "repo"
+        repo.mkdir(parents=True)
+        for git_args in (
+            ("init", "-q"),
+            ("config", "user.email", "identity-mcp@example.invalid"),
+            ("config", "user.name", "Identity MCP Test"),
+        ):
+            git_result = subprocess.run(
+                ["git", *git_args],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert git_result.returncode == 0, git_result.stderr
+        public_plan = repo / "plan.yaml"
+        plan_content = yaml.safe_load(plan_file.read_text(encoding="utf-8"))
+        plan_content["context"] = "PUBLIC-MCP-PLAN-SECRET"
+        public_plan.write_text(
+            yaml.safe_dump(plan_content, sort_keys=False),
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "add", "plan.yaml"], cwd=repo, check=True)
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "seed"],
+            cwd=repo,
+            check=True,
+        )
+        unrelated = repo / "unrelated.txt"
+        unrelated.write_text("preserve staged identity MCP content\n", encoding="utf-8")
+        subprocess.run(["git", "add", "unrelated.txt"], cwd=repo, check=True)
+
+        adapter, seam_root, launch_marker = _write_registered_identity_process_seam(
+            case_root
+        )
+        external_tmp = case_root / "external-tmp"
+        external_tmp.mkdir()
+        operating_system_text = (
+            f"identity EIO for {filename} {case_root} PUBLIC-MCP-PLAN-SECRET"
+        )
+        environment = {
+            "PYTHONPATH": str(seam_root),
+            "TMPDIR": str(external_tmp),
+            "VECTL_PLAN_ADMISSION_EXECUTABLE": str(adapter.resolve()),
+            "VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256": (
+                "sha256:" + hashlib.sha256(adapter.read_bytes()).hexdigest()
+            ),
+            "VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS": "5",
+            "VECTL_TEST_ADAPTER_LAUNCH_MARKER": str(launch_marker),
+            "VECTL_TEST_IDENTITY_TARGET": filename,
+            "VECTL_TEST_IDENTITY_OPERATION": operation,
+            "VECTL_TEST_IDENTITY_DIAGNOSTIC": operating_system_text,
+        }
+
+        backup = repo / ".git" / "vectl" / "plan.yaml.bak"
+        before = (
+            public_plan.read_bytes(),
+            backup.read_bytes() if backup.exists() else None,
+            subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout,
+            (repo / ".git" / "index").read_bytes(),
+            unrelated.read_bytes(),
+            subprocess.run(
+                ["git", "status", "--porcelain=v1"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout,
+            frozenset(item.relative_to(repo) for item in repo.rglob("*")),
+        )
+        _, public_result, public_is_error, reaped = asyncio.run(
+            _registered_admitted_mutation_call(
+                public_plan,
+                environment=environment,
+            )
+        )
+
+        assert not public_is_error
+        assert reaped
+        assert "adapter_crash" in public_result
+        assert "admission private file setup or write failed" in public_result
+        assert len(public_result) <= 2048
+        for protected in (
+            operating_system_text,
+            "identity EIO",
+            "PUBLIC-MCP-PLAN-SECRET",
+            str(case_root),
+            str(public_plan),
+        ):
+            assert protected not in public_result
+        assert not launch_marker.exists(), "adapter launched after initial identity failure"
+        assert public_plan.read_bytes() == before[0]
+        assert (backup.read_bytes() if backup.exists() else None) == before[1]
+        assert subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout == before[2]
+        assert (repo / ".git" / "index").read_bytes() == before[3]
+        assert unrelated.read_bytes() == before[4]
+        assert subprocess.run(
+            ["git", "status", "--porcelain=v1"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout == before[5]
+        assert frozenset(item.relative_to(repo) for item in repo.rglob("*")) == before[6]
+        assert list(external_tmp.iterdir()) == []
 
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal, TypeAlias, get_origin, get_type_hints
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, TypeAdapter, WithJsonSchema
 from typing_extensions import Required, TypedDict
 
 MutationAction: TypeAlias = Literal[
@@ -168,6 +168,40 @@ for _schema_type in _SCHEMA_TYPES:
     _schema_type.__pydantic_config__ = _CLOSED_SCHEMA_CONFIG
 
 
+def _inline_local_refs(schema: dict[str, Any]) -> dict[str, Any]:
+    """Inline local Pydantic definitions so wire middleware preserves the discriminator."""
+    definitions = schema.get("$defs", {})
+
+    def inline(value: Any) -> Any:
+        if isinstance(value, list):
+            return [inline(item) for item in value]
+        if not isinstance(value, dict):
+            return value
+        reference = value.get("$ref")
+        if isinstance(reference, str) and reference.startswith("#/$defs/"):
+            target = definitions[reference.removeprefix("#/$defs/")]
+            siblings = {key: item for key, item in value.items() if key != "$ref"}
+            return inline({**target, **siblings})
+        return {
+            key: inline(item)
+            for key, item in value.items()
+            if key != "$defs"
+        }
+
+    inlined = inline(schema)
+    assert isinstance(inlined, dict)
+    return inlined
+
+
+_BATCH_WIRE_SCHEMA = {
+    "oneOf": [
+        _inline_local_refs(TypeAdapter(schema_type).json_schema())
+        for schema_type in _SCHEMA_TYPES
+        if schema_type is not AddStepsEntry
+    ],
+    "discriminator": {"propertyName": "action"},
+}
+
 BatchMutationRequest: TypeAlias = Annotated[
     AddPhaseRequest
     | AddStepRequest
@@ -178,6 +212,7 @@ BatchMutationRequest: TypeAlias = Annotated[
     | MoveStepRequest
     | EditPlanRequest,
     Field(discriminator="action"),
+    WithJsonSchema(_BATCH_WIRE_SCHEMA),
 ]
 
 _BATCH_REQUEST_TYPES: dict[str, type[Any]] = {

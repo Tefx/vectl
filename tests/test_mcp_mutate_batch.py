@@ -16,6 +16,7 @@ from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
 import vectl.io as io_module
+import vectl.mcp_core_common as mcp_common
 import vectl.mcp_core_mutation_tools as mutation_module
 from vectl.io import load_plan_definition, save_plan
 from vectl.mcp_server import vectl_mutate as mutate_tool
@@ -30,6 +31,23 @@ def _git(repo: Path, *args: str) -> str:
     )
     assert result.returncode == 0, result.stderr
     return result.stdout.strip()
+
+
+def _mutation_receipt(result: str) -> dict[str, object]:
+    marker = "mutation_receipt: "
+    line = next(line for line in result.splitlines() if line.startswith(marker))
+    payload = json.loads(line.removeprefix(marker))
+    assert set(payload) == {
+        "schema_version",
+        "plan_applied",
+        "base_sha256",
+        "candidate_sha256",
+        "persisted_sha256",
+        "admission_status",
+        "git_attempted",
+        "git_committed",
+    }
+    return payload
 
 
 @pytest.fixture
@@ -380,7 +398,7 @@ def test_ordered_batch_persists_once_with_exact_hash_and_results(
 
     original_load = mutation_module._load
     original_recalc = mutation_module.recalc_lock_status
-    original_save = mutation_module._save_plan_receipt
+    original_save = mutation_module._save_admitted_plan_receipt
     original_commit = io_module._git_commit_plan
 
     def counted_load() -> tuple[Plan, str]:
@@ -391,7 +409,7 @@ def test_ordered_batch_persists_once_with_exact_hash_and_results(
         counts["recalc"] += 1
         return original_recalc(plan)
 
-    def counted_save(*args: Any, **kwargs: Any) -> tuple[str, str]:
+    def counted_save(*args: Any, **kwargs: Any) -> tuple[dict[str, object], str]:
         counts["save"] += 1
         return original_save(*args, **kwargs)
 
@@ -401,7 +419,7 @@ def test_ordered_batch_persists_once_with_exact_hash_and_results(
 
     monkeypatch.setattr(mutation_module, "_load", counted_load)
     monkeypatch.setattr(mutation_module, "recalc_lock_status", counted_recalc)
-    monkeypatch.setattr(mutation_module, "_save_plan_receipt", counted_save)
+    monkeypatch.setattr(mutation_module, "_save_admitted_plan_receipt", counted_save)
     monkeypatch.setattr(io_module, "_git_commit_plan", counted_commit)
 
     result = vectl_mutate(requests=_successful_requests())
@@ -591,10 +609,17 @@ def test_registered_tool_preserves_single_action_response(
         step_id="foundation.seed",
         name="Renamed seed",
     )
-    assert result == (
+    assert result.startswith(
         "**Updated step:** foundation.seed\n\n"
-        "→ Use `vectl_search` to verify plan consistency."
+        "→ Use `vectl_search` to verify plan consistency.\n\n"
+        "mutation_receipt: "
     )
+    receipt = _mutation_receipt(result)
+    assert receipt["schema_version"] == "vectl.plan-mutation.receipt.v1"
+    assert receipt["plan_applied"] is True
+    assert receipt["candidate_sha256"] == receipt["persisted_sha256"]
+    assert receipt["admission_status"] == "not_configured"
+    assert receipt["git_attempted"] is True
     plan, _ = load_plan_definition(plan_path)
     assert plan.find_step("foundation.seed")[1].name == "Renamed seed"  # type: ignore[index]
 
@@ -615,3 +640,67 @@ def test_linked_worktree_guard_precedes_batch_load(
 
     assert "Mutate blocked" in result
     assert "linked worktree" in result
+
+
+def test_admitted_mutation_mcp_single_and_batch_share_transaction(
+    git_plan: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transaction = getattr(io_module, "_finalize_admitted_plan_mutation", None)
+    assert callable(transaction), (
+        "REQ-AMV1-MCP-TRANSACTION-CONVERGENCE missing: MCP single and batch modes "
+        "have no shared admitted mutation transaction"
+    )
+    for key in (
+        "VECTL_PLAN_ADMISSION_EXECUTABLE",
+        "VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256",
+        "VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    calls: list[str] = []
+
+    def observed_transaction(*args: object, **kwargs: object) -> object:
+        message = kwargs.get("commit_message", args[3] if len(args) > 3 else "")
+        calls.append(str(message))
+        return transaction(*args, **kwargs)
+
+    monkeypatch.setattr(
+        io_module,
+        "_finalize_admitted_plan_mutation",
+        observed_transaction,
+    )
+    if hasattr(mcp_common, "_finalize_admitted_plan_mutation"):
+        monkeypatch.setattr(
+            mcp_common,
+            "_finalize_admitted_plan_mutation",
+            observed_transaction,
+        )
+
+    single_result = vectl_mutate(
+        action="add-step",
+        phase_id="foundation",
+        step_id="foundation.admitted-single",
+        name="Admitted single",
+    )
+    batch_result = vectl_mutate(
+        requests=[
+            {
+                "action": "edit-plan",
+                "plan_context": "admitted batch",
+            }
+        ]
+    )
+
+    assert "Error" not in single_result
+    assert "Error" not in batch_result
+    assert len(calls) == 2, "single and batch mutation must each reach the one private transaction"
+    assert "mutate add-step" in calls[0]
+    assert "mutate batch" in calls[1]
+    for result in (single_result, batch_result):
+        receipt = _mutation_receipt(result)
+        assert receipt["schema_version"] == "vectl.plan-mutation.receipt.v1"
+        assert receipt["plan_applied"] is True
+        assert receipt["candidate_sha256"] == receipt["persisted_sha256"]
+        assert receipt["admission_status"] == "not_configured"
+        assert receipt["git_attempted"] is True

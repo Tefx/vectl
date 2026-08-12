@@ -71,6 +71,7 @@ from vectl.duplicate_step_id_format import (
 from vectl.guide import GUIDE_ALL as _GUIDE_ALL
 from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
 from vectl.io import (
+    _finalize_admitted_plan_mutation,
     _resolve_git_dir,
     load_plan_definition,
     save_plan,
@@ -354,6 +355,53 @@ def _save_plan(plan: Plan, plan_path: Path, expected_def_hash: str, msg: str) ->
         print(notice)
 
 
+# @shell_complexity: Preserves CAS diagnostics, receipt validation, lock notices, and CLI output.
+def _save_admitted_plan(
+    plan: Plan,
+    plan_path: Path,
+    expected_def_hash: str,
+    msg: str,
+) -> Result[tuple[dict[str, object], str], str]:
+    """Persist one covered definition mutation and defer its success output."""
+    changed_ids = recalc_lock_status(plan)
+    commit_message = msg if _should_autosave_commit(plan_path) else None
+
+    try:
+        receipt = _finalize_admitted_plan_mutation(
+            plan,
+            plan_path,
+            expected_hash=expected_def_hash,
+            commit_message=commit_message,
+        )
+    except CASConflictError:
+        _die(
+            "CAS conflict: plan.yaml was modified by another process since you loaded it. "
+            "Re-read with `vectl status` or `vectl show`, then retry your mutation."
+        )
+        raise  # unreachable, for type checker
+    except PlanIOError as error:
+        _die(str(error))
+        raise  # unreachable, for type checker
+
+    if not is_dataclass(receipt) or isinstance(receipt, type):
+        _die("Admitted Plan mutation returned an invalid receipt.")
+        raise AssertionError("unreachable")
+    payload = cast(dict[str, object], asdict(receipt))
+
+    return Success((payload, format_lock_changes(changed_ids, plan)))
+
+
+def _print_admitted_plan_notice(notice: str) -> None:
+    """Print a deferred lock notice after the command-specific success prefix."""
+    if notice:
+        print(notice)
+
+
+def _print_admitted_plan_receipt(payload: dict[str, object]) -> None:
+    """Print one complete mutation receipt as the final CLI output record."""
+    typer.echo(f"mutation_receipt: {json.dumps(payload, sort_keys=True)}")
+
+
 def _git_toplevel_for(path: Path):
     """Return git toplevel for a path, or None when unavailable."""
     import subprocess as sp
@@ -400,11 +448,13 @@ def _check_claim_mismatch(p: Plan, plan_path: Path):
         - ghost_claims: claims entries with no corresponding claimed step in plan
         - stale_plan_claims: claimed steps in plan with no entry in claims.json
     """
-    from vectl.claims import get_current_branch, load_claims, resolve_claims_path
+    from vectl.claims import get_current_branch as current_branch
+    from vectl.claims import load_claims
+    from vectl.claims import resolve_claims_path as claims_path_resolver
 
-    claims_path = resolve_claims_path(plan_path)
+    claims_path = claims_path_resolver(plan_path)
     claims = load_claims(claims_path)
-    branch = get_current_branch()
+    branch = current_branch()
 
     # Build current branch's claimed steps from plan
     plan_claimed: set[str] = set()

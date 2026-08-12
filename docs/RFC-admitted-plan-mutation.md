@@ -109,7 +109,7 @@ For configured mode, Vectl creates one repository-external temporary directory. 
 - `candidate.plan.yaml`: the exact finalized candidate bytes;
 - `verdict.json`: initially empty and reserved for the adapter verdict.
 
-Workspace creation failures use `adapter_crash` with the fixed reason `repository-external admission workspace is unavailable`. An `OSError` while setting up or writing any private file also uses `adapter_crash`, with the fixed reason `admission private file setup or write failed`. The external workspace is removed on these failures; neither reason includes the workspace path, protected Plan bytes, or the underlying operating-system diagnostic.
+Workspace creation failures use `adapter_crash` with the fixed reason `repository-external admission workspace is unavailable`. An `OSError` while setting up or writing any private file also uses `adapter_crash`, with the fixed reason `admission private file setup or write failed`. Initial base/candidate identity setup failures from `lstat` or `read_bytes`, and initial verdict identity setup failures from `lstat`, use that same code and fixed reason before the adapter launches. The external workspace is removed on these failures; neither reason includes the workspace path, protected Plan bytes, or the underlying operating-system diagnostic.
 
 Vectl treats base and candidate files as immutable inputs: it writes each once, records identity, and checks device, inode, mode, size, timestamps, and exact-byte hash after adapter exit. An input that is missing, unreadable, replaced, or no longer regular returns `candidate_identity_mismatch` with the fixed reason `admission adapter changed an immutable Plan input`. Mode `0600` protects against other users; it does not sandbox the same UID.
 
@@ -145,7 +145,7 @@ Bounds:
 - retained stdout and stderr diagnostics: at most 8 KiB each;
 - timeout: 1 through 300 seconds from the startup tuple.
 
-Diagnostics preserve bounded nonsecret context while removing NUL and non-printing control characters. Before a diagnostic is returned, Vectl redacts absolute filesystem paths (including verifier-owned external temporary paths), secret-like tokens, opaque credential-like values, and Plan-derived fragments found in either exact base or candidate input. It then normalizes whitespace and applies the 1024-code-point reason bound. Fixed timeout and executable-identity reasons contain no adapter-controlled text. Diagnostics never include Plan bytes or protected paths. Stable failure codes are:
+Diagnostics preserve bounded nonsecret context while removing NUL and non-printing control characters. Before a diagnostic is returned, Vectl redacts absolute filesystem paths (including verifier-owned external temporary paths), secret-like tokens, opaque credential-like values, and Plan-derived fragments found in either exact base or candidate input. An `Authorization: Bearer <payload>`, `Authorization: Basic <payload>`, or `Authorization: Digest <payload>` field is redacted as one complete value so a short payload cannot survive token-level redaction. This applies to configured nonzero adapter output and valid rejection reasons. Vectl then normalizes whitespace and applies the 1024-code-point reason bound. Fixed timeout and executable-identity reasons contain no adapter-controlled text. Diagnostics never include Plan bytes, authorization payloads, or protected paths. Stable failure codes are:
 
 - `configuration_invalid`;
 - `executable_identity_mismatch`;

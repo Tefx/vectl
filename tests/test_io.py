@@ -1018,6 +1018,16 @@ def _write_fake_admission_adapter(path: Path, *, invalid_shebang: bool = False) 
             "elif mode == 'leaky-stderr-crash':\n"
             "    os.write(2, diagnostic)\n"
             "    raise SystemExit(23)\n"
+            "elif mode == 'authorization-crash':\n"
+            "    os.write(2, b'policy engine unavailable ' + secret)\n"
+            "    raise SystemExit(23)\n"
+            "elif mode == 'authorization-reject':\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'reject',\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "        'reason': (b'policy engine unavailable ' + secret).decode(),\n"
+            "    }), encoding='utf-8')\n"
             "elif mode == 'leaky-reject':\n"
             "    verdict.write_text(json.dumps({\n"
             "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
@@ -1634,6 +1644,79 @@ def test_admitted_mutation_private_file_io_failure_is_fixed_and_zero_write(
     _assert_admission_protected_state_unchanged(repo, plan_path, unrelated, before)
 
 
+@pytest.mark.parametrize(
+    ("filename", "operation"),
+    (
+        ("base.plan.yaml", "lstat"),
+        ("base.plan.yaml", "read_bytes"),
+        ("candidate.plan.yaml", "lstat"),
+        ("candidate.plan.yaml", "read_bytes"),
+        ("verdict.json", "lstat"),
+    ),
+)
+def test_admitted_mutation_initial_private_identity_failure_is_typed_and_zero_write(
+    tmp_path: Path,
+    sample_plan: Plan,
+    monkeypatch: pytest.MonkeyPatch,
+    filename: str,
+    operation: str,
+) -> None:
+    case_root = tmp_path / f"initial-identity-{filename}-{operation}"
+    (
+        repo,
+        plan_path,
+        unrelated,
+        config,
+        base_bytes,
+        candidate_bytes,
+        candidate_sha256,
+    ) = _prepare_admission_io_failure_case(case_root, sample_plan)
+    before = _capture_admission_protected_state(repo, plan_path, unrelated)
+    workspaces = _track_admission_workspaces(monkeypatch)
+    protected_failure = f"identity failure {case_root} {candidate_bytes.decode()}"
+    original_lstat = Path.lstat
+    original_read_bytes = Path.read_bytes
+    adapter_launched = False
+
+    def fail_selected_lstat(path: Path):
+        if operation == "lstat" and path.name == filename:
+            raise OSError(protected_failure)
+        return original_lstat(path)
+
+    def fail_selected_read(path: Path) -> bytes:
+        if operation == "read_bytes" and path.name == filename:
+            raise OSError(protected_failure)
+        return original_read_bytes(path)
+
+    def record_unexpected_launch(*args: object, **kwargs: object):
+        nonlocal adapter_launched
+        del args, kwargs
+        adapter_launched = True
+        raise AssertionError("adapter launched after initial private identity failure")
+
+    monkeypatch.setattr(Path, "lstat", fail_selected_lstat)
+    monkeypatch.setattr(Path, "read_bytes", fail_selected_read)
+    monkeypatch.setattr(admission_module, "_run_adapter", record_unexpected_launch)
+    with pytest.raises(admission_module.PlanAdmissionError) as raised:
+        admission_module.admit_candidate_bytes(
+            config=config,
+            plan_path=plan_path,
+            base_bytes=base_bytes,
+            candidate_bytes=candidate_bytes,
+            candidate_sha256=candidate_sha256,
+        )
+
+    assert raised.value.code == "adapter_crash"
+    assert raised.value.reason == "admission private file setup or write failed"
+    assert len(raised.value.reason) <= 1024
+    assert not adapter_launched
+    assert str(case_root) not in str(raised.value)
+    assert candidate_bytes.decode() not in str(raised.value)
+    assert workspaces
+    assert all(not workspace.exists() for workspace in workspaces)
+    _assert_admission_protected_state_unchanged(repo, plan_path, unrelated, before)
+
+
 def test_admitted_mutation_verdict_read_failure_is_fixed_and_zero_write(
     tmp_path: Path,
     sample_plan: Plan,
@@ -1775,6 +1858,62 @@ def test_admitted_mutation_diagnostics_redact_protected_operands_and_write_nothi
     assert unrelated.read_bytes() == unrelated_bytes
 
 
+@pytest.mark.parametrize("scheme", ("Bearer", "Basic", "Digest"))
+@pytest.mark.parametrize(
+    ("mode", "expected_code"),
+    (("authorization-crash", "adapter_crash"), ("authorization-reject", "rejected")),
+)
+def test_admitted_mutation_authorization_payloads_are_redacted_for_crash_and_reject(
+    tmp_path: Path,
+    sample_plan: Plan,
+    monkeypatch: pytest.MonkeyPatch,
+    scheme: str,
+    mode: str,
+    expected_code: str,
+) -> None:
+    case_root = tmp_path / f"authorization-{scheme.lower()}-{mode}"
+    (
+        repo,
+        plan_path,
+        unrelated,
+        config,
+        base_bytes,
+        candidate_bytes,
+        candidate_sha256,
+    ) = _prepare_admission_io_failure_case(case_root, sample_plan)
+    before = _capture_admission_protected_state(repo, plan_path, unrelated)
+    workspaces = _track_admission_workspaces(monkeypatch)
+    payload = f"short-{scheme.lower()}-payload"
+    authorization = f"Authorization: {scheme} {payload}"
+    monkeypatch.setenv("VECTL_TEST_ADMISSION_MODE", mode)
+    monkeypatch.setenv("VECTL_TEST_SECRET", authorization)
+
+    with pytest.raises(admission_module.PlanAdmissionError) as raised:
+        admission_module.admit_candidate_bytes(
+            config=config,
+            plan_path=plan_path,
+            base_bytes=base_bytes,
+            candidate_bytes=candidate_bytes,
+            candidate_sha256=candidate_sha256,
+        )
+
+    assert raised.value.code == expected_code
+    assert "policy engine unavailable" in raised.value.reason
+    assert len(raised.value.reason) <= 1024
+    for protected in (
+        payload,
+        authorization,
+        str(case_root),
+        base_bytes.decode().strip(),
+        candidate_bytes.decode().strip(),
+    ):
+        assert protected not in raised.value.reason
+        assert protected not in str(raised.value)
+    assert workspaces
+    assert all(not workspace.exists() for workspace in workspaces)
+    _assert_admission_protected_state_unchanged(repo, plan_path, unrelated, before)
+
+
 def test_admitted_mutation_applied_and_git_receipt_are_separate(
     tmp_path: Path,
     sample_plan: Plan,
@@ -1864,7 +2003,13 @@ def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
         assert "admission private file setup or write failed" in synchronized_doc
         assert "admission verdict decision is invalid" in synchronized_doc
         assert "admission verdict file is unavailable" in synchronized_doc
+        assert "Authorization: Bearer <payload>" in synchronized_doc
+        assert "Authorization: Basic <payload>" in synchronized_doc
+        assert "Authorization: Digest <payload>" in synchronized_doc
         assert 'outcome: "red"' in synchronized_doc
+    assert "initial base/candidate identity setup failures" in rfc_contract.lower()
+    assert "initial base/candidate identity setup failures" in readme.lower()
+    assert "初始 base/candidate 身份设置失败" in readme_zh
     assert "outer adapter process exits 0" in rfc_contract
     assert "outer adapter process exits 0" in readme
     assert "外层适配器进程以 0 退出" in readme_zh

@@ -29,6 +29,10 @@ _MAX_VERDICT_BYTES = 16 * 1024
 _MAX_DIAGNOSTIC_BYTES = 8 * 1024
 _MAX_REJECTION_REASON_CODEPOINTS = 1024
 _ABSOLUTE_PATH_PATTERN = re.compile(r"(?<![\w:])/(?:[^\s\x00-\x1f\"'<>]+)")
+_AUTHORIZATION_VALUE_PATTERN = re.compile(
+    r"(?i)\bauthorization\b\s*[:=]\s*(?:(?:bearer|basic|digest)\s+)?"
+    r"(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
+)
 _SECRET_ASSIGNMENT_PATTERN = re.compile(
     r"(?i)\b(?:api[_-]?key|authorization|credential|password|passwd|secret|token)\b"
     r"\s*[:=]\s*(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
@@ -390,6 +394,7 @@ def _sanitize_diagnostic(
         return fragment
 
     text = text.replace(str(temporary_path), "<admission-temp>")
+    text = _AUTHORIZATION_VALUE_PATTERN.sub("<redacted>", text)
     text = _ABSOLUTE_PATH_PATTERN.sub("<path>", text)
     text = _SECRET_ASSIGNMENT_PATTERN.sub("<redacted>", text)
     text = _SECRET_TOKEN_PATTERN.sub("<redacted>", text)
@@ -456,9 +461,15 @@ def admit_candidate_bytes(
                 "adapter_crash",
                 "admission private file setup or write failed",
             ) from exc
-        base_identity = _input_file_identity(base_path)
-        candidate_identity = _input_file_identity(candidate_path)
-        verdict_identity = verdict_path.lstat()
+        try:
+            base_identity = _input_file_identity(base_path)
+            candidate_identity = _input_file_identity(candidate_path)
+            verdict_identity = verdict_path.lstat()
+        except (OSError, PlanAdmissionError) as exc:
+            raise PlanAdmissionError(
+                "adapter_crash",
+                "admission private file setup or write failed",
+            ) from exc
 
         try:
             current_identity = _inspect_executable(executable)

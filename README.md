@@ -366,6 +366,18 @@ Requests run in order against one deep working copy. Shape errors are rejected b
 
 If you edit `plan.yaml` directly (outside of vectl commands), run `uvx vectl recalc-lock` to manually diagnose and repair any lock inconsistencies.
 
+### Optional Plan mutation admission
+
+Vectl supports a startup-frozen local adapter for covered Plan-definition mutations. Leave all three variables absent for the default `not_configured` behavior, or set the complete tuple before starting the CLI/MCP process:
+
+```bash
+export VECTL_PLAN_ADMISSION_EXECUTABLE=/absolute/path/to/adapter
+export VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256=sha256:<64-lowercase-hex>
+export VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS=30
+```
+
+A partial or invalid tuple fails closed. The private transaction hashes the authoritative raw Plan bytes for CAS, serializes the finalized candidate once, requires adapter approval bound to `candidate_sha256`, and atomically persists those identical bytes. Its receipt reports `plan_applied` and `git_committed` separately because Git remains best effort. The adapter is trusted same-UID local configuration rather than a sandbox; the exact fixed argv, verdict schema, failure codes, and excluded writers are specified in [the admitted mutation RFC](docs/RFC-admitted-plan-mutation.md).
+
 ## Claim Recovery (Ghost Claims & Split-Brain)
 
 When claim state diverges from plan state, you may encounter errors like:

@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-Status: ratified contract for the `admitted-mutation-*` phases. Product implementation is deferred to the implementation phase.
+Status: ratified contract for the `admitted-mutation-*` phases. The private exact-byte transaction is implemented; covered MCP/CLI routing remains assigned to the following implementation step.
 
 This RFC fixes the smallest approved persistence seam for optional, local admission of Vectl Plan-definition mutations. Its authority comes from:
 
@@ -78,7 +78,7 @@ The private transaction accepts an already parsed in-memory mutation result and 
 2. Compute `base_sha256` over the raw bytes and parse the Plan from those bytes.
 3. Deep-copy the supplied candidate so caller-owned state cannot change during finalization.
 4. Recalculate locks and run the same selected structural validation policy used by current definition mutation surfaces. Historical completed-evidence diagnostics remain excluded from structural mutation admission.
-5. Serialize the finalized managed Plan exactly once to one immutable `candidate_bytes` value.
+5. The transaction must serialize the finalized managed Plan exactly once to one immutable `candidate_bytes` value.
 6. Compute `candidate_sha256` from `candidate_bytes`.
 7. If configured, invoke the admission adapter described below and require approval bound to `candidate_sha256`.
 8. Acquire the existing per-Plan file lock.
@@ -87,6 +87,8 @@ The private transaction accepts an already parsed in-memory mutation result and 
 11. Read back the persisted raw bytes and require `persisted_sha256 == candidate_sha256`. A mismatch is a persistence error and must never be represented as success.
 12. Create the existing backup according to current linked-worktree policy and attempt the existing `git commit --only --no-verify plan.yaml ...` path.
 13. Return the receipt defined below.
+
+`src/vectl/io.py::_finalize_admitted_plan_mutation` implements this boundary. Its module-import configuration snapshot freezes the adapter tuple once per CLI/MCP process; callers in the next implementation step can pass that snapshot into the private transaction without changing the public mutation schema.
 
 The exact-byte invariant is:
 
@@ -242,8 +244,8 @@ This observer is proof-only developer-test infrastructure. Product admission cod
 
 1. Land this RFC, observer, and focused observer tests with no product-source change.
 2. Add expected-red contract tests with fixed node IDs and owners.
-3. Implement the exact-byte private transaction and flip its four assigned nodes.
-4. Route the covered MCP/CLI writers and flip the remaining four nodes.
+3. Implement the exact-byte private transaction and flip its four assigned nodes. This repository step supplies that implementation.
+4. Route the covered MCP/CLI writers and flip the remaining four nodes. This remains a separate rollback unit.
 5. Run integrated selected-execution, real registered MCP/CLI seams, competing-candidate CAS, full regression comparisons, and fresh review.
 6. Keep the adapter tuple absent by default. Operators enable all three fields together only after validating the local adapter digest and behavior.
 

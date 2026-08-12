@@ -11,8 +11,9 @@ import tempfile
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from returns.result import Result
@@ -22,6 +23,13 @@ from vectl.models import (
     Plan,
     PlanIOError,
     Step,
+)
+from vectl.shell.admitted_plan_mutation import (
+    PLAN_ADMISSION_CONFIG as _PLAN_ADMISSION_CONFIG,
+    PlanAdmissionConfig as _PlanAdmissionConfig,
+    admit_candidate_bytes as _admit_candidate_bytes,
+    freeze_plan_admission_config as _freeze_plan_admission_config,
+    sha256_digest as _sha256_digest,
 )
 
 _PLAN_YAML_HEADER = """\
@@ -42,6 +50,20 @@ _LOGGER = logging.getLogger(__name__)
 _PLAN_YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
 
+@dataclass(frozen=True)
+class _PlanMutationReceipt:
+    """Machine receipt for one applied exact-byte Plan transaction."""
+
+    schema_version: str
+    plan_applied: bool
+    base_sha256: str
+    candidate_sha256: str
+    persisted_sha256: str
+    admission_status: Literal["not_configured", "approved"]
+    git_attempted: bool
+    git_committed: bool
+
+
 def _file_hash(path: Path) -> str | Result[str, str]:
     """Compute SHA-256 of file contents."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -57,11 +79,12 @@ def load_plan_definition(path: Path | str) -> tuple[Plan, str] | Result[tuple[Pl
     path = Path(path)
     if not path.exists():
         raise PlanIOError(f"Plan file not found: {path}")
-    content = path.read_text(encoding="utf-8")
-    file_hash = hashlib.sha256(content.encode()).hexdigest()
+    content_bytes = path.read_bytes()
+    file_hash = hashlib.sha256(content_bytes).hexdigest()
     try:
+        content = content_bytes.decode("utf-8")
         raw = yaml.load(content, Loader=_PLAN_YAML_LOADER)
-    except yaml.YAMLError as e:
+    except (UnicodeDecodeError, yaml.YAMLError) as e:
         raise PlanIOError(f"Invalid YAML in {path}: {e}") from e
     if not isinstance(raw, dict):
         raise PlanIOError(f"Plan file must be a YAML mapping, got {type(raw).__name__}")
@@ -136,22 +159,129 @@ def _save_plan_locked(
     return new_hash
 
 
-def _write_plan_content(path: Path, content: str) -> None:
-    """Persist serialized plan content via temp file + atomic rename."""
-    dir_ = path.parent
-    dir_.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(dir=str(dir_), suffix=".tmp")
+def _serialize_plan_bytes(plan: Plan) -> bytes | Result[bytes, str]:
+    """Serialize one finalized managed Plan to its only candidate byte buffer."""
+    data = _plan_to_dict(plan)
+    yaml_body = yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    return (_PLAN_YAML_HEADER + yaml_body).encode("utf-8")
+
+
+# @shell_complexity: Coordinates validation, admission, CAS, persistence, backup, and Git.
+def _finalize_admitted_plan_mutation(
+    plan: Plan,
+    path: Path | str,
+    *,
+    expected_hash: str,
+    commit_message: str | None,
+    admission_config: _PlanAdmissionConfig = _PLAN_ADMISSION_CONFIG,
+) -> _PlanMutationReceipt | Result[_PlanMutationReceipt, str]:
+    """Finalize and persist one admitted Plan mutation.
+
+    The transaction hashes authoritative raw bytes for CAS, deep-copies and
+    validates the candidate, and serializes the finalized managed Plan exactly
+    once. Admission binds ``candidate_sha256`` to that byte buffer. The same
+    bytes are atomically persisted and read back as ``persisted_sha256`` before
+    backup and best-effort Git work. The receipt keeps ``git_committed``
+    separate from Plan application.
+    """
+    from vectl.core import recalc_lock_status, validate_plan
+
+    plan_path = Path(path)
+    if not plan_path.exists():
+        raise PlanIOError(f"Plan file not found: {plan_path}")
+
+    base_bytes = plan_path.read_bytes()
+    base_hash = hashlib.sha256(base_bytes).hexdigest()
+    if base_hash != expected_hash:
+        raise CASConflictError(plan_path)
+
+    finalized = plan.model_copy(deep=True)
+    recalc_lock_status(finalized)
     try:
-        os.write(fd, content.encode("utf-8"))
-        os.close(fd)
-        os.replace(tmp_path, str(path))
+        finalized = Plan.model_validate(finalized.model_dump(mode="python"))
+    except Exception as exc:
+        raise PlanIOError(f"Plan final validation failed: {exc}") from exc
+    blocking_issue = next(
+        (
+            issue
+            for issue in validate_plan(
+                finalized,
+                check_refs=False,
+                include_completed_evidence_guard=False,
+            )
+            if not issue.is_warning
+        ),
+        None,
+    )
+    if blocking_issue is not None:
+        raise PlanIOError(f"Plan final validation failed: {blocking_issue.message}")
+
+    candidate_bytes = _serialize_plan_bytes(finalized)
+    candidate_sha256 = _sha256_digest(candidate_bytes)
+    admission_status = _admit_candidate_bytes(
+        config=admission_config,
+        plan_path=plan_path,
+        base_bytes=base_bytes,
+        candidate_bytes=candidate_bytes,
+        candidate_sha256=candidate_sha256,
+    )
+
+    with _locked_plan_file(plan_path):
+        current_bytes = plan_path.read_bytes() if plan_path.exists() else b""
+        if hashlib.sha256(current_bytes).hexdigest() != base_hash:
+            raise CASConflictError(plan_path)
+        _write_plan_bytes(plan_path, candidate_bytes)
+        persisted_bytes = plan_path.read_bytes()
+        persisted_sha256 = _sha256_digest(persisted_bytes)
+        if persisted_sha256 != candidate_sha256:
+            raise PlanIOError(
+                "Persisted Plan bytes do not match the admitted candidate_sha256"
+            )
+
+    try:
+        _backup_definition(plan_path)
+    except OSError:
+        _LOGGER.warning("Backup failed", exc_info=True)
+
+    git_attempted = commit_message is not None
+    git_committed = False
+    if commit_message is not None:
+        git_committed = _git_commit_plan(plan_path, commit_message) is True
+
+    return _PlanMutationReceipt(
+        schema_version="vectl.plan-mutation.receipt.v1",
+        plan_applied=True,
+        base_sha256=_sha256_digest(base_bytes),
+        candidate_sha256=candidate_sha256,
+        persisted_sha256=persisted_sha256,
+        admission_status=admission_status,
+        git_attempted=git_attempted,
+        git_committed=git_committed,
+    )
+
+
+def _write_plan_bytes(path: Path, content: bytes) -> None:
+    """Persist the one admitted byte buffer via temp file and atomic rename."""
+    directory = path.parent
+    directory.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(dir=str(directory), suffix=".tmp")
+    try:
+        with os.fdopen(descriptor, "wb") as file:
+            file.write(content)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temporary, str(path))
     except Exception:
-        # Clean up temp file on error
         try:
-            os.unlink(tmp_path)
+            os.unlink(temporary)
         except OSError:
             pass
         raise
+
+
+def _write_plan_content(path: Path, content: str) -> None:
+    """Persist serialized plan content via temp file + atomic rename."""
+    _write_plan_bytes(path, content.encode("utf-8"))
 
 
 # @shell_complexity: Retry, subprocess, timeout, and logging branches preserve commit failure semantics.

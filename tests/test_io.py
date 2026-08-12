@@ -975,6 +975,10 @@ def _write_fake_admission_adapter(path: Path, *, invalid_shebang: bool = False) 
             "    time.sleep(2)\n"
             "elif mode == 'crash':\n"
             "    raise SystemExit(23)\n"
+            "elif mode == 'noisy-crash':\n"
+            "    os.write(1, b'o' * 20000)\n"
+            "    os.write(2, b'e' * 20000)\n"
+            "    raise SystemExit(23)\n"
             "elif mode == 'malformed':\n"
             "    verdict.write_text('{', encoding='utf-8')\n"
             "elif mode == 'too-large':\n"
@@ -991,6 +995,33 @@ def _write_fake_admission_adapter(path: Path, *, invalid_shebang: bool = False) 
             "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
             "        'decision': 'approve',\n"
             "        'candidate_sha256': candidate_sha256,\n"
+            "    }), encoding='utf-8')\n"
+            "elif mode == 'mutate-base':\n"
+            "    base = Path(args.base)\n"
+            "    base.write_bytes(base.read_bytes() + b'\\n# adapter mutation\\n')\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'approve',\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "    }), encoding='utf-8')\n"
+            "elif mode == 'duplicate-key':\n"
+            "    verdict.write_text('{\"schema_version\":\"vectl.plan-mutation-admission.v1\",'\n"
+            "                       '\"decision\":\"approve\",\"decision\":\"reject\",'\n"
+            "                       '\"candidate_sha256\":\"' + candidate_sha256 + '\"}',\n"
+            "                       encoding='utf-8')\n"
+            "elif mode == 'unknown-field':\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'approve',\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "        'extra': True,\n"
+            "    }), encoding='utf-8')\n"
+            "elif mode == 'approve-reason':\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'approve',\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "        'reason': 'not allowed on approval',\n"
             "    }), encoding='utf-8')\n"
             "elif mode == 'reject':\n"
             "    verdict.write_text(json.dumps({\n"
@@ -1018,6 +1049,28 @@ def _configured_admission_environment(adapter: Path, *, timeout: int = 1) -> dic
         "VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256": f"sha256:{digest}",
         "VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS": str(timeout),
     }
+
+
+def test_admitted_mutation_startup_configuration_is_complete_or_invalid(
+    tmp_path: Path,
+) -> None:
+    freeze = io_module._freeze_plan_admission_config
+    adapter = _write_fake_admission_adapter(tmp_path / "adapter.py")
+    configured_environment = _configured_admission_environment(adapter, timeout=7)
+
+    assert freeze({}).state == "not_configured"
+    assert freeze({"VECTL_PLAN_ADMISSION_EXECUTABLE": str(adapter)}).state == (
+        "configuration_invalid"
+    )
+    invalid_timeout = {
+        **configured_environment,
+        "VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS": "0",
+    }
+    assert freeze(invalid_timeout).state == "configuration_invalid"
+    configured = freeze(configured_environment)
+    assert configured.state == "configured"
+    assert configured.executable == adapter.resolve()
+    assert configured.timeout_seconds == 7
 
 
 def test_admitted_mutation_exact_byte_cas_and_persisted_hash(
@@ -1111,10 +1164,15 @@ def test_admitted_mutation_configured_adapter_failure_is_zero_write(
         ("reject", "rejected", False),
         ("timeout", "adapter_timeout", False),
         ("crash", "adapter_crash", False),
+        ("noisy-crash", "adapter_crash", False),
         ("malformed", "malformed_verdict", False),
         ("too-large", "adapter_output_too_large", False),
         ("hash-mismatch", "candidate_identity_mismatch", False),
         ("mutate-candidate", "candidate_identity_mismatch", False),
+        ("mutate-base", "candidate_identity_mismatch", False),
+        ("duplicate-key", "malformed_verdict", False),
+        ("unknown-field", "malformed_verdict", False),
+        ("approve-reason", "malformed_verdict", False),
         ("identity-drift", "executable_identity_mismatch", False),
         ("launch-failure", "adapter_crash", True),
     )
@@ -1255,3 +1313,10 @@ def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
     assert "git commit --only --no-verify plan.yaml" in rfc_contract
     assert "configuration_invalid" in rfc_contract
     assert "candidate_identity_mismatch" in rfc_contract
+
+    readme = (Path(__file__).parents[1] / "README.md").read_text(encoding="utf-8")
+    readme_zh = (Path(__file__).parents[1] / "README_zh.md").read_text(encoding="utf-8")
+    for public_doc in (readme, readme_zh):
+        assert "VECTL_PLAN_ADMISSION_EXECUTABLE" in public_doc
+        assert "candidate_sha256" in public_doc
+        assert "git_committed" in public_doc

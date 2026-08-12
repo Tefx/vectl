@@ -231,6 +231,18 @@ phases:
 
 如果你在 vectl 之外直接编辑了 `plan.yaml`，运行 `uvx vectl recalc-lock` 来诊断和修复锁状态不一致。
 
+### 可选的 Plan 变更准入
+
+Vectl 可以为所覆盖的 Plan 定义变更调用一个进程启动时冻结的本地适配器。默认行为要求下面三个变量全部不存在（`not_configured`）；如需启用，请在启动 CLI/MCP 进程前设置完整配置：
+
+```bash
+export VECTL_PLAN_ADMISSION_EXECUTABLE=/absolute/path/to/adapter
+export VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256=sha256:<64位小写十六进制>
+export VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS=30
+```
+
+部分配置或无效配置会拒绝写入。私有事务用权威 Plan 原始字节执行 CAS，只序列化一次最终候选内容，要求适配器的批准绑定 `candidate_sha256`，并原子写入完全相同的字节。回执分别报告 `plan_applied` 和 `git_committed`，因为 Git 提交仍是尽力而为。适配器属于同一 UID 下受信任的本地配置，并非安全沙箱；固定 argv、判定 schema、失败代码和不覆盖的写入入口见[准入变更 RFC](docs/RFC-admitted-plan-mutation.md)。
+
 ---
 
 ## 技术细节

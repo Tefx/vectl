@@ -967,11 +967,37 @@ def _write_fake_admission_adapter(path: Path, *, invalid_shebang: bool = False) 
             "parser.add_argument('--verdict', required=True)\n"
             "args = parser.parse_args()\n"
             "mode = os.environ.get('VECTL_TEST_ADMISSION_MODE', 'approve')\n"
+            "base = Path(args.base)\n"
             "candidate = Path(args.candidate)\n"
             "verdict = Path(args.verdict)\n"
+            "base_bytes = base.read_bytes()\n"
             "candidate_bytes = candidate.read_bytes()\n"
             "candidate_sha256 = 'sha256:' + hashlib.sha256(candidate_bytes).hexdigest()\n"
-            "if mode == 'timeout':\n"
+            "secret = os.environ.get('VECTL_TEST_SECRET', 'TOP-SECRET-TOKEN').encode()\n"
+            "external_path = os.environ.get(\n"
+            "    'VECTL_TEST_EXTERNAL_PATH', '/tmp/vectl-test'\n"
+            ").encode()\n"
+            "diagnostic = (b'policy engine unavailable ' + base_bytes + b' ' +\n"
+            "              candidate_bytes + b' ' + base_bytes[6:21] + b' ' +\n"
+            "              candidate_bytes[11:31] + b' ' + secret + b' ' + external_path)\n"
+            "if mode == 'leaky-timeout':\n"
+            "    os.write(1, diagnostic)\n"
+            "    os.write(2, diagnostic)\n"
+            "    time.sleep(2)\n"
+            "elif mode == 'leaky-stdout-crash':\n"
+            "    os.write(1, diagnostic)\n"
+            "    raise SystemExit(23)\n"
+            "elif mode == 'leaky-stderr-crash':\n"
+            "    os.write(2, diagnostic)\n"
+            "    raise SystemExit(23)\n"
+            "elif mode == 'leaky-reject':\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'reject',\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "        'reason': diagnostic.decode(),\n"
+            "    }), encoding='utf-8')\n"
+            "elif mode == 'timeout':\n"
             "    time.sleep(2)\n"
             "elif mode == 'crash':\n"
             "    raise SystemExit(23)\n"
@@ -1186,7 +1212,8 @@ def test_admitted_mutation_configured_adapter_failure_is_zero_write(
         if mode == "partial":
             admission = freeze({"VECTL_PLAN_ADMISSION_EXECUTABLE": str(adapter.resolve())})
         else:
-            admission = freeze(_configured_admission_environment(adapter))
+            timeout = 1 if mode == "timeout" else 5
+            admission = freeze(_configured_admission_environment(adapter, timeout=timeout))
         if mode == "identity-drift":
             adapter.write_bytes(adapter.read_bytes() + b"# identity drift\n")
         monkeypatch.setenv("VECTL_TEST_ADMISSION_MODE", mode)
@@ -1235,6 +1262,102 @@ def test_admitted_mutation_configured_adapter_failure_is_zero_write(
     assert approved_receipt["plan_applied"] is True
     assert approved_receipt["git_committed"] is True
     assert _git(approved_repo, "rev-list", "--count", "HEAD").stdout.strip() == "2"
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected_code", "use_identity_drift", "useful_diagnostic"),
+    (
+        ("leaky-stdout-crash", "adapter_crash", False, "policy engine unavailable"),
+        ("leaky-stderr-crash", "adapter_crash", False, "policy engine unavailable"),
+        ("leaky-reject", "rejected", False, "policy engine unavailable"),
+        ("leaky-timeout", "adapter_timeout", False, "configured timeout"),
+        (
+            "identity-drift",
+            "executable_identity_mismatch",
+            True,
+            "identity changed after startup",
+        ),
+    ),
+)
+def test_admitted_mutation_diagnostics_redact_protected_operands_and_write_nothing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+    expected_code: str,
+    use_identity_drift: bool,
+    useful_diagnostic: str,
+) -> None:
+    case_root = tmp_path / mode
+    repo = case_root / "repo"
+    repo.mkdir(parents=True)
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "admission-test@example.invalid")
+    _git(repo, "config", "user.name", "Admission Test")
+
+    base_bytes = "base: BASE-PLAN-BYTES-ALPHA\nowner: 基础计划秘密值\n".encode()
+    candidate_bytes = "candidate: CANDIDATE-PLAN-BYTES-BETA\nowner: 候选计划秘密值\n".encode()
+    plan_path = repo / "plan.yaml"
+    plan_path.write_bytes(base_bytes)
+    _git(repo, "add", "plan.yaml")
+    _git(repo, "commit", "-q", "-m", "seed")
+
+    unrelated = repo / "unrelated.txt"
+    unrelated_bytes = b"preserve unrelated staged content\n"
+    unrelated.write_bytes(unrelated_bytes)
+    _git(repo, "add", "unrelated.txt")
+
+    adapter = _write_fake_admission_adapter(case_root / "adapter.py")
+    admission = io_module._freeze_plan_admission_config(
+        _configured_admission_environment(adapter)
+    )
+    if use_identity_drift:
+        adapter.write_bytes(adapter.read_bytes() + b"# identity drift\n")
+
+    secret = "TOP-SECRET-ADAPTER-TOKEN-7F9C"
+    external_path = case_root / "verifier-owned" / "sensitive-diagnostic-path"
+    monkeypatch.setenv("VECTL_TEST_ADMISSION_MODE", mode)
+    monkeypatch.setenv("VECTL_TEST_SECRET", secret)
+    monkeypatch.setenv("VECTL_TEST_EXTERNAL_PATH", str(external_path))
+
+    head_before = _git(repo, "rev-parse", "HEAD").stdout.strip()
+    status_before = _git(repo, "status", "--porcelain=v1").stdout
+    index_path = repo / ".git" / "index"
+    index_before = index_path.read_bytes()
+    backup = repo / ".git" / "vectl" / "plan.yaml.bak"
+    backup_before = backup.read_bytes() if backup.exists() else None
+
+    with pytest.raises(Exception) as raised:
+        io_module._admit_candidate_bytes(
+            config=admission,
+            plan_path=plan_path,
+            base_bytes=base_bytes,
+            candidate_bytes=candidate_bytes,
+            candidate_sha256="sha256:" + hashlib.sha256(candidate_bytes).hexdigest(),
+        )
+
+    error = raised.value
+    assert getattr(error, "code", None) == expected_code
+    reason = getattr(error, "reason", "")
+    assert useful_diagnostic in reason
+    for protected in (
+        base_bytes.decode().strip(),
+        candidate_bytes.decode().strip(),
+        "BASE-PLAN-BYTES",
+        "CANDIDATE-PLAN-BYTES",
+        "基础计划秘密值",
+        "候选计划秘密值",
+        secret,
+        str(external_path),
+    ):
+        assert protected not in reason
+        assert protected not in str(error)
+
+    assert plan_path.read_bytes() == base_bytes
+    assert (backup.read_bytes() if backup.exists() else None) == backup_before
+    assert _git(repo, "rev-parse", "HEAD").stdout.strip() == head_before
+    assert index_path.read_bytes() == index_before
+    assert _git(repo, "status", "--porcelain=v1").stdout == status_before
+    assert unrelated.read_bytes() == unrelated_bytes
 
 
 def test_admitted_mutation_applied_and_git_receipt_are_separate(
@@ -1320,3 +1443,12 @@ def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
         assert "VECTL_PLAN_ADMISSION_EXECUTABLE" in public_doc
         assert "candidate_sha256" in public_doc
         assert "git_committed" in public_doc
+    assert "absolute filesystem paths" in rfc_contract
+    assert "secret-like tokens" in rfc_contract
+    assert "Plan-derived fragments" in rfc_contract
+    assert "absolute filesystem paths" in readme
+    assert "secret-like tokens" in readme
+    assert "Plan-derived fragments" in readme
+    assert "绝对文件系统路径" in readme_zh
+    assert "类似秘密的 token" in readme_zh
+    assert "Plan 派生片段" in readme_zh

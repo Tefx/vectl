@@ -143,7 +143,7 @@ Bounds:
 - retained stdout and stderr diagnostics: at most 8 KiB each;
 - timeout: 1 through 300 seconds from the startup tuple.
 
-Diagnostics remove NUL and non-printing control characters, replace repository-external temporary paths, and never include Plan bytes. Stable failure codes are:
+Diagnostics preserve bounded nonsecret context while removing NUL and non-printing control characters. Before a diagnostic is returned, Vectl redacts absolute filesystem paths (including verifier-owned external temporary paths), secret-like tokens, opaque credential-like values, and Plan-derived fragments found in either exact base or candidate input. It then normalizes whitespace and applies the 1024-code-point reason bound. Fixed timeout and executable-identity reasons contain no adapter-controlled text. Diagnostics never include Plan bytes or protected paths. Stable failure codes are:
 
 - `configuration_invalid`;
 - `executable_identity_mismatch`;

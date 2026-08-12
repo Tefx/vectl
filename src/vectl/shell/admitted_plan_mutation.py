@@ -28,6 +28,19 @@ _SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}\Z")
 _MAX_VERDICT_BYTES = 16 * 1024
 _MAX_DIAGNOSTIC_BYTES = 8 * 1024
 _MAX_REJECTION_REASON_CODEPOINTS = 1024
+_ABSOLUTE_PATH_PATTERN = re.compile(r"(?<![\w:])/(?:[^\s\x00-\x1f\"'<>]+)")
+_SECRET_ASSIGNMENT_PATTERN = re.compile(
+    r"(?i)\b(?:api[_-]?key|authorization|credential|password|passwd|secret|token)\b"
+    r"\s*[:=]\s*(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
+)
+_SECRET_TOKEN_PATTERN = re.compile(
+    r"(?i)\S*(?:bearer|credential|password|passwd|private[_-]?key|api[_-]?key|secret|token)\S*"
+)
+_OPAQUE_TOKEN_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9])(?:[A-Fa-f0-9]{24,}|[A-Za-z0-9_-]{32,}|"
+    r"[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]{8,}){2})(?![A-Za-z0-9])"
+)
+_PLAN_FRAGMENT_PATTERN = re.compile(r"[\w@.+/-]{2,}")
 
 AdmissionState = Literal["not_configured", "configured", "configuration_invalid"]
 
@@ -291,13 +304,31 @@ def _run_adapter(
 def _sanitize_diagnostic(
     content: bytes | str,
     temporary_path: Path,
+    *,
+    protected_contents: tuple[bytes, ...],
 ) -> str | Result[str, str]:
-    """Remove controls and the external temporary path from one bounded diagnostic."""
+    """Bound one diagnostic after removing paths, secrets, and Plan-derived fragments."""
     if isinstance(content, bytes):
         text = content.decode("utf-8", errors="replace")
     else:
         text = content
+
+    protected_text = tuple(
+        protected.decode("utf-8", errors="replace") for protected in protected_contents
+    )
+
+    def redact_plan_fragment(match: re.Match[str]) -> str:
+        fragment = match.group(0)
+        if any(fragment in protected for protected in protected_text):
+            return "<plan-content>"
+        return fragment
+
     text = text.replace(str(temporary_path), "<admission-temp>")
+    text = _ABSOLUTE_PATH_PATTERN.sub("<path>", text)
+    text = _SECRET_ASSIGNMENT_PATTERN.sub("<redacted>", text)
+    text = _SECRET_TOKEN_PATTERN.sub("<redacted>", text)
+    text = _OPAQUE_TOKEN_PATTERN.sub("<redacted>", text)
+    text = _PLAN_FRAGMENT_PATTERN.sub(redact_plan_fragment, text)
     sanitized = "".join(character if character.isprintable() else " " for character in text)
     return " ".join(sanitized.split())[:_MAX_REJECTION_REASON_CODEPOINTS]
 
@@ -406,7 +437,11 @@ def admit_candidate_bytes(
                 "admission adapter changed an immutable Plan input",
             )
         if returncode != 0:
-            diagnostics = _sanitize_diagnostic(stderr or stdout, temporary_path)
+            diagnostics = _sanitize_diagnostic(
+                stderr or stdout,
+                temporary_path,
+                protected_contents=(base_bytes, candidate_bytes),
+            )
             reason = f"admission adapter exited with status {returncode}"
             if diagnostics:
                 reason = f"{reason}: {diagnostics}"
@@ -446,6 +481,13 @@ def admit_candidate_bytes(
         if verdict["decision"] == "reject":
             raise PlanAdmissionError(
                 "rejected",
-                cast(str, _sanitize_diagnostic(verdict["reason"], temporary_path)),
+                cast(
+                    str,
+                    _sanitize_diagnostic(
+                        verdict["reason"],
+                        temporary_path,
+                        protected_contents=(base_bytes, candidate_bytes),
+                    ),
+                ),
             )
         return "approved"

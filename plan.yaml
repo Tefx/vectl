@@ -122914,9 +122914,9 @@ phases:
       \  - REQ-AMV1-ADMISSION-FAIL-CLOSED\n  - REQ-AMV1-APPLIED-GIT-RECEIPT\n  - REQ-AMV1-EXACT-DOC-SYNC\n\
       \  - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n  - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
       \  - REQ-AMV1-REGISTERED-MCP-RECEIPT\n  - REQ-AMV1-PUBLIC-DOC-SYNC\n  - REQ-AMV1-INTEGRATION-PROOF\n\
-      \  - REQ-AMV1-REPO-REGRESSION\nchecks:\n  - id: integration_feature_matrix\n\
-      \    run:\n      command: [\"python3\", \"tests/expected_red.py\", \"run\",\
-      \ \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      \  - REQ-AMV1-REPO-REGRESSION\nchecks:\n  - id: admitted_mutation_expected_red\n\
+      \    run:\n      command: [\"tests/expected_red.py\", \"run\", \"pytest\", \"\
+      tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
       , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
       , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
       , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
@@ -122932,8 +122932,7 @@ phases:
       \ developer, availability: current}\n        - {path: tests/test_mcp.py, classification:\
       \ developer, availability: current}\n        - {path: tests/test_mcp_mutate_batch.py,\
       \ classification: developer, availability: current}\n      selection:\n    \
-      \    command: [\"python3\", \"tests/expected_red.py\", \"select\", \"pytest\"\
-      , \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      \    command: [\"tests/expected_red.py\", \"select\", \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
       , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
       , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
       , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\
@@ -123004,7 +123003,7 @@ phases:
       \ \"0 error(s)\"}]\n        contains_any: []\n        forbids: []\n    proves:\
       \ [REQ-AMV1-REPO-REGRESSION]\nbindings:\n  expected_red:\n    items: []\n  closes_expected_red:\
       \ []\n</intent_closure_contract>"
-    verification: Pass integration_feature_matrix and the full pytest/Invar/ruff/mypy/diff/Vectl
+    verification: Pass admitted_mutation_expected_red and the full pytest/Invar/ruff/mypy/diff/Vectl
       checks; execute real registered FastMCP stdio, CLI, deterministic competing-candidate
       CAS, configured failure, Git-failure, staged-file-isolation, and byte-readback
       probes in isolated fixtures; return a production-Gate-valid integration-verifier

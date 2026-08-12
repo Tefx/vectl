@@ -123849,7 +123849,7 @@ phases:
       clean and unchanged; fixtures/processes removed; no push.'
   - id: admitted-mutation-verification.input-workspace-zero-write-remediation
     name: Restore immutable-input and workspace zero-write failures
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - As `python-senior`, close the two production-admitted NARROW V1 defects as\
@@ -124087,6 +124087,23 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-08-12T13:11:22.233789Z'
+    done_at: '2026-08-12T13:35:42.423672+00:00'
+    evidence: 'Integrated isolated python-senior Worker-v2 candidate 805cdd9c608518c5cb3410f6312c60853b1888db
+      as local Main commit 776ec94b7cf2f35614f2c34acaf976f33ca460f4; exact five-path
+      blobs match candidate: src/vectl/shell/admitted_plan_mutation.py, tests/test_io.py,
+      docs/RFC-admitted-plan-mutation.md, README.md, README_zh.md. Production Gate
+      dispatch sha256:7abb0fd319b831ad2808b9c9d5ac565540652e48673401e64994b4d94be10a2f
+      and PASS receipt sha256:78ff22c1e719c90ae6860f978dfd27427aa2f71f79d0e3dd0e98d40a15bf9aa1
+      are CONFORMANT; parent verdict .vectl/artifacts/admitted-mutation-verification.input-workspace-zero-write-remediation/parent-receipt-verdict.json
+      SHA-256 5818da2ce74b8cb3e1cb91d9238d197593656ab0209de5223794247164cd0a6f. Source
+      now validates a repository-external writable temp parent before workspace creation
+      and translates changed/missing/unreadable/replaced/nonregular post-adapter inputs
+      to fixed candidate_identity_mismatch. Developer coverage adds all identity modes
+      plus repository-local TMPDIR no-descendant/protected-state equality; RFC and
+      bilingual READMEs synchronized. Integrated reruns: exact eight selected/executed
+      green; focused four-file regression 518 passed; Invar green; diff-check green;
+      Vectl validate 0 errors/45 historical warnings; ruff 1946 and mypy 1200/31 exactly
+      match ratified baseline with no new debt. Repository clean; no push.'
   - id: admitted-mutation-verification.input-workspace-zero-write-integration-rerun
     name: Rerun affected immutable-input and workspace integration
     status: pending

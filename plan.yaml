@@ -123849,7 +123849,7 @@ phases:
       clean and unchanged; fixtures/processes removed; no push.'
   - id: admitted-mutation-verification.input-workspace-zero-write-remediation
     name: Restore immutable-input and workspace zero-write failures
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - As `python-senior`, close the two production-admitted NARROW V1 defects as\
@@ -124085,6 +124085,8 @@ phases:
     depends_on:
     - admitted-mutation-verification.diagnostic-redaction-integration-rerun
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-08-12T13:11:22.233789Z'
   - id: admitted-mutation-verification.input-workspace-zero-write-integration-rerun
     name: Rerun affected immutable-input and workspace integration
     status: pending

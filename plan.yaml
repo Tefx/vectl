@@ -123919,7 +123919,7 @@ phases:
       ,\n  \"risk_tier\": \"R2\",\n  \"risk_reasons\": [\n    \"reversible feature-local\
       \ Python correction to typed security failures and pre-write workspace ordering\"\
       ,\n    \"real CLI/MCP zero-write behavior and fresh conformance judgment require\
-      \ independent consumers\"\n  ],\n  \"primary_outcome\": \"REQ-AMV1-SECURITY-CONFORMANCE\"\
+      \ independent consumers\"\n  ],\n  \"primary_outcome\": \"REQ-AMV1-ADMISSION-FAIL-CLOSED\"\
       ,\n  \"rollback_class\": \"TRIVIAL\",\n  \"observation_ledger\": [\n    {\n\
       \      \"requirement_id\": \"REQ-AMV1-ADMISSION-FAIL-CLOSED\",\n      \"atom\"\
       : \"real CLI/MCP process evidence for missing, unreadable, replaced immutable\

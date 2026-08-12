@@ -123182,26 +123182,38 @@ phases:
       \ Python static-baseline remediation\",\n    \"unchanged product behavior with\
       \ downstream independent integration verification\"\n  ],\n  \"primary_outcome\"\
       : \"REQ-AMV1-REPO-REGRESSION\",\n  \"rollback_class\": \"TRIVIAL\",\n  \"observation_ledger\"\
-      : [],\n  \"test_authority\": {\n    \"developer_test_globs\": [\n      \"tests/expected_red.py\"\
-      ,\n      \"tests/test_io.py\",\n      \"tests/test_mcp_mutate_batch.py\",\n\
-      \      \"tests/test_mcp.py\",\n      \"tests/test_cli.py\"\n    ],\n    \"acceptance_test_paths\"\
-      : [],\n    \"acceptance_check_ids\": [],\n    \"acceptance_mutation\": \"FORBIDDEN\"\
-      ,\n    \"acceptance_authorizations\": []\n  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\n\
-      schema_version: intent_closure.contract.v2\nmatcher_semantics: intent_closure.matchers.v2\n\
-      profile: generic\nscope:\n  allowed_paths:\n    - src/vectl/io.py\n    - src/vectl/mcp_core_common.py\n\
-      \    - src/vectl/shell/admitted_plan_mutation.py\n    - src/vectl/mcp_core_mutation_tools.py\n\
-      \    - src/vectl/mcp_mutation_contracts.py\n    - src/vectl/cli_plan_mutation_commands.py\n\
-      \    - src/vectl/cli_plan_lock_commands.py\n    - src/vectl/cli_plan_common.py\n\
-      \    - tests/expected_red.py\n    - tests/test_io.py\n    - tests/test_mcp_mutate_batch.py\n\
-      \    - tests/test_mcp.py\n    - tests/test_cli.py\n    - docs/RFC-admitted-plan-mutation.md\n\
-      \    - README.md\n    - README_zh.md\n  blocked_paths:\n    - plan.yaml\n  \
-      \  - pyproject.toml\n    - uv.lock\n  ignored_runtime_paths: [.git/, .vectl/,\
-      \ .agent/, .venv/]\nclaims:\n  - REQ-AMV1-EXACT-BYTE-TRANSACTION\n  - REQ-AMV1-ADMISSION-FAIL-CLOSED\n\
-      \  - REQ-AMV1-APPLIED-GIT-RECEIPT\n  - REQ-AMV1-EXACT-DOC-SYNC\n  - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n\
-      \  - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n  - REQ-AMV1-REGISTERED-MCP-RECEIPT\n\
-      \  - REQ-AMV1-PUBLIC-DOC-SYNC\n  - REQ-AMV1-REPO-REGRESSION\nchecks:\n  - id:\
-      \ static_remediation_feature_nodes\n    run:\n      command: [\"tests/expected_red.py\"\
-      , \"run\", \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
+      : [\n    {\n      \"requirement_id\": \"REQ-AMV1-REGISTERED-MCP-RECEIPT\",\n\
+      \      \"atom\": \"real registered FastMCP, CLI, competing-candidate CAS, and\
+      \ process-boundary evidence that the implementation worker cannot self-prove\"\
+      ,\n      \"modality\": \"dynamic integration verification\",\n      \"seam\"\
+      : \"real\",\n      \"check_id\": \"admitted_mutation_expected_red\",\n     \
+      \ \"independent_step\": \"admitted-mutation-verification.integration-gate\"\n\
+      \    },\n    {\n      \"requirement_id\": \"REQ-AMV1-ADMISSION-FAIL-CLOSED\"\
+      ,\n      \"atom\": \"security and specification conformance judgment over KISS/non-goals,\
+      \ public bypasses, and secret leakage that the implementation worker cannot\
+      \ self-prove\",\n      \"modality\": \"independent adversarial review\",\n \
+      \     \"seam\": \"static\",\n      \"check_id\": \"admitted_mutation_expected_red\"\
+      ,\n      \"independent_step\": \"admitted-mutation-verification.fresh-review-loop\"\
+      \n    }\n  ],\n  \"test_authority\": {\n    \"developer_test_globs\": [\n  \
+      \    \"tests/expected_red.py\",\n      \"tests/test_io.py\",\n      \"tests/test_mcp_mutate_batch.py\"\
+      ,\n      \"tests/test_mcp.py\",\n      \"tests/test_cli.py\"\n    ],\n    \"\
+      acceptance_test_paths\": [],\n    \"acceptance_check_ids\": [],\n    \"acceptance_mutation\"\
+      : \"FORBIDDEN\",\n    \"acceptance_authorizations\": []\n  }\n}\n</vectl_step_policy>\n\
+      \n<intent_closure_contract>\nschema_version: intent_closure.contract.v2\nmatcher_semantics:\
+      \ intent_closure.matchers.v2\nprofile: generic\nscope:\n  allowed_paths:\n \
+      \   - src/vectl/io.py\n    - src/vectl/mcp_core_common.py\n    - src/vectl/shell/admitted_plan_mutation.py\n\
+      \    - src/vectl/mcp_core_mutation_tools.py\n    - src/vectl/mcp_mutation_contracts.py\n\
+      \    - src/vectl/cli_plan_mutation_commands.py\n    - src/vectl/cli_plan_lock_commands.py\n\
+      \    - src/vectl/cli_plan_common.py\n    - tests/expected_red.py\n    - tests/test_io.py\n\
+      \    - tests/test_mcp_mutate_batch.py\n    - tests/test_mcp.py\n    - tests/test_cli.py\n\
+      \    - docs/RFC-admitted-plan-mutation.md\n    - README.md\n    - README_zh.md\n\
+      \  blocked_paths:\n    - plan.yaml\n    - pyproject.toml\n    - uv.lock\n  ignored_runtime_paths:\
+      \ [.git/, .vectl/, .agent/, .venv/]\nclaims:\n  - REQ-AMV1-EXACT-BYTE-TRANSACTION\n\
+      \  - REQ-AMV1-ADMISSION-FAIL-CLOSED\n  - REQ-AMV1-APPLIED-GIT-RECEIPT\n  - REQ-AMV1-EXACT-DOC-SYNC\n\
+      \  - REQ-AMV1-MCP-TRANSACTION-CONVERGENCE\n  - REQ-AMV1-CLI-TRANSACTION-CONVERGENCE\n\
+      \  - REQ-AMV1-REGISTERED-MCP-RECEIPT\n  - REQ-AMV1-PUBLIC-DOC-SYNC\n  - REQ-AMV1-REPO-REGRESSION\n\
+      checks:\n  - id: admitted_mutation_expected_red\n    run:\n      command: [\"\
+      tests/expected_red.py\", \"run\", \"pytest\", \"tests/test_io.py::test_admitted_mutation_exact_byte_cas_and_persisted_hash\"\
       , \"tests/test_io.py::test_admitted_mutation_configured_adapter_failure_is_zero_write\"\
       , \"tests/test_io.py::test_admitted_mutation_applied_and_git_receipt_are_separate\"\
       , \"tests/test_io.py::test_admitted_mutation_exact_byte_docs_match_contract\"\

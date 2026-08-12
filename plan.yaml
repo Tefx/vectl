@@ -125960,7 +125960,7 @@ phases:
       clean; no push.
   - id: admitted-mutation-verification.fresh-defects-integration-rerun
     name: Rerun Digest redaction and CLI output integration
-    status: claimed
+    status: done
     description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
       Deliver:\n- As `integration-verifier`, independently rerun the exact eight NARROW\
       \ V1 selected/executed feature nodes, the affected four-file developer regression,\
@@ -126219,3 +126219,19 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-08-12T19:11:08.223870Z'
+    done_at: '2026-08-12T19:34:09.107855+00:00'
+    evidence: 'Independent integration-verifier PASS_WITH_DEBT at immutable target
+      55af11b656c69efd4ea518d59e4d1e5d98061a05. Semantic receipt file SHA 19d9772c728628edba73041715623a45303b078a69c1d0b09825a64e2e2deb0d;
+      canonical sha256:1195083e6b6fccd267b8e0e5e3d721af1f34d2a110cb718a1d08b7fc82c7d438.
+      Child/parent production Gate CONFORMANT completion-admissible; parent verdict
+      SHA 641b858dea3c00c3bc7c2619a27f0f8bb75d912b05d218fa131ec1b45b9028cd. Exact
+      eight green; focused 538 passed; full 1330 passed/15 skipped; Invar/diff/Vectl
+      green; ruff 1946 and mypy 1200/31 zero normalized additions; 45 historical Vectl
+      warnings. Fresh real runtime: eight exact CLI successes with established prefix
+      first, retained notices/details/hints, one complete V1 receipt final, expected
+      mutation/digests/staging isolation; validation and configured Digest crash/reject
+      failures emitted no receipt and preserved protected state/cleanup. Duplicate/partial/malformed/early/trailing
+      receipts rejected. Configured CLI and registered direct-entrypoint FastMCP multi-parameter
+      Digest crash/reject omitted all credential names/values while retaining stable
+      code/useful suffix/bounds; transports reaped. Gate/observer unchanged and prior
+      evidence compatibility classified. Repository/Plan/lifecycle read-only; no push.'

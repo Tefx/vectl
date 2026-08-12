@@ -125687,7 +125687,7 @@ phases:
       ruff 1946 and mypy 1200/31 unchanged. Repository clean; no push.
   - id: admitted-mutation-verification.cli-receipt-ordering-remediation
     name: Restore all-eight CLI prefix-first receipt-last output
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - As `python-senior`, close MUST_FIX-FRESH-2 at the public CLI output boundary\
@@ -125943,6 +125943,21 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-08-12T18:46:05.040775Z'
+    done_at: '2026-08-12T19:10:44.488409+00:00'
+    evidence: Integrated python-senior Worker-v2 candidate 697125e41ed233e3ce339d883527dc4297f870ff
+      as Main 8cfeee20598e79af045c84a39fee5987f8e91ddf; exact seven blobs match isolated
+      worktree. Production dispatch canonical sha256:21a520130ca64e09dafda2e85e23506f7964e25362676e0f1b847a646f6a9127;
+      PASS receipt canonical sha256:7bda6963ed2f6140c25d42151ec823cb5aa2b976f0d6dae2f36d8e372d5e609b;
+      parent Gate CONFORMANT verdict SHA 881e0767acb32b4633527adda858d19afa1141e5eb30f0ce4658b0c959300902.
+      Shared save helper now returns receipt/lock notice; all eight handlers print
+      established human prefix and existing notices/details/hints before exactly one
+      complete final receipt. Tests invoke all eight routes, parse exact final V1
+      JSON, reject duplicate/early/trailing/malformed shapes, and prove validation/admission/CAS/persistence/receipt-validation
+      failures omit receipts with protected-state/cleanup behavior. RFC and bilingual
+      READMEs synchronized while preserving Digest contract. Integrated exact eight
+      green; focused 538 passed; full 1330 passed/15 skipped; Invar/diff green; Vectl
+      0 errors/45 historical warnings; ruff 1946 and mypy 1200/31 unchanged. Repository
+      clean; no push.
   - id: admitted-mutation-verification.fresh-defects-integration-rerun
     name: Rerun Digest redaction and CLI output integration
     status: pending

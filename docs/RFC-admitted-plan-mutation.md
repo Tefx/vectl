@@ -103,13 +103,13 @@ Raw-byte CAS compares the original `read_bytes()` payload. Decoding and re-encod
 
 ## Admission process contract
 
-For configured mode, Vectl creates one repository-external temporary directory. It pre-creates these files with mode `0600`:
+For configured mode, Vectl creates one repository-external temporary directory. Before creating the workspace, it resolves the selected temporary parent and rejects a parent that is unavailable, is not a writable directory, or is the repository or one of its descendants. That rejection uses `adapter_crash` with fixed bounded text and creates no repository descendant. Vectl then pre-creates these files with mode `0600`:
 
 - `base.plan.yaml`: the exact loaded base bytes;
 - `candidate.plan.yaml`: the exact finalized candidate bytes;
 - `verdict.json`: initially empty and reserved for the adapter verdict.
 
-Vectl treats base and candidate files as immutable inputs: it writes each once, records identity, and rejects any size or hash change after adapter exit. Mode `0600` protects against other users; it does not sandbox the same UID.
+Vectl treats base and candidate files as immutable inputs: it writes each once, records identity, and checks device, inode, mode, size, timestamps, and exact-byte hash after adapter exit. An input that is missing, unreadable, replaced, or no longer regular returns `candidate_identity_mismatch` with the fixed reason `admission adapter changed an immutable Plan input`. Mode `0600` protects against other users; it does not sandbox the same UID.
 
 The only allowed invocation is this argv, with `shell=False`:
 
@@ -148,13 +148,13 @@ Diagnostics preserve bounded nonsecret context while removing NUL and non-printi
 - `configuration_invalid`;
 - `executable_identity_mismatch`;
 - `adapter_timeout`;
-- `adapter_crash` for nonzero exit or launch failure;
+- `adapter_crash` for nonzero exit, launch failure, or an unavailable repository-external workspace parent;
 - `adapter_output_too_large`;
 - `malformed_verdict` for encoding, JSON, duplicate-key, field, schema, decision, or reason violations;
-- `candidate_identity_mismatch` for verdict digest mismatch or adapter mutation of base/candidate inputs;
+- `candidate_identity_mismatch` for verdict digest mismatch or a changed, missing, unreadable, replaced, or non-regular base/candidate input;
 - `rejected` for a valid rejection verdict.
 
-Every listed failure returns before Plan replacement, backup mutation, or Git invocation. The caller receives the stable code plus one bounded sanitized reason. It cannot reinterpret malformed or missing output as approval.
+Every listed failure returns before Plan replacement, backup mutation, Git invocation, or repository-local temporary state. The caller receives the stable code plus one bounded sanitized reason. It cannot reinterpret malformed or missing output as approval.
 
 ## Cooperative same-UID trust boundary
 
@@ -268,7 +268,8 @@ NARROW V1 keeps preview internal to one transaction, binds approval to repositor
 - The baseline table and mode-0600 artifacts classify every pre-edit command result.
 - The observer proves collection precedes execution and emits matching installed selection/evidence envelopes.
 - All covered writers converge on one private transaction.
-- Configured partial state and every adapter failure write no Plan, backup, or Git state.
+- Configured partial state and every adapter failure write no Plan, backup, Git, or repository-local temporary state.
+- The temporary parent is repository-external before workspace creation, and every changed, missing, unreadable, replaced, or non-regular immutable input returns the fixed `candidate_identity_mismatch` failure.
 - CAS uses raw loaded bytes and persisted bytes equal the one approved serialization buffer.
 - Valid unconfigured mode preserves existing mutation behavior.
 - The receipt separates Plan application from Git attempt/commit status.

@@ -242,6 +242,72 @@ def _input_file_identity(
     )
 
 
+# @shell_complexity: Platform temp-parent discovery must preserve native candidates.
+def _admission_workspace_candidates() -> (
+    tuple[str | bytes, ...] | Result[tuple[str | bytes, ...], str]
+):
+    """Return temporary-parent candidates without probing them by writing files."""
+    if tempfile.tempdir is not None:
+        return (tempfile.tempdir,)
+    for field in ("TMPDIR", "TEMP", "TMP"):
+        if value := os.environ.get(field):
+            return (value,)
+    if os.name == "nt":
+        home = os.path.expanduser("~")
+        system_root = os.environ.get("SYSTEMROOT")
+        candidates = [os.path.join(home, "AppData", "Local", "Temp")]
+        if system_root:
+            candidates.append(os.path.join(system_root, "Temp"))
+        candidates.extend((r"C:\TEMP", r"C:\TMP", r"\TEMP", r"\TMP"))
+    else:
+        candidates = ["/tmp", "/var/tmp", "/usr/tmp"]
+    candidates.append(os.getcwd())
+    return tuple(candidates)
+
+
+# @shell_complexity: Validation rejects all internal or unusable parents pre-creation.
+def _admission_workspace_parent(
+    repository_root: Path,
+) -> Path | Result[Path, str]:
+    """Resolve and validate an external temporary parent without creating state."""
+    resolved_repository = repository_root.resolve()
+    try:
+        candidates = cast(
+            tuple[str | bytes, ...],
+            _admission_workspace_candidates(),
+        )
+    except OSError as exc:
+        raise PlanAdmissionError(
+            "adapter_crash",
+            "repository-external admission workspace is unavailable",
+        ) from exc
+    for candidate in candidates:
+        try:
+            temporary_parent = Path(os.fsdecode(candidate)).resolve()
+            temporary_parent.relative_to(resolved_repository)
+        except ValueError:
+            pass
+        except OSError:
+            continue
+        else:
+            continue
+
+        try:
+            parent_metadata = temporary_parent.stat()
+        except OSError:
+            continue
+        if stat.S_ISDIR(parent_metadata.st_mode) and os.access(
+            temporary_parent,
+            os.W_OK | os.X_OK,
+        ):
+            return temporary_parent
+
+    raise PlanAdmissionError(
+        "adapter_crash",
+        "repository-external admission workspace is unavailable",
+    )
+
+
 def _write_private_file(path: Path, content: bytes) -> None | Result[None, str]:
     """Create one exact mode-0600 adapter file."""
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -364,18 +430,20 @@ def admit_candidate_bytes(
         )
 
     repository_root = cast(Path, _repository_root(plan_path))
-    with tempfile.TemporaryDirectory(prefix="vectl-plan-admission-") as temporary:
-        temporary_path = Path(temporary).resolve()
-        try:
-            temporary_path.relative_to(repository_root.resolve())
-        except ValueError:
-            pass
-        else:
-            raise PlanAdmissionError(
-                "adapter_crash",
-                "repository-external admission workspace is unavailable",
-            )
+    temporary_parent = cast(Path, _admission_workspace_parent(repository_root))
+    try:
+        workspace = tempfile.TemporaryDirectory(
+            prefix="vectl-plan-admission-",
+            dir=temporary_parent,
+        )
+    except OSError as exc:
+        raise PlanAdmissionError(
+            "adapter_crash",
+            "repository-external admission workspace is unavailable",
+        ) from exc
 
+    with workspace as temporary:
+        temporary_path = Path(temporary).resolve()
         base_path = temporary_path / "base.plan.yaml"
         candidate_path = temporary_path / "candidate.plan.yaml"
         verdict_path = temporary_path / "verdict.json"
@@ -428,10 +496,14 @@ def admit_candidate_bytes(
                 "admission adapter could not be launched",
             ) from exc
 
-        if (
-            _input_file_identity(base_path) != base_identity
-            or _input_file_identity(candidate_path) != candidate_identity
-        ):
+        try:
+            inputs_unchanged = (
+                _input_file_identity(base_path) == base_identity
+                and _input_file_identity(candidate_path) == candidate_identity
+            )
+        except (OSError, PlanAdmissionError):
+            inputs_unchanged = False
+        if not inputs_unchanged:
             raise PlanAdmissionError(
                 "candidate_identity_mismatch",
                 "admission adapter changed an immutable Plan input",

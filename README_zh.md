@@ -243,7 +243,7 @@ export VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS=30
 
 部分配置或无效配置会拒绝写入。私有事务用权威 Plan 原始字节执行 CAS，只序列化一次最终候选内容，要求适配器的批准绑定 `candidate_sha256`，并原子写入完全相同的字节。MCP `vectl_mutate`（单项和批量）以及 CLI `add-step`、`add-steps`、`edit-step`、`remove-step`、`move-step`、`add-phase`、`edit-phase`、`edit-plan` 都使用该事务。命令成功后会追加 `mutation_receipt: <JSON>`，schema 为 `vectl.plan-mutation.receipt.v1`；其中 `plan_applied` 和 `git_committed` 分开报告，因为 Git 提交仍是尽力而为。指向当前仓库之外 Plan 的 CLI 显式路径只写 Plan，并报告 `git_attempted: false`。
 
-适配器控制的拒绝和崩溃详情仍保留有用信息并受长度限制：Vectl 在返回前会移除绝对文件系统路径、类似秘密的 token、类似凭据的不透明值和 Plan 派生片段。超时和可执行文件身份诊断使用固定文本。这些失败仍发生在 Plan、备份或 Git 写入之前。适配器属于同一 UID 下受信任的本地配置，并非安全沙箱；固定 argv、判定 schema、失败代码和不覆盖的写入入口见[准入变更 RFC](docs/RFC-admitted-plan-mutation.md)。
+适配器控制的拒绝和崩溃详情仍保留有用信息并受长度限制：Vectl 在返回前会移除绝对文件系统路径、类似秘密的 token、类似凭据的不透明值和 Plan 派生片段。超时和可执行文件身份诊断使用固定文本。创建工作区之前，Vectl 会拒绝位于仓库内的临时目录父路径，且不会创建新的仓库后代路径。适配器退出后，如 base 或 candidate 输入缺失、不可读、被替换或不再是常规文件，Vectl 会返回 `candidate_identity_mismatch` 和一条固定且有界的原因。这些失败仍发生在 Plan、备份或 Git 写入之前。适配器属于同一 UID 下受信任的本地配置，并非安全沙箱；固定 argv、判定 schema、失败代码和不覆盖的写入入口见[准入变更 RFC](docs/RFC-admitted-plan-mutation.md)。
 
 ---
 

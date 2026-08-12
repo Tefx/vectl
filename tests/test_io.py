@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from dataclasses import asdict, is_dataclass
@@ -1030,6 +1031,29 @@ def _write_fake_admission_adapter(path: Path, *, invalid_shebang: bool = False) 
             "        'decision': 'approve',\n"
             "        'candidate_sha256': candidate_sha256,\n"
             "    }), encoding='utf-8')\n"
+            "elif mode in {\n"
+            "    'delete-base', 'delete-candidate',\n"
+            "    'unreadable-base', 'unreadable-candidate',\n"
+            "    'replace-base', 'replace-candidate',\n"
+            "    'nonregular-base', 'nonregular-candidate',\n"
+            "}:\n"
+            "    target = base if mode.endswith('base') else candidate\n"
+            "    target_bytes = base_bytes if mode.endswith('base') else candidate_bytes\n"
+            "    if mode.startswith('delete-'):\n"
+            "        target.unlink()\n"
+            "    elif mode.startswith('unreadable-'):\n"
+            "        target.chmod(0)\n"
+            "    elif mode.startswith('replace-'):\n"
+            "        target.unlink()\n"
+            "        target.write_bytes(target_bytes)\n"
+            "    else:\n"
+            "        target.unlink()\n"
+            "        target.mkdir()\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'approve',\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "    }), encoding='utf-8')\n"
             "elif mode == 'duplicate-key':\n"
             "    verdict.write_text('{\"schema_version\":\"vectl.plan-mutation-admission.v1\",'\n"
             "                       '\"decision\":\"approve\",\"decision\":\"reject\",'\n"
@@ -1185,6 +1209,18 @@ def test_admitted_mutation_configured_adapter_failure_is_zero_write(
         "into not_configured/configured/configuration_invalid state"
     )
 
+    identity_failure_modes = {
+        "mutate-candidate",
+        "mutate-base",
+        "delete-base",
+        "delete-candidate",
+        "unreadable-base",
+        "unreadable-candidate",
+        "replace-base",
+        "replace-candidate",
+        "nonregular-base",
+        "nonregular-candidate",
+    }
     cases = (
         ("partial", "configuration_invalid", False),
         ("reject", "rejected", False),
@@ -1196,6 +1232,14 @@ def test_admitted_mutation_configured_adapter_failure_is_zero_write(
         ("hash-mismatch", "candidate_identity_mismatch", False),
         ("mutate-candidate", "candidate_identity_mismatch", False),
         ("mutate-base", "candidate_identity_mismatch", False),
+        ("delete-base", "candidate_identity_mismatch", False),
+        ("delete-candidate", "candidate_identity_mismatch", False),
+        ("unreadable-base", "candidate_identity_mismatch", False),
+        ("unreadable-candidate", "candidate_identity_mismatch", False),
+        ("replace-base", "candidate_identity_mismatch", False),
+        ("replace-candidate", "candidate_identity_mismatch", False),
+        ("nonregular-base", "candidate_identity_mismatch", False),
+        ("nonregular-candidate", "candidate_identity_mismatch", False),
         ("duplicate-key", "malformed_verdict", False),
         ("unknown-field", "malformed_verdict", False),
         ("approve-reason", "malformed_verdict", False),
@@ -1221,9 +1265,15 @@ def test_admitted_mutation_configured_adapter_failure_is_zero_write(
         loaded, loaded_hash = load_plan(plan_path)
         candidate = loaded.model_copy(deep=True)
         candidate.context = f"candidate for {mode}"
+        unrelated = repo / "unrelated.txt"
+        unrelated_bytes = f"preserve staged content for {mode}\n".encode()
+        unrelated.write_bytes(unrelated_bytes)
+        _git(repo, "add", "unrelated.txt")
         plan_before = plan_path.read_bytes()
         head_before = _git(repo, "rev-parse", "HEAD").stdout.strip()
         status_before = _git(repo, "status", "--porcelain=v1").stdout
+        index_path = repo / ".git" / "index"
+        index_before = index_path.read_bytes()
         backup = repo / ".git" / "vectl" / "plan.yaml.bak"
         backup_before = backup.read_bytes() if backup.exists() else None
 
@@ -1237,10 +1287,95 @@ def test_admitted_mutation_configured_adapter_failure_is_zero_write(
             )
 
         assert getattr(raised.value, "code", None) == expected_code, mode
+        if mode in identity_failure_modes:
+            reason = getattr(raised.value, "reason", "")
+            assert reason == "admission adapter changed an immutable Plan input", mode
+            assert len(reason) <= 1024, mode
+            for protected in (str(case_root), str(plan_path), candidate.context):
+                assert protected not in reason, mode
+                assert protected not in str(raised.value), mode
         assert plan_path.read_bytes() == plan_before, mode
         assert _git(repo, "rev-parse", "HEAD").stdout.strip() == head_before, mode
+        assert index_path.read_bytes() == index_before, mode
         assert _git(repo, "status", "--porcelain=v1").stdout == status_before, mode
+        assert unrelated.read_bytes() == unrelated_bytes, mode
         assert (backup.read_bytes() if backup.exists() else None) == backup_before, mode
+
+    workspace_root = tmp_path / "repository-local-workspace"
+    workspace_repo, workspace_plan_path = _seed_admitted_mutation_repo(
+        workspace_root,
+        sample_plan,
+    )
+    workspace_adapter = _write_fake_admission_adapter(workspace_root / "adapter.py")
+    workspace_config = freeze(_configured_admission_environment(workspace_adapter))
+    workspace_tmp = workspace_repo / "configured-tmp"
+    workspace_tmp.mkdir()
+    workspace_unrelated = workspace_repo / "unrelated.txt"
+    workspace_unrelated_bytes = b"preserve workspace staged content\n"
+    workspace_unrelated.write_bytes(workspace_unrelated_bytes)
+    _git(workspace_repo, "add", "unrelated.txt")
+    workspace_plan, workspace_hash = load_plan(workspace_plan_path)
+    workspace_plan.context = "candidate for repository-local workspace"
+    workspace_plan_before = workspace_plan_path.read_bytes()
+    workspace_head_before = _git(workspace_repo, "rev-parse", "HEAD").stdout.strip()
+    workspace_status_before = _git(
+        workspace_repo,
+        "status",
+        "--porcelain=v1",
+    ).stdout
+    workspace_index_path = workspace_repo / ".git" / "index"
+    workspace_index_before = workspace_index_path.read_bytes()
+    workspace_backup = workspace_repo / ".git" / "vectl" / "plan.yaml.bak"
+    workspace_backup_before = (
+        workspace_backup.read_bytes() if workspace_backup.exists() else None
+    )
+    descendants_before = {
+        path.relative_to(workspace_repo) for path in workspace_repo.rglob("*")
+    }
+    temporary_directory_called = False
+    original_temporary_directory = tempfile.TemporaryDirectory
+
+    def tracked_temporary_directory(*args: object, **kwargs: object):
+        nonlocal temporary_directory_called
+        temporary_directory_called = True
+        return original_temporary_directory(*args, **kwargs)
+
+    with monkeypatch.context() as workspace_patch:
+        workspace_patch.setenv("TMPDIR", str(workspace_tmp))
+        workspace_patch.setenv("VECTL_TEST_ADMISSION_MODE", "approve")
+        workspace_patch.setattr(tempfile, "tempdir", None)
+        workspace_patch.setattr(
+            tempfile,
+            "TemporaryDirectory",
+            tracked_temporary_directory,
+        )
+        with pytest.raises(Exception) as workspace_raised:
+            transaction(
+                workspace_plan,
+                workspace_plan_path,
+                expected_hash=workspace_hash,
+                commit_message="admitted test: repository-local workspace",
+                admission_config=workspace_config,
+            )
+
+    assert getattr(workspace_raised.value, "code", None) == "adapter_crash"
+    assert getattr(workspace_raised.value, "reason", "") == (
+        "repository-external admission workspace is unavailable"
+    )
+    assert temporary_directory_called is False
+    assert {path.relative_to(workspace_repo) for path in workspace_repo.rglob("*")} == (
+        descendants_before
+    )
+    assert workspace_plan_path.read_bytes() == workspace_plan_before
+    assert _git(workspace_repo, "rev-parse", "HEAD").stdout.strip() == workspace_head_before
+    assert workspace_index_path.read_bytes() == workspace_index_before
+    assert _git(workspace_repo, "status", "--porcelain=v1").stdout == (
+        workspace_status_before
+    )
+    assert workspace_unrelated.read_bytes() == workspace_unrelated_bytes
+    assert (
+        workspace_backup.read_bytes() if workspace_backup.exists() else None
+    ) == workspace_backup_before
 
     approved_root = tmp_path / "approved"
     approved_repo, approved_path = _seed_admitted_mutation_repo(approved_root, sample_plan)
@@ -1436,6 +1571,8 @@ def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
     assert "git commit --only --no-verify plan.yaml" in rfc_contract
     assert "configuration_invalid" in rfc_contract
     assert "candidate_identity_mismatch" in rfc_contract
+    assert "missing, unreadable, replaced, or no longer regular" in rfc_contract
+    assert "before creating the workspace" in rfc_contract.lower()
 
     readme = (Path(__file__).parents[1] / "README.md").read_text(encoding="utf-8")
     readme_zh = (Path(__file__).parents[1] / "README_zh.md").read_text(encoding="utf-8")
@@ -1449,6 +1586,10 @@ def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
     assert "absolute filesystem paths" in readme
     assert "secret-like tokens" in readme
     assert "Plan-derived fragments" in readme
+    assert "missing, unreadable, replaced, or no longer regular" in readme
+    assert "before creating the workspace" in readme.lower()
     assert "绝对文件系统路径" in readme_zh
     assert "类似秘密的 token" in readme_zh
     assert "Plan 派生片段" in readme_zh
+    assert "缺失、不可读、被替换或不再是常规文件" in readme_zh
+    assert "创建工作区之前" in readme_zh

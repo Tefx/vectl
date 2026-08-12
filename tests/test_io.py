@@ -10,13 +10,14 @@ import sys
 import tempfile
 import threading
 import time
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
 
 import pytest
 import yaml
 
 import vectl.io as io_module
+import vectl.shell.admitted_plan_mutation as admission_module
 from vectl.io import (
     _backup_definition,
     _clean_dict,
@@ -862,6 +863,32 @@ class TestExpectedRedSelectedExecutionObserver:
         assert node_id in evidence["observations"]
         assert evidence["artifacts"] == []
 
+    def test_run_uses_outer_zero_transport_for_inner_red_evidence(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        probe = tmp_path / "test_observer_red_probe.py"
+        probe.write_text(
+            "def test_observed_red():\n"
+            "    assert False, 'intentional observer transport probe'\n",
+            encoding="utf-8",
+        )
+        node_id = "test_observer_red_probe.py::test_observed_red"
+
+        result = self._invoke_observer(tmp_path, "run", node_id)
+
+        assert result.returncode == 0
+        lines = result.stdout.splitlines()
+        assert len(lines) == 1
+        evidence = json.loads(lines[0])
+        assert evidence["selected_ids"] == [node_id]
+        assert evidence["executed_ids"] == [node_id]
+        assert isinstance(evidence["exit_code"], int)
+        assert evidence["exit_code"] != 0
+        assert evidence["outcome"] == "red"
+        assert node_id in evidence["observations"]
+        assert "intentional observer transport probe" in result.stderr
+
 
 def test_admitted_plan_mutation_rfc_fixes_narrow_v1_contract() -> None:
     rfc = Path(__file__).parents[1] / "docs" / "RFC-admitted-plan-mutation.md"
@@ -1059,6 +1086,18 @@ def _write_fake_admission_adapter(path: Path, *, invalid_shebang: bool = False) 
             "                       '\"decision\":\"approve\",\"decision\":\"reject\",'\n"
             "                       '\"candidate_sha256\":\"' + candidate_sha256 + '\"}',\n"
             "                       encoding='utf-8')\n"
+            "elif mode == 'array-decision':\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': [],\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "    }), encoding='utf-8')\n"
+            "elif mode == 'object-decision':\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': {'unexpected': True},\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "    }), encoding='utf-8')\n"
             "elif mode == 'unknown-field':\n"
             "    verdict.write_text(json.dumps({\n"
             "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
@@ -1099,6 +1138,94 @@ def _configured_admission_environment(adapter: Path, *, timeout: int = 1) -> dic
         "VECTL_PLAN_ADMISSION_EXECUTABLE_SHA256": f"sha256:{digest}",
         "VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS": str(timeout),
     }
+
+
+@dataclass(frozen=True)
+class _AdmissionProtectedState:
+    plan_bytes: bytes
+    backup_bytes: bytes | None
+    head: str
+    index_bytes: bytes
+    unrelated_bytes: bytes
+    status: str
+    descendants: frozenset[Path]
+
+
+def _capture_admission_protected_state(
+    repo: Path,
+    plan_path: Path,
+    unrelated: Path,
+) -> _AdmissionProtectedState:
+    backup = repo / ".git" / "vectl" / "plan.yaml.bak"
+    return _AdmissionProtectedState(
+        plan_bytes=plan_path.read_bytes(),
+        backup_bytes=backup.read_bytes() if backup.exists() else None,
+        head=_git(repo, "rev-parse", "HEAD").stdout.strip(),
+        index_bytes=(repo / ".git" / "index").read_bytes(),
+        unrelated_bytes=unrelated.read_bytes(),
+        status=_git(repo, "status", "--porcelain=v1").stdout,
+        descendants=frozenset(path.relative_to(repo) for path in repo.rglob("*")),
+    )
+
+
+def _assert_admission_protected_state_unchanged(
+    repo: Path,
+    plan_path: Path,
+    unrelated: Path,
+    before: _AdmissionProtectedState,
+) -> None:
+    backup = repo / ".git" / "vectl" / "plan.yaml.bak"
+    assert plan_path.read_bytes() == before.plan_bytes
+    assert (backup.read_bytes() if backup.exists() else None) == before.backup_bytes
+    assert _git(repo, "rev-parse", "HEAD").stdout.strip() == before.head
+    assert (repo / ".git" / "index").read_bytes() == before.index_bytes
+    assert unrelated.read_bytes() == before.unrelated_bytes
+    assert _git(repo, "status", "--porcelain=v1").stdout == before.status
+    assert frozenset(path.relative_to(repo) for path in repo.rglob("*")) == (
+        before.descendants
+    )
+
+
+def _prepare_admission_io_failure_case(
+    root: Path,
+    sample_plan: Plan,
+) -> tuple[Path, Path, Path, admission_module.PlanAdmissionConfig, bytes, bytes, str]:
+    repo, plan_path = _seed_admitted_mutation_repo(root, sample_plan)
+    adapter = _write_fake_admission_adapter(root / "adapter.py")
+    config = admission_module.freeze_plan_admission_config(
+        _configured_admission_environment(adapter, timeout=5)
+    )
+    assert isinstance(config, admission_module.PlanAdmissionConfig)
+    unrelated = repo / "unrelated.txt"
+    unrelated.write_bytes(b"preserve unrelated staged content\n")
+    _git(repo, "add", "unrelated.txt")
+    base_bytes = plan_path.read_bytes()
+    candidate_bytes = base_bytes + b"# private adapter I/O candidate\n"
+    candidate_sha256 = "sha256:" + hashlib.sha256(candidate_bytes).hexdigest()
+    return (
+        repo,
+        plan_path,
+        unrelated,
+        config,
+        base_bytes,
+        candidate_bytes,
+        candidate_sha256,
+    )
+
+
+def _track_admission_workspaces(
+    monkeypatch: pytest.MonkeyPatch,
+) -> list[Path]:
+    workspaces: list[Path] = []
+    original = admission_module.tempfile.TemporaryDirectory
+
+    def tracked(*args: object, **kwargs: object):
+        workspace = original(*args, **kwargs)
+        workspaces.append(Path(workspace.name))
+        return workspace
+
+    monkeypatch.setattr(admission_module.tempfile, "TemporaryDirectory", tracked)
+    return workspaces
 
 
 def test_admitted_mutation_startup_configuration_is_complete_or_invalid(
@@ -1241,6 +1368,8 @@ def test_admitted_mutation_configured_adapter_failure_is_zero_write(
         ("nonregular-base", "candidate_identity_mismatch", False),
         ("nonregular-candidate", "candidate_identity_mismatch", False),
         ("duplicate-key", "malformed_verdict", False),
+        ("array-decision", "malformed_verdict", False),
+        ("object-decision", "malformed_verdict", False),
         ("unknown-field", "malformed_verdict", False),
         ("approve-reason", "malformed_verdict", False),
         ("identity-drift", "executable_identity_mismatch", False),
@@ -1287,6 +1416,13 @@ def test_admitted_mutation_configured_adapter_failure_is_zero_write(
             )
 
         assert getattr(raised.value, "code", None) == expected_code, mode
+        if mode in {"array-decision", "object-decision"}:
+            reason = getattr(raised.value, "reason", "")
+            assert reason == "admission verdict decision is invalid", mode
+            assert len(reason) <= 1024, mode
+            for protected in (str(case_root), str(plan_path), candidate.context):
+                assert protected not in reason, mode
+                assert protected not in str(raised.value), mode
         if mode in identity_failure_modes:
             reason = getattr(raised.value, "reason", "")
             assert reason == "admission adapter changed an immutable Plan input", mode
@@ -1397,6 +1533,150 @@ def test_admitted_mutation_configured_adapter_failure_is_zero_write(
     assert approved_receipt["plan_applied"] is True
     assert approved_receipt["git_committed"] is True
     assert _git(approved_repo, "rev-list", "--count", "HEAD").stdout.strip() == "2"
+
+
+def test_admitted_mutation_workspace_creation_failure_is_fixed_and_zero_write(
+    tmp_path: Path,
+    sample_plan: Plan,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (
+        repo,
+        plan_path,
+        unrelated,
+        config,
+        base_bytes,
+        candidate_bytes,
+        candidate_sha256,
+    ) = _prepare_admission_io_failure_case(tmp_path / "workspace-create", sample_plan)
+    before = _capture_admission_protected_state(repo, plan_path, unrelated)
+    protected_failure = f"workspace failure {tmp_path} {candidate_bytes.decode()}"
+
+    def fail_workspace_creation(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise OSError(protected_failure)
+
+    monkeypatch.setattr(
+        admission_module.tempfile,
+        "TemporaryDirectory",
+        fail_workspace_creation,
+    )
+    with pytest.raises(admission_module.PlanAdmissionError) as raised:
+        admission_module.admit_candidate_bytes(
+            config=config,
+            plan_path=plan_path,
+            base_bytes=base_bytes,
+            candidate_bytes=candidate_bytes,
+            candidate_sha256=candidate_sha256,
+        )
+
+    assert raised.value.code == "adapter_crash"
+    assert raised.value.reason == "repository-external admission workspace is unavailable"
+    assert len(raised.value.reason) <= 1024
+    assert str(tmp_path) not in str(raised.value)
+    assert candidate_bytes.decode() not in str(raised.value)
+    _assert_admission_protected_state_unchanged(repo, plan_path, unrelated, before)
+
+
+@pytest.mark.parametrize("filename", ("base.plan.yaml", "candidate.plan.yaml", "verdict.json"))
+@pytest.mark.parametrize("failure_stage", ("setup", "write"))
+def test_admitted_mutation_private_file_io_failure_is_fixed_and_zero_write(
+    tmp_path: Path,
+    sample_plan: Plan,
+    monkeypatch: pytest.MonkeyPatch,
+    filename: str,
+    failure_stage: str,
+) -> None:
+    case_root = tmp_path / f"private-{filename}-{failure_stage}"
+    (
+        repo,
+        plan_path,
+        unrelated,
+        config,
+        base_bytes,
+        candidate_bytes,
+        candidate_sha256,
+    ) = _prepare_admission_io_failure_case(case_root, sample_plan)
+    before = _capture_admission_protected_state(repo, plan_path, unrelated)
+    workspaces = _track_admission_workspaces(monkeypatch)
+    original = admission_module._write_private_file
+    protected_failure = f"{failure_stage} failure {case_root} {candidate_bytes.decode()}"
+
+    def fail_selected_private_file(path: Path, content: bytes):
+        if path.name == filename and failure_stage == "setup":
+            raise OSError(protected_failure)
+        result = original(path, content)
+        if path.name == filename:
+            raise OSError(protected_failure)
+        return result
+
+    monkeypatch.setattr(
+        admission_module,
+        "_write_private_file",
+        fail_selected_private_file,
+    )
+    with pytest.raises(admission_module.PlanAdmissionError) as raised:
+        admission_module.admit_candidate_bytes(
+            config=config,
+            plan_path=plan_path,
+            base_bytes=base_bytes,
+            candidate_bytes=candidate_bytes,
+            candidate_sha256=candidate_sha256,
+        )
+
+    assert raised.value.code == "adapter_crash"
+    assert raised.value.reason == "admission private file setup or write failed"
+    assert len(raised.value.reason) <= 1024
+    assert str(case_root) not in str(raised.value)
+    assert candidate_bytes.decode() not in str(raised.value)
+    assert workspaces
+    assert all(not workspace.exists() for workspace in workspaces)
+    _assert_admission_protected_state_unchanged(repo, plan_path, unrelated, before)
+
+
+def test_admitted_mutation_verdict_read_failure_is_fixed_and_zero_write(
+    tmp_path: Path,
+    sample_plan: Plan,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    case_root = tmp_path / "verdict-read"
+    (
+        repo,
+        plan_path,
+        unrelated,
+        config,
+        base_bytes,
+        candidate_bytes,
+        candidate_sha256,
+    ) = _prepare_admission_io_failure_case(case_root, sample_plan)
+    before = _capture_admission_protected_state(repo, plan_path, unrelated)
+    workspaces = _track_admission_workspaces(monkeypatch)
+    original_read_bytes = Path.read_bytes
+    protected_failure = f"verdict read failure {case_root} {candidate_bytes.decode()}"
+
+    def fail_verdict_read(path: Path) -> bytes:
+        if path.name == "verdict.json":
+            raise OSError(protected_failure)
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", fail_verdict_read)
+    with pytest.raises(admission_module.PlanAdmissionError) as raised:
+        admission_module.admit_candidate_bytes(
+            config=config,
+            plan_path=plan_path,
+            base_bytes=base_bytes,
+            candidate_bytes=candidate_bytes,
+            candidate_sha256=candidate_sha256,
+        )
+
+    assert raised.value.code == "malformed_verdict"
+    assert raised.value.reason == "admission verdict file is unavailable"
+    assert len(raised.value.reason) <= 1024
+    assert str(case_root) not in str(raised.value)
+    assert candidate_bytes.decode() not in str(raised.value)
+    assert workspaces
+    assert all(not workspace.exists() for workspace in workspaces)
+    _assert_admission_protected_state_unchanged(repo, plan_path, unrelated, before)
 
 
 @pytest.mark.parametrize(
@@ -1580,6 +1860,14 @@ def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
         assert "VECTL_PLAN_ADMISSION_EXECUTABLE" in public_doc
         assert "candidate_sha256" in public_doc
         assert "git_committed" in public_doc
+    for synchronized_doc in (rfc_contract, readme, readme_zh):
+        assert "admission private file setup or write failed" in synchronized_doc
+        assert "admission verdict decision is invalid" in synchronized_doc
+        assert "admission verdict file is unavailable" in synchronized_doc
+        assert 'outcome: "red"' in synchronized_doc
+    assert "outer adapter process exits 0" in rfc_contract
+    assert "outer adapter process exits 0" in readme
+    assert "外层适配器进程以 0 退出" in readme_zh
     assert "absolute filesystem paths" in rfc_contract
     assert "secret-like tokens" in rfc_contract
     assert "Plan-derived fragments" in rfc_contract

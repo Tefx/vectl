@@ -109,6 +109,8 @@ For configured mode, Vectl creates one repository-external temporary directory. 
 - `candidate.plan.yaml`: the exact finalized candidate bytes;
 - `verdict.json`: initially empty and reserved for the adapter verdict.
 
+Workspace creation failures use `adapter_crash` with the fixed reason `repository-external admission workspace is unavailable`. An `OSError` while setting up or writing any private file also uses `adapter_crash`, with the fixed reason `admission private file setup or write failed`. The external workspace is removed on these failures; neither reason includes the workspace path, protected Plan bytes, or the underlying operating-system diagnostic.
+
 Vectl treats base and candidate files as immutable inputs: it writes each once, records identity, and checks device, inode, mode, size, timestamps, and exact-byte hash after adapter exit. An input that is missing, unreadable, replaced, or no longer regular returns `candidate_identity_mismatch` with the fixed reason `admission adapter changed an immutable Plan input`. Mode `0600` protects against other users; it does not sandbox the same UID.
 
 The only allowed invocation is this argv, with `shell=False`:
@@ -134,7 +136,7 @@ Approval requires process exit 0 plus one UTF-8 JSON verdict with no duplicate o
 }
 ```
 
-A rejection uses the same schema with `decision: "reject"` and one required non-empty `reason`. `reason` is forbidden on approval. The candidate digest must exactly equal the digest computed by Vectl.
+`decision` must be a string equal to `approve` or `reject`; arrays, objects, and every other value use `malformed_verdict` with the fixed reason `admission verdict decision is invalid`. A rejection uses the same schema with `decision: "reject"` and one required non-empty `reason`. `reason` is forbidden on approval. The candidate digest must exactly equal the digest computed by Vectl. An `OSError` while reading the identity-checked verdict uses `malformed_verdict` with the fixed reason `admission verdict file is unavailable`.
 
 Bounds:
 
@@ -148,9 +150,9 @@ Diagnostics preserve bounded nonsecret context while removing NUL and non-printi
 - `configuration_invalid`;
 - `executable_identity_mismatch`;
 - `adapter_timeout`;
-- `adapter_crash` for nonzero exit, launch failure, or an unavailable repository-external workspace parent;
+- `adapter_crash` for nonzero exit, launch failure, unavailable repository-external workspace creation, or private-file setup/write failure;
 - `adapter_output_too_large`;
-- `malformed_verdict` for encoding, JSON, duplicate-key, field, schema, decision, or reason violations;
+- `malformed_verdict` for verdict-read failure or encoding, JSON, duplicate-key, field, schema, decision, or reason violations;
 - `candidate_identity_mismatch` for verdict digest mismatch or a changed, missing, unreadable, replaced, or non-regular base/candidate input;
 - `rejected` for a valid rejection verdict.
 
@@ -236,7 +238,7 @@ python3 tests/expected_red.py run pytest <node-id>...
 {"schema_version":"vectl.check.evidence.v1","selected_ids":["<collected node id>"],"executed_ids":["<started node id>"],"exit_code":0,"outcome":"green"}
 ```
 
-A nonzero pytest result uses `outcome: "red"` and returns pytest's exit code. Pytest terminal output is preserved on stderr so infrastructure and assertion fingerprints remain observable. Gate selection requires exact non-empty selected/executed identity; the observer does not convert red to green.
+A nonzero pytest result remains authoritative in the inner envelope: `exit_code` contains pytest's real nonzero code and `outcome: "red"` records the result. After emitting a valid evidence envelope, the outer adapter process exits 0 so the production Gate can parse that inner result. Outer 0 only confirms evidence transport; it does not classify the tests as green. Pytest terminal output is preserved on stderr so infrastructure and assertion fingerprints remain observable. Gate selection requires exact non-empty selected/executed identity.
 
 This observer is proof-only developer-test infrastructure. Product admission code must not import, execute, or copy it. It creates no product registry, policy engine, or mutation authorization path. Existing expected-red marker metadata behavior remains unchanged.
 

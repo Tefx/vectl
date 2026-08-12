@@ -181,7 +181,7 @@ def _parse_admission_verdict(content: bytes) -> dict[str, str] | Result[dict[str
     candidate_sha256 = payload.get("candidate_sha256")
     if schema_version != "vectl.plan-mutation-admission.v1":
         raise PlanAdmissionError("malformed_verdict", "admission verdict schema is invalid")
-    if decision not in {"approve", "reject"}:
+    if not isinstance(decision, str) or decision not in {"approve", "reject"}:
         raise PlanAdmissionError("malformed_verdict", "admission verdict decision is invalid")
     if not isinstance(candidate_sha256, str) or _SHA256_PATTERN.fullmatch(candidate_sha256) is None:
         raise PlanAdmissionError("malformed_verdict", "admission verdict digest is invalid")
@@ -447,9 +447,15 @@ def admit_candidate_bytes(
         base_path = temporary_path / "base.plan.yaml"
         candidate_path = temporary_path / "candidate.plan.yaml"
         verdict_path = temporary_path / "verdict.json"
-        _write_private_file(base_path, base_bytes)
-        _write_private_file(candidate_path, candidate_bytes)
-        _write_private_file(verdict_path, b"")
+        try:
+            _write_private_file(base_path, base_bytes)
+            _write_private_file(candidate_path, candidate_bytes)
+            _write_private_file(verdict_path, b"")
+        except OSError as exc:
+            raise PlanAdmissionError(
+                "adapter_crash",
+                "admission private file setup or write failed",
+            ) from exc
         base_identity = _input_file_identity(base_path)
         candidate_identity = _input_file_identity(candidate_path)
         verdict_identity = verdict_path.lstat()
@@ -541,9 +547,16 @@ def admit_candidate_bytes(
                 "admission verdict exceeds 16 KiB",
             )
 
+        try:
+            verdict_bytes = verdict_path.read_bytes()
+        except OSError as exc:
+            raise PlanAdmissionError(
+                "malformed_verdict",
+                "admission verdict file is unavailable",
+            ) from exc
         verdict = cast(
             dict[str, str],
-            _parse_admission_verdict(verdict_path.read_bytes()),
+            _parse_admission_verdict(verdict_bytes),
         )
         if verdict["candidate_sha256"] != candidate_sha256:
             raise PlanAdmissionError(

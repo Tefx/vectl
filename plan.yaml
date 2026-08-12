@@ -124106,7 +124106,7 @@ phases:
       match ratified baseline with no new debt. Repository clean; no push.'
   - id: admitted-mutation-verification.input-workspace-zero-write-integration-rerun
     name: Rerun affected immutable-input and workspace integration
-    status: claimed
+    status: done
     description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
       Deliver:\n- As `integration-verifier`, independently rerun the exact eight focused\
       \ NARROW V1 nodes, the affected four-file developer regression, full pytest,\
@@ -124327,3 +124327,20 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-08-12T13:36:11.304541Z'
+    done_at: '2026-08-12T14:03:10.711101+00:00'
+    evidence: 'Independent integration-verifier PASS at immutable target 1a698860fe53c16ed7c56a37a629fd98d9e9b3b0.
+      Semantic receipt file SHA-256 83aa9b1857be6185b905cf63f54a72cb7e2f56b856430c464d8f7b4b78354791;
+      canonical admitted receipt sha256:2f0d39c61475a28fe485b2a219fba12d74658ff548981577bc87a8873945d550.
+      Child and parent production Gate verdict CONFORMANT/semantic_completion_admissible=true;
+      parent verdict SHA-256 12fc27e97cbb338673a46f176c942bc81f81045f925ab178a076048fc85024f1.
+      Exact eight nodes 8 passed; focused 518 passed; full 1310 passed/15 skipped;
+      Invar/diff green; Vectl 0 errors/45 historical warnings; ruff 1946 and mypy
+      1200/31 exactly ratified. Fresh isolated runtime probe executed 18/18 public
+      cases: nine real configured CLI processes and nine direct verified project-entrypoint
+      registered FastMCP sessions for missing/unreadable/replaced/nonregular base/candidate
+      inputs plus repository-local TMPDIR. Identity cases returned fixed candidate_identity_mismatch;
+      TMPDIR returned fixed adapter_crash before descendant creation. Every case preserved
+      Plan/backup/HEAD/index/unrelated staged bytes/status, redacted protected bytes/paths,
+      removed fixtures, and reaped transports. Prior transcription-error REJECTED
+      pre-probe attempt retained under prior-attempt and contributes no product proof.
+      Repository/Plan/lifecycle unchanged and clean; no push.'

@@ -22,16 +22,35 @@ import vectl.io as io_module
 from vectl.cli import app
 from vectl.io import load_plan_definition, save_plan
 from vectl.io import load_plan_definition as load_plan
-from vectl.models import AffinityMode, Phase, PhaseStatus, Plan, PlanError, Step, StepStatus
+from vectl.models import (
+    AffinityMode,
+    CASConflictError,
+    Phase,
+    PhaseStatus,
+    Plan,
+    PlanError,
+    PlanIOError,
+    Step,
+    StepStatus,
+)
 from vectl.plan_path import resolve_claims_path
 
 runner = CliRunner()
 
 
-def _mutation_receipt(output: str) -> dict[str, object]:
+def _mutation_receipt(
+    output: str,
+    *,
+    expected_human_lines: tuple[str, ...],
+) -> dict[str, object]:
     marker = "mutation_receipt: "
-    line = next(line for line in output.splitlines() if line.startswith(marker))
-    payload = json.loads(line.removeprefix(marker))
+    lines = output.splitlines()
+    receipt_indexes = [index for index, line in enumerate(lines) if line.startswith(marker)]
+    assert len(receipt_indexes) == 1
+    assert receipt_indexes[0] == len(lines) - 1
+    assert tuple(lines[:-1]) == expected_human_lines
+    payload = json.loads(lines[-1].removeprefix(marker))
+    assert isinstance(payload, dict)
     assert set(payload) == {
         "schema_version",
         "plan_applied",
@@ -4629,25 +4648,99 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
             "add-step",
             ["add-step", "--phase", "p1", "--name", "Added", "--id", "added"],
             None,
+            (
+                "Added step: added → phase p1",
+                "",
+                "→ vectl claim added --agent <name>   Claim this step",
+                "→ vectl add-step --phase p1       Add another step",
+                "→ vectl status --phase p1         See all steps in phase",
+                "→ vectl search <pattern>            Check consistency",
+            ),
         ),
         (
             "add-steps",
             ["add-steps", "--phase", "p1"],
             "- id: bulk-added\n  name: Bulk Added\n",
+            (
+                "Added 1 step(s) to phase p1:",
+                "  • bulk-added",
+                "",
+                "→ vectl show p1         See all steps",
+                "→ vectl next              See claimable steps",
+                "→ vectl search <pattern>  Check consistency",
+            ),
         ),
-        ("edit-step", ["edit-step", "s1", "--name", "Renamed"], None),
-        ("remove-step", ["remove-step", "s1"], None),
-        ("move-step", ["move-step", "s1", "--to-phase", "p2"], None),
+        (
+            "edit-step",
+            ["edit-step", "s1", "--name", "Renamed"],
+            None,
+            (
+                "Edited: s1",
+                "",
+                "→ vectl show s1",
+                "→ vectl search <pattern>            Check consistency",
+            ),
+        ),
+        (
+            "remove-step",
+            ["remove-step", "s1"],
+            None,
+            (
+                "Removed: s1",
+                "",
+                "→ vectl status                    Plan overview",
+                "→ vectl next                      See claimable steps",
+                "→ vectl search <pattern>            Check consistency",
+            ),
+        ),
+        (
+            "move-step",
+            ["move-step", "s1", "--to-phase", "p2"],
+            None,
+            (
+                "Moved: s1 → p2",
+                "",
+                "→ vectl show s1",
+                "→ vectl show p2",
+                "→ vectl search <pattern>            Check consistency",
+            ),
+        ),
         (
             "add-phase",
             ["add-phase", "--name", "Phase 3", "--id", "p3"],
             None,
+            (
+                "Added phase: p3 (○ pending)",
+                "",
+                "→ vectl add-step --phase p3       Add steps to this phase",
+                "→ vectl status --phase p3         Inspect phase",
+                "→ vectl status                      See full plan",
+            ),
         ),
-        ("edit-phase", ["edit-phase", "p1", "--name", "Renamed phase"], None),
-        ("edit-plan", ["edit-plan", "--context", "Updated context"], None),
+        (
+            "edit-phase",
+            ["edit-phase", "p1", "--name", "Renamed phase"],
+            None,
+            (
+                "Edited phase: p1",
+                "",
+                "→ vectl show p1",
+                "→ vectl search <pattern>              Check consistency",
+            ),
+        ),
+        (
+            "edit-plan",
+            ["edit-plan", "--context", "Updated context"],
+            None,
+            (
+                "Updated plan metadata",
+                "→ vectl status                      See plan overview",
+            ),
+        ),
     )
 
-    for command_name, arguments, stdin in cases:
+    successful_outputs: dict[str, tuple[str, tuple[str, ...]]] = {}
+    for command_name, arguments, stdin, expected_human_lines in cases:
         save_plan(seed.model_copy(deep=True), plan_path)
         result = runner.invoke(
             app,
@@ -4655,12 +4748,33 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
             input=stdin,
         )
         assert result.exit_code == 0, f"{command_name}: {result.output}"
-        receipt = _mutation_receipt(result.output)
+        receipt = _mutation_receipt(
+            result.output,
+            expected_human_lines=expected_human_lines,
+        )
         assert receipt["schema_version"] == "vectl.plan-mutation.receipt.v1"
         assert receipt["plan_applied"] is True
         assert receipt["candidate_sha256"] == receipt["persisted_sha256"]
         assert receipt["admission_status"] == "not_configured"
         assert receipt["git_attempted"] is True
+        successful_outputs[command_name] = (result.output, expected_human_lines)
+
+    valid_output, valid_human_lines = successful_outputs["edit-plan"]
+    valid_lines = valid_output.splitlines()
+    receipt_line = valid_lines[-1]
+    malformed_outputs = {
+        "duplicate": "\n".join([*valid_lines, receipt_line]) + "\n",
+        "missing": "\n".join(valid_lines[:-1]) + "\n",
+        "early": "\n".join([receipt_line, *valid_lines[:-1]]) + "\n",
+        "trailing": "\n".join([*valid_lines, "trailing output"]) + "\n",
+        "malformed": "\n".join([*valid_lines[:-1], "mutation_receipt: {not-json}"]) + "\n",
+    }
+    for _malformed_name, malformed_output in malformed_outputs.items():
+        with pytest.raises((AssertionError, json.JSONDecodeError), match=None):
+            _mutation_receipt(
+                malformed_output,
+                expected_human_lines=valid_human_lines,
+            )
 
     assert len(calls) == 8
     for command_name in (
@@ -4674,6 +4788,76 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
         "edit plan",
     ):
         assert any(command_name in message for message in calls), command_name
+
+    notice_seed = seed.model_copy(deep=True)
+    notice_seed.phases[1].depends_on = ["p1"]
+    save_plan(notice_seed, plan_path)
+    notice_result = runner.invoke(
+        app,
+        ["edit-plan", "--context", "Updated with notice", "--plan", str(plan_path)],
+    )
+    assert notice_result.exit_code == 0, notice_result.output
+    _mutation_receipt(
+        notice_result.output,
+        expected_human_lines=(
+            "Updated plan metadata",
+            "[vectl] Lock status updated: p2 (locked)",
+            "→ vectl status                      See plan overview",
+        ),
+    )
+
+    save_plan(seed.model_copy(deep=True), plan_path)
+    before_validation = plan_path.read_bytes()
+    validation_result = runner.invoke(
+        app,
+        ["remove-step", "missing", "--plan", str(plan_path)],
+    )
+    assert validation_result.exit_code != 0
+    assert "mutation_receipt: " not in validation_result.output
+    assert plan_path.read_bytes() == before_validation
+
+    def assert_transaction_failure(
+        transaction_failure: object,
+        *,
+        expected_diagnostic: str,
+    ) -> None:
+        save_plan(seed.model_copy(deep=True), plan_path)
+        before = plan_path.read_bytes()
+        monkeypatch.setattr(
+            cli_plan_common,
+            "_finalize_admitted_plan_mutation",
+            transaction_failure,
+        )
+        result = runner.invoke(
+            app,
+            ["edit-plan", "--context", "must remain unapplied", "--plan", str(plan_path)],
+        )
+        assert result.exit_code != 0
+        assert expected_diagnostic in result.output
+        assert "mutation_receipt: " not in result.output
+        assert plan_path.read_bytes() == before
+
+    def cas_failure(*args: object, **kwargs: object) -> object:
+        del kwargs
+        raise CASConflictError(args[1])
+
+    def persistence_failure(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise PlanIOError("isolated persistence failure")
+
+    def invalid_receipt(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        return object()
+
+    assert_transaction_failure(cas_failure, expected_diagnostic="CAS conflict")
+    assert_transaction_failure(
+        persistence_failure,
+        expected_diagnostic="isolated persistence failure",
+    )
+    assert_transaction_failure(
+        invalid_receipt,
+        expected_diagnostic="invalid receipt",
+    )
 
     project_root = Path(__file__).resolve().parents[1]
     public_root = tmp_path / "public-cli-authorization"
@@ -4801,6 +4985,7 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
             output = result.stdout + result.stderr
 
             assert result.returncode != 0
+            assert "mutation_receipt: " not in output
             assert expected_code in output
             assert "policy denied" in output
             assert useful_suffix in output
@@ -4935,6 +5120,7 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
         output = result.stdout + result.stderr
 
         assert result.returncode != 0
+        assert "mutation_receipt: " not in output
         assert "adapter_crash" in output
         assert "admission private file setup or write failed" in output
         assert len(output) <= 2048
@@ -4988,6 +5174,15 @@ def test_admitted_mutation_public_surface_docs_match_contract() -> None:
             assert term in content, (
                 f"REQ-AMV1-PUBLIC-DOC-SYNC missing: {name} omits admitted mutation term {term}"
             )
+
+    for term in ("prefix first", "final output record", "failures emit no receipt"):
+        assert term in readmes["README.md"]
+    for term in ("先输出", "最后输出", "失败时不输出 receipt"):
+        assert term in readmes["README_zh.md"]
+
+    rfc = (root / "docs" / "RFC-admitted-plan-mutation.md").read_text(encoding="utf-8")
+    for term in ("prefix first", "final output record", "failures emit no receipt"):
+        assert term in rfc
 
     help_result = runner.invoke(app, ["--help"])
     assert help_result.exit_code == 0, help_result.output

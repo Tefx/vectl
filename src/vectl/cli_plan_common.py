@@ -361,8 +361,8 @@ def _save_admitted_plan(
     plan_path: Path,
     expected_def_hash: str,
     msg: str,
-) -> Result[dict[str, object], str]:
-    """Persist one covered definition mutation and print its machine receipt."""
+) -> Result[tuple[dict[str, object], str], str]:
+    """Persist one covered definition mutation and defer its success output."""
     changed_ids = recalc_lock_status(plan)
     commit_message = msg if _should_autosave_commit(plan_path) else None
 
@@ -388,11 +388,18 @@ def _save_admitted_plan(
         raise AssertionError("unreachable")
     payload = cast(dict[str, object], asdict(receipt))
 
-    notice = format_lock_changes(changed_ids, plan)
+    return Success((payload, format_lock_changes(changed_ids, plan)))
+
+
+def _print_admitted_plan_notice(notice: str) -> None:
+    """Print a deferred lock notice after the command-specific success prefix."""
     if notice:
         print(notice)
+
+
+def _print_admitted_plan_receipt(payload: dict[str, object]) -> None:
+    """Print one complete mutation receipt as the final CLI output record."""
     typer.echo(f"mutation_receipt: {json.dumps(payload, sort_keys=True)}")
-    return Success(payload)
 
 
 def _git_toplevel_for(path: Path):

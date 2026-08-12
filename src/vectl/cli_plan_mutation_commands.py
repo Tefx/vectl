@@ -5,7 +5,11 @@ from __future__ import annotations
 import typer
 
 from vectl.cli_plan_common import *
-from vectl.cli_plan_common import _save_admitted_plan
+from vectl.cli_plan_common import (
+    _print_admitted_plan_notice,
+    _print_admitted_plan_receipt,
+    _save_admitted_plan,
+)
 from vectl.models import StepStatus
 
 
@@ -97,9 +101,12 @@ def add_step_cmd(
         _die(str(e))
         return  # unreachable, for type checker
 
-    _save_admitted_plan(p, plan_path, def_h, f"vectl: add step {generated_id}")
+    receipt, lock_notice = _save_admitted_plan(
+        p, plan_path, def_h, f"vectl: add step {generated_id}"
+    ).unwrap()
 
     out.print(f"[green]Added step:[/] {generated_id} → phase [bold]{phase}[/]")
+    _print_admitted_plan_notice(lock_notice)
 
     # Long slug warning (only for auto-generated IDs)
     if step_id is None and len(generated_id) > 40:
@@ -110,6 +117,7 @@ def add_step_cmd(
     out.print(f"[dim]→ vectl add-step --phase {phase}       Add another step[/]")
     out.print(f"[dim]→ vectl status --phase {phase}         See all steps in phase[/]")
     out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
+    _print_admitted_plan_receipt(receipt)
 
 
 def add_phase_cmd(
@@ -141,7 +149,9 @@ def add_phase_cmd(
         _die(str(e))
         return  # unreachable, for type checker
 
-    _save_admitted_plan(p, plan_path, def_h, f"vectl: add phase {generated_id}")
+    receipt, lock_notice = _save_admitted_plan(
+        p, plan_path, def_h, f"vectl: add phase {generated_id}"
+    ).unwrap()
 
     # Show status based on auto-determined initial status
     ph = p.find_phase(generated_id)
@@ -149,6 +159,7 @@ def add_phase_cmd(
     status_icon = _phase_icon(ph.status)
 
     out.print(f"[green]Added phase:[/] {generated_id} ({status_icon})")
+    _print_admitted_plan_notice(lock_notice)
 
     # Long slug warning (only for auto-generated IDs)
     if phase_id is None and len(generated_id) > 40:
@@ -158,6 +169,7 @@ def add_phase_cmd(
     out.print(f"[dim]→ vectl add-step --phase {generated_id}       Add steps to this phase[/]")
     out.print(f"[dim]→ vectl status --phase {generated_id}         Inspect phase[/]")
     out.print("[dim]→ vectl status                      See full plan[/]")
+    _print_admitted_plan_receipt(receipt)
 
 
 # @shell_complexity: edit-plan preserves mutually-exclusive file/inline options and sentinel update semantics.
@@ -231,9 +243,13 @@ def edit_plan_cmd(
         _die(str(e))
         return  # unreachable
 
-    _save_admitted_plan(p, plan_path, def_h, "vectl: edit plan metadata")
+    receipt, lock_notice = _save_admitted_plan(
+        p, plan_path, def_h, "vectl: edit plan metadata"
+    ).unwrap()
     out.print("[green]Updated plan metadata[/]")
+    _print_admitted_plan_notice(lock_notice)
     out.print("[dim]→ vectl status                      See plan overview[/]")
+    _print_admitted_plan_receipt(receipt)
 
 
 # ---------------------------------------------------------------------------
@@ -362,12 +378,16 @@ def edit_step_cmd(
     except PlanError as e:
         _die(str(e))
 
-    _save_admitted_plan(p, plan_path, def_h, f"vectl: edit step {step_id}")
+    receipt, lock_notice = _save_admitted_plan(
+        p, plan_path, def_h, f"vectl: edit step {step_id}"
+    ).unwrap()
 
     out.print(f"[green]Edited:[/] {step_id}")
+    _print_admitted_plan_notice(lock_notice)
     out.print()
     out.print(f"[dim]→ vectl show {step_id}[/]")
     out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
+    _print_admitted_plan_receipt(receipt)
 
 
 # @shell_complexity: edit-phase preserves no-op validation, dependency parsing, sentinel semantics, and output hints.
@@ -413,12 +433,16 @@ def edit_phase_cmd(
     except PlanError as e:
         _die(str(e))
 
-    _save_admitted_plan(p, plan_path, def_h, f"vectl: edit phase {phase_id}")
+    receipt, lock_notice = _save_admitted_plan(
+        p, plan_path, def_h, f"vectl: edit phase {phase_id}"
+    ).unwrap()
 
     out.print(f"[green]Edited phase:[/] {phase_id}")
+    _print_admitted_plan_notice(lock_notice)
     out.print()
     out.print(f"[dim]→ vectl show {phase_id}[/]")
     out.print("[dim]→ vectl search <pattern>              Check consistency[/]")
+    _print_admitted_plan_receipt(receipt)
 
 
 def remove_step_cmd(
@@ -435,14 +459,18 @@ def remove_step_cmd(
         p = remove_step(p, step_id, force=force)
     except PlanError as e:
         _die(str(e))
-    _save_admitted_plan(p, plan_path, def_h, f"vectl: remove step {step_id}")
+    receipt, lock_notice = _save_admitted_plan(
+        p, plan_path, def_h, f"vectl: remove step {step_id}"
+    ).unwrap()
     out.print(f"[yellow]Removed:[/] {step_id}")
+    _print_admitted_plan_notice(lock_notice)
     if force:
         out.print("[dim]  Dependency references cleaned up in remaining steps.[/]")
     out.print()
     out.print("[dim]→ vectl status                    Plan overview[/]")
     out.print("[dim]→ vectl next                      See claimable steps[/]")
     out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
+    _print_admitted_plan_receipt(receipt)
 
 
 def move_step_cmd(
@@ -462,8 +490,11 @@ def move_step_cmd(
         p = move_step(p, step_id, to_phase)
     except PlanError as e:
         _die(str(e))
-    _save_admitted_plan(p, plan_path, def_h, f"vectl: move step {step_id} to {to_phase}")
+    receipt, lock_notice = _save_admitted_plan(
+        p, plan_path, def_h, f"vectl: move step {step_id} to {to_phase}"
+    ).unwrap()
     out.print(f"[green]Moved:[/] {step_id} → {to_phase}")
+    _print_admitted_plan_notice(lock_notice)
     if cleared_deps:
         out.print(f"[yellow]⚠ Cleared {len(cleared_deps)} dep(s):[/] {', '.join(cleared_deps)}")
         out.print("[dim]  Dependencies are phase-scoped. Re-add in target phase if needed.[/]")
@@ -471,6 +502,7 @@ def move_step_cmd(
     out.print(f"[dim]→ vectl show {step_id}[/]")
     out.print(f"[dim]→ vectl show {to_phase}[/]")
     out.print("[dim]→ vectl search <pattern>            Check consistency[/]")
+    _print_admitted_plan_receipt(receipt)
 
 
 # ---------------------------------------------------------------------------

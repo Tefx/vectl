@@ -5,7 +5,11 @@ from __future__ import annotations
 import typer
 
 from vectl.cli_plan_common import *
-from vectl.cli_plan_common import _save_admitted_plan
+from vectl.cli_plan_common import (
+    _print_admitted_plan_notice,
+    _print_admitted_plan_receipt,
+    _save_admitted_plan,
+)
 
 
 def unlock(
@@ -189,15 +193,19 @@ def add_steps_cmd(
         _die(str(e))
         return  # unreachable
 
-    _save_admitted_plan(p, plan_path, def_h, f"vectl: add steps to phase {phase}")
+    receipt, lock_notice = _save_admitted_plan(
+        p, plan_path, def_h, f"vectl: add steps to phase {phase}"
+    ).unwrap()
 
     out.print(f"[green]Added {len(generated_ids)} step(s)[/] to phase [bold]{phase}[/]:")
+    _print_admitted_plan_notice(lock_notice)
     for gid in generated_ids:
         out.print(f"  • {gid}")
     out.print()
     out.print(f"[dim]→ vectl show {phase}         See all steps[/]")
     out.print("[dim]→ vectl next              See claimable steps[/]")
     out.print("[dim]→ vectl search <pattern>  Check consistency[/]")
+    _print_admitted_plan_receipt(receipt)
 
 
 # ---------------------------------------------------------------------------

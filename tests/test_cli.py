@@ -4731,8 +4731,24 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
             adapter_digest = hashlib.sha256(adapter.read_bytes()).hexdigest()
             external_tmp = case_root / "external-tmp"
             external_tmp.mkdir()
-            payload = f"cli-{mode}-v7"
-            authorization = f"Authorization: {scheme} {payload}"
+            useful_suffix = "operator review remains available"
+            if scheme == "Digest":
+                protected_parameters = (
+                    'username="cli-digest-user-v8"',
+                    'realm="cli-digest-realm-v8"',
+                    'nonce="cli-digest-nonce-v8"',
+                    'uri="urn:vectl:cli-digest-v8"',
+                    'response="cli-digest-response-v8"',
+                    "algorithm=SHA-256-sess",
+                    "qop=auth-int",
+                    "nc=00000002",
+                    'cnonce="cli-digest-cnonce-v8"',
+                )
+                payload = ", ".join(protected_parameters)
+            else:
+                protected_parameters = ()
+                payload = f"cli-{mode}-v7"
+            authorization = f"Authorization: {scheme} {payload}; {useful_suffix}"
             environment = os.environ.copy()
             environment.update(
                 {
@@ -4787,8 +4803,16 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
             assert result.returncode != 0
             assert expected_code in output
             assert "policy denied" in output
+            assert useful_suffix in output
+            assert "<redacted>" in output
             assert len(output) <= 2048
-            for protected in (payload, authorization, str(case_root), str(public_plan)):
+            for protected in (
+                payload,
+                authorization,
+                *protected_parameters,
+                str(case_root),
+                str(public_plan),
+            ):
                 assert protected not in output
             assert public_plan.read_bytes() == before[0]
             assert (backup.read_bytes() if backup.exists() else None) == before[1]

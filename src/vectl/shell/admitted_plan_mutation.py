@@ -30,8 +30,12 @@ _MAX_DIAGNOSTIC_BYTES = 8 * 1024
 _MAX_REJECTION_REASON_CODEPOINTS = 1024
 _ABSOLUTE_PATH_PATTERN = re.compile(r"(?<![\w:])/(?:[^\s\x00-\x1f\"'<>]+)")
 _AUTHORIZATION_VALUE_PATTERN = re.compile(
-    r"(?i)\bauthorization\b\s*[:=]\s*(?:(?:bearer|basic|digest)\s+)?"
-    r"(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
+    r"(?i)\bauthorization\b\s*[:=]\s*"
+    r"(?:"
+    r"(?:bearer|basic)\s+(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
+    r"|digest\s+(?:[^;\r\n]|[\r\n][ \t])+"
+    r"|(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
+    r")"
 )
 _SECRET_ASSIGNMENT_PATTERN = re.compile(
     r"(?i)\b(?:api[_-]?key|authorization|credential|password|passwd|secret|token)\b"

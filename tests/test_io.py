@@ -1883,8 +1883,24 @@ def test_admitted_mutation_authorization_payloads_are_redacted_for_crash_and_rej
     ) = _prepare_admission_io_failure_case(case_root, sample_plan)
     before = _capture_admission_protected_state(repo, plan_path, unrelated)
     workspaces = _track_admission_workspaces(monkeypatch)
-    payload = f"short-{scheme.lower()}-payload"
-    authorization = f"Authorization: {scheme} {payload}"
+    useful_suffix = "request denied safely"
+    if scheme == "Digest":
+        protected_parameters = (
+            'username="digest-user-v8"',
+            'realm="digest-realm-v8"',
+            'nonce="digest-nonce-v8"',
+            'uri="urn:vectl:digest-direct-v8"',
+            'response="digest-response-v8"',
+            "algorithm=MD5-sess",
+            "qop=auth-int",
+            "nc=00000001",
+            'cnonce="digest-cnonce-v8"',
+        )
+        payload = ", ".join(protected_parameters)
+    else:
+        protected_parameters = ()
+        payload = f"short-{scheme.lower()}-payload"
+    authorization = f"Authorization: {scheme} {payload}; {useful_suffix}"
     monkeypatch.setenv("VECTL_TEST_ADMISSION_MODE", mode)
     monkeypatch.setenv("VECTL_TEST_SECRET", authorization)
 
@@ -1899,10 +1915,13 @@ def test_admitted_mutation_authorization_payloads_are_redacted_for_crash_and_rej
 
     assert raised.value.code == expected_code
     assert "policy engine unavailable" in raised.value.reason
+    assert useful_suffix in raised.value.reason
+    assert "<redacted>" in raised.value.reason
     assert len(raised.value.reason) <= 1024
     for protected in (
         payload,
         authorization,
+        *protected_parameters,
         str(case_root),
         base_bytes.decode().strip(),
         candidate_bytes.decode().strip(),
@@ -2006,6 +2025,10 @@ def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
         assert "Authorization: Bearer <payload>" in synchronized_doc
         assert "Authorization: Basic <payload>" in synchronized_doc
         assert "Authorization: Digest <payload>" in synchronized_doc
+        assert "username" in synchronized_doc
+        assert "realm" in synchronized_doc
+        assert "nonce-count" in synchronized_doc
+        assert "client nonce" in synchronized_doc
         assert 'outcome: "red"' in synchronized_doc
     assert "initial base/candidate identity setup failures" in rfc_contract.lower()
     assert "initial base/candidate identity setup failures" in readme.lower()

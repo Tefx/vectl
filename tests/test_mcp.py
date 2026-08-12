@@ -3816,8 +3816,24 @@ def test_admitted_mutation_registered_mcp_schema_and_receipt(plan_file: Path) ->
             adapter_digest = hashlib.sha256(adapter.read_bytes()).hexdigest()
             external_tmp = case_root / "external-tmp"
             external_tmp.mkdir()
-            payload = f"mcp-{mode}-v7"
-            authorization = f"Authorization: {scheme} {payload}"
+            useful_suffix = "operator review remains available"
+            if scheme == "Digest":
+                protected_parameters = (
+                    'username="mcp-digest-user-v8"',
+                    'realm="mcp-digest-realm-v8"',
+                    'nonce="mcp-digest-nonce-v8"',
+                    'uri="urn:vectl:mcp-digest-v8"',
+                    'response="mcp-digest-response-v8"',
+                    "algorithm=SHA-512-256-sess",
+                    "qop=auth-int",
+                    "nc=00000003",
+                    'cnonce="mcp-digest-cnonce-v8"',
+                )
+                payload = ", ".join(protected_parameters)
+            else:
+                protected_parameters = ()
+                payload = f"mcp-{mode}-v7"
+            authorization = f"Authorization: {scheme} {payload}; {useful_suffix}"
             environment = {
                 "TMPDIR": str(external_tmp),
                 "VECTL_PLAN_ADMISSION_EXECUTABLE": str(adapter.resolve()),
@@ -3860,8 +3876,16 @@ def test_admitted_mutation_registered_mcp_schema_and_receipt(plan_file: Path) ->
             assert reaped
             assert expected_code in public_result
             assert "policy denied" in public_result
+            assert useful_suffix in public_result
+            assert "<redacted>" in public_result
             assert len(public_result) <= 2048
-            for protected in (payload, authorization, str(case_root), str(public_plan)):
+            for protected in (
+                payload,
+                authorization,
+                *protected_parameters,
+                str(case_root),
+                str(public_plan),
+            ):
                 assert protected not in public_result
             assert public_plan.read_bytes() == before[0]
             assert (backup.read_bytes() if backup.exists() else None) == before[1]

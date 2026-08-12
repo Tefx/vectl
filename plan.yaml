@@ -123550,51 +123550,51 @@ phases:
       \ [{literal: passed}]\n        contains_any: []\n        forbids: [{literal:\
       \ failed}, {literal: \"ERROR collecting\"}]\n    proves:\n      - REQ-AMV1-ADMISSION-FAIL-CLOSED\n\
       \      - REQ-AMV1-EXACT-DOC-SYNC\n      - REQ-AMV1-PUBLIC-DOC-SYNC\n      -\
-      \ REQ-AMV1-SECURITY-CONFORMANCE\n      - REQ-AMV1-DOC-TEST-PARITY\n  - id: diagnostic_redaction_invar\n\
-      \    run:\n      command: [uv, run, invar, guard]\n      timeout_seconds: 1800\n\
-      \    evidence:\n      mode: command_outcome\n      path_bindings:\n        -\
-      \ {path: pyproject.toml, access: read, availability: current}\n        - {path:\
-      \ INVAR.md, access: read, availability: current}\n      test_bindings: []\n\
-      \    expect:\n      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\
-      \ {contains_all: [], contains_any: [], forbids: []}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n\
-      \  - id: diagnostic_redaction_ruff_baseline\n    run:\n      command: [uv, run,\
-      \ ruff, check, .]\n      timeout_seconds: 600\n    evidence:\n      mode: command_outcome\n\
+      \ REQ-AMV1-SECURITY-CONFORMANCE\n      - REQ-AMV1-KISS-NONGOALS\n      - REQ-AMV1-DOC-TEST-PARITY\n\
+      \  - id: diagnostic_redaction_invar\n    run:\n      command: [uv, run, invar,\
+      \ guard]\n      timeout_seconds: 1800\n    evidence:\n      mode: command_outcome\n\
       \      path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
-      \ current}\n        - {path: src/vectl/shell/admitted_plan_mutation.py, access:\
-      \ read, availability: current}\n        - {path: tests/test_io.py, access: read,\
-      \ availability: current}\n      test_bindings: []\n    expect:\n      outcome:\
-      \ red\n      exit_codes: [1]\n      stdout_or_stderr:\n        contains_all:\n\
-      \          - {literal: \"src/vectl/agents_md.py:3:1\"}\n          - {literal:\
-      \ \"tests/test_validation.py:549:101\"}\n        contains_any: []\n        forbids:\n\
-      \          - {literal: \"ModuleNotFoundError\"}\n          - {literal: \"ImportError\"\
-      }\n          - {literal: \"ERROR collecting\"}\n          - {literal: \"No such\
-      \ file or directory\"}\n          - {literal: \"Traceback (most recent call\
-      \ last)\"}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n  - id: diagnostic_redaction_mypy_baseline\n\
-      \    run:\n      command: [uv, run, mypy, src]\n      timeout_seconds: 900\n\
-      \    evidence:\n      mode: command_outcome\n      path_bindings:\n        -\
-      \ {path: pyproject.toml, access: read, availability: current}\n        - {path:\
-      \ src/vectl/shell/admitted_plan_mutation.py, access: read, availability: current}\n\
+      \ current}\n        - {path: INVAR.md, access: read, availability: current}\n\
+      \      test_bindings: []\n    expect:\n      outcome: green\n      exit_codes:\
+      \ [0]\n      stdout_or_stderr: {contains_all: [], contains_any: [], forbids:\
+      \ []}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n  - id: diagnostic_redaction_ruff_baseline\n\
+      \    run:\n      command: [uv, run, ruff, check, .]\n      timeout_seconds:\
+      \ 600\n    evidence:\n      mode: command_outcome\n      path_bindings:\n  \
+      \      - {path: pyproject.toml, access: read, availability: current}\n     \
+      \   - {path: src/vectl/shell/admitted_plan_mutation.py, access: read, availability:\
+      \ current}\n        - {path: tests/test_io.py, access: read, availability: current}\n\
       \      test_bindings: []\n    expect:\n      outcome: red\n      exit_codes:\
       \ [1]\n      stdout_or_stderr:\n        contains_all:\n          - {literal:\
-      \ \"src/vectl/agents_md.py:143: error:\"}\n          - {literal: \"src/vectl/cli.py:115:\
-      \ error:\"}\n        contains_any: []\n        forbids:\n          - {literal:\
-      \ \"ModuleNotFoundError\"}\n          - {literal: \"ImportError\"}\n       \
-      \   - {literal: \"ERROR collecting\"}\n          - {literal: \"No such file\
-      \ or directory\"}\n          - {literal: \"Traceback (most recent call last)\"\
-      }\n    proves: [REQ-AMV1-REPO-REGRESSION]\n  - id: diagnostic_redaction_diff_check\n\
-      \    run:\n      command: [git, diff, --check]\n      timeout_seconds: 120\n\
-      \    evidence:\n      mode: command_outcome\n      path_bindings:\n        -\
-      \ {path: AGENTS.md, access: read, availability: current}\n      test_bindings:\
-      \ []\n    expect:\n      outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\
-      \ {contains_all: [], contains_any: [], forbids: []}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n\
-      \  - id: diagnostic_redaction_vectl_validate\n    run:\n      command: [uv,\
-      \ run, vectl, validate]\n      timeout_seconds: 600\n    evidence:\n      mode:\
-      \ command_outcome\n      path_bindings:\n        - {path: pyproject.toml, access:\
+      \ \"src/vectl/agents_md.py:3:1\"}\n          - {literal: \"tests/test_validation.py:549:101\"\
+      }\n        contains_any: []\n        forbids:\n          - {literal: \"ModuleNotFoundError\"\
+      }\n          - {literal: \"ImportError\"}\n          - {literal: \"ERROR collecting\"\
+      }\n          - {literal: \"No such file or directory\"}\n          - {literal:\
+      \ \"Traceback (most recent call last)\"}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n\
+      \  - id: diagnostic_redaction_mypy_baseline\n    run:\n      command: [uv, run,\
+      \ mypy, src]\n      timeout_seconds: 900\n    evidence:\n      mode: command_outcome\n\
+      \      path_bindings:\n        - {path: pyproject.toml, access: read, availability:\
+      \ current}\n        - {path: src/vectl/shell/admitted_plan_mutation.py, access:\
       \ read, availability: current}\n      test_bindings: []\n    expect:\n     \
-      \ outcome: green\n      exit_codes: [0]\n      stdout_or_stderr:\n        contains_all:\
-      \ [{literal: \"0 error(s)\"}]\n        contains_any: []\n        forbids: []\n\
-      \    proves: [REQ-AMV1-REPO-REGRESSION]\nbindings:\n  expected_red:\n    items:\
-      \ []\n  closes_expected_red: []\n</intent_closure_contract>"
+      \ outcome: red\n      exit_codes: [1]\n      stdout_or_stderr:\n        contains_all:\n\
+      \          - {literal: \"src/vectl/agents_md.py:143: error:\"}\n          -\
+      \ {literal: \"src/vectl/cli.py:115: error:\"}\n        contains_any: []\n  \
+      \      forbids:\n          - {literal: \"ModuleNotFoundError\"}\n          -\
+      \ {literal: \"ImportError\"}\n          - {literal: \"ERROR collecting\"}\n\
+      \          - {literal: \"No such file or directory\"}\n          - {literal:\
+      \ \"Traceback (most recent call last)\"}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n\
+      \  - id: diagnostic_redaction_diff_check\n    run:\n      command: [git, diff,\
+      \ --check]\n      timeout_seconds: 120\n    evidence:\n      mode: command_outcome\n\
+      \      path_bindings:\n        - {path: AGENTS.md, access: read, availability:\
+      \ current}\n      test_bindings: []\n    expect:\n      outcome: green\n   \
+      \   exit_codes: [0]\n      stdout_or_stderr: {contains_all: [], contains_any:\
+      \ [], forbids: []}\n    proves: [REQ-AMV1-REPO-REGRESSION]\n  - id: diagnostic_redaction_vectl_validate\n\
+      \    run:\n      command: [uv, run, vectl, validate]\n      timeout_seconds:\
+      \ 600\n    evidence:\n      mode: command_outcome\n      path_bindings:\n  \
+      \      - {path: pyproject.toml, access: read, availability: current}\n     \
+      \ test_bindings: []\n    expect:\n      outcome: green\n      exit_codes: [0]\n\
+      \      stdout_or_stderr:\n        contains_all: [{literal: \"0 error(s)\"}]\n\
+      \        contains_any: []\n        forbids: []\n    proves: [REQ-AMV1-REPO-REGRESSION]\n\
+      bindings:\n  expected_red:\n    items: []\n  closes_expected_red: []\n</intent_closure_contract>"
     verification: Pass admitted_mutation_expected_red with exactly eight selected/executed
       nodes, diagnostic_redaction_io_regression, diagnostic_redaction_invar, diagnostic_redaction_ruff_baseline,
       diagnostic_redaction_mypy_baseline, diagnostic_redaction_diff_check, and diagnostic_redaction_vectl_validate.

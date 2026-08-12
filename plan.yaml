@@ -125960,7 +125960,7 @@ phases:
       clean; no push.
   - id: admitted-mutation-verification.fresh-defects-integration-rerun
     name: Rerun Digest redaction and CLI output integration
-    status: pending
+    status: claimed
     description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
       Deliver:\n- As `integration-verifier`, independently rerun the exact eight NARROW\
       \ V1 selected/executed feature nodes, the affected four-file developer regression,\
@@ -126217,3 +126217,5 @@ phases:
     - admitted-mutation-verification.digest-authorization-redaction-remediation
     - admitted-mutation-verification.cli-receipt-ordering-remediation
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-08-12T19:11:08.223870Z'

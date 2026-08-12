@@ -123126,7 +123126,7 @@ phases:
     agent: spec-verifier
   - id: admitted-mutation-verification.static-baseline-remediation
     name: Restore NARROW V1 feature-local static baseline parity
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\n\nDeliver:\n\
       - As `python-senior`, remove only the verifier-proved NARROW V1 feature-local\
@@ -123366,3 +123366,20 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-08-12T06:27:32.004641Z'
+    done_at: '2026-08-12T06:49:18.575734+00:00'
+    evidence: 'Integrated candidate c35976ee618b6126d4a0f3c1c2eb8b596c1d413d from
+      isolated worktree at base 1a3811c051c6dfbe67f8f391a7367f01daafe9b7 by exact
+      fast-forward; candidate and integrated trees match, repository clean, no push.
+      Parent production Gate admitted dispatch and receipt CONFORMANT: .vectl/artifacts/admitted-mutation-verification.static-baseline-remediation/parent-dispatch-verdict.json
+      and parent-receipt-verdict.json; dispatch SHA sha256:0f4d1f29b538019348a795d80746e83971fd52592e9ac55d9e6136bf776db83c,
+      receipt SHA sha256:2458085be3cef1579b8046ef68950e5e748490b44d93f1e9daf9cb1ff619bb34.
+      Changed exact 9 authorized paths: src/vectl/{cli_plan_common.py,cli_plan_lock_commands.py,cli_plan_mutation_commands.py,io.py,mcp_core_common.py,mcp_core_mutation_tools.py,shell/admitted_plan_mutation.py},
+      tests/{expected_red.py,test_io.py}; blocked paths and RFC/bilingual README bytes
+      unchanged. Existing tests/docs remain synchronized because casts/explicit imports/aliases/import
+      formatting and explicit return None preserve observable behavior; exact-doc
+      and public-doc assertions passed. Parent integrated reruns: exact eight selected/executed
+      nodes green; focused regression 513 passed; Invar green; git diff --check green;
+      Vectl validate 0 errors/45 historical warnings. Full static comparison restored/exceeded
+      baseline without suppressions: ruff 1946 vs ratified 2015, mypy 1200 errors/31
+      files vs 1261/31, with zero normalized additions and zero feature-local additions.
+      Evidence logs and comparison JSON are mode 0600 under .vectl/artifacts/admitted-mutation-verification.static-baseline-remediation/.'

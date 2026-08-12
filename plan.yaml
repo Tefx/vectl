@@ -123639,7 +123639,7 @@ phases:
       Repository clean; no push.'
   - id: admitted-mutation-verification.diagnostic-redaction-integration-rerun
     name: Rerun integration verification after diagnostic remediation
-    status: pending
+    status: claimed
     description: "step_type: verification\nrepo_change_policy: no_repo_change\n\n\
       Deliver:\n- As `integration-verifier`, independently rerun the eight focused\
       \ NARROW V1 nodes and the full pytest, Invar, ruff, mypy, diff-check, and Vectl\
@@ -123825,3 +123825,5 @@ phases:
     depends_on:
     - admitted-mutation-verification.diagnostic-redaction-remediation
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-08-12T10:09:11.340673Z'

@@ -1035,6 +1035,27 @@ def _write_fake_admission_adapter(path: Path, *, invalid_shebang: bool = False) 
             "        'candidate_sha256': candidate_sha256,\n"
             "        'reason': diagnostic.decode(),\n"
             "    }), encoding='utf-8')\n"
+            "elif mode == 'contract-empty-reject':\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'reject',\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "        'reason': (\n"
+            "            \"CONTRACT_FIELD_EMPTY: phase.step: contract field \"\n"
+            "            \"'scope.allowed_paths' must not be empty\"\n"
+            "        ),\n"
+            "    }), encoding='utf-8')\n"
+            "elif mode == 'contract-overlap-reject':\n"
+            "    verdict.write_text(json.dumps({\n"
+            "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
+            "        'decision': 'reject',\n"
+            "        'candidate_sha256': candidate_sha256,\n"
+            "        'reason': (\n"
+            "            \"CONTRACT_PATH_OVERLAP: phase.step: \"\n"
+            "            \"scope.allowed_paths pattern 'src/**' is shadowed by \"\n"
+            "            \"scope.blocked_paths pattern 'src/**'\"\n"
+            "        ),\n"
+            "    }), encoding='utf-8')\n"
             "elif mode == 'timeout':\n"
             "    time.sleep(2)\n"
             "elif mode == 'crash':\n"
@@ -1858,6 +1879,66 @@ def test_admitted_mutation_diagnostics_redact_protected_operands_and_write_nothi
     assert unrelated.read_bytes() == unrelated_bytes
 
 
+@pytest.mark.parametrize(
+    ("mode", "candidate_marker", "expected_reason"),
+    (
+        (
+            "contract-empty-reject",
+            "contract field scope allowed_paths must not be empty",
+            "CONTRACT_FIELD_EMPTY: <step-id>: contract field "
+            "'scope.allowed_paths' must not be empty",
+        ),
+        (
+            "contract-overlap-reject",
+            "scope allowed_paths blocked_paths src/** shadowed pattern",
+            "CONTRACT_PATH_OVERLAP: <step-id>: scope.allowed_paths pattern "
+            "'<plan-content>' is shadowed by scope.blocked_paths pattern "
+            "'<plan-content>'",
+        ),
+    ),
+)
+def test_admitted_mutation_rejection_preserves_actionable_contract_diagnostics(
+    tmp_path: Path,
+    sample_plan: Plan,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+    candidate_marker: str,
+    expected_reason: str,
+) -> None:
+    (
+        repo,
+        plan_path,
+        unrelated,
+        config,
+        base_bytes,
+        _,
+        _,
+    ) = _prepare_admission_io_failure_case(tmp_path / mode, sample_plan)
+    candidate_bytes = base_bytes + f"# {candidate_marker}\n".encode()
+    before = _capture_admission_protected_state(repo, plan_path, unrelated)
+    workspaces = _track_admission_workspaces(monkeypatch)
+    monkeypatch.setenv("VECTL_TEST_ADMISSION_MODE", mode)
+
+    with pytest.raises(admission_module.PlanAdmissionError) as raised:
+        admission_module.admit_candidate_bytes(
+            config=config,
+            plan_path=plan_path,
+            base_bytes=base_bytes,
+            candidate_bytes=candidate_bytes,
+            candidate_sha256=(
+                "sha256:" + hashlib.sha256(candidate_bytes).hexdigest()
+            ),
+        )
+
+    assert raised.value.code == "rejected"
+    assert raised.value.reason == expected_reason
+    assert len(raised.value.reason) <= 1024
+    assert candidate_marker not in raised.value.reason
+    assert workspaces
+    assert all(not workspace.exists() for workspace in workspaces)
+    _assert_admission_protected_state_unchanged(repo, plan_path, unrelated, before)
+
+
 @pytest.mark.parametrize("scheme", ("Bearer", "Basic", "Digest"))
 @pytest.mark.parametrize(
     ("mode", "expected_code"),
@@ -2038,14 +2119,20 @@ def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
     assert "外层适配器进程以 0 退出" in readme_zh
     assert "absolute filesystem paths" in rfc_contract
     assert "secret-like tokens" in rfc_contract
-    assert "Plan-derived fragments" in rfc_contract
+    assert "Plan-derived values" in rfc_contract
+    assert (
+        "stable diagnostic error codes, contract field paths, and violation classes"
+        in rfc_contract
+    )
     assert "absolute filesystem paths" in readme
     assert "secret-like tokens" in readme
-    assert "Plan-derived fragments" in readme
+    assert "Plan-derived values" in readme
+    assert "stable error codes, contract field paths, and violation classes" in readme
     assert "missing, unreadable, replaced, or no longer regular" in readme
     assert "before creating the workspace" in readme.lower()
     assert "绝对文件系统路径" in readme_zh
     assert "类似秘密的 token" in readme_zh
-    assert "Plan 派生片段" in readme_zh
+    assert "Plan 派生值" in readme_zh
+    assert "稳定错误代码、合同字段路径和违规类别" in readme_zh
     assert "缺失、不可读、被替换或不再是常规文件" in readme_zh
     assert "创建工作区之前" in readme_zh

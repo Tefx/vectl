@@ -281,6 +281,7 @@ vectl_mutate(
     action: MutationAction | None = None,
     # existing single-action fields remain unchanged
     requests: list[BatchMutationRequest] | None = None,
+    max_issues: int | None = None,  # diagnostic output bound only
 )
 ```
 
@@ -296,7 +297,9 @@ vectl_mutate(
 6. Unknown fields and fields irrelevant to the selected action are rejected before Plan load.
 7. Malformed requests report their zero-based `request[i]` index when validation reaches the Vectl tool boundary.
 8. Unknown-field errors name the action, rejected fields, allowed fields, and known remediation such as `phase_id` versus `step_id` or `refs` versus edit-only `add_refs`/`remove_refs`.
-9. There are no caller-supplied shared batch options.
+9. `max_issues` is the sole caller-supplied shared diagnostic-output option; it
+   bounds final-validation summaries and does not change batch mutation semantics.
+   There are no other caller-supplied shared batch options.
 
 ### Per-action fields
 
@@ -341,8 +344,13 @@ A batch follows this order:
 8. After every request succeeds, call `recalc_lock_status()` once on the working copy.
 9. Run one final validation stage:
    - revalidate the complete model through the canonical `Plan` model;
-   - call `validate_plan` once with `check_refs=False` and `include_completed_evidence_guard=False`;
-   - reject the first deterministic blocking issue.
+   - retain a Pydantic location component only when the `Plan`, `Phase`, `Step`, `Clipboard`, or `RejectionEntry` schema expected at that path admits the field or list index; map unknown components to `<field>`;
+   - retain only Pydantic Core built-in error types, map unknown/custom types to `validation_error`, and never copy `msg`, input, context, or URLs;
+   - convert any unexpected canonical extraction/normalization failure to one fixed `unexpected_validation_error` without exception/candidate text;
+   - call `validate_plan` once with `check_refs=False` and `include_completed_evidence_guard=False` when canonical validation succeeds;
+   - convert an unexpected structural-validator exception to one fixed pre-save `unexpected_validation_error` without exception/candidate text, while keeping ordinary structural identifiers actionable;
+   - collect every deterministic non-warning issue in validator order;
+   - route canonical and structural failures through one formatter: `max_issues=N` renders N rows, `None` renders all rows, and every control-escaped issue value is capped at 512 codepoints with explicit count/value flags.
 10. Perform one CAS save using the original expected definition hash and with save-time lock recalculation disabled.
 11. Attempt one Git commit through the existing save path.
 12. Return ordered request results, the exact hash returned by the successful save, and the precomputed lock notice.
@@ -453,7 +461,7 @@ Required cases:
 2. **Single execution boundary:** instrument `_load`, `recalc_lock_status`, the save helper, and `_git_commit_plan`; each is called once on success.
 3. **Returned hash:** `plan_hash` equals the SHA-256 of the saved `plan.yaml` bytes.
 4. **Request failure:** a later request contains an invalid dependency or duplicate ID; the error identifies its request index, while Plan bytes, claims bytes, persisted lock statuses, and Git HEAD remain unchanged.
-5. **Final validation failure:** an ordered edit introduces a phase cycle; the response identifies `stage=final_validation`, with no write or commit.
+5. **Final validation failure:** an injected candidate with independent phase, dependency, and step blockers is checked by the real validator; the response reports all blocking diagnostics in order, with no write or commit. A bounded response is the requested prefix, and a corrected follow-up succeeds.
 6. **CAS conflict:** another writer changes `plan.yaml` between load and save; the writer's bytes remain authoritative and the batch produces no commit.
 7. **Mixed input:** `requests` combined with `action` or a meaningful top-level single-action field fails before load.
 8. **Replay:** a successful explicit-ID batch fails safely on the second execution without a second write or commit.
@@ -475,6 +483,16 @@ Implementation synchronously maintains:
 - this RFC: implemented status, typed schema source, error responsibility, and executable acceptance evidence.
 
 No new ADR is required while Git durability remains governed by `docs/ADR-unified-state.md`.
+
+### Diagnostic and review follow-up
+
+The MCP mutation surface performs candidate validation before `_save_admitted_plan_receipt`. Canonical and structural failures share `stage=final_validation`; `validation_source` distinguishes them. Canonical paths are schema-allowlisted, canonical types are Pydantic-built-in-allowlisted, and raw Pydantic values are never copied. Unexpected canonical or structural exceptions use fixed pre-save text; ordinary structural diagnostics keep actionable identifiers. `max_issues=N` renders at most N rows while `None` renders every row. Both modes escape controls/newlines, cap each issue at exactly 512 codepoints, and publish `blocking_issue_count`, actual `rendered_issue_count`, `issues_truncated`, and `issue_values_truncated`. Failure does not change candidate bytes, SHA binding, claims, locks, Git, or the persistence boundary.
+
+Admission diagnostic rendering is best-effort accidental-disclosure hygiene for a trusted same-UID adapter. It returns fixed `admission diagnostic unavailable` for input over 8192 raw or decoded units and Python strings containing surrogates, then bounds normal output to 1024 codepoints. Ordinary authorization fields, common secret assignments, obvious opaque tokens, protected Plan values, temporary/absolute paths, and ordinary URL userinfo or secret-like components are replaced with `<redacted>`. URL inspection performs one percent-decoding pass; safe URLs remain exact, and placeholder restoration in reverse creation order preserves nested `<admission-temp>` markers. Deliberate control splitting, malformed multi-`@` authorities, repeated encoding, Unicode whitespace obfuscation, and parser ambiguity are outside this hygiene contract. The sanitizer does not claim sandboxing, credential isolation, or hostile-input containment; the adapter can already access same-UID resources.
+
+`vectl_review` keeps default `scope="global"` and separates validation closure from rendering. Phase rendering stays target-local. Phase validation includes target dependencies, every explicit gate selector's exact and qualified candidates, candidate step dependencies, and candidate phase dependencies. Explicit integration forces unclosed failure-evidence inspection of each completed candidate root regardless of review-like naming, so relevant failures block readiness. Distinct exact/qualified interpretations block readiness. Active closure includes every candidate interpretation and Plan-wide duplicate identity blockers.
+
+For bounded `max_issues=N`, L1 issues, L2 phases, L3 phase headers, L3 global step rows, L4 refs, gate pending steps, and downstream phases each have N rows. L3 phase-dependency links, L3 step-dependency links, and L4 links each use one global N-link budget. User scalars are control/newline escaped and capped at 160 codepoints; L1 issues use 512. Each section reports pre-bound totals, actual rendered counts, count-truncation flags, and rendered-value truncation flags. A fixed 65,536-codepoint output cap falls back to metadata with zero detail rendered counts and `output_safety_truncated: true`. `max_issues=None` preserves all review rows, links, and values without bounded scalar/output caps.
 
 ## Implementation Target Map
 Primary targets:

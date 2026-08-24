@@ -18,6 +18,9 @@ from typing import BinaryIO, Literal, cast
 from returns.result import Result
 
 from vectl.models import PlanIOError
+from vectl.shell.admission_diagnostic_sanitizer import (
+    sanitize_admission_diagnostic as _sanitize_diagnostic,
+)
 
 _ADMISSION_ENV_FIELDS = (
     "VECTL_PLAN_ADMISSION_EXECUTABLE",
@@ -28,66 +31,6 @@ _SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}\Z")
 _MAX_VERDICT_BYTES = 16 * 1024
 _MAX_DIAGNOSTIC_BYTES = 8 * 1024
 _MAX_REJECTION_REASON_CODEPOINTS = 1024
-_ABSOLUTE_PATH_PATTERN = re.compile(r"(?<![\w:])/(?:[^\s\x00-\x1f\"'<>]+)")
-_AUTHORIZATION_VALUE_PATTERN = re.compile(
-    r"(?i)\bauthorization\b\s*[:=]\s*"
-    r"(?:"
-    r"(?:bearer|basic)\s+(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
-    r"|digest\s+(?:[^;\r\n]|[\r\n][ \t])+"
-    r"|(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
-    r")"
-)
-_SECRET_ASSIGNMENT_PATTERN = re.compile(
-    r"(?i)\b(?:api[_-]?key|authorization|credential|password|passwd|secret|token)\b"
-    r"\s*[:=]\s*(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
-)
-_SECRET_TOKEN_PATTERN = re.compile(
-    r"(?i)\S*(?:bearer|credential|password|passwd|private[_-]?key|api[_-]?key|secret|token)\S*"
-)
-_OPAQUE_TOKEN_PATTERN = re.compile(
-    r"(?<![A-Za-z0-9])(?:[A-Fa-f0-9]{24,}|[A-Za-z0-9_-]{32,}|"
-    r"[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]{8,}){2})(?![A-Za-z0-9])"
-)
-_PLAN_FRAGMENT_PATTERN = re.compile(r"[\w@.+/*?-]{2,}")
-_DIAGNOSTIC_SUBJECT_PATTERN = re.compile(
-    r"(?P<prefix>^|:\s)(?P<identity>[\w@.+/-]{2,})(?=:)"
-)
-_QUOTED_DIAGNOSTIC_VALUE_PATTERN = re.compile(
-    r"(?P<quote>['\"])(?P<value>[^'\"\r\n]+)(?P=quote)"
-)
-_STABLE_ERROR_CODE_PATTERN = re.compile(r"(?<![\w])\b[A-Z][A-Z0-9_]{2,}(?=:\s)")
-_CONTRACT_FIELD_PATH_PATTERN = re.compile(
-    r"(?<![\w])(?:scope|claims|checks|bindings)(?:\.[A-Za-z_][\w-]*)+"
-)
-_VIOLATION_CLASS_PATTERN = re.compile(
-    r"(?i)\b(?:must not be empty|is shadowed by)\b"
-)
-_STABLE_DIAGNOSTIC_VALUES = frozenset(
-    {
-        "be",
-        "blocked",
-        "blocked_paths",
-        "claimed",
-        "contract",
-        "done",
-        "empty",
-        "field",
-        "is",
-        "locked",
-        "must",
-        "not",
-        "pattern",
-        "pending",
-        "rejected",
-        "scope",
-        "shadowed",
-        "skipped",
-        "allowed",
-        "allowed_paths",
-        "by",
-    }
-)
-_MIN_DISTINCTIVE_PLAN_FRAGMENT_CHARS = 6
 
 AdmissionState = Literal["not_configured", "configured", "configuration_invalid"]
 
@@ -412,81 +355,6 @@ def _run_adapter(
         for reader in readers:
             reader.join(timeout=1.0)
     return returncode, bytes(stdout), bytes(stderr)
-
-
-def _sanitize_diagnostic(
-    content: bytes | str,
-    temporary_path: Path,
-    *,
-    protected_contents: tuple[bytes, ...],
-) -> str | Result[str, str]:
-    """Bound one diagnostic after removing paths, secrets, and Plan-derived values."""
-    if isinstance(content, bytes):
-        text = content.decode("utf-8", errors="replace")
-    else:
-        text = content
-
-    protected_text = tuple(
-        protected.decode("utf-8", errors="replace") for protected in protected_contents
-    )
-    protected_values = frozenset(
-        fragment
-        for protected in protected_text
-        for fragment in _PLAN_FRAGMENT_PATTERN.findall(protected)
-        if len(fragment) >= _MIN_DISTINCTIVE_PLAN_FRAGMENT_CHARS
-        or "/" in fragment
-        or "-" in fragment
-    )
-
-    preserved_semantics: dict[str, str] = {}
-
-    def preserve(value: str) -> str:
-        placeholder = f"\x00{len(preserved_semantics)}\x00"
-        preserved_semantics[placeholder] = value
-        return placeholder
-
-    def preserve_subject(match: re.Match[str]) -> str:
-        return f"{match.group('prefix')}{preserve('<step-id>')}"
-
-    def preserve_quoted_semantics(match: re.Match[str]) -> str:
-        value = match.group("value")
-        if _CONTRACT_FIELD_PATH_PATTERN.fullmatch(value) is not None:
-            return preserve(match.group(0))
-        return match.group(0)
-
-    def redact_quoted_value(match: re.Match[str]) -> str:
-        value = match.group("value")
-        if value in protected_values:
-            return f"{match.group('quote')}<plan-content>{match.group('quote')}"
-        return match.group(0)
-
-    def redact_plan_fragment(match: re.Match[str]) -> str:
-        fragment = match.group(0)
-        if fragment.casefold() in _STABLE_DIAGNOSTIC_VALUES:
-            return fragment
-        if any(
-            fragment == protected or fragment in protected
-            for protected in protected_values
-        ):
-            return "<plan-content>"
-        return fragment
-
-    text = text.replace(str(temporary_path), "<admission-temp>")
-    text = _AUTHORIZATION_VALUE_PATTERN.sub("<redacted>", text)
-    text = _ABSOLUTE_PATH_PATTERN.sub("<path>", text)
-    text = _SECRET_ASSIGNMENT_PATTERN.sub("<redacted>", text)
-    text = _SECRET_TOKEN_PATTERN.sub("<redacted>", text)
-    text = _OPAQUE_TOKEN_PATTERN.sub("<redacted>", text)
-    text = _STABLE_ERROR_CODE_PATTERN.sub(lambda match: preserve(match.group(0)), text)
-    text = _DIAGNOSTIC_SUBJECT_PATTERN.sub(preserve_subject, text)
-    text = _QUOTED_DIAGNOSTIC_VALUE_PATTERN.sub(preserve_quoted_semantics, text)
-    text = _VIOLATION_CLASS_PATTERN.sub(lambda match: preserve(match.group(0)), text)
-    text = _QUOTED_DIAGNOSTIC_VALUE_PATTERN.sub(redact_quoted_value, text)
-    text = _PLAN_FRAGMENT_PATTERN.sub(redact_plan_fragment, text)
-    for placeholder, value in preserved_semantics.items():
-        text = text.replace(placeholder, value)
-    sanitized = "".join(character if character.isprintable() else " " for character in text)
-    return " ".join(sanitized.split())[:_MAX_REJECTION_REASON_CODEPOINTS]
 
 
 # @shell_complexity: Invocation classification enforces all zero-write failure codes.

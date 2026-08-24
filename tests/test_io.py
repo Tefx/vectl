@@ -17,6 +17,7 @@ import pytest
 import yaml
 
 import vectl.io as io_module
+import vectl.shell.admission_diagnostic_sanitizer as sanitizer_module
 import vectl.shell.admitted_plan_mutation as admission_module
 from vectl.io import (
     _backup_definition,
@@ -1001,7 +1002,9 @@ def _write_fake_admission_adapter(path: Path, *, invalid_shebang: bool = False) 
             "base_bytes = base.read_bytes()\n"
             "candidate_bytes = candidate.read_bytes()\n"
             "candidate_sha256 = 'sha256:' + hashlib.sha256(candidate_bytes).hexdigest()\n"
-            "secret = os.environ.get('VECTL_TEST_SECRET', 'TOP-SECRET-TOKEN').encode()\n"
+            "secret_hex = os.environ.get('VECTL_TEST_SECRET_HEX')\n"
+            "secret = (bytes.fromhex(secret_hex) if secret_hex is not None else\n"
+            "          os.environ.get('VECTL_TEST_SECRET', 'TOP-SECRET-TOKEN').encode())\n"
             "external_path = os.environ.get(\n"
             "    'VECTL_TEST_EXTERNAL_PATH', '/tmp/vectl-test'\n"
             ").encode()\n"
@@ -1028,6 +1031,15 @@ def _write_fake_admission_adapter(path: Path, *, invalid_shebang: bool = False) 
             "        'candidate_sha256': candidate_sha256,\n"
             "        'reason': (b'policy engine unavailable ' + secret).decode(),\n"
             "    }), encoding='utf-8')\n"
+            "elif mode == 'surrogate-reject':\n"
+            "    escaped_surrogate = chr(92) + 'ud800'\n"
+            "    verdict.write_text(\n"
+            "        '{\"schema_version\":\"vectl.plan-mutation-admission.v1\",'\n"
+            "        '\"decision\":\"reject\",\"candidate_sha256\":\"'\n"
+            "        + candidate_sha256\n"
+            "        + '\",\"reason\":\"policy ' + escaped_surrogate + ' payload\"}',\n"
+            "        encoding='utf-8',\n"
+            "    )\n"
             "elif mode == 'leaky-reject':\n"
             "    verdict.write_text(json.dumps({\n"
             "        'schema_version': 'vectl.plan-mutation-admission.v1',\n"
@@ -1884,13 +1896,13 @@ def test_admitted_mutation_diagnostics_redact_protected_operands_and_write_nothi
     (
         (
             "contract-empty-reject",
-            "contract field scope allowed_paths must not be empty",
+            "phase.step",
             "CONTRACT_FIELD_EMPTY: <step-id>: contract field "
             "'scope.allowed_paths' must not be empty",
         ),
         (
             "contract-overlap-reject",
-            "scope allowed_paths blocked_paths src/** shadowed pattern",
+            "phase.step src/**",
             "CONTRACT_PATH_OVERLAP: <step-id>: scope.allowed_paths pattern "
             "'<plan-content>' is shadowed by scope.blocked_paths pattern "
             "'<plan-content>'",
@@ -1939,20 +1951,211 @@ def test_admitted_mutation_rejection_preserves_actionable_contract_diagnostics(
     _assert_admission_protected_state_unchanged(repo, plan_path, unrelated, before)
 
 
-@pytest.mark.parametrize("scheme", ("Bearer", "Basic", "Digest"))
+def _sanitize_admission_test_diagnostic(
+    diagnostic: bytes | str,
+    *,
+    protected: bytes = b"project: neutral\nphases: []\n",
+    temporary_path: Path = Path("/private/vectl-admission-workspace"),
+) -> str:
+    sanitized = admission_module._sanitize_diagnostic(
+        diagnostic,
+        temporary_path,
+        protected_contents=(protected,),
+    )
+    assert isinstance(sanitized, str)
+    return sanitized
+
+
+def test_admission_sanitizer_redacts_plan_values_fragments_and_paths() -> None:
+    protected = yaml.safe_dump(
+        {
+            "project": "Red Fox",
+            "context": "prefix/SecretTail/suffix",
+            "phases": [
+                {
+                    "id": "protected",
+                    "name": "Protected",
+                    "steps": [{"id": "p.s", "name": "CONTRACT_BAD"}],
+                }
+            ],
+        },
+        sort_keys=False,
+    ).encode()
+
+    sanitized = _sanitize_admission_test_diagnostic(
+        "CONTRACT_BAD: p.s: Red Fox SecretTail /Users/alice/private.json; tail",
+        protected=protected,
+    )
+
+    assert sanitized == "<plan-content>: <step-id>: <plan-content> <plan-content> <path>"
+
+
+def test_admission_sanitizer_preserves_actionable_non_plan_diagnostics() -> None:
+    sanitized = _sanitize_admission_test_diagnostic(
+        "CONTRACT_FIELD_EMPTY: phase.step: contract field "
+        "'scope.allowed_paths' must not be empty; value 'Red Foxtrot'",
+        protected=yaml.safe_dump({"project": "Red Fox", "phases": []}).encode(),
+    )
+
+    assert sanitized == (
+        "CONTRACT_FIELD_EMPTY: <step-id>: contract field "
+        "'scope.allowed_paths' must not be empty; value 'Red Foxtrot'"
+    )
+
+
+@pytest.mark.parametrize(
+    ("scheme", "payload"),
+    (
+        ("Bearer", "short-bearer-value"),
+        ("Basic", "dXNlcjpwYXNz"),
+        (
+            "Digest",
+            'username="u", realm="r", nonce="n", response="secret-response"',
+        ),
+    ),
+)
+def test_admission_sanitizer_redacts_complete_authorization_fields(
+    scheme: str,
+    payload: str,
+) -> None:
+    sanitized = _sanitize_admission_test_diagnostic(
+        f"Authorization: {scheme} {payload}; request denied safely"
+    )
+
+    assert sanitized == "<redacted>; request denied safely"
+    assert payload not in sanitized
+
+
+def test_admission_sanitizer_redacts_common_assignments_and_opaque_tokens() -> None:
+    opaque = "0123456789abcdef0123456789abcdef"
+    diagnostic = (
+        "token=one; password=two; passwd=three; api_key=four; api-key=five; "
+        "apikey=six; credential=seven; secret=eight; authorization=nine; "
+        f"opaque {opaque}; request denied safely"
+    )
+
+    sanitized = _sanitize_admission_test_diagnostic(diagnostic)
+
+    assert sanitized.count("<redacted>") == 10
+    for value in ("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", opaque):
+        assert value not in sanitized
+
+
+@pytest.mark.parametrize(
+    "url",
+    (
+        "https://user:password@example.test/private",
+        "https://example.test/public?token=x",
+        "https://example.test/private-key.pem",
+        "https://example.test/public?api%5Fkey=x#fragment",
+    ),
+)
+def test_admission_sanitizer_redacts_ordinary_sensitive_urls(url: str) -> None:
+    sanitized = _sanitize_admission_test_diagnostic(f"adapter URL {url} tail")
+
+    assert sanitized == "adapter URL <redacted> tail"
+
+
+def test_admission_sanitizer_preserves_safe_url_before_later_email_or_mention() -> None:
+    url = "https://example.test/a,b;[c]?query=value#fragment"
+    diagnostic = f"URL {url} contact ops@example.test @operator"
+
+    assert _sanitize_admission_test_diagnostic(diagnostic) == diagnostic
+
+
+def test_admission_sanitizer_redacts_protected_url_component_only() -> None:
+    protected = yaml.safe_dump({"project": "SecretTail", "phases": []}).encode()
+
+    sanitized = _sanitize_admission_test_diagnostic(
+        "URL https://example.test/SecretTail?q=1",
+        protected=protected,
+    )
+
+    assert sanitized == "URL https://example.test/<plan-content>?q=1"
+
+
+def test_admission_sanitizer_protected_words_cannot_restore_credentials() -> None:
+    protected = yaml.safe_dump(
+        {
+            "values": [
+                "Authorization",
+                "Bearer",
+                "token",
+                "redacted",
+                "0",
+                "1",
+            ]
+        },
+        sort_keys=False,
+    ).encode()
+
+    sanitized = _sanitize_admission_test_diagnostic(
+        "Authorization: Bearer shortpayload; token=shortvalue; request denied",
+        protected=protected,
+    )
+
+    assert sanitized == "<redacted>; <redacted>; request denied"
+    assert "short" not in sanitized
+
+
+def test_admission_sanitizer_restores_nested_temp_placeholders_in_reverse_order() -> None:
+    diagnostic = (
+        "one https://example.test/tmp/work/one "
+        "two X+Y://example.test/public?q=/tmp/work temp /tmp/work"
+    )
+
+    sanitized = _sanitize_admission_test_diagnostic(
+        diagnostic,
+        temporary_path=Path("/tmp/work"),
+    )
+
+    assert sanitized == (
+        "one https://example.test<admission-temp>/one "
+        "two X+Y://example.test/public?q=<admission-temp> "
+        "temp <admission-temp>"
+    )
+    assert not any(0xE000 <= ord(character) < 0xF900 for character in sanitized)
+
+
+@pytest.mark.parametrize(
+    "content",
+    (
+        "x" * 8193,
+        "unsafe \ud800",
+        b"x" * 8193,
+    ),
+    ids=("text-cap", "surrogate", "bytes-cap"),
+)
+def test_admission_sanitizer_uses_fixed_fallback_before_yaml(
+    content: bytes | str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("invalid diagnostics must fail before protected YAML parsing")
+
+    monkeypatch.setattr(sanitizer_module.yaml, "safe_load", forbidden)
+
+    assert _sanitize_admission_test_diagnostic(content) == ("admission diagnostic unavailable")
+
+
+def test_admission_sanitizer_bounds_normalized_output_to_1024_codepoints() -> None:
+    sanitized = _sanitize_admission_test_diagnostic("ordinary text " * 200)
+
+    assert len(sanitized) == 1024
+    assert sanitized.startswith("ordinary text ")
+
+
 @pytest.mark.parametrize(
     ("mode", "expected_code"),
     (("authorization-crash", "adapter_crash"), ("authorization-reject", "rejected")),
 )
-def test_admitted_mutation_authorization_payloads_are_redacted_for_crash_and_reject(
+def test_configured_admission_redacts_credentials_without_mutation(
     tmp_path: Path,
     sample_plan: Plan,
     monkeypatch: pytest.MonkeyPatch,
-    scheme: str,
     mode: str,
     expected_code: str,
 ) -> None:
-    case_root = tmp_path / f"authorization-{scheme.lower()}-{mode}"
     (
         repo,
         plan_path,
@@ -1961,29 +2164,16 @@ def test_admitted_mutation_authorization_payloads_are_redacted_for_crash_and_rej
         base_bytes,
         candidate_bytes,
         candidate_sha256,
-    ) = _prepare_admission_io_failure_case(case_root, sample_plan)
+    ) = _prepare_admission_io_failure_case(tmp_path / mode, sample_plan)
     before = _capture_admission_protected_state(repo, plan_path, unrelated)
     workspaces = _track_admission_workspaces(monkeypatch)
-    useful_suffix = "request denied safely"
-    if scheme == "Digest":
-        protected_parameters = (
-            'username="digest-user-v8"',
-            'realm="digest-realm-v8"',
-            'nonce="digest-nonce-v8"',
-            'uri="urn:vectl:digest-direct-v8"',
-            'response="digest-response-v8"',
-            "algorithm=MD5-sess",
-            "qop=auth-int",
-            "nc=00000001",
-            'cnonce="digest-cnonce-v8"',
-        )
-        payload = ", ".join(protected_parameters)
-    else:
-        protected_parameters = ()
-        payload = f"short-{scheme.lower()}-payload"
-    authorization = f"Authorization: {scheme} {payload}; {useful_suffix}"
+    diagnostic = (
+        "Authorization: Bearer shortpayload; URL "
+        "https://url-user:url-pass@example.test/private?token=x; "
+        "request denied safely"
+    )
     monkeypatch.setenv("VECTL_TEST_ADMISSION_MODE", mode)
-    monkeypatch.setenv("VECTL_TEST_SECRET", authorization)
+    monkeypatch.setenv("VECTL_TEST_SECRET", diagnostic)
 
     with pytest.raises(admission_module.PlanAdmissionError) as raised:
         admission_module.admit_candidate_bytes(
@@ -1995,20 +2185,43 @@ def test_admitted_mutation_authorization_payloads_are_redacted_for_crash_and_rej
         )
 
     assert raised.value.code == expected_code
-    assert "policy engine unavailable" in raised.value.reason
-    assert useful_suffix in raised.value.reason
-    assert "<redacted>" in raised.value.reason
-    assert len(raised.value.reason) <= 1024
-    for protected in (
-        payload,
-        authorization,
-        *protected_parameters,
-        str(case_root),
-        base_bytes.decode().strip(),
-        candidate_bytes.decode().strip(),
-    ):
-        assert protected not in raised.value.reason
+    assert raised.value.reason.endswith("<redacted>; URL <redacted> request denied safely")
+    for protected in ("shortpayload", "url-user", "url-pass", "token=x"):
         assert protected not in str(raised.value)
+    assert workspaces
+    assert all(not workspace.exists() for workspace in workspaces)
+    _assert_admission_protected_state_unchanged(repo, plan_path, unrelated, before)
+
+
+def test_configured_admission_surrogate_rejection_uses_fixed_reason_without_mutation(
+    tmp_path: Path,
+    sample_plan: Plan,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (
+        repo,
+        plan_path,
+        unrelated,
+        config,
+        base_bytes,
+        candidate_bytes,
+        candidate_sha256,
+    ) = _prepare_admission_io_failure_case(tmp_path / "surrogate", sample_plan)
+    before = _capture_admission_protected_state(repo, plan_path, unrelated)
+    workspaces = _track_admission_workspaces(monkeypatch)
+    monkeypatch.setenv("VECTL_TEST_ADMISSION_MODE", "surrogate-reject")
+
+    with pytest.raises(admission_module.PlanAdmissionError) as raised:
+        admission_module.admit_candidate_bytes(
+            config=config,
+            plan_path=plan_path,
+            base_bytes=base_bytes,
+            candidate_bytes=candidate_bytes,
+            candidate_sha256=candidate_sha256,
+        )
+
+    assert raised.value.code == "rejected"
+    assert raised.value.reason == "admission diagnostic unavailable"
     assert workspaces
     assert all(not workspace.exists() for workspace in workspaces)
     _assert_admission_protected_state_unchanged(repo, plan_path, unrelated, before)
@@ -2095,6 +2308,12 @@ def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
 
     readme = (Path(__file__).parents[1] / "README.md").read_text(encoding="utf-8")
     readme_zh = (Path(__file__).parents[1] / "README_zh.md").read_text(encoding="utf-8")
+    design = (Path(__file__).parents[1] / "docs" / "DESIGN.md").read_text(
+        encoding="utf-8"
+    )
+    batch_rfc = (
+        Path(__file__).parents[1] / "docs" / "RFC-atomic-plan-mutation-batch.md"
+    ).read_text(encoding="utf-8")
     for public_doc in (readme, readme_zh):
         assert "VECTL_PLAN_ADMISSION_EXECUTABLE" in public_doc
         assert "candidate_sha256" in public_doc
@@ -2106,10 +2325,6 @@ def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
         assert "Authorization: Bearer <payload>" in synchronized_doc
         assert "Authorization: Basic <payload>" in synchronized_doc
         assert "Authorization: Digest <payload>" in synchronized_doc
-        assert "username" in synchronized_doc
-        assert "realm" in synchronized_doc
-        assert "nonce-count" in synchronized_doc
-        assert "client nonce" in synchronized_doc
         assert 'outcome: "red"' in synchronized_doc
     assert "initial base/candidate identity setup failures" in rfc_contract.lower()
     assert "initial base/candidate identity setup failures" in readme.lower()
@@ -2117,22 +2332,49 @@ def test_admitted_mutation_exact_byte_docs_match_contract() -> None:
     assert "outer adapter process exits 0" in rfc_contract
     assert "outer adapter process exits 0" in readme
     assert "外层适配器进程以 0 退出" in readme_zh
-    assert "absolute filesystem paths" in rfc_contract
-    assert "secret-like tokens" in rfc_contract
-    assert "Plan-derived values" in rfc_contract
-    assert (
-        "stable diagnostic error codes, contract field paths, and violation classes"
-        in rfc_contract
-    )
-    assert "absolute filesystem paths" in readme
-    assert "secret-like tokens" in readme
-    assert "Plan-derived values" in readme
-    assert "stable error codes, contract field paths, and violation classes" in readme
     assert "missing, unreadable, replaced, or no longer regular" in readme
-    assert "before creating the workspace" in readme.lower()
-    assert "绝对文件系统路径" in readme_zh
-    assert "类似秘密的 token" in readme_zh
-    assert "Plan 派生值" in readme_zh
-    assert "稳定错误代码、合同字段路径和违规类别" in readme_zh
     assert "缺失、不可读、被替换或不再是常规文件" in readme_zh
-    assert "创建工作区之前" in readme_zh
+
+    english_diagnostic_docs = (rfc_contract, readme, design, batch_rfc)
+    for diagnostic_doc in english_diagnostic_docs:
+        normalized = diagnostic_doc.lower()
+        for term in (
+            "trusted",
+            "uid",
+            "best-effort",
+            "accidental",
+            "authorization",
+            "opaque",
+            "protected plan",
+            "<redacted>",
+            "userinfo",
+            "one percent-decoding pass",
+            "safe urls",
+            "8192",
+            "1024",
+            "admission diagnostic unavailable",
+            "surrogate",
+            "reverse creation order",
+            "<admission-temp>",
+        ):
+            assert term in normalized, f"diagnostic boundary docs omit {term}"
+        for removed_claim in (
+            "canonical security scan",
+            "maximal scheme-character",
+            "at most two rounds",
+            "final authority",
+        ):
+            assert removed_claim not in normalized
+
+    assert "同一 UID" in readme_zh
+    assert "受信任" in readme_zh
+    assert "尽力而为" in readme_zh
+    assert "意外泄露" in readme_zh
+    assert "一次百分号解码" in readme_zh
+    assert "安全的 URL" in readme_zh
+    assert "逆创建顺序" in readme_zh
+    assert "<admission-temp>" in readme_zh
+    assert "admission diagnostic unavailable" in readme_zh
+    assert "surrogate" in readme_zh.lower()
+    assert "canonical security scan" not in readme_zh.lower()
+    assert "最多解码两轮" not in readme_zh

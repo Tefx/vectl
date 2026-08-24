@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
+from returns.result import Result
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -79,7 +80,8 @@ class Step(BaseModel):
     # R2: step-level evidence template needs a place to store short copy/paste text.
     evidence_template: str = ""
     # RFC: docs/RFC-expected-red-verification-semantics.md
-    # Verification mode: None=red is failure, "expected_red"=red output acceptable for missing behavior
+    # Verification mode: None=red is failure; "expected_red" accepts red output
+    # for missing behavior.
     verify: Literal["expected_red", "must_green"] | None = None
     refs: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
@@ -178,34 +180,62 @@ class Plan(BaseModel):
 
     # ---- helpers ----
 
-    def find_step(self, step_id: str) -> tuple[Phase, Step] | None:
-        """Find a step by ID across all phases.
+    def find_step_matches(self, step_id: str) -> list[tuple[Phase, Step]]:
+        """Find every exact and qualified-fallback interpretation in Plan order.
 
-        Supports qualified lookup (phase.step format) and unqualified lookup.
-
-        Priority:
-        1. Exact match: try to find step with ID == step_id across all phases
-        2. Qualified fallback: if step_id contains '.', split by partition('.')
-           to get (phase_id, step_suffix) and look up step with ID == step_suffix
-           within that specific phase
+        Integrity-sensitive resolution gathers both stored-ID equality and the
+        qualified ``phase.step`` interpretation, then deduplicates identical
+        phase/step objects. Compatible reads retain exact-first behavior in
+        :meth:`find_step`.
         """
-        # Priority 1: exact match
+        matches = [
+            (phase, step)
+            for phase in self.phases
+            for step in phase.steps
+            if step.id == step_id
+        ]
+        if "." in step_id:
+            phase_prefix, _, step_suffix = step_id.partition(".")
+            if phase_prefix and step_suffix:
+                matches.extend(
+                    (phase, step)
+                    for phase in self.phases
+                    if phase.id == phase_prefix
+                    for step in phase.steps
+                    if step.id == step_suffix
+                )
+
+        deduplicated: list[tuple[Phase, Step]] = []
+        seen_objects: set[tuple[int, int]] = set()
+        for phase, step in matches:
+            object_key = (id(phase), id(step))
+            if object_key not in seen_objects:
+                seen_objects.add(object_key)
+                deduplicated.append((phase, step))
+        return deduplicated
+
+    def find_step(self, step_id: str) -> tuple[Phase, Step] | None:
+        """Find the first exact or qualified-fallback step in Plan order.
+
+        Stored-ID equality retains its historical priority. Integrity-sensitive
+        callers should inspect :meth:`find_step_matches` so a qualified shadow
+        cannot be mistaken for uniqueness.
+        """
         for phase in self.phases:
             for step in phase.steps:
                 if step.id == step_id:
                     return phase, step
-
-        # Priority 2: qualified lookup (phase.step format)
-        if "." in step_id:
-            phase_prefix, _, step_suffix = step_id.partition(".")
-            if phase_prefix and step_suffix:
-                found_phase = self.find_phase(phase_prefix)
-                if found_phase is not None:
-                    for found_step in found_phase.steps:
-                        # Look for the step_suffix within the specified phase
-                        if found_step.id == step_suffix:
-                            return found_phase, found_step
-
+        if "." not in step_id:
+            return None
+        phase_prefix, _, step_suffix = step_id.partition(".")
+        if not phase_prefix or not step_suffix:
+            return None
+        for phase in self.phases:
+            if phase.id != phase_prefix:
+                continue
+            for step in phase.steps:
+                if step.id == step_suffix:
+                    return phase, step
         return None
 
     def find_phase(self, phase_id: str) -> Phase | None:
@@ -216,8 +246,9 @@ class Plan(BaseModel):
         return None
 
 
-# @shell_orchestration: Selector formatting remains beside Plan/Phase/Step models for diagnostic import compatibility.
-def format_step_selector(phase_id: str, step_id: str) -> "Result[str, str]":
+# @shell_orchestration: Selector formatting remains beside Plan/Phase/Step
+# models for diagnostic import compatibility.
+def format_step_selector(phase_id: str, step_id: str) -> Result[str, str]:
     """Return canonical selector text for step-oriented diagnostics.
 
     If a stored step ID is already phase-qualified (contains ``.``), emit it
@@ -246,11 +277,18 @@ class PlanIOError(Exception):
 
 
 class PlanValidationIssue:
-    """A single validation error or warning."""
+    """A single validation error or warning with diagnostic provenance."""
 
-    def __init__(self, message: str, *, is_warning: bool = False) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        is_warning: bool = False,
+        is_historical: bool = False,
+    ) -> None:
         self.message = message
         self.is_warning = is_warning
+        self.is_historical = is_historical
 
     def __repr__(self) -> str:
         kind = "WARNING" if self.is_warning else "ERROR"
@@ -259,7 +297,11 @@ class PlanValidationIssue:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PlanValidationIssue):
             return NotImplemented
-        return self.message == other.message and self.is_warning == other.is_warning
+        return (
+            self.message == other.message
+            and self.is_warning == other.is_warning
+            and self.is_historical == other.is_historical
+        )
 
 
 @dataclass(frozen=True)
@@ -513,4 +555,18 @@ class NoMatchError(PlanError):
         super().__init__(f"No checklist item matches '{keyword}'. Use --append to add a new item.")
 
 
-from vectl.model_outputs import Action, CompletedResult, DecideOutput, Decision, DiffResult, GateCheckResult, InitResult, PhaseChange, PhaseProgress, ReviewResult, RunningTask, SearchMatch, StepChange
+from vectl.model_outputs import (  # noqa: E402, F401
+    Action,
+    CompletedResult,
+    DecideOutput,
+    Decision,
+    DiffResult,
+    GateCheckResult,
+    InitResult,
+    PhaseChange,
+    PhaseProgress,
+    ReviewResult,
+    RunningTask,
+    SearchMatch,
+    StepChange,
+)

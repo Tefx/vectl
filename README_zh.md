@@ -231,6 +231,20 @@ phases:
 
 如果你在 vectl 之外直接编辑了 `plan.yaml`，运行 `uvx vectl recalc-lock` 来诊断和修复锁状态不一致。
 
+### MCP 原子批量变更
+
+`vectl_mutate` 支持原有单项 `action` 模式，也支持非空 `requests` 列表；一次调用只能选择一种模式。批量请求按顺序作用于同一份 Plan 深拷贝，创建 phase/step 时必须提供显式 ID。任何请求错误或最终校验失败都会丢弃工作副本，并在 Plan、claims、备份和 Git 写入之前返回。成功路径只执行一次锁重算和一次带原始 CAS hash 的受准入保存，并返回有序结果、`plan_hash` 和 mutation receipt。
+
+单项和批量模式都对候选 Plan 执行 canonical model 校验和结构校验。Canonical Pydantic 位置组件只有在当前路径预期的 `Plan`、`Phase`、`Step`、`Clipboard` 或 `RejectionEntry` schema 接受该字段或列表索引时才会保留；错误类型只有属于 Pydantic Core 内建 allowlist 时才会保留。未知位置统一写成 `<field>`，未知或自定义类型统一写成 `validation_error`；Pydantic `msg`、原始输入、context 和文档 URL 不会复制。Canonical 提取/归一化或结构校验器发生未预期异常时，系统会在保存前返回一条固定 `unexpected_validation_error`，不包含异常或候选文本。普通结构诊断继续保留可操作的标识符；控制字符和换行会转义，每条 issue 最多 512 个码点。失败结果包含 `validation_source`（`canonical_model` 或 `structural`）、完整/渲染计数、`issues_truncated` 和 `issue_values_truncated`。`max_issues=N` 最多渲染 N 行；`max_issues=None` 渲染全部行。该参数不改变候选内容、准入、CAS 或保存语义。
+
+### 有范围的 MCP review 诊断
+
+`vectl_review` 默认使用兼容的 `scope="global"` 完整历史路径。`scope="phase"` 要求 `phase_id`：渲染仍只投影目标 phase；校验闭包包含目标 phase 的传递依赖、每个显式 gate 集成 selector 的 exact 与 qualified 两种解释、这些候选 step 的依赖，以及候选所属 phase 的传递依赖。显式集成会强制检查每个已完成候选根 step 的未闭合失败证据，即使其 ID、名称、描述和验证文本没有 review/test 关键词。exact 与 qualified 指向不同 step 时会在 gate 就绪判断前产生歧义阻断项。`scope="active_dependency_closure"` 保留既有 active phase、phase 依赖、step 依赖和显式 gate scope 闭包，并保守纳入所有候选解释。范围 review 还始终保留全 Plan 的重复 phase/step ID 阻断项。
+
+当 `max_issues=N` 时，每个集合分别获得 N 行预算：L1 issue、L2 phase 行、L3 phase 标题、L3 全局 step 行、L3 phase 依赖 link、L3 step 依赖 link、L4 ref 行、L4 全局 link、gate pending step 和 downstream phase。L3 的两类依赖 link 与 L4 link 各自使用全局 N-link 预算。当前错误、当前警告、历史警告依次渲染。所有用户可控标量都会转义控制字符/换行，并在转义后限制为 160 个码点；L1 issue 消息限制为 512 个码点。完整响应还有固定 65,536 码点上限；若最后保护触发，结果只保留元数据，把所有明细 `rendered_*` 计数置零，并设置 `output_safety_truncated: true`。
+
+每个受影响部分都输出限流前 `total_*`、最终实际保留的 `rendered_*`、计数截断标志和值截断标志；L4 另有 `ref_detail_truncated`。计数标志比较总数与实际渲染行/link；值标志只描述已渲染值的裁剪，整行省略由计数标志表达。`max_issues=None` 保留 review 的全部行、link 和值，不应用上述 160/512 标量限制或 65,536 码点总上限。
+
 ### 可选的 Plan 变更准入
 
 Vectl 可以为所覆盖的 Plan 定义变更调用一个进程启动时冻结的本地适配器。默认行为要求下面三个变量全部不存在（`not_configured`）；如需启用，请在启动 CLI/MCP 进程前设置完整配置：
@@ -243,7 +257,11 @@ export VECTL_PLAN_ADMISSION_TIMEOUT_SECONDS=30
 
 部分配置或无效配置会拒绝写入。私有事务用权威 Plan 原始字节执行 CAS，只序列化一次最终候选内容，要求适配器的批准绑定 `candidate_sha256`，并原子写入完全相同的字节。MCP `vectl_mutate`（单项和批量）以及 CLI `add-step`、`add-steps`、`edit-step`、`remove-step`、`move-step`、`add-phase`、`edit-phase`、`edit-plan` 都使用该事务。成功的受覆盖变更会输出 `mutation_receipt: <JSON>`，schema 为 `vectl.plan-mutation.receipt.v1`；其中 `plan_applied` 和 `git_committed` 分开报告，因为 Git 提交仍是尽力而为。上述八个 CLI 路由成功时，先输出各命令现有的人类可读前缀，保持现有提示、详情和后续操作信息，然后只在最后输出一行完整 receipt。校验、已配置准入、CAS、持久化或 receipt 校验失败时不输出 receipt。指向当前仓库之外 Plan 的 CLI 显式路径只写 Plan，并报告 `git_attempted: false`。
 
-适配器控制的拒绝和崩溃详情仍保留有用信息并受长度限制：Vectl 在返回前会移除绝对文件系统路径、类似秘密的 token、类似凭据的不透明值以及精确或具有区分度的 Plan 派生值。稳定错误代码、合同字段路径和违规类别会保留；步骤 ID 等诊断主体替换为 `<step-id>`，带引号的候选值替换为 `<plan-content>`。对于非零适配器输出和有效拒绝原因，`Authorization: Bearer <payload>`、`Authorization: Basic <payload>` 或 `Authorization: Digest <payload>` 的完整值都会被移除，短 payload 也不会保留。Digest 脱敏覆盖所有逗号分隔的凭据参数（username、realm、nonce、URI、response、algorithm、qop、nonce-count 和 client nonce），同时保留字段终止符之后有界且有用的上下文。超时和可执行文件身份诊断使用固定文本。创建工作区之前，Vectl 会拒绝位于仓库内的临时目录父路径，且不会创建新的仓库后代路径。工作区创建失败返回 `adapter_crash` 和 `repository-external admission workspace is unavailable`；私有 base/candidate/verdict 文件设置或写入失败返回 `adapter_crash` 和 `admission private file setup or write failed`。初始 base/candidate 身份设置失败（`lstat` 或 `read_bytes`）以及初始 verdict 身份设置失败（`lstat`）会在适配器启动前返回相同代码和固定原因。非字符串 verdict `decision` 返回 `malformed_verdict` 和 `admission verdict decision is invalid`，verdict 读取失败返回 `malformed_verdict` 和 `admission verdict file is unavailable`。适配器退出后，如 base 或 candidate 输入缺失、不可读、被替换或不再是常规文件，Vectl 会返回 `candidate_identity_mismatch` 和一条固定且有界的原因。以上失败都发生在 Plan、备份或 Git 写入之前，不使用仓库内临时状态，也不会泄露受保护字节、Authorization payload 或外部/仓库路径。适配器属于同一 UID 下受信任的本地配置，并非安全沙箱；固定 argv、判定 schema、失败代码和不覆盖的写入入口见[准入变更 RFC](docs/RFC-admitted-plan-mutation.md)。
+适配器是同一 UID 下受信任的本地操作员配置。诊断脱敏只为普通适配器错误提供有界、尽力而为的意外泄露清理；它不提供 sandbox、凭据隔离，也不承诺遏制恶意或已被入侵的适配器。该适配器本来就能读取同一 UID 的资源并修改仓库状态。故意用控制字符拆分字段、含多个 `@` 的异常 authority、双重百分号编码、任意 Unicode 空白混淆和解析器歧义不属于此诊断合同。
+
+原始 bytes 或解码文本超过 8192 个单位，或 Python `str` 含 surrogate 码点时，sanitizer 固定返回 `admission diagnostic unavailable`。其他输入会先捕获普通完整的 `Authorization: Bearer <payload>`、`Authorization: Basic <payload>`、`Authorization: Digest <payload>` 字段，以及常见的 `authorization`、token/password/passwd、`api_key`/`api-key`/`apikey`、credential 和 secret 赋值，再执行受保护 Plan 匹配；捕获值替换为 `<redacted>`。明显的不透明 token、精确或有区分度的 Plan 标量值、临时路径和绝对 POSIX 路径尾部也会被替换。稳定错误代码、合同字段路径和违规类别继续保留；诊断主体变成 `<step-id>`，受保护值变成 `<plan-content>`，规范化结果最多 1024 个码点。
+
+URL 使用普通 lexical 匹配和一次百分号解码。语法正常的 userinfo，以及路径、查询或 fragment 中常见的秘密类组件，会使整个 URL 替换为 `<redacted>`。真正安全的 URL 按原样保留，即使后续文本含邮箱地址或 `@mention`。语义占位符按逆创建顺序恢复，因此安全 URL 内嵌套的 `<admission-temp>` 仍能正确恢复。创建工作区前，Vectl 会拒绝仓库内的临时父目录。工作区/私有文件失败使用 `admission private file setup or write failed`；非字符串 decision 使用 `admission verdict decision is invalid`；读取失败使用 `admission verdict file is unavailable`。初始 base/candidate 身份设置失败使用固定文本；输入缺失、不可读、被替换或不再是常规文件时返回固定且零写入的身份失败。完整边界见[准入变更 RFC](docs/RFC-admitted-plan-mutation.md)。
 
 对于 selected-execution 检查，`tests/expected_red.py run` 会在内部证据 envelope 中记录 pytest 的真实非零 `exit_code` 和 `outcome: "red"`，随后外层适配器进程以 0 退出，让生产 Gate 解析该结果。外层 0 仅确认传输成功，测试结果仍由内部字段表达。
 

@@ -2,6 +2,7 @@
 
 import pytest
 
+from vectl.core.diagnostics import normalize_model_validation_issues
 from vectl.models import (
     AffinityMode,
     Clipboard,
@@ -12,6 +13,72 @@ from vectl.models import (
     Step,
     StepStatus,
 )
+
+
+def test_canonical_error_normalization_drops_messages_and_dynamic_locations() -> None:
+    raw = "candidate-value\nrendered_issue_count: 999"
+
+    issues = normalize_model_validation_issues(
+        [
+            {
+                "loc": ("phases", raw),
+                "msg": f"raw value was {raw}",
+                "type": f"value_error.{raw}",
+            }
+        ]
+    )
+
+    assert issues[0].message == (
+        "canonical_model.phases.<field>: canonical model constraint violated "
+        "[validation_error]"
+    )
+    assert raw not in issues[0].message
+
+
+def test_canonical_error_normalization_allowlists_schema_paths_and_builtin_types() -> None:
+    issues = normalize_model_validation_issues(
+        [
+            {"loc": ("clipboard", "author"), "type": "missing"},
+            {
+                "loc": (
+                    "phases",
+                    0,
+                    "steps",
+                    1,
+                    "rejection_history",
+                    2,
+                    "reviewer",
+                ),
+                "type": "string_type",
+            },
+            {
+                "loc": ("phases", 0, "steps", 0, "RAW_LOCATION_SECRET"),
+                "type": "RAW_TYPE_SECRET",
+                "msg": "RAW_MESSAGE_SECRET",
+                "input": "RAW_INPUT_SECRET",
+            },
+        ]
+    )
+
+    assert [issue.message for issue in issues] == [
+        "canonical_model.clipboard.author: canonical model constraint violated [missing]",
+        (
+            "canonical_model.phases[0].steps[1].rejection_history[2].reviewer: "
+            "canonical model constraint violated [string_type]"
+        ),
+        (
+            "canonical_model.phases[0].steps[0].<field>: "
+            "canonical model constraint violated [validation_error]"
+        ),
+    ]
+    rendered = "\n".join(issue.message for issue in issues)
+    for secret in (
+        "RAW_LOCATION_SECRET",
+        "RAW_TYPE_SECRET",
+        "RAW_MESSAGE_SECRET",
+        "RAW_INPUT_SECRET",
+    ):
+        assert secret not in rendered
 
 
 class TestStepStatus:
@@ -305,6 +372,59 @@ class TestPlan:
         assert result is not None
         assert result[0].id == "phase-a"
         assert result[1].id == "step-1"
+
+    def test_find_step_matches_exposes_ambiguity_without_changing_first_match(self):
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="phase-a",
+                    name="Phase A",
+                    steps=[Step(id="dup", name="First")],
+                ),
+                Phase(
+                    id="phase-b",
+                    name="Phase B",
+                    steps=[Step(id="dup", name="Second")],
+                ),
+            ],
+        )
+
+        assert [phase.id for phase, _ in plan.find_step_matches("dup")] == [
+            "phase-a",
+            "phase-b",
+        ]
+        assert [phase.id for phase, _ in plan.find_step_matches("phase-b.dup")] == [
+            "phase-b"
+        ]
+        first = plan.find_step("dup")
+        assert first is not None
+        assert first[0].id == "phase-a"
+
+    def test_find_step_matches_combines_exact_and_qualified_interpretations(self):
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="other",
+                    name="Other",
+                    steps=[Step(id="target.review", name="Exact stored ID")],
+                ),
+                Phase(
+                    id="target",
+                    name="Target",
+                    steps=[Step(id="review", name="Qualified fallback")],
+                ),
+            ],
+        )
+
+        assert [
+            (phase.id, step.id)
+            for phase, step in plan.find_step_matches("target.review")
+        ] == [("other", "target.review"), ("target", "review")]
+        first = plan.find_step("target.review")
+        assert first is not None
+        assert (first[0].id, first[1].id) == ("other", "target.review")
 
     def test_find_step_no_match_returns_none(self):
         """find_step returns None when no step matches."""

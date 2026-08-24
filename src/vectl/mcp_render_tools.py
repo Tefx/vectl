@@ -15,9 +15,12 @@ Plan path: resolved via shared plan_path.resolve_plan_path() —
 
 from __future__ import annotations
 
+# Compatibility imports are retained for the split MCP read-tool facade.
+# ruff: noqa: F401
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from fastmcp import FastMCP
 from pydantic import BaseModel
@@ -60,6 +63,21 @@ from vectl.core import (
     upsert_agents_md,
     validate_plan,
 )
+from vectl.core.bounded_review import render_bounded_review
+from vectl.core.diagnostic_formatting import _MAX_BOUNDED_REVIEW_SCALAR_CODEPOINTS
+from vectl.core.diagnostics import (
+    ReviewScope,
+    bounded_review_value,
+    gate_integration_ambiguity_issues,
+    order_review_issues,
+    review_gate_phase_ids,
+    review_issue_category,
+    review_phase_ids,
+    review_step_keys,
+    review_validation_plan,
+    scoped_review_plan,
+)
+from vectl.core_plan_validation import _plan_identity_validation_issues
 from vectl.decide import decide as _decide_impl
 from vectl.duplicate_step_id_format import (
     format_duplicate_step_id_diagnostics,
@@ -78,6 +96,7 @@ from vectl.lifecycle import (
     ClaimConflictError,
     ClaimConflictMetadata,
 )
+from vectl.mcp_guide_tool import vectl_guide
 from vectl.models import (
     AffinityError,
     AmbiguousMatchError,
@@ -99,7 +118,6 @@ from vectl.plan_path import (
     resolve_plan_path,
 )
 from vectl.semantics import is_step_locked
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -183,7 +201,8 @@ def _save_plan(
     return format_lock_changes(changed, plan)
 
 
-# @shell_complexity: Step formatting preserves existing state, lock, expected-red, claim, and affinity display semantics.
+# @shell_complexity: Step formatting preserves existing state, lock, expected-red,
+# claim, and affinity display semantics.
 def _fmt_step(plan: Plan, step: Step, phase_id: str) -> Result[str, str]:
     phase = plan.find_phase(phase_id)
     if phase and is_step_locked(plan, phase, step):
@@ -241,7 +260,8 @@ def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> Result[list[
 # ---------------------------------------------------------------------------
 
 
-# @shell_complexity: Phase-aware selection mirrors existing get_next_steps ordering without changing MCP output.
+# @shell_complexity: Phase-aware selection mirrors existing get_next_steps ordering
+# without changing MCP output.
 def _get_next_steps_with_phase(
     plan: Plan, agent: str | None = None
 ) -> Result[list[tuple[Phase, Step]], str]:
@@ -330,37 +350,189 @@ def vectl_checkpoint(
     )
 
 
-# @shell_complexity: Review preserves layered L1-L4 report, active phase detail, and gate-check formatting.
+# @shell_complexity: Review preserves layered L1-L4 report, active phase detail,
+# and gate-check formatting.
 def vectl_review(
     phase_id: str | None = None,
     check_refs: bool = False,
     include_done: bool = False,
+    scope: ReviewScope = "global",
+    max_issues: int | None = None,
 ) -> Result[str, str]:
-    """Multi-layer plan review with optional gate check.
+    """Multi-layer plan review with optional scope, issue bound, and gate check.
 
     Args:
-        phase_id: If provided, also include gate readiness check for this phase.
+        phase_id: Gate target for global/phase scope; required by phase scope.
         check_refs: If true, verify that ref file paths exist on disk.
         include_done: If true, include DONE and LOCKED phases in L3 detail.
+        scope: ``global`` (backward-compatible full report), ``phase`` (requires
+            ``phase_id``), or ``active_dependency_closure`` using established
+            active/dependency and gate-integration semantics.
+        max_issues: Optional positive row budget for every bounded collection.
+            L3 step dependencies and L4 links use global budgets. User values are
+            control-escaped and capped at 160 codepoints (issues: 512); the final
+            response has a 65,536-codepoint safety cap with count-accurate fallback.
     """
+    if not isinstance(scope, str) or scope not in {
+        "global",
+        "phase",
+        "active_dependency_closure",
+    }:
+        return (
+            "**Error:** Unknown review scope. Valid scopes: global, phase, "
+            "active_dependency_closure."
+        )
+    if scope == "phase" and not phase_id:
+        return "**Error:** scope='phase' requires phase_id."
+    if scope == "active_dependency_closure" and phase_id is not None:
+        return "**Error:** phase_id cannot be combined with scope='active_dependency_closure'."
+    if (
+        max_issues is not None
+        and (isinstance(max_issues, bool) or not isinstance(max_issues, int) or max_issues < 1)
+    ):
+        return "**Error:** max_issues must be a positive integer."
+    selected_scope = scope
+    issue_bound = max_issues
+
     plan, _ = _load()
-    base_path = _plan_path().parent if check_refs else None
-    result = review_plan(
-        plan, check_refs=check_refs, base_path=base_path, include_done=include_done
+    try:
+        selected_phase_ids = review_phase_ids(plan, selected_scope, phase_id)
+        selected_step_keys = review_step_keys(plan, selected_scope, phase_id)
+    except PlanError as error:
+        if issue_bound is None:
+            return f"**Error:** {error}"
+        safe_error, _ = bounded_review_value(
+            str(error), _MAX_BOUNDED_REVIEW_SCALAR_CODEPOINTS
+        )
+        return f"**Error:** {safe_error}"
+    review_target = (
+        plan
+        if selected_scope == "global"
+        else scoped_review_plan(plan, selected_phase_ids, selected_step_keys)
     )
+    validation_target = review_validation_plan(plan, selected_scope, phase_id)
+    base_path = _plan_path().parent if check_refs else None
+    if selected_scope == "global":
+        result = review_plan(
+            plan,
+            check_refs=check_refs,
+            base_path=base_path,
+            include_done=include_done,
+        )
+    else:
+        validation_result = review_plan(
+            validation_target,
+            check_refs=check_refs,
+            base_path=base_path,
+            include_done=include_done,
+        )
+        projection_result = review_plan(
+            review_target,
+            check_refs=False,
+            include_done=include_done,
+        )
+        result = replace(
+            projection_result,
+            validation_issues=validation_result.validation_issues,
+        )
+        validation_issues = list(result.validation_issues)
+        for identity_issue in _plan_identity_validation_issues(plan):
+            if identity_issue not in validation_issues:
+                validation_issues.append(identity_issue)
+        result = replace(
+            result,
+            validation_issues=validation_issues,
+            phase_progress=[
+                progress
+                for progress in result.phase_progress
+                if progress.phase_id in selected_phase_ids
+            ],
+            active_phases=[
+                phase
+                for phase in result.active_phases
+                if phase.id in selected_phase_ids
+            ],
+            ref_index={
+                ref: step_ids
+                for ref, step_ids in result.ref_index.items()
+                if any(
+                    step.id in step_ids
+                    for phase in review_target.phases
+                    if phase.id in selected_phase_ids
+                    for step in phase.steps
+                )
+            },
+        )
+        selected_progress = result.phase_progress
+        result = replace(
+            result,
+            total_done=sum(progress.done for progress in selected_progress),
+            total_steps=sum(progress.total for progress in selected_progress),
+        )
+
+    existing_messages = {issue.message for issue in result.validation_issues}
+    for issue in gate_integration_ambiguity_issues(
+        plan, review_gate_phase_ids(plan, selected_scope, phase_id)
+    ):
+        if issue.message not in existing_messages:
+            result.validation_issues.append(issue)
+            existing_messages.add(issue.message)
+
+    if issue_bound is not None:
+        gate_result = None
+        gate_error = None
+        validation_blocked = bool(result.errors)
+        if phase_id is not None:
+            try:
+                gate_result = gate_check(plan, phase_id)
+            except PlanError as error:
+                gate_error = str(error)
+        return render_bounded_review(
+            result, review_target, selected_scope, issue_bound,
+            phase_id, gate_result, gate_error, validation_blocked,
+        )
+
+    all_issues = order_review_issues(result.validation_issues)
+    categories = {
+        category: [
+            issue for issue in all_issues if review_issue_category(issue) == category
+        ]
+        for category in (
+            "current_error",
+            "current_warning",
+            "historical_warning",
+        )
+    }
 
     parts: list[str] = []
 
     # L1: Validation
     parts.append("## L1: Validation\n")
-    if not result.validation_issues:
+    if not all_issues:
         parts.append("✓ Plan is valid — 0 errors, 0 warnings")
     else:
-        for e in result.errors:
-            parts.append(f"ERROR: {e.message}")
-        for w in result.warnings:
-            parts.append(f"WARN: {w.message}")
+        for issue in all_issues:
+            prefix = (
+                "HISTORICAL WARN"
+                if review_issue_category(issue) == "historical_warning"
+                else "WARN"
+                if issue.is_warning
+                else "ERROR"
+            )
+            parts.append(f"{prefix}: {issue.message}")
         parts.append(f"\n{len(result.errors)} error(s), {len(result.warnings)} warning(s)")
+    parts.extend(
+        [
+            "",
+            f"review_scope: {selected_scope}",
+            f"current_error_count: {len(categories['current_error'])}",
+            f"current_warning_count: {len(categories['current_warning'])}",
+            f"historical_warning_count: {len(categories['historical_warning'])}",
+            f"total_issue_count: {len(all_issues)}",
+            f"rendered_issue_count: {len(all_issues)}",
+            "issues_truncated: false",
+        ]
+    )
 
     # L2: Phase progress
     parts.append("\n## L2: Phase Overview\n")
@@ -385,7 +557,7 @@ def vectl_review(
             if ph.gate:
                 parts.append(f"Gate: {ph.gate}")
             for step in ph.steps:
-                if is_step_locked(plan, ph, step):
+                if is_step_locked(review_target, ph, step):
                     icon = "🔒"
                 elif step.status == StepStatus.DONE and step.verify == "expected_red":
                     icon = "✓"
@@ -448,34 +620,12 @@ def vectl_review(
             except PlanError as e:
                 parts.append(f"\n**Gate Check Error:** {e}")
 
-    diag_lines = _duplicate_id_diagnostics_lines(plan)
+    diag_lines = _duplicate_id_diagnostics_lines(review_target)
     if diag_lines:
         parts.append("")
         parts.extend(diag_lines)
-
     return "\n".join(parts)
 
-
-
-def vectl_guide(topic: str | None = None) -> Result[str, str]:
-    """Show agent onboarding guide.
-
-    Args:
-        topic: Optional topic to show. One of: startup, stuck, review, planning, migration.
-            If omitted, returns all topics combined.
-    """
-    from vectl.guide import GUIDE_ALL, GUIDE_TOPICS, VALID_TOPICS
-
-    if topic is None:
-        combined = "\n---\n\n".join(g.strip() for g in GUIDE_ALL)
-        combined += "\n\n---\n*Topics: " + ", ".join(VALID_TOPICS) + "*"
-        return combined
-
-    guide = GUIDE_TOPICS.get(topic)
-    if guide is None:
-        return f"**Error:** Unknown topic '{topic}'. Valid topics: {', '.join(VALID_TOPICS)}."
-
-    return guide.strip()
 
 
 # ---------------------------------------------------------------------------

@@ -14,13 +14,15 @@ from typing import Any
 import pytest
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
+from pydantic import ValidationError
+from pydantic_core import PydanticCustomError
 
 import vectl.io as io_module
 import vectl.mcp_core_common as mcp_common
 import vectl.mcp_core_mutation_tools as mutation_module
 from vectl.io import load_plan_definition, save_plan
 from vectl.mcp_server import vectl_mutate as mutate_tool
-from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
+from vectl.models import Phase, PhaseStatus, Plan, PlanValidationIssue, Step, StepStatus
 
 vectl_mutate = mutate_tool.fn  # type: ignore[attr-defined]
 
@@ -91,14 +93,27 @@ def git_plan(
     yield repo, plan_path, claims_path
 
 
-def _state(repo: Path, plan_path: Path, claims_path: Path) -> tuple[bytes, bytes, str, list[str]]:
+def _state(
+    repo: Path, plan_path: Path, claims_path: Path
+) -> tuple[bytes, str, bytes, str, list[str]]:
     plan, _ = load_plan_definition(plan_path)
+    plan_bytes = plan_path.read_bytes()
     return (
-        plan_path.read_bytes(),
+        plan_bytes,
+        hashlib.sha256(plan_bytes).hexdigest(),
         claims_path.read_bytes(),
         _git(repo, "rev-parse", "HEAD"),
         [phase.status.value for phase in plan.phases],
     )
+
+
+def test_validation_issue_equality_includes_historical_provenance() -> None:
+    current = PlanValidationIssue("missing ref", is_warning=True)
+    historical = PlanValidationIssue(
+        "missing ref", is_warning=True, is_historical=True
+    )
+
+    assert current != historical
 
 
 def _successful_requests() -> list[dict[str, Any]]:
@@ -527,6 +542,520 @@ def test_request_failure_discards_working_copy_and_all_persistent_state(
 
     assert "Error" in result and "request[3]" in result
     assert _state(repo, plan_path, claims_path) == before
+
+
+def _invalid_candidate_with_three_blockers() -> Plan:
+    return Plan(
+        project="invalid-candidate",
+        phases=[
+            Phase(
+                id="invalid-phase",
+                name="Invalid phase",
+                status=PhaseStatus.LOCKED,
+                depends_on=["missing-phase"],
+                steps=[
+                    Step(
+                        id="invalid-step",
+                        name="Invalid step",
+                        status=StepStatus.CLAIMED,
+                        claimed_by="worker",
+                        depends_on=["missing-step"],
+                    )
+                ],
+            )
+        ],
+    )
+
+
+def test_final_validation_reports_all_real_blockers_without_persistence_or_commit(
+    git_plan: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, plan_path, claims_path = git_plan
+    before = _state(repo, plan_path, claims_path)
+    assert before[1] == hashlib.sha256(before[0]).hexdigest()
+    original_apply = mutation_module._apply_mutation_request
+    calls = 0
+
+    def inject_invalid_candidate(
+        plan: Plan, request: dict[str, Any]
+    ) -> tuple[Plan, str]:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return _invalid_candidate_with_three_blockers(), "injected invalid candidate"
+        return original_apply(plan, request)
+
+    monkeypatch.setattr(mutation_module, "_apply_mutation_request", inject_invalid_candidate)
+    result = vectl_mutate(
+        requests=[{"action": "edit-plan", "plan_context": "candidate"}]
+    )
+
+    assert "blocking_issue_count: 3" in result
+    assert "rendered_issue_count: 3" in result
+    assert "issues_truncated: false" in result
+    blockers = (
+        "Phase 'invalid-phase' depends on unknown phase 'missing-phase'",
+        "Step 'invalid-step' depends on unknown step 'missing-step' (phase 'invalid-phase')",
+        "Step 'invalid-step' has status 'claimed' but phase 'invalid-phase' is locked",
+    )
+    assert [result.index(text) for text in blockers] == sorted(
+        result.index(text) for text in blockers
+    )
+    assert _state(repo, plan_path, claims_path) == before
+
+    succeeded = vectl_mutate(
+        requests=[{"action": "edit-plan", "plan_context": "corrected candidate"}]
+    )
+    assert "requests_applied: 1" in succeeded
+    plan, _ = load_plan_definition(plan_path)
+    assert plan.context == "corrected candidate"
+
+
+def test_final_validation_bound_reports_total_and_truncation(
+    git_plan: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def inject_invalid_candidate(
+        plan: Plan, request: dict[str, Any]
+    ) -> tuple[Plan, str]:
+        return _invalid_candidate_with_three_blockers(), "injected invalid candidate"
+
+    monkeypatch.setattr(mutation_module, "_apply_mutation_request", inject_invalid_candidate)
+    result = vectl_mutate(
+        requests=[{"action": "edit-plan", "plan_context": "candidate"}],
+        max_issues=2,
+    )
+
+    assert "blocking_issue_count: 3" in result
+    assert "rendered_issue_count: 2" in result
+    assert "issues_truncated: true" in result
+    assert "depends on unknown phase" in result
+    assert "depends on unknown step" in result
+    assert "has status 'claimed'" not in result
+    assert "validation_source: structural" in result
+
+
+def _candidate_with_canonical_model_errors(plan: Plan) -> Plan:
+    candidate = plan.model_copy(deep=True)
+    candidate.project = 7  # type: ignore[assignment]
+    candidate.default_affinity = "invalid"  # type: ignore[assignment]
+    candidate.phases[0].status = "retired"  # type: ignore[assignment]
+    candidate.phases[0].steps[0].refs = [1, 2]  # type: ignore[list-item]
+    return candidate
+
+
+def _inject_canonical_model_errors(
+    plan: Plan, request: dict[str, Any]
+) -> tuple[Plan, str]:
+    del request
+    return _candidate_with_canonical_model_errors(plan), "injected model errors"
+
+
+def test_single_action_canonical_model_errors_are_bounded_and_pre_save(
+    git_plan: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, plan_path, claims_path = git_plan
+    before = _state(repo, plan_path, claims_path)
+    monkeypatch.setattr(
+        mutation_module, "_apply_mutation_request", _inject_canonical_model_errors
+    )
+
+    result = vectl_mutate(
+        action="edit-plan",
+        plan_context="invalid candidate",
+        max_issues=1,
+    )
+
+    assert "**Error:** stage=final_validation" in result
+    assert "validation_source: canonical_model" in result
+    assert "blocking_issue_count: 5" in result
+    assert "rendered_issue_count: 1" in result
+    assert "issues_truncated: true" in result
+    assert "canonical_model.project" in result
+    assert "canonical_model.default_affinity" not in result
+    assert "errors.pydantic.dev" not in result
+    assert "validation errors for Plan" not in result
+    assert _state(repo, plan_path, claims_path) == before
+
+
+def test_batch_canonical_model_errors_are_bounded_and_pre_save(
+    git_plan: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, plan_path, claims_path = git_plan
+    before = _state(repo, plan_path, claims_path)
+    monkeypatch.setattr(
+        mutation_module, "_apply_mutation_request", _inject_canonical_model_errors
+    )
+
+    result = vectl_mutate(
+        requests=[{"action": "edit-plan", "plan_context": "invalid candidate"}],
+        max_issues=2,
+    )
+
+    assert "validation_source: canonical_model" in result
+    assert "blocking_issue_count: 5" in result
+    assert "rendered_issue_count: 2" in result
+    assert "issues_truncated: true" in result
+    assert "canonical_model.project" in result
+    assert "canonical_model.default_affinity" in result
+    assert "canonical_model.phases[0].status" not in result
+    assert _state(repo, plan_path, claims_path) == before
+
+
+def test_canonical_model_errors_are_complete_when_unbounded(
+    git_plan: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, plan_path, claims_path = git_plan
+    before = _state(repo, plan_path, claims_path)
+    monkeypatch.setattr(
+        mutation_module, "_apply_mutation_request", _inject_canonical_model_errors
+    )
+
+    result = vectl_mutate(
+        requests=[{"action": "edit-plan", "plan_context": "invalid candidate"}]
+    )
+
+    assert "validation_source: canonical_model" in result
+    assert "blocking_issue_count: 5" in result
+    assert "rendered_issue_count: 5" in result
+    assert "issues_truncated: false" in result
+    for location in (
+        "canonical_model.project",
+        "canonical_model.default_affinity",
+        "canonical_model.phases[0].status",
+        "canonical_model.phases[0].steps[0].refs[0]",
+        "canonical_model.phases[0].steps[0].refs[1]",
+    ):
+        assert location in result
+    assert _state(repo, plan_path, claims_path) == before
+
+
+@pytest.mark.parametrize("batch_mode", (False, True))
+def test_custom_canonical_error_location_type_message_and_input_are_fail_closed(
+    git_plan: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    batch_mode: bool,
+) -> None:
+    repo, plan_path, claims_path = git_plan
+    before = _state(repo, plan_path, claims_path)
+    custom_error = ValidationError.from_exception_data(
+        "Plan",
+        [
+            {
+                "type": PydanticCustomError(
+                    "RAW_TYPE_SECRET",
+                    "RAW_MESSAGE_SECRET {value}",
+                    {"value": "RAW_CONTEXT_SECRET"},
+                ),
+                "loc": (
+                    "phases",
+                    0,
+                    "steps",
+                    0,
+                    "RAW_LOCATION_SECRET",
+                ),
+                "input": "RAW_INPUT_SECRET",
+            }
+        ],
+    )
+    original_model_validate = Plan.model_validate
+
+    def fail_triggered_candidate(
+        cls: type[Plan], payload: object, *args: object, **kwargs: object
+    ) -> Plan:
+        if isinstance(payload, dict) and payload.get("context") == "custom-error-trigger":
+            raise custom_error
+        return original_model_validate(payload, *args, **kwargs)
+
+    monkeypatch.setattr(Plan, "model_validate", classmethod(fail_triggered_candidate))
+    result = (
+        vectl_mutate(
+            requests=[
+                {"action": "edit-plan", "plan_context": "custom-error-trigger"}
+            ]
+        )
+        if batch_mode
+        else vectl_mutate(
+            action="edit-plan", plan_context="custom-error-trigger"
+        )
+    )
+
+    assert "validation_source: canonical_model" in result
+    assert "blocking_issue_count: 1" in result
+    assert "canonical_model.phases[0].steps[0].<field>" in result
+    assert "canonical model constraint violated [validation_error]" in result
+    for secret in (
+        "RAW_LOCATION_SECRET",
+        "RAW_TYPE_SECRET",
+        "RAW_MESSAGE_SECRET",
+        "RAW_CONTEXT_SECRET",
+        "RAW_INPUT_SECRET",
+    ):
+        assert secret not in result
+    assert _state(repo, plan_path, claims_path) == before
+
+
+@pytest.mark.parametrize("batch_mode", (False, True))
+def test_validation_error_errors_failure_returns_fixed_zero_write_diagnostic(
+    git_plan: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    batch_mode: bool,
+) -> None:
+    repo, plan_path, claims_path = git_plan
+    before = _state(repo, plan_path, claims_path)
+    raw_exception = "RAW_ERRORS_SECRET\nrendered_issue_count: 999"
+    original_model_validate = Plan.model_validate
+
+    class FailingErrorsValidationError(ValidationError):
+        def errors(self, *args: object, **kwargs: object) -> list[dict[str, object]]:
+            del args, kwargs
+            raise RuntimeError(raw_exception)
+
+    def fail_triggered_candidate(
+        cls: type[Plan], payload: object, *args: object, **kwargs: object
+    ) -> Plan:
+        if isinstance(payload, dict) and payload.get("context") == "errors-failure-trigger":
+            raise FailingErrorsValidationError("Plan", [])
+        return original_model_validate(payload, *args, **kwargs)
+
+    monkeypatch.setattr(Plan, "model_validate", classmethod(fail_triggered_candidate))
+    result = (
+        vectl_mutate(
+            requests=[
+                {"action": "edit-plan", "plan_context": "errors-failure-trigger"}
+            ]
+        )
+        if batch_mode
+        else vectl_mutate(
+            action="edit-plan", plan_context="errors-failure-trigger"
+        )
+    )
+
+    assert "validation_source: canonical_model" in result
+    assert "blocking_issue_count: 1" in result
+    assert "issue_values_truncated: false" in result
+    assert "canonical validation could not complete [unexpected_validation_error]" in result
+    assert raw_exception not in result
+    assert "RAW_ERRORS_SECRET" not in result
+    assert _state(repo, plan_path, claims_path) == before
+
+
+@pytest.mark.parametrize("batch_mode", (False, True))
+def test_step_validator_raw_id_is_not_copied_into_canonical_diagnostics(
+    git_plan: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    batch_mode: bool,
+) -> None:
+    repo, plan_path, claims_path = git_plan
+    before = _state(repo, plan_path, claims_path)
+    raw_id = (
+        "raw-step-id-"
+        + "x" * 10_000
+        + "\nrendered_issue_count: 999\nissues_truncated: false"
+    )
+
+    def inject_step_validator_error(
+        plan: Plan, request: dict[str, Any]
+    ) -> tuple[Plan, str]:
+        del request
+        candidate = plan.model_copy(deep=True)
+        step = candidate.phases[0].steps[0]
+        step.id = raw_id
+        step.status = StepStatus.SKIPPED
+        step.skipped_reason = None
+        return candidate, "injected Step validator error"
+
+    monkeypatch.setattr(
+        mutation_module, "_apply_mutation_request", inject_step_validator_error
+    )
+    result = (
+        vectl_mutate(
+            requests=[{"action": "edit-plan", "plan_context": "candidate"}],
+            max_issues=1,
+        )
+        if batch_mode
+        else vectl_mutate(
+            action="edit-plan", plan_context="candidate", max_issues=1
+        )
+    )
+
+    assert "validation_source: canonical_model" in result
+    assert "blocking_issue_count: 1" in result
+    assert "rendered_issue_count: 1" in result
+    assert "issues_truncated: false" in result
+    assert "issue_value_codepoint_limit: 512" in result
+    assert "issue_values_truncated: false" in result
+    assert "canonical_model.phases[0].steps[0]" in result
+    assert "canonical model constraint violated [value_error]" in result
+    assert raw_id not in result
+    assert "raw-step-id" not in result
+    assert "rendered_issue_count: 999" not in result.splitlines()
+    assert _state(repo, plan_path, claims_path) == before
+
+
+@pytest.mark.parametrize("batch_mode", (False, True))
+def test_huge_structural_diagnostic_is_control_safe_and_value_bounded(
+    git_plan: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    batch_mode: bool,
+) -> None:
+    repo, plan_path, claims_path = git_plan
+    before = _state(repo, plan_path, claims_path)
+    raw_tail = "z" * 10_000
+    forged = (
+        "\nrendered_issue_count: 999\nissues_truncated: false\n"
+        "\u2028blocking_issue_count: 999\u2029issue_values_truncated: false"
+    )
+
+    def huge_issue(*args: object, **kwargs: object) -> list[PlanValidationIssue]:
+        del args, kwargs
+        return [PlanValidationIssue(f"huge structural value {forged}{raw_tail}")]
+
+    monkeypatch.setattr(mutation_module, "validate_plan", huge_issue)
+    result = (
+        vectl_mutate(
+            requests=[{"action": "edit-plan", "plan_context": "candidate"}],
+            max_issues=1,
+        )
+        if batch_mode
+        else vectl_mutate(
+            action="edit-plan", plan_context="candidate", max_issues=1
+        )
+    )
+
+    assert "validation_source: structural" in result
+    assert "blocking_issue_count: 1" in result
+    assert "rendered_issue_count: 1" in result
+    assert "issues_truncated: false" in result
+    assert "issue_value_codepoint_limit: 512" in result
+    assert "issue_values_truncated: true" in result
+    assert "rendered_issue_count: 999" not in result.splitlines()
+    assert "blocking_issue_count: 999" not in result.splitlines()
+    assert raw_tail not in result
+    issue_line = next(line for line in result.splitlines() if line.startswith("- ERROR:"))
+    assert len(issue_line.removeprefix("- ERROR: ")) == 512
+    assert _state(repo, plan_path, claims_path) == before
+
+
+@pytest.mark.parametrize("batch_mode", (False, True))
+def test_unexpected_canonical_exception_returns_bounded_zero_write_failure(
+    git_plan: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    batch_mode: bool,
+) -> None:
+    repo, plan_path, claims_path = git_plan
+    before = _state(repo, plan_path, claims_path)
+    original_model_validate = Plan.model_validate
+    raw_exception = "runtime raw candidate\nrendered_issue_count: 999" + "r" * 10_000
+
+    def fail_triggered_candidate(
+        cls: type[Plan], payload: object, *args: object, **kwargs: object
+    ) -> Plan:
+        if isinstance(payload, dict) and payload.get("context") == "runtime-trigger":
+            raise RuntimeError(raw_exception)
+        return original_model_validate(payload, *args, **kwargs)
+
+    monkeypatch.setattr(Plan, "model_validate", classmethod(fail_triggered_candidate))
+    result = (
+        vectl_mutate(
+            requests=[
+                {"action": "edit-plan", "plan_context": "runtime-trigger"}
+            ],
+            max_issues=1,
+        )
+        if batch_mode
+        else vectl_mutate(
+            action="edit-plan", plan_context="runtime-trigger", max_issues=1
+        )
+    )
+
+    assert "**Error:** stage=final_validation" in result
+    assert "validation_source: canonical_model" in result
+    assert "blocking_issue_count: 1" in result
+    assert "rendered_issue_count: 1" in result
+    assert "issues_truncated: false" in result
+    assert "issue_values_truncated: false" in result
+    assert "canonical validation could not complete [unexpected_validation_error]" in result
+    assert raw_exception not in result
+    assert "runtime raw candidate" not in result
+    assert _state(repo, plan_path, claims_path) == before
+
+
+@pytest.mark.parametrize("batch_mode", (False, True))
+def test_unexpected_structural_exception_returns_fixed_zero_write_failure(
+    git_plan: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    batch_mode: bool,
+) -> None:
+    repo, plan_path, claims_path = git_plan
+    before = _state(repo, plan_path, claims_path)
+    raw_exception = (
+        "structural-runtime-trigger\n"
+        "RAW_STRUCTURAL_SECRET\nrendered_issue_count: 999"
+    )
+
+    def fail_structural_validation(*args: object, **kwargs: object) -> list[object]:
+        del args, kwargs
+        raise RuntimeError(raw_exception)
+
+    monkeypatch.setattr(mutation_module, "validate_plan", fail_structural_validation)
+    result = (
+        vectl_mutate(
+            requests=[
+                {
+                    "action": "edit-plan",
+                    "plan_context": "structural-runtime-trigger",
+                }
+            ],
+            max_issues=1,
+        )
+        if batch_mode
+        else vectl_mutate(
+            action="edit-plan",
+            plan_context="structural-runtime-trigger",
+            max_issues=1,
+        )
+    )
+
+    assert "validation_source: structural" in result
+    assert "blocking_issue_count: 1" in result
+    assert "rendered_issue_count: 1" in result
+    assert "issues_truncated: false" in result
+    assert "issue_values_truncated: false" in result
+    assert "structural validation could not complete [unexpected_validation_error]" in result
+    assert raw_exception not in result
+    assert "RAW_STRUCTURAL_SECRET" not in result
+    assert "structural-runtime-trigger" not in result
+    assert _state(repo, plan_path, claims_path) == before
+
+
+def test_corrected_follow_up_mutation_succeeds_after_diagnostic_failure(
+    git_plan: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, plan_path, _ = git_plan
+    original_apply = mutation_module._apply_mutation_request
+    injected = False
+
+    def inject_once(
+        plan: Plan, request: dict[str, Any]
+    ) -> tuple[Plan, str]:
+        nonlocal injected
+        if not injected:
+            injected = True
+            return _invalid_candidate_with_three_blockers(), "injected invalid candidate"
+        return original_apply(plan, request)
+
+    monkeypatch.setattr(mutation_module, "_apply_mutation_request", inject_once)
+    failed = vectl_mutate(
+        requests=[{"action": "edit-plan", "plan_context": "rejected candidate"}]
+    )
+    assert "blocking_issue_count: 3" in failed
+
+    succeeded = vectl_mutate(
+        requests=[{"action": "edit-plan", "plan_context": "corrected candidate"}]
+    )
+    assert "requests_applied: 1" in succeeded
+    plan, _ = load_plan_definition(plan_path)
+    assert plan.context == "corrected candidate"
 
 
 def test_final_validation_cycle_discards_plan_claims_locks_and_git(

@@ -5,9 +5,18 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 
 from __future__ import annotations
 
+# Compatibility wildcard imports expose the shared mutation slice symbols.
+# ruff: noqa: F403, F405
 import json
 from typing import cast
 
+from pydantic import ValidationError
+
+from vectl.core.diagnostics import (
+    format_final_validation_failure,
+    format_unexpected_final_validation_failure,
+    normalize_model_validation_issues,
+)
 from vectl.mcp_core_common import *
 from vectl.mcp_core_common import _save_admitted_plan_receipt
 from vectl.mcp_mutation_contracts import (
@@ -15,9 +24,9 @@ from vectl.mcp_mutation_contracts import (
     BATCH_REQUIRED_FIELDS,
     BATCH_STEP_FIELDS,
     BATCH_STEP_REQUIRED_FIELDS,
+    UNKNOWN_FIELD_HINTS,
     BatchMutationRequest,
     MutationAction,
-    UNKNOWN_FIELD_HINTS,
 )
 
 # ---------------------------------------------------------------------------
@@ -437,6 +446,7 @@ def vectl_mutate(
     new_step_id: str = "",
     steps: list[dict] | None = None,
     requests: list[BatchMutationRequest] | None = None,
+    max_issues: int | None = None,
 ) -> Result[str, str]:
     """Modify plan structure in single-action or atomic batch mode.
 
@@ -477,7 +487,17 @@ def vectl_mutate(
         agent: Advisory agent suggestion (add-step, edit-step).
         new_step_id: Replacement step ID (edit-step only).
         steps: Step mappings for add-steps.
+        max_issues: Optional positive row bound for final-validation issues. Every
+            canonical or structural issue value is control-escaped and capped at 512
+            codepoints; counts and count/value truncation flags remain explicit.
     """
+    if (
+        max_issues is not None
+        and (isinstance(max_issues, bool) or not isinstance(max_issues, int) or max_issues < 1)
+    ):
+        return "**Error:** max_issues must be a positive integer."
+    issue_bound = max_issues
+
     meaningful_single_fields = any(
         (
             phase_id,
@@ -552,7 +572,7 @@ def vectl_mutate(
         return guard_error
 
     plan, expected_def_hash = _load()
-    working_plan = plan.model_copy(deep=True) if batch_mode else plan
+    working_plan = plan.model_copy(deep=True)
     results: list[tuple[str, str]] = []
     try:
         for index, request in enumerate(normalized_requests):
@@ -564,21 +584,56 @@ def vectl_mutate(
                 return f"**Error:** {error}"
             results.append((request["action"], message))
 
-        if batch_mode:
-            changed_locks = recalc_lock_status(working_plan)
-            lock_notice = format_lock_changes(changed_locks, working_plan)
+        changed_locks = recalc_lock_status(working_plan)
+        lock_notice = format_lock_changes(changed_locks, working_plan)
+        try:
+            canonical_payload = working_plan.model_dump(
+                mode="python",
+                warnings=False,
+            )
+            working_plan = Plan.model_validate(canonical_payload)
+        except ValidationError as error:
             try:
-                working_plan = Plan.model_validate(working_plan.model_dump(mode="python"))
-            except Exception as error:
-                return f"**Error:** stage=final_validation: {error}"
+                model_issues = normalize_model_validation_issues(
+                    error.errors(
+                        include_url=False,
+                        include_context=False,
+                        include_input=False,
+                    )
+                )
+                return format_final_validation_failure(
+                    model_issues,
+                    max_issues=issue_bound,
+                    source="canonical_model",
+                )
+            except Exception:
+                return format_unexpected_final_validation_failure(
+                    "canonical_model", issue_bound
+                )
+        except Exception:
+            return format_unexpected_final_validation_failure(
+                "canonical_model", issue_bound
+            )
+
+        try:
             issues = validate_plan(
                 working_plan,
                 check_refs=False,
                 include_completed_evidence_guard=False,
             )
-            blocking_issue = next((issue for issue in issues if not issue.is_warning), None)
-            if blocking_issue is not None:
-                return f"**Error:** stage=final_validation: {blocking_issue.message}"
+            blocking_issues = [issue for issue in issues if not issue.is_warning]
+            if blocking_issues:
+                return format_final_validation_failure(
+                    issues,
+                    max_issues=issue_bound,
+                    source="structural",
+                )
+        except Exception:
+            return format_unexpected_final_validation_failure(
+                "structural", issue_bound
+            )
+
+        if batch_mode:
             receipt_payload, _ = cast(
                 tuple[dict[str, object], str],
                 _save_admitted_plan_receipt(
@@ -591,14 +646,17 @@ def vectl_mutate(
             plan_hash = str(receipt_payload["persisted_sha256"]).removeprefix("sha256:")
         else:
             commit_target = step_id or phase_id or action
-            receipt_payload, lock_notice = cast(
+            receipt_payload, persisted_lock_notice = cast(
                 tuple[dict[str, object], str],
                 _save_admitted_plan_receipt(
                     working_plan,
                     expected_def_hash,
                     f"mcp: mutate {action} {commit_target}",
+                    recalc_locks=False,
                 ),
             )
+            if not lock_notice:
+                lock_notice = persisted_lock_notice
     except PlanError as error:
         return f"**Error:** {error}"
 

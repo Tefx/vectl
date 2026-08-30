@@ -347,7 +347,7 @@ A batch follows this order:
    - retain a Pydantic location component only when the `Plan`, `Phase`, `Step`, `Clipboard`, or `RejectionEntry` schema expected at that path admits the field or list index; map unknown components to `<field>`;
    - retain only Pydantic Core built-in error types, map unknown/custom types to `validation_error`, and never copy `msg`, input, context, or URLs;
    - convert any unexpected canonical extraction/normalization failure to one fixed `unexpected_validation_error` without exception/candidate text;
-   - call `validate_plan` once with `check_refs=False` and `include_completed_evidence_guard=False` when canonical validation succeeds;
+   - call `validate_plan` once with `check_refs=False` when canonical validation succeeds;
    - convert an unexpected structural-validator exception to one fixed pre-save `unexpected_validation_error` without exception/candidate text, while keeping ordinary structural identifiers actionable;
    - collect every deterministic non-warning issue in validator order;
    - route canonical and structural failures through one formatter: `max_issues=N` renders N rows, `None` renders all rows, and every control-escaped issue value is capped at 512 codepoints with explicit count/value flags.
@@ -355,7 +355,7 @@ A batch follows this order:
 11. Attempt one Git commit through the existing save path.
 12. Return ordered request results, the exact hash returned by the successful save, and the precomputed lock notice.
 
-Completed-evidence validation is excluded because this surface edits Plan structure. Historical evidence debt must not prevent a structurally valid repair. Model, duplicate-ID, dependency, DAG, and status-consistency failures remain blocking.
+Validation is structural for every surface. Narrative evidence, descriptions, verification text, gates, and legacy `<vectl_gate_scope>` blocks cannot block a structurally valid repair. Model, duplicate-ID, dependency, DAG, and status-consistency failures remain blocking.
 
 ### Atomicity invariants
 
@@ -490,7 +490,7 @@ The MCP mutation surface performs candidate validation before `_save_admitted_pl
 
 Admission diagnostic rendering is best-effort accidental-disclosure hygiene for a trusted same-UID adapter. It returns fixed `admission diagnostic unavailable` for input over 8192 raw or decoded units and Python strings containing surrogates, then bounds normal output to 1024 codepoints. Ordinary authorization fields, common secret assignments, obvious opaque tokens, protected Plan values, temporary/absolute paths, and ordinary URL userinfo or secret-like components are replaced with `<redacted>`. URL inspection performs one percent-decoding pass; safe URLs remain exact, and placeholder restoration in reverse creation order preserves nested `<admission-temp>` markers. Deliberate control splitting, malformed multi-`@` authorities, repeated encoding, Unicode whitespace obfuscation, and parser ambiguity are outside this hygiene contract. The sanitizer does not claim sandboxing, credential isolation, or hostile-input containment; the adapter can already access same-UID resources.
 
-`vectl_review` keeps default `scope="global"` and separates validation closure from rendering. Phase rendering stays target-local. Phase validation includes target dependencies, every explicit gate selector's exact and qualified candidates, candidate step dependencies, and candidate phase dependencies. Explicit integration forces unclosed failure-evidence inspection of each completed candidate root regardless of review-like naming, so relevant failures block readiness. Distinct exact/qualified interpretations block readiness. Active closure includes every candidate interpretation and Plan-wide duplicate identity blockers.
+`vectl_review` keeps default `scope="global"` and separates structural validation closure from rendering. Phase rendering stays target-local and phase validation includes declared target dependencies. The active closure includes executable or recoverable phases, their phase dependencies, and declared dependencies of pending, claimed, or rejected steps. Plan-wide duplicate identity blockers remain in every scope. Narrative fields, including legacy `<vectl_gate_scope>` blocks, are display text and cannot expand a review closure or block gate readiness.
 
 For bounded `max_issues=N`, L1 issues, L2 phases, L3 phase headers, L3 global step rows, L4 refs, gate pending steps, and downstream phases each have N rows. L3 phase-dependency links, L3 step-dependency links, and L4 links each use one global N-link budget. User scalars are control/newline escaped and capped at 160 codepoints; L1 issues use 512. Each section reports pre-bound totals, actual rendered counts, count-truncation flags, and rendered-value truncation flags. A fixed 65,536-codepoint output cap falls back to metadata with zero detail rendered counts and `output_safety_truncated: true`. `max_issues=None` preserves all review rows, links, and values without bounded scalar/output caps.
 
@@ -552,9 +552,9 @@ Failure condition: a future requirement for machine-consumed result objects woul
 
 Benefit: blocks invalid topology while allowing repair of unrelated historical evidence debt.
 
-Cost: the batch response does not report completed-evidence findings.
+Cost: the batch response does not report narrative-text diagnostics.
 
-Failure condition: callers requiring evidence validation must run the existing validation or gate surfaces after mutation.
+Failure condition: callers requiring structural validation must run the existing validation or gate surfaces after mutation.
 
 ## Acceptance Criteria
 The RFC is satisfied when all of the following hold:

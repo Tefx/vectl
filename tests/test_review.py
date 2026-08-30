@@ -281,9 +281,9 @@ class TestReview:
         assert result.exit_code == 1
         assert "Duplicate step ID 'dup.step'" in result.output
 
-    def test_review_exposes_completed_evidence_guard(self, tmp_path: Path) -> None:
+    def test_review_treats_completed_evidence_as_text(self, tmp_path: Path) -> None:
         plan = Plan(
-            project="completed-evidence-guard-review",
+            project="text-neutral-review",
             phases=[
                 Phase(
                     id="gate",
@@ -311,9 +311,8 @@ class TestReview:
 
         result = runner.invoke(app, ["review", "--plan", str(path)])
 
-        assert result.exit_code == 1
-        assert "Completed evidence guard" in result.output
-        assert "gate.review" in result.output
+        assert result.exit_code == 0
+        assert "0 errors, 0 warnings" in result.output
 
 
 # ---------------------------------------------------------------------------

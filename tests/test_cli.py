@@ -1836,7 +1836,7 @@ class TestValidate:
         assert result.exit_code == 1
         assert "ERROR" in result.output
 
-    def test_unrelated_completed_failure_is_a_nonblocking_warning(self, tmp_path: Path) -> None:
+    def test_completed_failure_text_does_not_create_a_warning(self, tmp_path: Path) -> None:
         plan = Plan(
             project="scoped-evidence",
             phases=[
@@ -1867,13 +1867,9 @@ class TestValidate:
         result = runner.invoke(app, ["validate", "--plan", str(path)])
 
         assert result.exit_code == 0
-        assert "WARN:" in result.output
-        assert "outside active dependency" in result.output
-        assert "closure" in result.output
-        assert "0 error(s)" in result.output
-        assert "1 warning(s)" in result.output
+        assert "Plan is valid" in result.output
 
-    def test_completed_failure_in_phase_dependency_remains_blocking(self, tmp_path: Path) -> None:
+    def test_completed_failure_text_in_phase_dependency_is_valid(self, tmp_path: Path) -> None:
         plan = Plan(
             project="scoped-evidence",
             phases=[
@@ -1904,12 +1900,10 @@ class TestValidate:
 
         result = runner.invoke(app, ["validate", "--plan", str(path)])
 
-        assert result.exit_code == 1
-        assert "ERROR:" in result.output
-        assert "legacy.review" in result.output
-        assert "1 error(s)" in result.output
+        assert result.exit_code == 0
+        assert "Plan is valid" in result.output
 
-    def test_cross_phase_gate_integrated_failure_remains_blocking(self, tmp_path: Path) -> None:
+    def test_cross_phase_gate_scope_text_does_not_block_validation(self, tmp_path: Path) -> None:
         gate_scope = {
             "schema_version": "vectl.gate.scope.v2",
             "integrated_steps": ["legacy.review"],
@@ -1953,10 +1947,8 @@ class TestValidate:
 
         result = runner.invoke(app, ["validate", "--plan", str(path)])
 
-        assert result.exit_code == 1
-        assert "ERROR:" in result.output
-        assert "legacy" in result.output
-        assert "1 error(s)" in result.output
+        assert result.exit_code == 0
+        assert "Plan is valid" in result.output
 
     def test_validate_ignores_split_state_orphans(self, tmp_path: Path) -> None:
         """Validate only checks unified plan.yaml state."""

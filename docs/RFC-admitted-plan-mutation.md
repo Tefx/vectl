@@ -25,9 +25,9 @@ The baseline was captured before repository edits at HEAD `a2eae092687e22a043194
 | `uv run ruff check .` | 1 | 2015 existing errors | pre-existing, outside this step's allowed source scope |
 | `uv run mypy src` | 1 | 1261 existing errors in 31 files | pre-existing, outside this step's allowed source scope |
 | `git diff --check` | 0 | no output | green baseline |
-| `uv run vectl validate` | 0 | 0 errors and 45 completed-evidence warnings | warnings are historical and non-blocking outside the active dependency closure |
+| `uv run vectl validate` | 0 | 0 errors and 45 completed-evidence warnings | historical baseline before text-neutral validation |
 
-The corresponding mode-0600 logs are stored in the step artifact directory. A later verifier compares integrated results with this baseline. A new failure, a changed existing failure fingerprint, or a new active-closure error is a regression; historical counts do not authorize new debt.
+The corresponding mode-0600 logs are stored in the step artifact directory. This row records the baseline behavior at capture time. Current Vectl validates deterministic structure and lifecycle only; it no longer emits completed-evidence diagnostics or derives an active closure from evidence text.
 
 ## Goals
 
@@ -77,7 +77,7 @@ The private transaction accepts an already parsed in-memory mutation result and 
 1. Read the authoritative `plan.yaml` with `read_bytes()` and retain those exact base bytes.
 2. Compute `base_sha256` over the raw bytes and parse the Plan from those bytes.
 3. Deep-copy the supplied candidate so caller-owned state cannot change during finalization.
-4. Recalculate locks and run the same selected structural validation policy used by current definition mutation surfaces. Historical completed-evidence diagnostics remain excluded from structural mutation admission.
+4. Recalculate locks and run the shared structural validation policy used by current definition mutation surfaces. Narrative text is not part of mutation admission.
 5. The transaction must serialize the finalized managed Plan exactly once to one immutable `candidate_bytes` value.
 6. Compute `candidate_sha256` from `candidate_bytes`.
 7. If configured, invoke the admission adapter described below and require approval bound to `candidate_sha256`.

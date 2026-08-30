@@ -68,9 +68,7 @@ from vectl.core.diagnostic_formatting import _MAX_BOUNDED_REVIEW_SCALAR_CODEPOIN
 from vectl.core.diagnostics import (
     ReviewScope,
     bounded_review_value,
-    gate_integration_ambiguity_issues,
     order_review_issues,
-    review_gate_phase_ids,
     review_issue_category,
     review_phase_ids,
     review_step_keys,
@@ -366,8 +364,8 @@ def vectl_review(
         check_refs: If true, verify that ref file paths exist on disk.
         include_done: If true, include DONE and LOCKED phases in L3 detail.
         scope: ``global`` (backward-compatible full report), ``phase`` (requires
-            ``phase_id``), or ``active_dependency_closure`` using established
-            active/dependency and gate-integration semantics.
+            ``phase_id``), or ``active_dependency_closure`` using declared
+            active-phase and dependency topology.
         max_issues: Optional positive row budget for every bounded collection.
             L3 step dependencies and L4 links use global budgets. User values are
             control-escaped and capped at 160 codepoints (issues: 512); the final
@@ -469,14 +467,6 @@ def vectl_review(
             total_done=sum(progress.done for progress in selected_progress),
             total_steps=sum(progress.total for progress in selected_progress),
         )
-
-    existing_messages = {issue.message for issue in result.validation_issues}
-    for issue in gate_integration_ambiguity_issues(
-        plan, review_gate_phase_ids(plan, selected_scope, phase_id)
-    ):
-        if issue.message not in existing_messages:
-            result.validation_issues.append(issue)
-            existing_messages.add(issue.message)
 
     if issue_bound is not None:
         gate_result = None

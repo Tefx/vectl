@@ -124,8 +124,9 @@ def is_linked_worktree() -> tuple[bool, Path | None]:
     return (False, None)
 
 
+# @invar:allow shell_result: public CLI/MCP compatibility requires direct Path return
 # @shell_complexity: precedence chain is the canonical path contract
-def resolve_plan_path(explicit: Path | None = None) -> "Result[Path, str]":
+def resolve_plan_path(explicit: Path | None = None) -> Path:
     """Resolve the plan.yaml path using the canonical precedence chain.
 
     Args:

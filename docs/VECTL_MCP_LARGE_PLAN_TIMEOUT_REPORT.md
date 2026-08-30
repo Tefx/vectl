@@ -6,7 +6,7 @@ Vectl MCP read calls become slow and can time out when `plan.yaml` grows to seve
 
 The observed failure occurred while inspecting ResoFeed's plan through five parallel `vectl_show` calls. Subsequent serial `vectl_status`, `vectl_show`, and `vectl_validate` calls succeeded.
 
-Execution admission now scopes completed-evidence failures to the active phase/step dependency closure and explicit `vectl.gate.scope.v2` `integrated_steps`. Unrelated completed-history failures remain visible as warnings, while full-history `review` continues to block on them. Global ID, DAG, dependency, and status-consistency checks remain blocking.
+At the time of this report, execution admission scoped completed-evidence failures to the active phase/step dependency closure and explicit `vectl.gate.scope.v2` `integrated_steps`. That behavior has been superseded: current Vectl validates only deterministic structure and lifecycle. Global ID, DAG, dependency, and status-consistency checks remain blocking.
 
 ## Environment
 
@@ -69,18 +69,16 @@ Sixteen Vectl MCP server instances were present under one Codex app-server proce
 
 The direct cause is repeated whole-plan YAML parsing combined with concurrent calls against one stdio server. Parallel requests multiply CPU-bound Python parsing work and queueing delay until the client timeout is reached. The transport closure is a secondary client/server recovery problem after those request timeouts.
 
-## Validation scope during remediation
+## Historical validation scope during remediation
 
-`vectl validate` and MCP `vectl_validate` use active-dependency-closure evidence severity:
+The following records the remediation-era behavior and does not define the current contract:
 
-- Completed failures in transitive phase dependencies, same-phase step dependencies, or explicit gate `integrated_steps` remain errors.
-- The canonical machine-readable carrier is one `<vectl_gate_scope>` JSON block in an explicit gate step's `description`; `Phase.gate` remains a human-readable criterion.
-- Malformed, duplicated, misplaced, or unresolved active gate scope fails conservatively by retaining blocking severity for all completed-evidence failures.
-- Completed failures outside that closure are emitted as non-blocking warnings rather than disappearing.
-- Duplicate IDs, unknown dependencies, cycles, and phase/step status inconsistencies remain global errors.
-- Full-history `vectl review` retains blocking completed-evidence behavior.
+- Completed failures in transitive phase dependencies, same-phase step dependencies, or explicit gate `integrated_steps` were errors.
+- One `<vectl_gate_scope>` JSON block in a gate step description was a machine-readable carrier.
+- Malformed, duplicated, misplaced, or unresolved gate scope was fail-closed for completed-evidence diagnostics.
+- Completed failures outside that closure were non-blocking warnings.
 
-This separation prevents unrelated legacy evidence debt from blocking a new independent phase without weakening the dependencies that authorize its execution. It does not reduce YAML parsing cost and is only an admission prerequisite for the loader remediation.
+Current Vectl treats `description`, `verification`, `evidence`, `Phase.gate`, and all `<vectl_gate_scope>` blocks as ordinary persisted text. They do not create validation issues, alter review scope, or affect gate readiness. Duplicate IDs, unknown dependencies, cycles, and phase/step status inconsistencies remain structural errors.
 
 ## Loader remediation status
 
@@ -95,9 +93,9 @@ The loader change covers parse cost only. MCP concurrency configuration, timeout
 - Use the configured project CLI only as a diagnostic fallback when the MCP transport is unavailable:
   `uv run --project /Users/tefx/Projects/vectl vectl ...`
 
-## Proposed remediation
+## Proposed remediation (historical)
 
-The active-dependency-closure validation rule above must remain enabled while this work executes; full-history review remains the audit surface.
+This section records the remediation contract used at the time. Its active-dependency-closure evidence rule has since been retired under the text-neutral validation contract described above.
 
 1. Use `yaml.CSafeLoader` when available, with `SafeLoader` fallback.
 2. Add semantic-equivalence tests covering both loaders.
@@ -109,7 +107,9 @@ The active-dependency-closure validation rule above must remain enabled while th
 6. Preserve or recreate the MCP transport after a request timeout.
 7. Investigate session/reconnect cleanup for orphaned stdio server processes.
 
-## Acceptance criteria
+## Acceptance criteria (historical)
+
+The final two evidence-severity criteria below document the old behavior and no longer apply. Current acceptance requires narrative text to leave validation, review scope, and gate readiness unchanged.
 
 - Serial `status`, `show`, and `validate --check-refs` complete reliably against the large-plan fixture.
 - The optimized loader produces a `Plan` equivalent to the current loader.

@@ -1,25 +1,156 @@
-"""Pure scoped-review projection and gate-integrity closure logic."""
+"""Pure scoped-review projection and topology-only validation closure logic."""
 
 from __future__ import annotations
 
+from deal import pre as deal_pre
 from invar_runtime import Contract, post, pre
 
 from vectl.core.diagnostic_formatting import ReviewScope
-from vectl.core_plan_validation import (
-    _active_dependency_step_keys,
-    _execution_active_phase_ids,
-    _gate_integrated_step_ids,
-    _phase_dependency_closure,
-)
-from vectl.models import Phase, Plan, PlanError, PlanValidationIssue, Step
+from vectl.models import Phase, PhaseStatus, Plan, PlanError, PlanValidationIssue, Step, StepStatus
 
 ReviewStepKey = tuple[str, str]
+_ACTIVE_WORK_STEP_STATUSES = frozenset(
+    {StepStatus.PENDING, StepStatus.CLAIMED, StepStatus.REJECTED}
+)
+
+
+@pre(
+    Contract(
+        lambda plan: isinstance(plan, Plan),
+        "active phase selection requires a Plan",
+    )
+)
+@post(
+    Contract(
+        lambda result: isinstance(result, set) and all(isinstance(item, str) for item in result),
+        "active phase selection returns phase IDs",
+    )
+)
+def _execution_active_phase_ids(plan: Plan) -> set[str]:
+    """Return phases where work can execute or be recovered.
+
+    >>> _execution_active_phase_ids(Plan(project="p", phases=[Phase(id="p", name="P")]))
+    {'p'}
+    """
+    done_phase_ids = {phase.id for phase in plan.phases if phase.status == PhaseStatus.DONE}
+    active: set[str] = set()
+    for phase in plan.phases:
+        if phase.status in {PhaseStatus.PENDING, PhaseStatus.IN_PROGRESS}:
+            active.add(phase.id)
+        elif (
+            phase.status == PhaseStatus.LOCKED
+            and phase.depends_on
+            and all(dependency in done_phase_ids for dependency in phase.depends_on)
+        ):
+            active.add(phase.id)
+        elif any(step.status == StepStatus.CLAIMED for step in phase.steps):
+            active.add(phase.id)
+    return active
+
+
+@deal_pre(
+    lambda plan, root_phase_ids: isinstance(plan, Plan)
+    and isinstance(root_phase_ids, set)
+    and all(isinstance(phase_id, str) for phase_id in root_phase_ids)
+)
+@post(
+    Contract(
+        lambda result: isinstance(result, set) and all(isinstance(item, str) for item in result),
+        "phase closure returns phase IDs",
+    )
+)
+def _phase_dependency_closure(plan: Plan, root_phase_ids: set[str]) -> set[str]:
+    """Return roots and all transitive phase dependencies.
+
+    >>> phases = [
+    ...     Phase(id="a", name="A"),
+    ...     Phase(id="b", name="B", depends_on=["a"]),
+    ... ]
+    >>> sorted(_phase_dependency_closure(Plan(project="p", phases=phases), {"b"}))
+    ['a', 'b']
+    """
+    phase_by_id = {phase.id: phase for phase in plan.phases}
+    closure = set(root_phase_ids)
+    pending = list(root_phase_ids)
+    while pending:
+        phase = phase_by_id.get(pending.pop())
+        if phase is None:
+            continue
+        for dependency in phase.depends_on:
+            if dependency not in closure:
+                closure.add(dependency)
+                pending.append(dependency)
+    return closure
+
+
+@pre(
+    Contract(
+        lambda plan: isinstance(plan, Plan),
+        "active dependency selection requires a Plan",
+    )
+)
+@post(
+    Contract(
+        lambda result: isinstance(result, set)
+        and all(
+            isinstance(key, tuple)
+            and len(key) == 2
+            and all(isinstance(component, str) for component in key)
+            for key in result
+        ),
+        "active dependency selection returns phase/step keys",
+    )
+)
+def _active_dependency_step_keys(plan: Plan) -> set[ReviewStepKey]:
+    """Select active work and its declared dependency closure.
+
+    Narrative fields, including legacy ``<vectl_gate_scope>`` text, do not
+    expand this deterministic selection.
+
+    >>> phase = Phase(id="p", name="P", steps=[Step(id="work", name="Work")])
+    >>> plan = Plan(project="p", phases=[phase])
+    >>> _active_dependency_step_keys(plan)
+    {('p', 'work')}
+    """
+    phase_by_id = {phase.id: phase for phase in plan.phases}
+    active_phase_ids = _execution_active_phase_ids(plan)
+    phase_scope = _phase_dependency_closure(plan, active_phase_ids)
+    keys: set[ReviewStepKey] = set()
+
+    for phase_id in phase_scope - active_phase_ids:
+        phase = phase_by_id.get(phase_id)
+        if phase is not None:
+            keys.update((phase.id, step.id) for step in phase.steps)
+
+    def add_step_dependencies(phase: Phase, root: Step) -> None:
+        step_by_id = {step.id: step for step in phase.steps}
+        pending = [root]
+        while pending:
+            step = pending.pop()
+            key = (phase.id, step.id)
+            if key in keys:
+                continue
+            keys.add(key)
+            pending.extend(
+                step_by_id[dependency]
+                for dependency in step.depends_on
+                if dependency in step_by_id
+            )
+
+    for phase_id in active_phase_ids:
+        phase = phase_by_id.get(phase_id)
+        if phase is None:
+            continue
+        for step in phase.steps:
+            if step.status in _ACTIVE_WORK_STEP_STATUSES:
+                add_step_dependencies(phase, step)
+
+    return keys
 
 
 @pre(
     Contract(
         lambda plan, scope=None, phase_id=None: isinstance(plan, Plan)
-        and len(plan.phases) >= 0
         and (scope is None or scope in {"global", "phase", "active_dependency_closure"})
         and (phase_id is None or isinstance(phase_id, str)),
         "a Plan with an ordered phase collection is required",
@@ -29,7 +160,7 @@ ReviewStepKey = tuple[str, str]
 def review_phase_ids(
     plan: Plan, scope: ReviewScope, phase_id: str | None
 ) -> set[str]:
-    """Select phases using established active/dependency-closure semantics.
+    """Select phases through declared status and dependency topology.
 
     >>> plan = Plan(project="p", phases=[Phase(id="phase", name="Phase")])
     >>> review_phase_ids(plan, "global", None)
@@ -49,19 +180,12 @@ def review_phase_ids(
             raise PlanError(f"Phase '{phase_id}' not found.")
         return {phase_id}
 
-    active_phase_ids = _execution_active_phase_ids(plan)
-    selected = _phase_dependency_closure(plan, active_phase_ids)
-    selected.update(
-        selected_phase_id
-        for selected_phase_id, _ in _active_dependency_step_keys(plan)
-    )
-    return selected
+    return _phase_dependency_closure(plan, _execution_active_phase_ids(plan))
 
 
 @pre(
     Contract(
         lambda plan, scope=None, phase_id=None: isinstance(plan, Plan)
-        and len(plan.phases) >= 0
         and (scope is None or scope in {"global", "phase", "active_dependency_closure"})
         and (phase_id is None or isinstance(phase_id, str)),
         "a Plan with an ordered phase collection is required",
@@ -76,7 +200,7 @@ def review_phase_ids(
 def review_step_keys(
     plan: Plan, scope: ReviewScope, phase_id: str | None
 ) -> set[ReviewStepKey] | None:
-    """Select step-level render closure for one review scope.
+    """Select step-level rendering closure for one review scope.
 
     >>> plan = Plan(project="p", phases=[Phase(id="phase", name="Phase")])
     >>> review_step_keys(plan, "phase", "phase")
@@ -86,7 +210,6 @@ def review_step_keys(
     if scope == "global":
         return None
     if scope == "phase":
-        assert phase_id is not None
         return {
             (phase.id, step.id)
             for phase in plan.phases
@@ -131,9 +254,7 @@ def scoped_review_plan(
 
     >>> dependency = Phase(id="dependency", name="Dependency", depends_on=["missing"])
     >>> target = Phase(id="target", name="Target", depends_on=["dependency"])
-    >>> projected = scoped_review_plan(
-    ...     Plan(project="p", phases=[dependency, target]), {"target"}
-    ... )
+    >>> projected = scoped_review_plan(Plan(project="p", phases=[dependency, target]), {"target"})
     >>> projected.find_phase("dependency").depends_on  # type: ignore[union-attr]
     ['missing']
     """
@@ -173,7 +294,7 @@ def scoped_review_plan(
     Contract(
         lambda plan, phase_id=None: isinstance(plan, Plan)
         and (phase_id is None or isinstance(phase_id, str)),
-        "phase gate validation requires a Plan with ordered phases",
+        "phase validation requires a Plan with ordered phases",
     )
 )
 @post(
@@ -185,69 +306,27 @@ def scoped_review_plan(
             and all(isinstance(component, str) for component in key)
             for key in result
         ),
-        "phase gate validation returns phase/step keys",
+        "phase validation returns phase/step keys",
     )
 )
 def phase_gate_validation_step_keys(plan: Plan, phase_id: str) -> set[ReviewStepKey]:
-    """Include a phase, integrated candidates, and both dependency closures.
+    """Return a phase and its declared phase-dependency steps.
+
+    The historical name remains import-compatible. It no longer reads gate
+    descriptions or resolves cross-phase selectors.
 
     >>> phase_gate_validation_step_keys(
     ...     Plan(project="p", phases=[Phase(id="target", name="Target")]), "target"
     ... )
     set()
     """
-    phase_by_id = {phase.id: phase for phase in plan.phases}
-    base_phase_ids = _phase_dependency_closure(plan, {phase_id})
-    keys = {
+    phase_ids = _phase_dependency_closure(plan, {phase_id})
+    return {
         (phase.id, step.id)
         for phase in plan.phases
-        if phase.id in base_phase_ids
+        if phase.id in phase_ids
         for step in phase.steps
     }
-    all_step_keys = {
-        (phase.id, step.id) for phase in plan.phases for step in phase.steps
-    }
-    target_phase = phase_by_id.get(phase_id)
-    if target_phase is None:
-        return keys
-    if "<vectl_gate_scope>" in target_phase.gate:
-        return all_step_keys
-
-    def add_step_dependencies(integrated_phase: Phase, root: Step) -> None:
-        step_by_id = {step.id: step for step in integrated_phase.steps}
-        pending = [root]
-        while pending:
-            step = pending.pop()
-            key = (integrated_phase.id, step.id)
-            if key in keys:
-                continue
-            keys.add(key)
-            pending.extend(
-                step_by_id[dependency]
-                for dependency in step.depends_on
-                if dependency in step_by_id
-            )
-
-    for gate_step in target_phase.steps:
-        integrated_step_ids = _gate_integrated_step_ids(gate_step.description)
-        if integrated_step_ids is None:
-            return all_step_keys
-        for integrated_step_id in integrated_step_ids:
-            matches = plan.find_step_matches(integrated_step_id)
-            if not matches:
-                return all_step_keys
-            for integrated_phase, integrated_step in matches:
-                add_step_dependencies(integrated_phase, integrated_step)
-                dependency_phase_ids = _phase_dependency_closure(
-                    plan, {integrated_phase.id}
-                ) - {integrated_phase.id}
-                keys.update(
-                    (dependency_phase.id, step.id)
-                    for dependency_phase in plan.phases
-                    if dependency_phase.id in dependency_phase_ids
-                    for step in dependency_phase.steps
-                )
-    return keys
 
 
 @pre(
@@ -273,61 +352,13 @@ def phase_gate_validation_step_keys(plan: Plan, phase_id: str) -> set[ReviewStep
 def gate_integration_ambiguity_issues(
     plan: Plan, gate_phase_ids: set[str]
 ) -> list[PlanValidationIssue]:
-    """Block selectors with distinct exact and qualified interpretations.
+    """Return no issues; legacy gate integration text is ordinary text.
 
-    >>> gate_scope = ('<vectl_gate_scope>{"schema_version":"vectl.gate.scope.v2",'
-    ...               '"integrated_steps":["target.review"]}</vectl_gate_scope>')
-    >>> plan = Plan(project="p", phases=[
-    ...     Phase(id="other", name="Other", steps=[Step(id="target.review", name="Exact")]),
-    ...     Phase(id="target", name="Target", steps=[
-    ...         Step(id="review", name="Qualified"),
-    ...         Step(id="gate", name="Gate", description=gate_scope),
-    ...     ]),
-    ... ])
-    >>> len(gate_integration_ambiguity_issues(plan, {"target"}))
-    1
+    >>> gate_integration_ambiguity_issues(Plan(project="p"), set())
+    []
     """
-    issues: list[PlanValidationIssue] = []
-    seen_selectors: set[tuple[str, str]] = set()
-    for gate_phase in plan.phases:
-        if gate_phase.id not in gate_phase_ids:
-            continue
-        for gate_step in gate_phase.steps:
-            integrated_step_ids = _gate_integrated_step_ids(gate_step.description)
-            if integrated_step_ids is None:
-                continue
-            for selector in integrated_step_ids:
-                selector_key = (gate_phase.id, selector)
-                if selector_key in seen_selectors or "." not in selector:
-                    continue
-                seen_selectors.add(selector_key)
-                phase_prefix, _, step_suffix = selector.partition(".")
-                exact = [
-                    (phase, step)
-                    for phase in plan.phases
-                    for step in phase.steps
-                    if step.id == selector
-                ]
-                qualified = [
-                    (phase, step)
-                    for phase in plan.phases
-                    if phase.id == phase_prefix
-                    for step in phase.steps
-                    if step.id == step_suffix
-                ]
-                candidates = plan.find_step_matches(selector)
-                if not exact or not qualified or len(candidates) < 2:
-                    continue
-                rendered_candidates = ", ".join(
-                    f"{phase.id}/{step.id}" for phase, step in candidates
-                )
-                issues.append(
-                    PlanValidationIssue(
-                        f"Ambiguous gate integration selector '{selector}' resolves to "
-                        f"distinct exact/qualified steps: {rendered_candidates}"
-                    )
-                )
-    return issues
+    del plan, gate_phase_ids
+    return []
 
 
 @pre(
@@ -348,18 +379,12 @@ def gate_integration_ambiguity_issues(
 def review_gate_phase_ids(
     plan: Plan, scope: ReviewScope, phase_id: str | None
 ) -> set[str]:
-    """Return phases whose gate selectors affect one review scope.
+    """Return phase IDs in a review scope for legacy callers.
 
-    >>> review_gate_phase_ids(
-    ...     Plan(project="p", phases=[Phase(id="p", name="P")]), "global", None
-    ... )
+    >>> review_gate_phase_ids(Plan(project="p", phases=[Phase(id="p", name="P")]), "global", None)
     {'p'}
     """
-    if scope == "global":
-        return {phase.id for phase in plan.phases}
-    if scope == "phase":
-        return {phase_id} if phase_id is not None else set()
-    return _execution_active_phase_ids(plan)
+    return review_phase_ids(plan, scope, phase_id)
 
 
 @pre(
@@ -374,13 +399,12 @@ def review_gate_phase_ids(
 def review_validation_plan(
     plan: Plan, scope: ReviewScope, phase_id: str | None
 ) -> Plan:
-    """Build validation closure independently from render projection.
+    """Build a structural validation closure independently from rendering.
 
     >>> dependency = Phase(id="dependency", name="Dependency", depends_on=["missing"])
     >>> target = Phase(id="target", name="Target", depends_on=["dependency"])
-    >>> closure = review_validation_plan(
-    ...     Plan(project="p", phases=[dependency, target]), "phase", "target"
-    ... )
+    >>> plan = Plan(project="p", phases=[dependency, target])
+    >>> closure = review_validation_plan(plan, "phase", "target")
     >>> [phase.id for phase in closure.phases]
     ['dependency', 'target']
     """
@@ -392,7 +416,5 @@ def review_validation_plan(
         assert phase_id is not None
         selected_step_keys = phase_gate_validation_step_keys(plan, phase_id)
         selected_phase_ids = _phase_dependency_closure(plan, selected_phase_ids)
-        selected_phase_ids.update(
-            key_phase_id for key_phase_id, _ in selected_step_keys
-        )
+        selected_phase_ids.update(key_phase_id for key_phase_id, _ in selected_step_keys)
     return scoped_review_plan(plan, selected_phase_ids, selected_step_keys)

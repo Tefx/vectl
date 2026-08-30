@@ -239,7 +239,7 @@ phases:
 
 ### 有范围的 MCP review 诊断
 
-`vectl_review` 默认使用兼容的 `scope="global"` 完整历史路径。`scope="phase"` 要求 `phase_id`：渲染仍只投影目标 phase；校验闭包包含目标 phase 的传递依赖、每个显式 gate 集成 selector 的 exact 与 qualified 两种解释、这些候选 step 的依赖，以及候选所属 phase 的传递依赖。显式集成会强制检查每个已完成候选根 step 的未闭合失败证据，即使其 ID、名称、描述和验证文本没有 review/test 关键词。exact 与 qualified 指向不同 step 时会在 gate 就绪判断前产生歧义阻断项。`scope="active_dependency_closure"` 保留既有 active phase、phase 依赖、step 依赖和显式 gate scope 闭包，并保守纳入所有候选解释。范围 review 还始终保留全 Plan 的重复 phase/step ID 阻断项。
+`vectl_review` 默认使用兼容的 `scope="global"` 完整历史路径。`scope="phase"` 要求 `phase_id`：渲染仍只投影目标 phase，校验包含目标 phase 的传递依赖。`scope="active_dependency_closure"` 包含可执行或可恢复的 phase、其传递 phase 依赖，以及 pending、claimed、rejected step 的已声明 step 依赖。范围 review 始终保留全 Plan 的重复 phase/step ID 阻断项。`description`、`verification`、`evidence`、`Phase.gate` 和历史 `<vectl_gate_scope>` 块均按普通文本展示：它们不会生成校验项，不会扩大 review 范围，也不会影响 gate 就绪状态。
 
 当 `max_issues=N` 时，每个集合分别获得 N 行预算：L1 issue、L2 phase 行、L3 phase 标题、L3 全局 step 行、L3 phase 依赖 link、L3 step 依赖 link、L4 ref 行、L4 全局 link、gate pending step 和 downstream phase。L3 的两类依赖 link 与 L4 link 各自使用全局 N-link 预算。当前错误、当前警告、历史警告依次渲染。所有用户可控标量都会转义控制字符/换行，并在转义后限制为 160 个码点；L1 issue 消息限制为 512 个码点。完整响应还有固定 65,536 码点上限；若最后保护触发，结果只保留元数据，把所有明细 `rendered_*` 计数置零，并设置 `output_safety_truncated: true`。
 

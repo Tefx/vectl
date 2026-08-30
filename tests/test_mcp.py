@@ -502,31 +502,20 @@ class TestVectlStatus:
 
 
 class TestVectlValidate:
-    def test_validate_reports_duplicate_step_id_error(self, duplicate_id_plan_file: Path) -> None:
+    def test_validate_reports_duplicate_step_id_error(
+        self, duplicate_id_plan_file: Path
+    ) -> None:
         result = vectl_validate()
         assert "Validation" in result
         assert "ERROR:" in result
         assert "dup.step" in result
         assert "1 error(s), 0 warning(s)" in result
 
-    @pytest.mark.parametrize(
-        ("active_dependencies", "severity", "summary"),
-        [
-            ([], "WARN:", "0 error(s), 1 warning(s)"),
-            (["legacy"], "ERROR:", "1 error(s), 0 warning(s)"),
-        ],
-    )
-    def test_completed_failure_severity_follows_active_dependency_closure(
-        self,
-        plan_file: Path,
-        active_dependencies: list[str],
-        severity: str,
-        summary: str,
-    ) -> None:
+    def test_validation_ignores_legacy_evidence_and_gate_scope(self, plan_file: Path) -> None:
         plan_file.write_text(
             yaml.safe_dump(
                 {
-                    "project": "scoped-evidence-mcp",
+                    "project": "text-neutral-mcp-validation",
                     "phases": [
                         {
                             "id": "legacy",
@@ -541,47 +530,6 @@ class TestVectlValidate:
                                         "gate_open_allowed=false\n"
                                         "review_outcome=NEEDS_REVISION"
                                     ),
-                                }
-                            ],
-                        },
-                        {
-                            "id": "active",
-                            "name": "Active",
-                            "status": "pending",
-                            "depends_on": active_dependencies,
-                            "steps": [{"id": "work", "name": "Current work"}],
-                        },
-                    ],
-                },
-                sort_keys=False,
-            ),
-            encoding="utf-8",
-        )
-
-        result = vectl_validate()
-
-        assert severity in result
-        assert "legacy.review" in result
-        assert summary in result
-        if severity == "WARN:":
-            assert "outside active dependency closure" in result
-
-    def test_malformed_active_gate_scope_fails_closed(self, plan_file: Path) -> None:
-        plan_file.write_text(
-            yaml.safe_dump(
-                {
-                    "project": "scoped-evidence-mcp",
-                    "phases": [
-                        {
-                            "id": "legacy",
-                            "name": "Legacy",
-                            "status": "done",
-                            "steps": [
-                                {
-                                    "id": "review",
-                                    "name": "Legacy review",
-                                    "status": "done",
-                                    "evidence": "gate_open_allowed=false",
                                 }
                             ],
                         },
@@ -609,11 +557,7 @@ class TestVectlValidate:
 
         result = vectl_validate()
 
-        assert "ERROR:" in result
-        assert "legacy" in result
-        assert "1 error(s), 0 warning(s)" in result
-
-
+        assert "0 errors, 0 warnings" in result
 class TestVectlReviewDuplicateBlocking:
     def test_review_gate_check_is_blocked_when_plan_has_duplicate_step_ids(
         self, duplicate_id_plan_file: Path
@@ -2256,7 +2200,9 @@ class TestVectlReview:
             else:
                 os.environ["VECTL_PLAN_PATH"] = old
 
-    def test_active_closure_blocks_ambiguous_gate_integration(self, tmp_path: Path) -> None:
+    def test_active_closure_keeps_duplicate_id_validation_without_gate_parsing(
+        self, tmp_path: Path
+    ) -> None:
         gate_scope = {
             "schema_version": "vectl.gate.scope.v2",
             "integrated_steps": ["dup"],
@@ -2312,10 +2258,10 @@ class TestVectlReview:
         assert "total_issue_count: 1" in closure_result
         assert "current_error_count: 1" in closure_result
         assert "Duplicate step ID 'dup'" in closure_result
-        assert "First duplicate" in closure_result
-        assert "Second duplicate" in closure_result
+        assert "First duplicate" not in closure_result
+        assert "Second duplicate" not in closure_result
 
-    def test_explicit_gate_integration_inspects_generic_fail_evidence_in_every_scope(
+    def test_legacy_gate_text_does_not_inspect_cross_phase_evidence(
         self, tmp_path: Path
     ) -> None:
         gate_scope = {
@@ -2376,16 +2322,14 @@ class TestVectlReview:
                 os.environ["VECTL_PLAN_PATH"] = old
 
         for result in (global_result, phase_result, active_result):
-            assert "step 'impl' in phase 'other' has unclosed failure evidence (FAIL)" in result
-            assert "current_error_count: 1" in result
+            assert "unclosed failure evidence" not in result
+            assert "current_error_count: 0" in result
         for gate_result in (global_result, phase_result):
-            assert "gate_evaluated: false" in gate_result
-            assert "gate_validation_blocked: true" in gate_result
-            assert "gate_ready: false" in gate_result
-            assert "Gate check blocked: plan validation failed" in gate_result
-            assert "✓ Steps:" not in gate_result
+            assert "gate_evaluated: true" in gate_result
+            assert "gate_validation_blocked: false" in gate_result
+            assert "gate_ready: true" in gate_result
 
-    def test_phase_gate_validation_includes_integrated_step_and_dependency_closures(
+    def test_phase_validation_excludes_legacy_gate_selected_steps(
         self, tmp_path: Path
     ) -> None:
         gate_scope = {
@@ -2466,21 +2410,18 @@ class TestVectlReview:
             "other.dependency",
             "foundation.review",
         ):
-            assert f"step '{step_id}'" in result
-        assert "gate_evaluated: false" in result
-        assert "gate_validation_blocked: true" in result
-        assert "gate_ready: false" in result
-        assert "total_gate_pending_step_count: 0" in result
-        assert "rendered_gate_pending_step_count: 0" in result
-        assert "Gate check blocked: plan validation failed" in result
-        assert "✓ Steps:" not in result
+            assert f"step '{step_id}'" not in result
+        assert "current_error_count: 0" in result
+        assert "gate_evaluated: true" in result
+        assert "gate_validation_blocked: false" in result
+        assert "gate_ready: true" in result
         l2_l3 = result.split("## L4:", 1)[0]
         assert "| other |" not in l2_l3
         assert "| foundation |" not in l2_l3
         assert "### other" not in l2_l3
         assert "### foundation" not in l2_l3
 
-    def test_gate_resolution_blocks_exact_qualified_shadowing_conservatively(
+    def test_gate_text_does_not_create_selector_ambiguity(
         self, tmp_path: Path
     ) -> None:
         gate_scope = {
@@ -2540,11 +2481,9 @@ class TestVectlReview:
                 os.environ["VECTL_PLAN_PATH"] = old
 
         for result in (phase_result, active_result):
-            assert "Ambiguous gate integration selector 'target.review'" in result
-            assert "step 'target.review'" in result
-            assert "current_error_count: 2" in result
-        assert "Gate check blocked: plan validation failed" in phase_result
-        assert "✓ Steps:" not in phase_result
+            assert "Ambiguous gate integration selector" not in result
+            assert "current_error_count: 0" in result
+        assert "✓ Steps: 2/2 complete" in phase_result
         phase_l3 = phase_result.split("## L4:", 1)[0]
         assert "### other" not in phase_l3
 
@@ -2693,7 +2632,8 @@ class TestVectlReview:
             else:
                 os.environ["VECTL_PLAN_PATH"] = old
 
-        assert "legacy.review" in global_result
+        assert "legacy.review" not in global_result
+        assert "current_error_count: 0" in global_result
         assert "legacy.review" not in phase_result
         assert "Legacy History" not in phase_result
         assert "legacy.review" not in closure_result
@@ -2701,7 +2641,7 @@ class TestVectlReview:
         assert "Current Work" in phase_result
         assert "Current Work" in closure_result
 
-    def test_active_closure_keeps_step_dependencies_and_gate_integration_only(
+    def test_active_closure_keeps_declared_step_dependencies_only(
         self, tmp_path: Path
     ) -> None:
         gate_scope = {
@@ -2782,11 +2722,11 @@ class TestVectlReview:
         assert "active.work" in result
         assert "active.work-dependency" in result
         assert "active.gate" in result
-        assert "active.integrated" in result
-        assert "active.integrated-dependency" in result
+        assert "active.integrated" not in result
+        assert "active.integrated-dependency" not in result
         assert "active.sibling" not in result
         assert "missing-sibling.md" not in result
-        assert "missing-integrated.md" in result
+        assert "missing-integrated.md" not in result
 
     def test_review_classifies_completed_missing_refs_and_bounds_mixed_order(
         self, tmp_path: Path

@@ -25,18 +25,10 @@ from vectl.models import (
 from vectl.semantics import is_step_locked as _is_step_locked_shared
 
 from vectl.core_duplicate_step_id import analyze_duplicate_step_ids
-from vectl.core_plan_validation import (
-    validate_plan,
-    _detect_cycle,
-    _completed_evidence_guard_issues,
-    _is_evidence_guard_candidate,
-    _evidence_failure_reasons,
-    _evidence_has_closure,
-    _has_later_same_phase_closure,
-    _has_intentional_red_or_nonblocking_disposition,
-)
+from vectl.core_plan_validation import _detect_cycle, validate_plan
 
-# @shell_complexity: Branches preserve ordered validation diagnostics for phase IDs, DAGs, statuses, duplicate IDs, refs, and evidence guard.
+# @shell_complexity: Branches preserve ordered structural diagnostics for phase IDs,
+# DAGs, statuses, duplicate IDs, and refs.
 
 
 # @shell_complexity: DFS branches preserve neighbor filtering, back-edge reconstruction, recursive traversal, and no-cycle sentinel semantics.

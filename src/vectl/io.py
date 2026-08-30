@@ -215,11 +215,7 @@ def _finalize_admitted_plan_mutation(
     blocking_issue = next(
         (
             issue
-            for issue in validate_plan(
-                finalized,
-                check_refs=False,
-                include_completed_evidence_guard=False,
-            )
+            for issue in validate_plan(finalized, check_refs=False)
             if not issue.is_warning
         ),
         None,

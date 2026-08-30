@@ -616,11 +616,7 @@ def vectl_mutate(
             )
 
         try:
-            issues = validate_plan(
-                working_plan,
-                check_refs=False,
-                include_completed_evidence_guard=False,
-            )
+            issues = validate_plan(working_plan, check_refs=False)
             blocking_issues = [issue for issue in issues if not issue.is_warning]
             if blocking_issues:
                 return format_final_validation_failure(

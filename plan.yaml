@@ -126252,3 +126252,75 @@ phases:
       Digest crash/reject omitted all credential names/values while retaining stable
       code/useful suffix/bounds; transports reaped. Gate/observer unchanged and prior
       evidence compatibility classified. Repository/Plan/lifecycle read-only; no push.'
+- id: control-plane-correctness-0-9-0
+  name: Vectl 0.9.0 Control-Plane Correctness
+  status: pending
+  gate: Complete the single implementation transaction with source, behavioral tests,
+    and contract documentation synchronized; require targeted regression, full pytest,
+    Invar guard, and git diff checks.
+  steps:
+  - id: control-plane-correctness-0-9-0.implement-minimal-fixes
+    name: Implement minimal control-plane correctness fixes
+    status: pending
+    description: 'Deliver: repair batch claim lost-update behavior by loading through
+      the canonical Plan loader, binding save to the loaded SHA, using stored step
+      IDs and identical claimed_at values in Plan/claims, and compensating CAS/save
+      failures only when every acquired claim still matches; route successful batch
+      saves through the existing best-effort Git commit path and relocate the persistent
+      Plan lock under existing Vectl metadata. Reject ordinary edit-step changes while
+      a step is CLAIMED with actionable defer guidance; keep dedicated checklist behavior
+      unchanged. Reject unknown persisted Plan model fields without adding extensions.
+      Remove claims repair from vectl_status and make skip, cancel, and skip-phase
+      explicitly release claims. Add optional expected_base_sha256 to MCP vectl_mutate
+      and fail before mutation/admission/writes on mismatch while retaining final
+      CAS. Update existing worktree/unified-state/batch documentation with the rebase-before-ff-only
+      rule and clarify refs remain advisory warnings. Boundary: repository implementation
+      only in /Users/tefx/Projects/vectl; preserve current Git best-effort semantics
+      and independent-step execution. Do not add modules, lifecycle states, receipt
+      fields, transaction/journal frameworks, extension systems, ref gates, integration
+      services, status drift services, terminal/DONE-phase immutability, or CLI SHA
+      flags. Admit: current authority is HEAD 16df96a1, AGENTS.md, INVAR.md, existing
+      ADR/RFC contracts, confirmed reproducers, and the clean 174-test relevant baseline.
+      Recovery: on failed checks keep the step incomplete, preserve concurrent/replacement
+      claims, use existing explicit repair tooling for observed drift, and report
+      exact failing commands without weakening tests or contracts.'
+    verification: 'Run: uv run pytest -q tests/test_batch_claim.py tests/test_batch_claim_contract.py
+      tests/test_claims.py tests/test_io.py tests/test_architect.py tests/test_models.py
+      tests/test_mcp.py tests/test_cli.py tests/test_mcp_mutate_batch.py; uv run pytest;
+      uv run invar guard; git diff --check. Behavioral assertions must cover interleaved
+      batch CAS, exact replacement-safe compensation, canonical claim ID/timestamp
+      parity, one best-effort batch commit attempt without a root lock artifact, CLAIMED
+      edit rejection/defer recovery, strict unknown Plan fields, status byte/directory
+      purity with claimed skip release, and expected_base_sha256 mismatch zero-write
+      behavior.'
+    evidence_template: Record each command, exit code, and summary; include the batch
+      CAS/compensation and status-purity observations, final Plan/claims/Git state,
+      and any pre-existing or untested gap.
+    refs:
+    - AGENTS.md
+    - INVAR.md
+    - src/vectl/core/batch_claim.py
+    - src/vectl/claims.py
+    - src/vectl/lifecycle.py
+    - src/vectl/io.py
+    - src/vectl/core_plan_step_edit.py
+    - src/vectl/models.py
+    - src/vectl/mcp_core_read_tools.py
+    - src/vectl/mcp_core_mutation_tools.py
+    - src/vectl/mcp_core_lifecycle_tools.py
+    - src/vectl/cli_plan_lifecycle_commands.py
+    - tests/test_batch_claim.py
+    - tests/test_claims.py
+    - tests/test_io.py
+    - tests/test_architect.py
+    - tests/test_models.py
+    - tests/test_mcp.py
+    - tests/test_cli.py
+    - tests/test_mcp_mutate_batch.py
+    - docs/ADR-unified-state.md
+    - docs/ADR-worktree-support.md
+    - docs/RFC-batch-claim.md
+    - docs/DESIGN.md
+    - README.md
+    - README_zh.md
+    agent: general

@@ -33,6 +33,7 @@ from vectl.core_checklist import (  # noqa: F401
 from vectl.core_plan_step_add import *  # noqa: F403
 from vectl.core_plan_step_edit import *  # noqa: F403
 from vectl.core_duplicate_step_id import require_unambiguous_target_step_id
+from vectl.lifecycle_metadata import ClaimStoreToken
 from vectl.models import (
     DiffResult,
     Plan,
@@ -98,11 +99,23 @@ def update_checklist(
     return _legacy_update_checklist(plan, step_id, check=check, append=append)
 
 
-def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None) -> Plan:
+def complete_step(
+    plan: Plan,
+    step_id: str,
+    evidence: str,
+    claims_path: Path | None = None,
+    claim_releases: list[ClaimStoreToken] | None = None,
+) -> Plan:
     from vectl import lifecycle as _lifecycle
 
     require_unambiguous_target_step_id(plan, step_id, operation="complete")
-    return _lifecycle.complete_step(plan, step_id, evidence, claims_path=claims_path)
+    return _lifecycle.complete_step(
+        plan,
+        step_id,
+        evidence,
+        claims_path=claims_path,
+        claim_releases=claim_releases,
+    )
 
 
 def complete_phase(plan: Plan, phase_id: str, evidence: str) -> tuple[Plan, list[str]]:
@@ -111,11 +124,21 @@ def complete_phase(plan: Plan, phase_id: str, evidence: str) -> tuple[Plan, list
     return _lifecycle.complete_phase(plan, phase_id, evidence)
 
 
-def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None) -> Plan:
+def defer_step(
+    plan: Plan,
+    step_id: str,
+    claims_path: Path | None = None,
+    claim_releases: list[ClaimStoreToken] | None = None,
+) -> Plan:
     from vectl import lifecycle as _lifecycle
 
     require_unambiguous_target_step_id(plan, step_id, operation="defer")
-    return _lifecycle.defer_step(plan, step_id, claims_path=claims_path)
+    return _lifecycle.defer_step(
+        plan,
+        step_id,
+        claims_path=claims_path,
+        claim_releases=claim_releases,
+    )
 
 
 def reject_step(plan: Plan, step_id: str, reason: str, reviewer: str = "") -> Plan:
@@ -125,19 +148,43 @@ def reject_step(plan: Plan, step_id: str, reason: str, reviewer: str = "") -> Pl
     return _lifecycle.reject_step(plan, step_id, reason, reviewer)
 
 
-def skip_step(plan: Plan, step_id: str, reason: str) -> Plan:
+def skip_step(
+    plan: Plan,
+    step_id: str,
+    reason: str,
+    claims_path: Path | None = None,
+    claim_releases: list[ClaimStoreToken] | None = None,
+) -> Plan:
     from vectl import lifecycle as _lifecycle
 
     require_unambiguous_target_step_id(plan, step_id, operation="skip")
-    return _lifecycle.skip_step(plan, step_id, reason)
+    return _lifecycle.skip_step(
+        plan,
+        step_id,
+        reason,
+        claims_path=claims_path,
+        claim_releases=claim_releases,
+    )
 
 
 def skip_phase(
-    plan: Plan, phase_id: str, reason: str, force: bool = False
+    plan: Plan,
+    phase_id: str,
+    reason: str,
+    force: bool = False,
+    claims_path: Path | None = None,
+    claim_releases: list[ClaimStoreToken] | None = None,
 ) -> tuple[Plan, list[str]]:
     from vectl import lifecycle as _lifecycle
 
-    return _lifecycle.skip_phase(plan, phase_id, reason, force=force)
+    return _lifecycle.skip_phase(
+        plan,
+        phase_id,
+        reason,
+        force=force,
+        claims_path=claims_path,
+        claim_releases=claim_releases,
+    )
 
 
 def get_claimed_steps(plan: Plan, agent: str | None = None) -> list[tuple[str, Step]]:

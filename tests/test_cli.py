@@ -809,7 +809,10 @@ class TestTop:
         assert live_instances
         assert len(live_instances[0].updates) == 1
         assert live_instances[0].updates[0][1] is True
-        assert captured["paths"] == (plan_file.parent.resolve(),)
+        assert captured["paths"] == (
+            plan_file.parent.resolve(),
+            plan_file.parent.resolve() / ".vectl",
+        )
         assert captured["kwargs"]["recursive"] is False
         assert captured["kwargs"]["raise_interrupt"] is False
         assert captured["kwargs"]["poll_delay_ms"] == 10_000
@@ -1723,6 +1726,86 @@ class TestSkip:
         step = _must_find_step(plan, "s1")
         assert step.status == StepStatus.SKIPPED
         assert step.skipped_reason == "irrelevant"
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            ["complete", "s1", "--evidence", "proof"],
+            ["defer", "s1"],
+            ["skip", "s1", "--reason", "irrelevant"],
+            ["cancel", "s1"],
+            ["skip-phase", "p1", "--reason", "irrelevant", "--force"],
+        ],
+    )
+    def test_claim_releasing_save_failure_leaves_claim_untouched(
+        self,
+        plan_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        command: list[str],
+    ) -> None:
+        claimed = runner.invoke(
+            app,
+            ["claim", "s1", "--agent", "owner", "--no-guidance", "--plan", str(plan_file)],
+        )
+        assert claimed.exit_code == 0
+        claims_path = resolve_claims_path(plan_file)
+        key, original = next(iter(load_claims(claims_path).items()))
+
+        def fail_save(*args, **kwargs):
+            raise CASConflictError(plan_file)
+
+        monkeypatch.setattr("vectl.cli_plan_lifecycle_commands._save_plan", fail_save)
+
+        result = runner.invoke(app, [*command, "--plan", str(plan_file)])
+
+        assert result.exit_code != 0
+        assert load_claims(claims_path)[key] == original
+        plan, _ = load_plan(plan_file)
+        assert _must_find_step(plan, "s1").status == StepStatus.CLAIMED
+
+    def test_skip_phase_stale_cas_does_not_restore_claim_after_concurrent_defer(
+        self, plan_file: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import vectl.cli_plan_lifecycle_commands as lifecycle_commands
+
+        claimed = runner.invoke(
+            app,
+            ["claim", "s1", "--agent", "owner", "--no-guidance", "--plan", str(plan_file)],
+        )
+        assert claimed.exit_code == 0
+        claims_path = resolve_claims_path(plan_file)
+        real_save = lifecycle_commands._save_plan
+
+        def defer_then_attempt_stale_save(plan_obj, path, expected_hash, message):
+            concurrent, current_hash = load_plan_definition(plan_file)
+            found = concurrent.find_step("s1")
+            assert found is not None
+            _, concurrent_step = found
+            concurrent_step.status = StepStatus.PENDING
+            concurrent_step.claimed_by = None
+            concurrent_step.claimed_at = None
+            save_claims({}, claims_path)
+            save_plan(concurrent, plan_file, expected_hash=current_hash)
+            return real_save(plan_obj, path, expected_hash, message)
+
+        monkeypatch.setattr(
+            "vectl.cli_plan_lifecycle_commands._save_plan",
+            defer_then_attempt_stale_save,
+        )
+
+        result = runner.invoke(
+            app,
+            ["skip-phase", "p1", "--reason", "irrelevant", "--force", "--plan", str(plan_file)],
+        )
+
+        assert result.exit_code != 0
+        assert load_claims(claims_path) == {}
+        persisted, _ = load_plan_definition(plan_file)
+        found = persisted.find_step("s1")
+        assert found is not None
+        assert found[1].status == StepStatus.PENDING
+        assert found[1].claimed_by is None
+        assert found[1].claimed_at is None
 
     def test_cancel_done_fails(self, plan_file: Path):
         runner.invoke(app, ["claim", "s1", "--agent", "a", "--plan", str(plan_file)])

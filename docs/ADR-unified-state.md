@@ -23,7 +23,7 @@ Sub-agents repeatedly executed `git restore plan.yaml`, rolling back plan struct
 
 Completion status (`status`, `evidence`, `done_at`, `claimed_by`) moves back into `plan.yaml` as inline fields on each step. Every write operation (`complete`, `mutate`, `init`) is immediately followed by `git commit --only --no-verify plan.yaml` (best-effort: if commit fails — e.g. not a git repo — the plan file is still written successfully; only rollback protection is lost).
 
-Claims (ephemeral coordination) move to `.git/vectl/claims.json`, protected by `flock()`.
+Claims (ephemeral coordination) move to `.git/vectl/claims.json`, protected by `flock()`. Plan writes use the retained sidecar `.git/vectl/plan.yaml.lock`, keeping synchronization artifacts in Vectl metadata rather than beside the tracked Plan.
 
 ### File layout
 
@@ -51,11 +51,12 @@ plan.yaml                    # structure + completion (git-tracked)
 | Key | `(branch, step_id)` |
 | Protection | `flock()` on sidecar `.git/vectl/claims.json.lock` |
 | TTL | 2 hours; lazy cleanup on each `vectl claim` call |
-| Release | Explicit via `vectl unclaim` / `vectl defer`, or TTL expiry |
+| Release | Explicit after persisted `complete`, `defer`, `skip`, `cancel`, or `skip-phase`; otherwise TTL expiry |
 | Worktree sharing | Yes (`.git/` shared via `--git-common-dir`) |
 | Cross-machine | Not synchronized (each machine independent) |
 | Timestamp identity | One canonical UTC `Z` timestamp is written unchanged to `plan.yaml` and `claims.json` for each claim |
-| Plan-save failure | Compensation removes the claim only when its full `(step_id, branch, agent, claimed_at)` identity still matches |
+| Claim Plan-save failure | Compensation removes a newly acquired claim only when its full `(step_id, branch, agent, claimed_at)` identity still matches |
+| Lifecycle release ordering | Persist the Plan transition first, then remove only the exact prior claim identity; failed CAS leaves the claim store untouched |
 
 Claims are ephemeral coordination (like PID files), not durable record. Loss on daemon crash or `git clone` is correct behavior — no active agents exist in a fresh clone.
 
@@ -64,22 +65,23 @@ A successful claim must leave `plan.yaml` and `claims.json` with identical owner
 
 ```
 vectl complete <step>:
-  1. flock(claims.json.lock) → validate claim → remove claim entry → unlock
-  2. read plan.yaml
-  3. set step.status = "done", step.evidence = "...", step.done_at = now()
-  4. write plan.yaml (tempfile + rename)
-  5. git commit --only --no-verify plan.yaml -m "[vectl] complete <step>"
+  1. read plan.yaml and verify the exact claims.json owner/timestamp identity
+  2. set step.status = "done", step.evidence = "...", step.done_at = now()
+  3. CAS-write plan.yaml (tempfile + rename)
+  4. git commit --only --no-verify plan.yaml -m "[vectl] complete <step>" (best-effort)
+  5. flock(claims.json.lock) → remove only the exact prior claim identity → unlock
 
 vectl claim <step>:
   1. flock(claims.json.lock) → check no existing claim → write claim → unlock
-  2. (plan.yaml not modified)
+  2. write matching plan-visible claim state with the Plan CAS hash
+  3. git commit --only --no-verify plan.yaml -m "[vectl] claim <step>" (best-effort)
 
 vectl mutate <args>:
   1. modify plan.yaml structure
   2. git commit --only --no-verify plan.yaml -m "[vectl] mutate: <description>"
 ```
 
-Concurrent CLI + MCP writes: `git commit` uses git's own `index.lock` for mutual exclusion. If commit fails due to concurrent write, retry once after re-reading.
+Concurrent CLI + MCP writes: Plan saves retain CAS as the correctness boundary. `git commit` uses git's own `index.lock` for mutual exclusion; a failed best-effort commit never rolls back a successful Plan save.
 
 ## Concurrency Model
 

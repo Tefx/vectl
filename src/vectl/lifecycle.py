@@ -43,9 +43,6 @@ Path: TypeAlias = Any
 
 _logger = logging.getLogger(__name__)
 
-
-
-
 def get_claimed_steps(plan: Plan, agent: str | None = None) -> list[tuple[str, Step]]:
     """Get all currently claimed steps, optionally filtered by agent.
 
@@ -125,7 +122,7 @@ def claim_step(
     claimed_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     if claims_path is not None:
         result.claim_store_token = _acquire_claim_record(
-            step_id=step_id,
+            step_id=step.id,
             agent_name=agent_name,
             claimed_at=claimed_at,
             claims_path=claims_path,
@@ -257,7 +254,25 @@ def rollback_claim_record(result: ClaimResult, claims_path: Path) -> bool:
     return released
 
 
-def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None) -> Plan:
+def release_claim_records(tokens: list[ClaimStoreToken], claims_path: Path) -> int:
+    """Release queued claim identities after their Plan transition persists."""
+    if not tokens:
+        return 0
+    from vectl.claims import ClaimEntry, release_claim_entries_if_matches
+
+    entries = [ClaimEntry(**vars(token)) for token in tokens]
+    released = release_claim_entries_if_matches(entries, claims_path).unwrap()
+    if released != len(tokens):
+        _logger.warning(
+            "Released %d of %d claims; missing or concurrent replacement entries were preserved",
+            released,
+            len(tokens),
+        )
+    return released
+
+
+def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None,
+                  claim_releases: list[ClaimStoreToken] | None = None) -> Plan:
     """Mark a step as done with evidence."""
     found = plan.find_step(step_id)
     if found is None:
@@ -271,7 +286,8 @@ def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | N
             "must be claimed first)"
         )
 
-    _release_claim_if_needed(step_id, claims_path, action="completing")
+    token = _claim_release_token_if_needed(step, claims_path, action="completing")
+    _queue_claim_release(token, claims_path, claim_releases)
 
     step.status = StepStatus.DONE
     step.evidence = evidence
@@ -335,7 +351,8 @@ def complete_phase(plan: Plan, phase_id: str, evidence: str) -> tuple[Plan, list
     return plan, unlocked
 
 
-def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None) -> Plan:
+def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None,
+               claim_releases: list[ClaimStoreToken] | None = None) -> Plan:
     """Return a claimed step to pending."""
     found = plan.find_step(step_id)
     if found is None:
@@ -346,7 +363,8 @@ def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None) -> Pla
     if step.status != StepStatus.CLAIMED:
         raise PlanError(f"Step '{qualified_id}' cannot be deferred (status: {step.status.value})")
 
-    _release_claim_if_needed(step_id, claims_path, action="deferring")
+    token = _claim_release_token_if_needed(step, claims_path, action="deferring")
+    _queue_claim_release(token, claims_path, claim_releases)
 
     step.status = StepStatus.PENDING
     step.claimed_by = None
@@ -384,7 +402,8 @@ def reject_step(plan: Plan, step_id: str, reason: str, reviewer: str = "") -> Pl
     return plan
 
 
-def skip_step(plan: Plan, step_id: str, reason: str) -> Plan:
+def skip_step(plan: Plan, step_id: str, reason: str, claims_path: Path | None = None,
+              claim_releases: list[ClaimStoreToken] | None = None) -> Plan:
     """Skip a step with a reason.
 
     The reason must be a valid SkipReason value: superseded, irrelevant,
@@ -401,6 +420,12 @@ def skip_step(plan: Plan, step_id: str, reason: str) -> Plan:
     if step.status not in (StepStatus.PENDING, StepStatus.CLAIMED, StepStatus.REJECTED):
         raise PlanError(f"Step '{qualified_id}' cannot be skipped (status: {step.status.value})")
 
+    if step.status == StepStatus.CLAIMED:
+        token = _claim_release_token_if_needed(step, claims_path, action="skipping")
+        _queue_claim_release(token, claims_path, claim_releases)
+        step.claimed_by = None
+        step.claimed_at = None
+
     step.status = StepStatus.SKIPPED
     step.skipped_reason = reason
 
@@ -412,7 +437,12 @@ def skip_step(plan: Plan, step_id: str, reason: str) -> Plan:
 
 
 def skip_phase(
-    plan: Plan, phase_id: str, reason: str, force: bool = False
+    plan: Plan,
+    phase_id: str,
+    reason: str,
+    force: bool = False,
+    claims_path: Path | None = None,
+    claim_releases: list[ClaimStoreToken] | None = None,
 ) -> tuple[Plan, list[str]]:
     """Skip all remaining steps in a phase.
 
@@ -463,6 +493,8 @@ def skip_phase(
         if step.status in (StepStatus.DONE, StepStatus.SKIPPED):
             continue
         if step.status == StepStatus.CLAIMED:
+            token = _claim_release_token_if_needed(step, claims_path, action="skipping phase")
+            _queue_claim_release(token, claims_path, claim_releases)
             step.claimed_by = None
             step.claimed_at = None
         step.status = StepStatus.SKIPPED
@@ -491,19 +523,45 @@ def _validate_skip_reason(reason: str) -> None:
         )
 
 
-def _release_claim_if_needed(step_id: str, claims_path: Path | None, *, action: str) -> None:
-    if claims_path is None:
+def _queue_claim_release(
+    token: ClaimStoreToken | None,
+    claims_path: Path | None,
+    claim_releases: list[ClaimStoreToken] | None,
+) -> None:
+    if token is None or claims_path is None:
         return
-    _, _, get_current_branch, release_claim, _ = _claims_api()
+    if claim_releases is None:
+        release_claim_records([token], claims_path)
+    else:
+        claim_releases.append(token)
+
+
+def _claim_release_token_if_needed(
+    step: Step, claims_path: Path | None, *, action: str
+) -> ClaimStoreToken | None:
+    if claims_path is None:
+        return None
+    _, _, get_current_branch, _, get_claim_info = _claims_api()
+    from vectl.claims import ClaimEntry
+
     branch = get_current_branch()
-    released = release_claim(step_id, branch, claims_path)
-    if not released:
+    current = get_claim_info(step.id, branch, claims_path)
+    if current is None:
         _logger.warning(
             "Claim not found while %s step '%s' on branch '%s' (may have expired)",
             action,
-            step_id,
+            step.id,
             branch,
         )
+        return None
+    if step.claimed_by is not None and step.claimed_at is not None:
+        token = ClaimStoreToken(step.id, branch, step.claimed_by, step.claimed_at)
+        if current == ClaimEntry(**vars(token)):
+            return token
+    raise PlanError(
+        f"Cannot continue {action} step '{step.id}': claims record no longer matches "
+        "the Plan; reload or run explicit claims repair"
+    )
 
 
 def _get_active_phase_ids(plan: Plan) -> set[str]:

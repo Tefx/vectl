@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from vectl.mcp_core_common import *
 
-# @shell_complexity: Status preserves summary, next-work, mine, duplicate diagnostics, and repair notice output.
+# @shell_complexity: Status preserves summary, next-work, mine, and duplicate diagnostics without writes.
 def vectl_status(agent: str | None = None) -> Result[str, str]:
     """Show plan status overview + next steps + optionally mine.
 
@@ -44,22 +44,6 @@ def vectl_status(agent: str | None = None) -> Result[str, str]:
     if diag_lines:
         parts.append("\n")
         parts.extend(diag_lines)
-
-    # Auto-repair ghost claims (routine maintenance, not an error)
-    try:
-        plan_path = _plan_path()
-        claims_path = resolve_claims_path(plan_path)
-        repair_result = repair_claims(
-            plan,
-            plan_path,
-            claims_path,
-            dry_run=False,
-        )
-        if repair_result.changed:
-            actions_summary = ", ".join(f"{a.action} {a.key}" for a in repair_result.actions)
-            parts.append(f"\n> **Auto-repaired claims** (routine): {actions_summary}")
-    except Exception:
-        pass  # non-critical; don't block status
 
     return "\n".join(parts)
 

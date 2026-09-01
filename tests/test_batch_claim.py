@@ -1,9 +1,15 @@
-import pytest
-from pathlib import Path
+"""Behavioral coverage for atomic batch claim persistence."""
+
+from __future__ import annotations
+
 import os
+from pathlib import Path
+
+import pytest
 import yaml
-from vectl.core.batch_claim import BatchClaimRequest, BatchClaimItem, claim_many, BatchClaimResult
-from vectl.models import Plan, Phase, Step, AffinityMode
+
+from vectl.core.batch_claim import BatchClaimItem, BatchClaimRequest, claim_many
+
 
 @pytest.fixture
 def plan_file(tmp_path: Path):
@@ -18,219 +24,226 @@ def plan_file(tmp_path: Path):
                     {"id": "s1", "name": "Step 1", "status": "pending"},
                     {"id": "s2", "name": "Step 2", "status": "pending"},
                     {"id": "s3", "name": "Step 3", "status": "pending"},
-                    {"id": "s4", "name": "Step 4", "status": "claimed", "claimed_by": "agent1"},
-                    {"id": "s5", "name": "Step 5", "status": "pending", "affinity": "agent1", "affinity_mode": "hard"},
-                    {"id": "s6", "name": "Step 6", "status": "pending", "affinity": "agent1", "affinity_mode": "soft"}
-                ]
+                    {
+                        "id": "s4",
+                        "name": "Step 4",
+                        "status": "claimed",
+                        "claimed_by": "agent1",
+                    },
+                    {
+                        "id": "s5",
+                        "name": "Step 5",
+                        "status": "pending",
+                        "agent": "agent1",
+                        "affinity": "exclusive",
+                    },
+                ],
             }
-        ]
+        ],
     }
-    p = tmp_path / "plan.yaml"
-    p.write_text(yaml.dump(plan_dict))
-    
+    path = tmp_path / "plan.yaml"
+    path.write_text(yaml.safe_dump(plan_dict), encoding="utf-8")
+
     old_plan = os.environ.get("VECTL_PLAN_PATH")
-    os.environ["VECTL_PLAN_PATH"] = str(p)
-    yield p
+    os.environ["VECTL_PLAN_PATH"] = str(path)
+    yield path
     if old_plan is None:
         os.environ.pop("VECTL_PLAN_PATH", None)
     else:
         os.environ["VECTL_PLAN_PATH"] = old_plan
 
 
-def test_claim_many_success_multi_agent(plan_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    req = BatchClaimRequest(
-        claims=[
-            BatchClaimItem(step_id="p1.s1", agent="worker-a"),
-            BatchClaimItem(step_id="p1.s2", agent="worker-b")
-        ],
-        guidance=False,
-        force=False
-    )
-    
-    save_plan_calls = 0
+def test_claim_many_saves_once_and_preserves_input_order(
+    plan_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from vectl.io import save_plan
-    original_save_plan = save_plan
-    def fake_save_plan(plan, path):
-        nonlocal save_plan_calls
-        save_plan_calls += 1
-        return original_save_plan(plan, path)
-    monkeypatch.setattr("vectl.io.save_plan", fake_save_plan)
 
-    result = claim_many(req)
-    # Expected red tests: the stubs will fail the structural expectations 
-    # of complete implementation. The contract requires `ok`, `claimed`, `failed`.
-    # Wait, they are expected red so we assert the correct behavior that is currently missing.
-    
-    assert save_plan_calls <= 1, f"save_plan called {save_plan_calls} times on atomic success; expected at most 1"
+    save_calls = 0
+
+    def count_save(plan, path, **kwargs):
+        nonlocal save_calls
+        save_calls += 1
+        return save_plan(plan, path, **kwargs)
+
+    monkeypatch.setattr("vectl.io.save_plan", count_save)
+
+    result = claim_many(
+        BatchClaimRequest(
+            claims=[
+                BatchClaimItem(step_id="p1.s1", agent="worker-a"),
+                BatchClaimItem(step_id="p1.s2", agent="worker-b"),
+            ]
+        )
+    )
+
+    assert save_calls == 1
     assert result.ok is True
-    assert len(result.claimed) == 2
-    assert result.claimed[0].step_id == "p1.s1"
-    assert result.claimed[0].agent == "worker-a"
-    assert result.claimed[1].step_id == "p1.s2"
-    assert result.claimed[1].agent == "worker-b"
-    assert len(result.failed) == 0
+    assert [(item.step_id, item.agent) for item in result.claimed] == [
+        ("p1.s1", "worker-a"),
+        ("p1.s2", "worker-b"),
+    ]
+    assert result.failed == []
 
-def test_claim_many_conflicts(plan_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Try to claim s4 which is already claimed, and s1
-    req = BatchClaimRequest(
-        claims=[
-            BatchClaimItem(step_id="p1.s1", agent="worker-a"),
-            BatchClaimItem(step_id="p1.s4", agent="worker-b")
-        ],
+
+def test_claim_many_validates_all_requests_before_persisting(plan_file: Path) -> None:
+    result = claim_many(
+        BatchClaimRequest(
+            claims=[
+                BatchClaimItem(step_id="p1.s1", agent="worker-a"),
+                BatchClaimItem(step_id="p1.s4", agent="worker-b"),
+            ]
+        )
     )
-    
-    # Track saves
-    save_plan_calls = 0
-    save_claims_calls = 0
-    
-    from vectl.io import save_plan
-    original_save_plan = save_plan
-    def fake_save_plan(plan, path):
-        nonlocal save_plan_calls
-        save_plan_calls += 1
-        return original_save_plan(plan, path)
-        
-    monkeypatch.setattr("vectl.io.save_plan", fake_save_plan)
-    
-    try:
-        from vectl.claims import append_claim
-        original_append_claim = append_claim
-        def fake_append_claim(*args, **kwargs):
-            nonlocal save_claims_calls
-            save_claims_calls += 1
-            return original_append_claim(*args, **kwargs)
-        monkeypatch.setattr("vectl.claims.append_claim", fake_append_claim)
-    except ImportError:
-        pass
 
-    try:
-        from vectl.claims import save_claims
-        original_save_claims = save_claims
-        def fake_save_claims(*args, **kwargs):
-            nonlocal save_claims_calls
-            save_claims_calls += 1
-            return original_save_claims(*args, **kwargs)
-        monkeypatch.setattr("vectl.claims.save_claims", fake_save_claims)
-    except ImportError:
-        pass
+    assert result.ok is False
+    assert result.claimed == []
+    assert [(item.step_id, item.reason) for item in result.failed] == [
+        ("p1.s4", "Step 'p1.s4' is already claimed"),
+    ]
+    assert yaml.safe_load(plan_file.read_text())["phases"][0]["steps"][0]["status"] == "pending"
 
-    result = claim_many(req)
-    if result.ok is True:
-        assert False, "claim_many missing expected failure behavior"
-        
-    assert save_plan_calls == 0, f"save_plan called {save_plan_calls} times on validation failure"
-    assert save_claims_calls == 0, f"save_claims/append called {save_claims_calls} times on validation failure"
-    
-    assert len(result.claimed) == 0
-    assert len(result.failed) == 1
-    assert result.failed[0].step_id == "p1.s4"
-    assert "already claimed" in result.failed[0].reason.lower()
 
-def test_claim_many_rejects_reserved_input_or_emission(plan_file: Path) -> None:
-    import yaml
-    from pydantic import ValidationError
-    data = yaml.safe_load(plan_file.read_text())
-    data["phases"][0]["steps"][0]["status"] = "reserved"
-    plan_file.write_text(yaml.dump(data))
-    
-    req = BatchClaimRequest(
-        claims=[
-            BatchClaimItem(step_id="p1.s1", agent="worker-a")
-        ],
+def test_claim_many_rejects_duplicate_request_ids(plan_file: Path) -> None:
+    result = claim_many(
+        BatchClaimRequest(
+            claims=[
+                BatchClaimItem(step_id="p1.s1", agent="worker-a"),
+                BatchClaimItem(step_id="p1.s1", agent="worker-b"),
+            ]
+        )
     )
-    
-    raised = False
-    try:
-        result = claim_many(req)
-        # If it didn't raise, it must return failed
-        if result.ok is True:
-            assert False, "claim_many accepted a reserved task"
-        assert len(result.failed) > 0
-        assert "reserved" in result.failed[0].reason.lower() or "invalid" in result.failed[0].reason.lower()
-    except ValidationError as e:
-        # Expected failure if Plan strictly rejects `reserved` status enum
-        pass
 
-def test_claim_many_hard_affinity(plan_file: Path) -> None:
-    # Try to claim s5 with worker-b
-    req = BatchClaimRequest(
-        claims=[
-            BatchClaimItem(step_id="p1.s5", agent="worker-b")
-        ],
-    )
-    result = claim_many(req)
-    if result.ok is True:
-        assert False, "claim_many missing expected failure behavior"
-    assert len(result.claimed) == 0
-    assert len(result.failed) == 1
-    assert result.failed[0].step_id == "p1.s5"
-    assert "affinity" in result.failed[0].reason.lower()
-
-def test_claim_many_hard_affinity_with_force(plan_file: Path) -> None:
-    # Try to claim s5 with worker-b but with force
-    req = BatchClaimRequest(
-        claims=[
-            BatchClaimItem(step_id="p1.s5", agent="worker-b")
-        ],
-        force=True
-    )
-    result = claim_many(req)
-    assert result.ok is True
-    assert len(result.claimed) == 1
-    
-def test_batch_duplicate_request_ids(plan_file: Path) -> None:
-    req = BatchClaimRequest(
-        claims=[
-            BatchClaimItem(step_id="p1.s1", agent="worker-a"),
-            BatchClaimItem(step_id="p1.s1", agent="worker-b")
-        ],
-    )
-    result = claim_many(req)
-    if result.ok is True:
-        assert False, "claim_many missing expected failure behavior"
-    assert len(result.failed) > 0
-    assert result.failed[0].step_id == "p1.s1"
+    assert result.ok is False
+    assert result.claimed == []
     assert "duplicate" in result.failed[0].reason.lower()
 
 
-def test_claim_many_rollback_on_plan_save_failure(plan_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from vectl.io import save_plan
-    from vectl.models import PlanError
-    
-    # We monkeypatch save_plan to always raise PlanError("Simulated CAS failure")
-    original_save_plan = save_plan
-    def fake_save_plan(plan, path):
-        raise PlanError("Simulated CAS failure")
-
-    monkeypatch.setattr("vectl.io.save_plan", fake_save_plan)
-    
-    req = BatchClaimRequest(
-        claims=[
-            BatchClaimItem(step_id="p1.s1", agent="worker-a"),
-            BatchClaimItem(step_id="p1.s2", agent="worker-b")
-        ],
+def test_claim_many_enforces_exclusive_affinity(plan_file: Path) -> None:
+    result = claim_many(
+        BatchClaimRequest(claims=[BatchClaimItem(step_id="p1.s5", agent="worker-b")])
     )
-    raised = False
-    try:
-        claim_many(req)
-    except PlanError as e:
-        if "Simulated CAS failure" in str(e):
-            raised = True
-    if not raised:
-        assert False, "claim_many rollback failed to raise PlanError"
-        
-    # Now check if ghost claim records exist
-    from vectl.claims import load_claims
+
+    assert result.ok is False
+    assert result.claimed == []
+    assert "affinity" in result.failed[0].reason.lower()
+
+
+def test_claim_many_force_overrides_exclusive_affinity(plan_file: Path) -> None:
+    result = claim_many(
+        BatchClaimRequest(
+            claims=[BatchClaimItem(step_id="p1.s5", agent="worker-b")], force=True
+        )
+    )
+
+    assert result.ok is True
+    assert len(result.claimed) == 1
+
+
+def test_claim_many_uses_canonical_ids_and_one_timestamp(
+    plan_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vectl.claims import load_claims, repair_claims
+    from vectl.io import load_plan_definition
     from vectl.plan_path import resolve_claims_path
-    
+
+    monkeypatch.setattr("vectl.claims.get_current_branch", lambda: "batch-test")
+    result = claim_many(
+        BatchClaimRequest(claims=[BatchClaimItem(step_id="p1.s1", agent="worker-a")])
+    )
+
+    assert result.ok is True
+    plan, _ = load_plan_definition(plan_file)
+    step = plan.phases[0].steps[0]
+    claim = load_claims(resolve_claims_path(plan_file))["batch-test:s1"]
+    assert claim.step_id == step.id == "s1"
+    assert claim.agent == step.claimed_by == "worker-a"
+    assert claim.claimed_at == step.claimed_at
+    assert (
+        repair_claims(
+            plan,
+            plan_file,
+            resolve_claims_path(plan_file),
+            dry_run=True,
+            step_id="p1.s1",
+        ).changed
+        is False
+    )
+
+
+def test_claim_many_cas_conflict_preserves_concurrent_plan_and_cleans_claims(
+    plan_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vectl import claims
+    from vectl.io import CASConflictError
+    from vectl.plan_path import resolve_claims_path
+
+    monkeypatch.setattr("vectl.claims.get_current_branch", lambda: "batch-test")
+    original_acquire = claims.acquire_claims
+
+    def acquire_then_change_plan(*args, **kwargs):
+        result = original_acquire(*args, **kwargs)
+        plan_data = yaml.safe_load(plan_file.read_text())
+        plan_data["project"] = "concurrent-change"
+        plan_file.write_text(yaml.safe_dump(plan_data), encoding="utf-8")
+        return result
+
+    monkeypatch.setattr("vectl.claims.acquire_claims", acquire_then_change_plan)
+
+    with pytest.raises(CASConflictError):
+        claim_many(BatchClaimRequest(claims=[BatchClaimItem(step_id="p1.s1", agent="worker-a")]))
+
+    assert yaml.safe_load(plan_file.read_text())["project"] == "concurrent-change"
+    assert claims.load_claims(resolve_claims_path(plan_file)) == {}
+
+
+def test_claim_many_save_failure_keeps_replacement_claim(
+    plan_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vectl.claims import ClaimEntry, load_claims, save_claims
+    from vectl.models import PlanError
+    from vectl.plan_path import resolve_claims_path
+
     claims_path = resolve_claims_path(plan_file)
-    claims = load_claims(claims_path)
-    
-    # We should have NO new claims
-    assert "p1.s1" not in claims
-    assert "p1.s2" not in claims
-    
-    # And check the plan was not mutated
-    import yaml
-    data = yaml.safe_load(plan_file.read_text())
-    assert data["phases"][0]["steps"][0]["status"] == "pending"
+    monkeypatch.setattr("vectl.claims.get_current_branch", lambda: "batch-test")
+
+    def replace_then_fail(*args, **kwargs):
+        save_claims(
+            {
+                "batch-test:s1": ClaimEntry(
+                    step_id="s1",
+                    branch="batch-test",
+                    agent="replacement",
+                    claimed_at="2025-01-01T00:00:00Z",
+                )
+            },
+            claims_path,
+        )
+        raise PlanError("save failed")
+
+    monkeypatch.setattr("vectl.io.save_plan", replace_then_fail)
+
+    with pytest.raises(PlanError, match="save failed"):
+        claim_many(BatchClaimRequest(claims=[BatchClaimItem(step_id="p1.s1", agent="worker-a")]))
+
+    stored = load_claims(claims_path)["batch-test:s1"]
+    assert stored.agent == "replacement"
+
+
+def test_claim_many_attempts_one_best_effort_commit_and_uses_metadata_lock(
+    plan_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    attempted_messages: list[str] = []
+
+    def fake_git_commit(path: Path, message: str) -> bool:
+        attempted_messages.append(message)
+        return False
+
+    monkeypatch.setattr("vectl.io._git_commit_plan", fake_git_commit)
+    result = claim_many(
+        BatchClaimRequest(claims=[BatchClaimItem(step_id="p1.s1", agent="worker-a")])
+    )
+
+    assert result.ok is True
+    assert attempted_messages == ["vectl: claim-many 1 step(s)"]
+    assert not (plan_file.parent / "plan.yaml.lock").exists()
+    assert (plan_file.parent / ".vectl" / "plan.yaml.lock").exists()

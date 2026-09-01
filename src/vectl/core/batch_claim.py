@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from invar_runtime import Contract, post, pre
+
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -34,59 +38,6 @@ class BatchClaimResult:
     affinity_warnings: List[str]
     markdown: str
     lock_notice: Optional[str] = None
-
-
-@pre(Contract(lambda raw: isinstance(raw, dict), "raw step is mapping"))
-@post(Contract(lambda result: isinstance(result, dict), "normalized step is mapping"))
-def _normalize_legacy_step(raw: dict[str, Any]) -> dict[str, Any]:
-    """Normalize legacy affinity fields used by protected batch-claim tests.
-
-    >>> _normalize_legacy_step({'id': 's', 'name': 'S', 'affinity': 'worker', 'affinity_mode': 'hard'})['agent']
-    'worker'
-    >>> _normalize_legacy_step({'id': 's', 'name': 'S', 'affinity': 'worker', 'affinity_mode': 'soft'})['affinity']
-    'suggested'
-    """
-    normalized = dict(raw)
-    raw_affinity = normalized.get("affinity")
-    raw_mode = normalized.pop("affinity_mode", None)
-    if raw_mode is None and raw_affinity in (None, "suggested", "exclusive"):
-        return normalized
-
-    if isinstance(raw_affinity, str) and raw_affinity not in {"suggested", "exclusive"}:
-        normalized.setdefault("agent", raw_affinity)
-
-    if raw_mode in {"hard", "exclusive"}:
-        normalized["affinity"] = "exclusive"
-    elif raw_mode in {"soft", "suggested"}:
-        normalized["affinity"] = "suggested"
-    elif raw_affinity not in {"suggested", "exclusive"}:
-        normalized.pop("affinity", None)
-    return normalized
-
-
-@pre(Contract(lambda raw: isinstance(raw, dict), "raw plan is mapping"))
-@post(Contract(lambda result: isinstance(result, dict), "normalized plan is mapping"))
-def _normalize_legacy_plan(raw: dict[str, Any]) -> dict[str, Any]:
-    """Normalize all step payloads without changing unrelated plan fields.
-
-    >>> plan = {'project': 'p', 'phases': [{'id': 'ph', 'name': 'Ph', 'steps': [{'id': 's', 'name': 'S', 'affinity': 'a', 'affinity_mode': 'hard'}]}]}
-    >>> _normalize_legacy_plan(plan)['phases'][0]['steps'][0]['affinity']
-    'exclusive'
-    """
-    normalized = dict(raw)
-    phases: list[dict[str, Any]] = []
-    for phase in raw.get("phases", []):
-        if not isinstance(phase, dict):
-            phases.append(phase)
-            continue
-        phase_payload = dict(phase)
-        phase_payload["steps"] = [
-            _normalize_legacy_step(step) if isinstance(step, dict) else step
-            for step in phase.get("steps", [])
-        ]
-        phases.append(phase_payload)
-    normalized["phases"] = phases
-    return normalized
 
 
 @pre(Contract(lambda claims: isinstance(claims, list), "claims is list"))
@@ -176,25 +127,19 @@ def claim_many(request: BatchClaimRequest) -> BatchClaimResult:
             lock_notice=None,
         )
 
-    import yaml
     import vectl.io as vectl_io
     from vectl import claims as claims_api
     from vectl import core_plan_mutations
-    from vectl.models import AffinityError, Plan, PlanIOError, PlanError
+    from vectl.models import AffinityError, PlanError
     from vectl.plan_path import resolve_plan_path
 
     plan_path = resolve_plan_path(None)
-    if not plan_path.exists():
-        raise PlanIOError(f"Plan file not found: {plan_path}")
-
-    raw = yaml.safe_load(plan_path.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict):
-        raise PlanIOError(f"Plan file must be a YAML mapping, got {type(raw).__name__}")
-    plan = Plan(**_normalize_legacy_plan(raw))
+    plan, base_hash = vectl_io.load_plan_definition(plan_path)
     working_plan = plan.model_copy(deep=True)
 
     failed: list[ClaimFailure] = []
     affinity_warnings: list[str] = []
+    acquired_entries: list[claims_api.ClaimEntry] = []
     for item in request.claims:
         try:
             working_plan, claim_result = core_plan_mutations.claim_step(
@@ -203,6 +148,18 @@ def claim_many(request: BatchClaimRequest) -> BatchClaimResult:
                 item.agent,
                 force=request.force,
                 claims_path=None,
+            )
+            found = working_plan.find_step(item.step_id)
+            if found is None or found[1].claimed_at is None:
+                raise PlanError(f"Step '{item.step_id}' claim state was not recorded")
+            step = found[1]
+            acquired_entries.append(
+                claims_api.ClaimEntry(
+                    step_id=step.id,
+                    branch="",
+                    agent=item.agent,
+                    claimed_at=step.claimed_at,
+                )
             )
         except (AffinityError, PlanError) as exc:
             reason = str(exc)
@@ -226,11 +183,20 @@ def claim_many(request: BatchClaimRequest) -> BatchClaimResult:
 
     branch = claims_api.get_current_branch()
     claims_path = claims_api.resolve_claims_path(plan_path)
-    acquired_step_ids = [item.step_id for item in request.claims]
+    acquired_entries = [
+        claims_api.ClaimEntry(
+            step_id=entry.step_id,
+            branch=branch,
+            agent=entry.agent,
+            claimed_at=entry.claimed_at,
+        )
+        for entry in acquired_entries
+    ]
     acquire_result = claims_api.acquire_claims(
-        [(item.step_id, item.agent) for item in request.claims],
+        [(entry.step_id, entry.agent) for entry in acquired_entries],
         branch,
         claims_path,
+        claimed_at_by_step={entry.step_id: entry.claimed_at for entry in acquired_entries},
     )
     try:
         acquire_result.unwrap()
@@ -247,9 +213,27 @@ def claim_many(request: BatchClaimRequest) -> BatchClaimResult:
         )
 
     try:
-        vectl_io.save_plan(working_plan, plan_path)
+        vectl_io.save_plan(
+            working_plan,
+            plan_path,
+            expected_hash=base_hash,
+            commit_message=f"vectl: claim-many {len(request.claims)} step(s)",
+        )
     except Exception:
-        claims_api.release_claims(acquired_step_ids, branch, claims_path)
+        try:
+            expected_by_key = {
+                f"{entry.branch}:{entry.step_id}": entry for entry in acquired_entries
+            }
+            with claims_api._locked_claims_file(claims_path):
+                claims = claims_api._read_claims_file(claims_path)
+                if all(claims.get(key) == entry for key, entry in expected_by_key.items()):
+                    for key in expected_by_key:
+                        claims.pop(key)
+                    claims_api._write_claims_file(claims_path, claims)
+                else:
+                    _logger.warning("Batch claim compensation skipped because claims no longer match")
+        except Exception:
+            _logger.exception("Batch claim compensation failed")
         raise
 
     return BatchClaimResult(

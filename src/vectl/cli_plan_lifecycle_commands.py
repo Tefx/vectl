@@ -5,8 +5,17 @@ from __future__ import annotations
 from vectl.cli_plan_common import *
 from vectl.cli_plan_common import _save_plan
 from vectl.cli_plan_read_commands import _show_step_detail
-from vectl.lifecycle import rollback_claim_record
+from vectl.lifecycle import release_claim_records, rollback_claim_record
 from vectl.plan_path import resolve_claims_path
+
+
+# @shell_orchestration: persist the Plan before deleting its exact prior claim identities.
+def _save_then_release_claims(
+    plan_obj, plan_path, expected_hash, message, claim_releases, claims_path
+):
+    _save_plan(plan_obj, plan_path, expected_hash, message)
+    release_claim_records(claim_releases, claims_path)
+
 
 def claim(
     step_id: str | None = typer.Argument(
@@ -128,11 +137,21 @@ def complete(
 ) -> None:
     """Mark a step as done with evidence."""
     p, def_h, plan_path = _load(plan)
+    claims_path = resolve_claims_path(plan_path)
+    claim_releases = []
     try:
-        p = complete_step(p, step_id, evidence, claims_path=resolve_claims_path(plan_path))
+        p = complete_step(
+            p,
+            step_id,
+            evidence,
+            claims_path=claims_path,
+            claim_releases=claim_releases,
+        )
     except PlanError as e:
         _die(str(e))
-    _save_plan(p, plan_path, def_h, f"vectl: complete {step_id}")
+    _save_then_release_claims(
+        p, plan_path, def_h, f"vectl: complete {step_id}", claim_releases, claims_path
+    )
     out.print(f"[green]Completed:[/] {step_id}")
 
     # Show next available steps - use _get_next_steps_with_phase for correct phase tracking
@@ -195,11 +214,20 @@ def defer(
 ) -> None:
     """Return a claimed step to pending."""
     p, def_h, plan_path = _load(plan)
+    claims_path = resolve_claims_path(plan_path)
+    claim_releases = []
     try:
-        p = defer_step(p, step_id, claims_path=resolve_claims_path(plan_path))
+        p = defer_step(
+            p,
+            step_id,
+            claims_path=claims_path,
+            claim_releases=claim_releases,
+        )
     except PlanError as e:
         _die(str(e))
-    _save_plan(p, plan_path, def_h, f"vectl: defer {step_id}")
+    _save_then_release_claims(
+        p, plan_path, def_h, f"vectl: defer {step_id}", claim_releases, claims_path
+    )
     out.print(f"[yellow]Deferred:[/] {step_id}")
     out.print()
     out.print("[dim]→ vectl next                      Find new work[/]")
@@ -240,11 +268,21 @@ def skip(
     Valid reasons: superseded, irrelevant, absorbed, deprioritized.
     """
     p, def_h, plan_path = _load(plan)
+    claims_path = resolve_claims_path(plan_path)
+    claim_releases = []
     try:
-        p = skip_step(p, step_id, reason)
+        p = skip_step(
+            p,
+            step_id,
+            reason,
+            claims_path=claims_path,
+            claim_releases=claim_releases,
+        )
     except PlanError as e:
         _die(str(e))
-    _save_plan(p, plan_path, def_h, f"vectl: skip {step_id}")
+    _save_then_release_claims(
+        p, plan_path, def_h, f"vectl: skip {step_id}", claim_releases, claims_path
+    )
     out.print(f"[dim]Skipped:[/] {step_id} — {reason}")
     out.print()
     out.print("[dim]→ vectl next                      See remaining steps[/]")
@@ -257,11 +295,21 @@ def cancel(
 ) -> None:
     """Cancel a step (alias for skip --reason irrelevant)."""
     p, def_h, plan_path = _load(plan)
+    claims_path = resolve_claims_path(plan_path)
+    claim_releases = []
     try:
-        p = skip_step(p, step_id, SkipReason.IRRELEVANT.value)
+        p = skip_step(
+            p,
+            step_id,
+            SkipReason.IRRELEVANT.value,
+            claims_path=claims_path,
+            claim_releases=claim_releases,
+        )
     except PlanError as e:
         _die(str(e))
-    _save_plan(p, plan_path, def_h, f"vectl: cancel {step_id}")
+    _save_then_release_claims(
+        p, plan_path, def_h, f"vectl: cancel {step_id}", claim_releases, claims_path
+    )
     out.print(f"[dim]Cancelled:[/] {step_id} — irrelevant")
     out.print()
     out.print("[dim]→ vectl next                      See remaining steps[/]")
@@ -294,12 +342,28 @@ def skip_phase_cmd(
     Use --force to skip a locked phase that still has remaining steps.
     """
     p, def_h, plan_path = _load(plan)
+    claims_path = resolve_claims_path(plan_path)
+    claim_releases = []
     skipped_ids: list[str] = []
     try:
-        p, skipped_ids = skip_phase(p, phase_id, reason, force=force)
+        p, skipped_ids = skip_phase(
+            p,
+            phase_id,
+            reason,
+            force=force,
+            claims_path=claims_path,
+            claim_releases=claim_releases,
+        )
     except PlanError as e:
         _die(str(e))
-    _save_plan(p, plan_path, def_h, f"vectl: skip phase {phase_id}")
+    _save_then_release_claims(
+        p,
+        plan_path,
+        def_h,
+        f"vectl: skip phase {phase_id}",
+        claim_releases,
+        claims_path,
+    )
     if skipped_ids:
         out.print(f"[dim]Skipped phase:[/] {phase_id} — {reason}")
         for sid in skipped_ids:

@@ -130,9 +130,12 @@ def save_plan(
 
 @contextmanager
 def _locked_plan_file(path: Path) -> Iterator[None]:
-    """Serialize CAS+write access for a specific plan file."""
+    """Serialize CAS+write access under existing Vectl metadata."""
+    from vectl.plan_path import resolve_claims_path
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    lock_path = path.parent / f"{path.name}.lock"
+    lock_path = resolve_claims_path(path).parent / f"{path.name}.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
     with lock_path.open("a+b") as lock_file:
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
         try:

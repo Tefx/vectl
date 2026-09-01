@@ -117,7 +117,7 @@ If atomic semantics reject partial success, `claimed` should be empty when `ok=f
 
 ## Consistency requirement
 
-The existing single-step path writes both plan-visible claim state and branch-scoped claim records. Batch claim must not simply loop over single-step claim plus save. The implementation must explicitly handle the two state surfaces so a failed batch does not leave partial plan changes or orphaned claim records.
+The existing single-step path writes both plan-visible claim state and branch-scoped claim records. Batch claim must not simply loop over single-step claim plus save. It loads the canonical Plan with its raw-file hash, resolves each stored step ID, generates one timestamp per claim for both surfaces, and persists the completed Plan with that hash as the CAS precondition. A save failure compensates only when every acquired `(branch, step_id, agent, claimed_at)` record still exactly matches, so it cannot delete a concurrent replacement claim. The one Plan save also uses the existing best-effort Git commit path.
 
 Acceptable implementation strategies include:
 

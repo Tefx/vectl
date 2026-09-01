@@ -56,6 +56,11 @@ def edit_step(
     if found is None:
         raise PlanError(f"Step '{step_id}' not found")
     phase, step = found
+    if step.status == StepStatus.CLAIMED:
+        qualified_id = format_step_selector(phase.id, step.id)
+        raise PlanError(
+            f"Cannot edit claimed step '{qualified_id}'; defer it before changing its definition"
+        )
 
     if new_step_id is not _SENTINEL:
         _apply_step_id_change(plan, phase, step, str(new_step_id))

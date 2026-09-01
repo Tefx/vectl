@@ -22,8 +22,8 @@ from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
 from vectl.claims import get_current_branch as _claims_current_branch
-from vectl.claims import load_claims, repair_claims
-from vectl.io import load_plan_definition
+from vectl.claims import ClaimEntry, load_claims, repair_claims, save_claims
+from vectl.io import load_plan_definition, save_plan
 from vectl.mcp_server import (
     _load as _vectl_load,
 )
@@ -82,7 +82,14 @@ from vectl.mcp_server import (
     vectl_validate as _vectl_validate_tool,
 )
 from vectl.migration import migrate_from_split_state
-from vectl.models import CompletedResult, PhaseStatus, PlanError, PlanIOError, StepStatus
+from vectl.models import (
+    CASConflictError,
+    CompletedResult,
+    PhaseStatus,
+    PlanError,
+    PlanIOError,
+    StepStatus,
+)
 from vectl.plan_path import resolve_claims_path
 
 # FastMCP @mcp.tool() returns _ToolWrapper objects; unwrap to get the callable.
@@ -469,6 +476,27 @@ class TestVectlStatus:
         result = vectl_status(agent="bot")
         assert "bot" in result
         assert "a.1" in result
+
+    def test_status_does_not_repair_missing_claim_records(self, plan_file: Path) -> None:
+        vectl_claim(agent="bot", step_id="a.1")
+        claims_path = resolve_claims_path(plan_file)
+        claims_path.unlink()
+        before = {
+            path.relative_to(plan_file.parent): path.read_bytes()
+            for path in plan_file.parent.rglob("*")
+            if path.is_file()
+        }
+
+        result = vectl_status(agent="bot")
+
+        after = {
+            path.relative_to(plan_file.parent): path.read_bytes()
+            for path in plan_file.parent.rglob("*")
+            if path.is_file()
+        }
+        assert "a.1" in result
+        assert after == before
+        assert not claims_path.exists()
 
     def test_status_shows_duplicate_step_id_diagnostics(self, duplicate_id_plan_file: Path) -> None:
         result = vectl_status()
@@ -900,6 +928,25 @@ class TestVectlComplete:
         assert step["status"] == "done"
         assert step["evidence"] == "Tests pass"
 
+    def test_complete_save_failure_leaves_claim_untouched(
+        self, plan_file: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        claims_path = resolve_claims_path(plan_file)
+        vectl_claim(agent="original", step_id="a.1")
+        key, original = next(iter(load_claims(claims_path).items()))
+        before = plan_file.read_bytes()
+
+        def fail_save(*args, **kwargs):
+            raise CASConflictError(plan_file)
+
+        monkeypatch.setattr("vectl.mcp_core_lifecycle_tools._save_plan", fail_save)
+
+        with pytest.raises(CASConflictError):
+            vectl_complete(step_id="a.1", evidence="proof")
+
+        assert plan_file.read_bytes() == before
+        assert load_claims(claims_path)[key] == original
+
     def test_complete_shows_next_available(self, plan_file: Path) -> None:
         vectl_claim(agent="bot", step_id="a.1")
         result = vectl_complete(step_id="a.1", evidence="Done")
@@ -971,6 +1018,144 @@ class TestVectlLifecycle:
         data = _reload_plan(plan_file)
         assert data["phases"][0]["steps"][0]["status"] == "skipped"
 
+    def test_skip_claimed_step_releases_claim_record(self, plan_file: Path) -> None:
+        claims_path = resolve_claims_path(plan_file)
+        vectl_claim(agent="bot", step_id="a.1")
+
+        result = vectl_lifecycle(action="skip", target="a.1", reason="superseded")
+
+        assert "Skipped" in result
+        assert load_claims(claims_path) == {}
+
+    def test_skip_rejects_mismatched_replacement_claim(self, plan_file: Path) -> None:
+        claims_path = resolve_claims_path(plan_file)
+        vectl_claim(agent="original", step_id="a.1")
+        key, original = next(iter(load_claims(claims_path).items()))
+        replacement = ClaimEntry(
+            step_id=original.step_id,
+            branch=original.branch,
+            agent="replacement",
+            claimed_at="2026-08-01T00:00:00Z",
+        )
+        save_claims({key: replacement}, claims_path)
+        before = plan_file.read_bytes()
+
+        result = vectl_lifecycle(action="skip", target="a.1", reason="superseded")
+
+        assert "Error" in result
+        assert "no longer matches" in result
+        assert plan_file.read_bytes() == before
+        assert load_claims(claims_path)[key] == replacement
+
+    @pytest.mark.parametrize(
+        ("action", "reason"),
+        [("defer", None), ("skip", "superseded")],
+    )
+    def test_lifecycle_save_failure_leaves_claim_untouched(
+        self,
+        plan_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        action: str,
+        reason: str | None,
+    ) -> None:
+        claims_path = resolve_claims_path(plan_file)
+        vectl_claim(agent="original", step_id="a.1")
+        key, original = next(iter(load_claims(claims_path).items()))
+        before = plan_file.read_bytes()
+
+        def fail_save(*args, **kwargs):
+            raise CASConflictError(plan_file)
+
+        monkeypatch.setattr("vectl.mcp_core_lifecycle_tools._save_plan", fail_save)
+
+        with pytest.raises(CASConflictError):
+            vectl_lifecycle(action=action, target="a.1", reason=reason)
+
+        assert plan_file.read_bytes() == before
+        assert load_claims(claims_path)[key] == original
+
+    def test_skip_stale_cas_preserves_concurrent_replacement_claim(
+        self, plan_file: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import vectl.mcp_core_lifecycle_tools as lifecycle_tools
+
+        claims_path = resolve_claims_path(plan_file)
+        vectl_claim(agent="original", step_id="a.1")
+        key, original = next(iter(load_claims(claims_path).items()))
+        replacement = ClaimEntry(
+            step_id=original.step_id,
+            branch=original.branch,
+            agent="replacement",
+            claimed_at="2026-08-01T00:00:00Z",
+        )
+        real_save = lifecycle_tools._save_plan
+
+        def replace_then_attempt_stale_save(stale_plan, expected_hash, message):
+            concurrent, current_hash = load_plan_definition(plan_file)
+            found = concurrent.find_step("a.1")
+            assert found is not None
+            _, concurrent_step = found
+            concurrent_step.claimed_by = replacement.agent
+            concurrent_step.claimed_at = replacement.claimed_at
+            save_claims({key: replacement}, claims_path)
+            save_plan(concurrent, plan_file, expected_hash=current_hash)
+            return real_save(stale_plan, expected_hash, message)
+
+        monkeypatch.setattr(
+            "vectl.mcp_core_lifecycle_tools._save_plan",
+            replace_then_attempt_stale_save,
+        )
+
+        result = vectl_lifecycle(action="skip", target="a.1", reason="superseded")
+
+        assert "Error" in result
+        assert "CAS conflict" in result
+        assert load_claims(claims_path)[key] == replacement
+        persisted, _ = load_plan_definition(plan_file)
+        found = persisted.find_step("a.1")
+        assert found is not None
+        assert found[1].status == StepStatus.CLAIMED
+        assert found[1].claimed_by == replacement.agent
+        assert found[1].claimed_at == replacement.claimed_at
+
+    def test_skip_stale_cas_does_not_restore_claim_after_concurrent_defer(
+        self, plan_file: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import vectl.mcp_core_lifecycle_tools as lifecycle_tools
+
+        claims_path = resolve_claims_path(plan_file)
+        vectl_claim(agent="original", step_id="a.1")
+        real_save = lifecycle_tools._save_plan
+
+        def defer_then_attempt_stale_save(stale_plan, expected_hash, message):
+            concurrent, current_hash = load_plan_definition(plan_file)
+            found = concurrent.find_step("a.1")
+            assert found is not None
+            _, concurrent_step = found
+            concurrent_step.status = StepStatus.PENDING
+            concurrent_step.claimed_by = None
+            concurrent_step.claimed_at = None
+            save_claims({}, claims_path)
+            save_plan(concurrent, plan_file, expected_hash=current_hash)
+            return real_save(stale_plan, expected_hash, message)
+
+        monkeypatch.setattr(
+            "vectl.mcp_core_lifecycle_tools._save_plan",
+            defer_then_attempt_stale_save,
+        )
+
+        result = vectl_lifecycle(action="skip", target="a.1", reason="superseded")
+
+        assert "Error" in result
+        assert "CAS conflict" in result
+        assert load_claims(claims_path) == {}
+        persisted, _ = load_plan_definition(plan_file)
+        found = persisted.find_step("a.1")
+        assert found is not None
+        assert found[1].status == StepStatus.PENDING
+        assert found[1].claimed_by is None
+        assert found[1].claimed_at is None
+
     def test_skip_requires_reason(self, plan_file: Path) -> None:
         result = vectl_lifecycle(action="skip", target="a.1")
         assert "Error" in result
@@ -979,6 +1164,67 @@ class TestVectlLifecycle:
         result = vectl_lifecycle(action="skip-phase", target="alpha", reason="irrelevant")
         assert "Skipped phase" in result
         assert "2 steps skipped" in result
+
+    def test_skip_phase_releases_claimed_step_records(self, plan_file: Path) -> None:
+        claims_path = resolve_claims_path(plan_file)
+        vectl_claim(agent="bot", step_id="a.1")
+
+        result = vectl_lifecycle(
+            action="skip-phase", target="alpha", reason="irrelevant", force=True
+        )
+
+        assert "Skipped phase" in result
+        assert load_claims(claims_path) == {}
+
+    def test_skip_phase_partial_release_is_rolled_back_on_claim_mismatch(
+        self, plan_file: Path
+    ) -> None:
+        data = yaml.safe_load(plan_file.read_text(encoding="utf-8"))
+        first, second = data["phases"][0]["steps"]
+        first.update(
+            status="claimed",
+            claimed_by="original",
+            claimed_at="2026-08-01T00:00:00Z",
+        )
+        second.update(
+            status="claimed",
+            claimed_by="original",
+            claimed_at="2026-08-01T00:01:00Z",
+        )
+        plan_file.write_text(yaml.safe_dump(data), encoding="utf-8")
+        claims_path = resolve_claims_path(plan_file)
+        branch = _claims_current_branch()
+        first_entry = ClaimEntry(
+            step_id="a.1",
+            branch=branch,
+            agent="original",
+            claimed_at="2026-08-01T00:00:00Z",
+        )
+        replacement = ClaimEntry(
+            step_id="a.2",
+            branch=branch,
+            agent="replacement",
+            claimed_at="2026-08-01T00:02:00Z",
+        )
+        save_claims(
+            {
+                f"{branch}:a.1": first_entry,
+                f"{branch}:a.2": replacement,
+            },
+            claims_path,
+        )
+
+        result = vectl_lifecycle(
+            action="skip-phase", target="alpha", reason="superseded"
+        )
+
+        assert "Error" in result
+        claims = load_claims(claims_path)
+        assert claims[f"{branch}:a.1"] == first_entry
+        assert claims[f"{branch}:a.2"] == replacement
+        plan, _ = load_plan_definition(plan_file)
+        assert plan.phases[0].steps[0].status == StepStatus.CLAIMED
+        assert plan.phases[0].steps[1].status == StepStatus.CLAIMED
 
     def test_skip_locked_phase_with_force(self, plan_file: Path) -> None:
         """Locked phase can be skipped with force=True."""
@@ -1100,6 +1346,29 @@ class TestVectlMutate:
 
         data = _reload_plan(plan_file)
         assert data["phases"][0]["steps"][0]["name"] == "Renamed Step"
+
+    def test_expected_base_sha256_mismatch_has_zero_writes(self, plan_file: Path) -> None:
+        before = {
+            path.relative_to(plan_file.parent): path.read_bytes()
+            for path in plan_file.parent.rglob("*")
+            if path.is_file()
+        }
+
+        result = vectl_mutate(
+            action="add-step",
+            phase_id="alpha",
+            name="Must not be added",
+            expected_base_sha256="sha256:" + "0" * 64,
+        )
+
+        after = {
+            path.relative_to(plan_file.parent): path.read_bytes()
+            for path in plan_file.parent.rglob("*")
+            if path.is_file()
+        }
+        assert "Conflict" in result
+        assert "plan_applied: false" in result
+        assert after == before
 
     def test_edit_step_evidence_template(self, plan_file: Path) -> None:
         result = vectl_mutate(

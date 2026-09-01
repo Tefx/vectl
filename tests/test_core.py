@@ -17,6 +17,7 @@ from vectl.core import (
     validate_plan,
 )
 from vectl.io import load_plan_definition, save_plan
+from vectl.lifecycle import release_claim_records
 from vectl.models import (
     Phase,
     PhaseStatus,
@@ -248,6 +249,29 @@ def test_complete_step_releases_claim_from_claims_json(
 
     claims_after = load_claims(claims_path)
     assert "feature/test-branch:p1.s1" not in claims_after
+
+
+def test_complete_step_can_queue_claim_release_until_after_plan_save(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _claimable_plan()
+    claims_path = tmp_path / "claims.json"
+    monkeypatch.setattr("vectl.core.get_current_branch", lambda: "feature/test-branch")
+    claim_step(plan, "p1.s1", "agent-1", claims_path=claims_path)
+    claim_releases = []
+
+    complete_step(
+        plan,
+        "p1.s1",
+        "evidence text",
+        claims_path=claims_path,
+        claim_releases=claim_releases,
+    )
+
+    assert "feature/test-branch:p1.s1" in load_claims(claims_path)
+    assert len(claim_releases) == 1
+    assert release_claim_records(claim_releases, claims_path) == 1
+    assert load_claims(claims_path) == {}
 
 
 def test_defer_step_releases_claim_from_claims_json(

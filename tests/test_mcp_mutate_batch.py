@@ -84,7 +84,7 @@ def git_plan(
     )
     save_plan(plan, plan_path)
     claims_path = repo / ".git" / "vectl" / "claims.json"
-    claims_path.parent.mkdir(parents=True)
+    claims_path.parent.mkdir(parents=True, exist_ok=True)
     claims_path.write_text(json.dumps({"claims": []}, sort_keys=True), encoding="utf-8")
     _git(repo, "add", "plan.yaml")
     _git(repo, "commit", "-q", "-m", "seed")

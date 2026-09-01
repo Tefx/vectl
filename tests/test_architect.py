@@ -15,6 +15,7 @@ from vectl.core import (
     remove_step,
     unlock_phase,
 )
+from vectl.lifecycle import defer_step
 from vectl.models import (
     Phase,
     PhaseStatus,
@@ -428,6 +429,33 @@ class TestAddPhase:
 
 
 class TestEditStep:
+    def test_rejects_editing_claimed_step_until_deferred(self) -> None:
+        plan = Plan(
+            project="test",
+            phases=[
+                Phase(
+                    id="phase",
+                    name="Phase",
+                    steps=[
+                        Step(
+                            id="step",
+                            name="Original",
+                            status=StepStatus.CLAIMED,
+                            claimed_by="worker",
+                            claimed_at="2025-01-01T00:00:00Z",
+                        )
+                    ],
+                )
+            ],
+        )
+
+        with pytest.raises(PlanError, match="defer"):
+            edit_step(plan, "step", name="Changed")
+
+        deferred = defer_step(plan, "step")
+        updated = edit_step(deferred, "step", name="Changed")
+        assert updated.phases[0].steps[0].name == "Changed"
+
     def test_edit_name(self) -> None:
         plan = _plan_with_phase(steps=[Step(id="s1", name="Old Name")])
         plan = edit_step(plan, "s1", name="New Name")

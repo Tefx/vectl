@@ -126365,7 +126365,7 @@ phases:
       with no MUST_FIX blocker.'
 - id: linked-worktree-plan-authority
   name: Linked Worktree Plan Authority Repair
-  status: in_progress
+  status: done
   gate: No separate gate. Completion requires one integrated implementation transaction
     with real-worktree CLI/MCP evidence, repository-wide regression, and Invar conformance.
   depends_on:
@@ -126373,7 +126373,7 @@ phases:
   steps:
   - id: linked-worktree-plan-authority.implement
     name: Unify linked-worktree lifecycle authority
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -126447,3 +126447,21 @@ phases:
     agent: general
     claimed_by: general
     claimed_at: '2026-09-01T18:12:00.681369Z'
+    done_at: '2026-09-01T20:30:32.418809+00:00'
+    evidence: 'Integrated reviewed target 84c3d33b56a662b60f67d5e75181bbdc777d23bf
+      by fast-forward from integration basis 6c37f5e28ea7a2c852d108b12ec2cc2392a8e1af;
+      candidate preserved at refs/vectl/retained/linked-worktree-plan-authority.implement/pre-integration.
+      Candidate diff excludes plan.yaml and git diff --check passed. Fresh exact-target
+      checks: `uv sync --frozen --group dev` exit 0; `uv run --frozen pytest -q tests/test_plan_path.py
+      tests/test_claims.py tests/test_cli.py tests/test_mcp.py tests/test_mcp_mutate_batch.py`
+      exit 0 (573 passed); `uv run --frozen invar guard` exit 0 (0 errors; clean committed
+      target reports 0 changed files); `uv run --frozen pytest -q` exit 0 (1413 passed,
+      15 skipped). Real linked-worktree tests cover canonical lifecycle branch/Plan/claims/Git/backup,
+      main-linked CLI and MCP status/repair parity over full ClaimEntry identity,
+      batch compensation replacement safety, immutable commit policy across CWD changes,
+      explicit external-Plan autosave suppression, detached authority failure, and
+      partial Git-durability reporting. Baseline classification: repo-wide `invar
+      guard --all` remains nonzero with the same sole base/candidate error `escape_hatch_budget
+      19/15`; normalized full Ruff and mypy comparisons show 0 candidate-only findings
+      (candidate removes 104 Ruff and 110 mypy findings relative to base). Integration
+      HEAD equaled reviewed target before lifecycle completion and worktree was clean.'

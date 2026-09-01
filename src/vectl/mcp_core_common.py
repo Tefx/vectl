@@ -22,7 +22,7 @@ from typing import Any, Literal, cast
 
 from fastmcp import FastMCP
 from pydantic import BaseModel
-from returns.result import Result
+from returns.result import Result, Success
 
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
 from vectl.claims import get_current_branch, repair_claims
@@ -72,7 +72,7 @@ from vectl.io import (
     _finalize_admitted_plan_mutation,
     _resolve_git_dir,
     load_plan_definition,
-    save_plan,
+    save_plan_with_receipt,
 )
 from vectl.lifecycle import (
     AffinityOverrideMetadata,
@@ -97,6 +97,8 @@ from vectl.models import (
     StepStatus,
 )
 from vectl.plan_path import (
+    PlanAuthority,
+    authority_for_plan_path,
     is_linked_worktree,
     resolve_claims_path,
     resolve_plan_path,
@@ -130,42 +132,45 @@ def _plan_path() -> Result[Path, str]:
     root_mcp = sys.modules.get("vectl.mcp_core_tools")
     patched = getattr(root_mcp, "resolve_plan_path", resolve_plan_path)
     if patched is not resolve_plan_path:
-        return patched()
-    return resolve_plan_path()
+        return Success(cast(Path, patched()))
+    return Success(resolve_plan_path())
 
 
-def _load() -> Result[tuple[Plan, str], str]:
-    """Load plan and definition hash from plan.yaml only.
-
-    Source: docs/ADR-unified-state.md migration posture.
-
-    Returns:
-        (plan, definition_hash)
-    """
-    plan_path = _plan_path()
-    return load_plan_definition(plan_path)
+def _authority() -> Result[PlanAuthority, str]:
+    """Resolve one immutable Plan authority for the current MCP request."""
+    return Success(authority_for_plan_path(_plan_path().unwrap(), target_commits=True))
 
 
+def _load(authority: PlanAuthority | None = None) -> Result[tuple[Plan, str], str]:
+    """Load plan and definition hash from one resolved Plan authority."""
+    target = authority or _authority().unwrap()
+    return load_plan_definition(target.plan_path)
+
+
+# @shell_complexity: MCP save keeps CAS, lock recalculation, and durability reporting together.
 def _save_plan_receipt(
     plan: Plan,
     expected_def_hash: str,
     commit_message: str,
     *,
     recalc_locks: bool = True,
+    authority: PlanAuthority | None = None,
 ) -> Result[tuple[str, str], str]:
     """Save plan.yaml with CAS semantics and return its hash and lock notice."""
     changed: list[str] = []
     if recalc_locks:
         changed = recalc_lock_status(plan)
 
-    plan_path = _plan_path()
+    target = authority or _authority().unwrap()
+    plan_path = target.plan_path
     try:
-        new_plan_hash = save_plan(
+        receipt = save_plan_with_receipt(
             plan,
             plan_path,
             expected_hash=expected_def_hash,
-            commit_message=commit_message,
-        )
+            commit_message=commit_message if target.commit_policy else None,
+        ).unwrap()
+        new_plan_hash = receipt.persisted_sha256
     except CASConflictError as err:
         raise PlanError(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
@@ -181,7 +186,18 @@ def _save_plan_receipt(
 
         logging.warning("Backup failed", exc_info=True)
 
-    return new_plan_hash, format_lock_changes(changed, plan)
+    lock_notice = format_lock_changes(changed, plan)
+    if receipt.git_attempted and not receipt.git_committed:
+        lock_notice = "\n".join(
+            filter(
+                None,
+                [
+                    lock_notice,
+                    "Plan persisted, but Git commit failed; run `git status` and commit plan.yaml.",
+                ],
+            )
+        )
+    return Success((new_plan_hash, lock_notice))
 
 
 def _save_plan(
@@ -190,6 +206,7 @@ def _save_plan(
     commit_message: str,
     *,
     recalc_locks: bool = True,
+    authority: PlanAuthority | None = None,
 ) -> Result[str, str]:
     """Save plan.yaml while preserving the existing lock-notice-only response."""
     _, lock_notice = _save_plan_receipt(
@@ -197,8 +214,9 @@ def _save_plan(
         expected_def_hash,
         commit_message,
         recalc_locks=recalc_locks,
-    )
-    return lock_notice
+        authority=authority,
+    ).unwrap()
+    return Success(lock_notice)
 
 
 # @shell_complexity: Preserves transaction diagnostics, receipt validation, and lock notices.
@@ -208,6 +226,7 @@ def _save_admitted_plan_receipt(
     commit_message: str,
     *,
     recalc_locks: bool = True,
+    authority: PlanAuthority | None = None,
 ) -> Result[tuple[dict[str, object], str], str]:
     """Persist one covered definition mutation through the admitted transaction."""
     changed: list[str] = []
@@ -215,11 +234,12 @@ def _save_admitted_plan_receipt(
         changed = recalc_lock_status(plan)
 
     try:
+        target = authority or _authority().unwrap()
         receipt = _finalize_admitted_plan_mutation(
             plan,
-            cast(Path, _plan_path()),
+            target.plan_path,
             expected_hash=expected_def_hash,
-            commit_message=commit_message,
+            commit_message=commit_message if target.commit_policy else None,
         )
     except CASConflictError as err:
         raise PlanError(
@@ -232,10 +252,18 @@ def _save_admitted_plan_receipt(
     if not is_dataclass(receipt) or isinstance(receipt, type):
         raise PlanError("Admitted Plan mutation returned an invalid receipt.")
     payload = cast(dict[str, object], asdict(receipt))
-    return cast(
-        Result[tuple[dict[str, object], str], str],
-        (payload, format_lock_changes(changed, plan)),
-    )
+    lock_notice = format_lock_changes(changed, plan)
+    if payload.get("git_attempted") and not payload.get("git_committed"):
+        lock_notice = "\n".join(
+            filter(
+                None,
+                [
+                    lock_notice,
+                    "Plan persisted, but Git commit failed; run `git status` and commit plan.yaml.",
+                ],
+            )
+        )
+    return cast(Result[tuple[dict[str, object], str], str], (payload, lock_notice))
 
 
 # @shell_complexity: Step formatting preserves existing state, lock, expected-red, claim, and affinity display semantics.

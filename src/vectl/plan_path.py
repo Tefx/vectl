@@ -26,6 +26,8 @@ import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
+from vectl.models import PlanError
+
 # Canonical environment variable name
 ENV_PLAN_PATH = "VECTL_PLAN_PATH"
 
@@ -39,6 +41,18 @@ class _WorktreeProbe:
     is_linked: bool
     main_root: Path | None
     malformed: bool
+
+
+@dataclass(frozen=True)
+class PlanAuthority:
+    """Immutable Plan target, provenance, branch namespace, and commit policy."""
+
+    plan_path: Path
+    claims_path: Path
+    branch: str
+    provenance: str
+    git_common_dir: Path | None
+    commit_policy: bool
 
 
 def _normalize_git_path(raw: str, cwd: Path):
@@ -207,3 +221,98 @@ def resolve_claims_path(plan_path: Path | None = None) -> Path:
         return git_common_dir / "vectl" / "claims.json"
 
     return plan_path.parent / ".vectl" / "claims.json"
+
+
+# @shell:entry - resolves an unborn repository's attached symbolic branch.
+def _symbolic_head(cwd: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=cwd,
+        )
+    except OSError:
+        return None
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+# @shell:entry - direct Git probe retained for compatibility authority construction.
+def _git_branch(cwd: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=cwd,
+        )
+    except OSError:
+        return None
+    branch = result.stdout.strip()
+    return _symbolic_head(cwd) or "HEAD" if branch == "HEAD" else branch or None
+
+
+# @shell:entry - authority helper reads the branch only from the Plan worktree.
+def _branch_for_plan(plan_path: Path, common_dir: Path | None = None) -> str | None:
+    """Return the Plan worktree branch, or None for non-Git Plan targets."""
+    common_dir = common_dir or resolve_git_common_dir(plan_path.parent)
+    if common_dir is None:
+        return None
+    branch = _git_branch(plan_path.parent)
+    if branch is None or branch == "HEAD":
+        raise PlanError(
+            "Plan authority is ambiguous: the Plan worktree has no attached branch. "
+            "Checkout a branch before using branch-scoped claims."
+        )
+    return branch
+
+
+# @shell:entry - captures Plan provenance and durability policy at the invocation boundary.
+def _authority_components(
+    plan_path: Path, invocation_path: Path | None, target_commits: bool
+) -> tuple[str, str, Path | None, bool]:
+    common_dir = resolve_git_common_dir(plan_path.parent)
+    branch = _branch_for_plan(plan_path, common_dir) or "external"
+    provenance = "git_worktree" if common_dir is not None else "external_non_git"
+    invocation_common_dir = resolve_git_common_dir(invocation_path or Path.cwd())
+    commit_policy = target_commits or common_dir is not None and common_dir == invocation_common_dir
+    return branch, provenance, common_dir, commit_policy
+
+
+# @shell:entry - compatibility facade returns captured authority for one invocation.
+def authority_for_plan_path(
+    plan_path: Path,
+    *,
+    invocation_path: Path | None = None,
+    target_commits: bool = False,
+) -> PlanAuthority:
+    """Build authority without letting later saves re-read process CWD state."""
+    canonical = plan_path.resolve(strict=False)
+    components = _authority_components(canonical, invocation_path, target_commits)
+    return PlanAuthority(canonical, resolve_claims_path(canonical), *components)
+
+
+# @shell:entry - command boundary resolves the legacy direct authority value once.
+# @shell_orchestration: command/request boundary fixes all related targets.
+def resolve_plan_authority(explicit: Path | None = None) -> PlanAuthority:
+    """Resolve immutable authority for one CLI command or MCP request."""
+    return authority_for_plan_path(resolve_plan_path(explicit))
+
+
+# @shell:entry - compatibility helper returns a direct optional common directory.
+# @shell_orchestration: CLI autosave compares repository identity, never CWD identity.
+def resolve_git_common_dir(path: Path) -> Path | None:
+    """Resolve a worktree's common Git directory, if available."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            cwd=path,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    common_dir = _normalize_git_path(result.stdout, path)
+    return common_dir if common_dir is not None and common_dir.is_dir() else None

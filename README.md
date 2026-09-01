@@ -62,6 +62,19 @@ CAS-guarded and uses the existing best-effort Git commit path.
 `validate --check-refs` may report warnings, but references do not block a
 claim or Plan mutation.
 
+## Linked Git worktrees
+
+An implicit CLI command or MCP request started in a linked worktree targets the
+main worktree's `plan.yaml`. Vectl fixes the Plan path, shared claims path, and
+branch from that integration worktree before the operation starts. Claims,
+completion/defer/skip cleanup, diagnostics, repair, duplicate-ID migration,
+batch claim, Git commits, and backups therefore use one authority.
+
+Use `--plan` or `VECTL_PLAN_PATH` only when intentionally targeting another
+Plan. A CLI command targeting a Plan in another Git repository writes that Plan
+without autosaving a commit in the caller's repository. MCP commits, when
+configured, remain attached to its resolved target Plan repository.
+
 ## Quick Start
 
 ### 1. Initialize

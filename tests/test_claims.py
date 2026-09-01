@@ -410,6 +410,80 @@ def test_repair_claims_split_brain_plan_precedence_updates_entry(
     assert claims["feature/test:s2"].claimed_at == "2026-03-09T10:00:00Z"
 
 
+def test_repair_claims_scopes_by_persisted_key_not_payload_branch(tmp_path: Path) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    claims_path = tmp_path / "claims.json"
+    plan = _repair_plan()
+    save_claims(
+        {
+            "feature/test:s2": ClaimEntry(
+                step_id="s2",
+                branch="feature/other",
+                agent="stale-agent",
+                claimed_at="2026-03-01T00:00:00Z",
+            ),
+            "feature/other:s1": ClaimEntry(
+                step_id="s1",
+                branch="feature/test",
+                agent="foreign-agent",
+                claimed_at="2026-03-02T00:00:00Z",
+            ),
+        },
+        claims_path,
+    )
+
+    result = repair_claims(plan, plan_path, claims_path, branch="feature/test")
+
+    assert [action.action for action in result.actions] == ["update"]
+    repaired = load_claims(claims_path)
+    assert repaired["feature/test:s2"] == ClaimEntry(
+        step_id="s2",
+        branch="feature/test",
+        agent="agent-plan",
+        claimed_at="2026-03-09T10:00:00Z",
+    )
+    assert repaired["feature/other:s1"] == ClaimEntry(
+        step_id="s1",
+        branch="feature/test",
+        agent="foreign-agent",
+        claimed_at="2026-03-02T00:00:00Z",
+    )
+
+
+def test_repair_claims_stabilizes_legacy_claim_without_timestamp(tmp_path: Path) -> None:
+    plan_path = tmp_path / "plan.yaml"
+    claims_path = tmp_path / "claims.json"
+    plan = Plan(
+        project="legacy-claim-timestamp",
+        phases=[
+            Phase(
+                id="phase",
+                name="Phase",
+                steps=[
+                    Step(
+                        id="step",
+                        name="Step",
+                        status=StepStatus.CLAIMED,
+                        claimed_by="agent",
+                    )
+                ],
+            )
+        ],
+    )
+    from vectl.io import save_plan as save_plan_func
+
+    save_plan_func(plan, plan_path)
+    plan_bytes = plan_path.read_bytes()
+
+    first = repair_claims(plan, plan_path, claims_path, branch="feature/test")
+    second = repair_claims(plan, plan_path, claims_path, branch="feature/test", dry_run=True)
+
+    assert first.changed is True
+    assert second.changed is False
+    assert second.actions == ()
+    assert plan_path.read_bytes() == plan_bytes
+
+
 def test_repair_claims_status_repair_attempted(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

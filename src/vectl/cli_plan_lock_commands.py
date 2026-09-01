@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import typer
 
+from vectl.claims import repair_claims
 from vectl.cli_plan_common import *
 from vectl.cli_plan_common import (
+    _authority_for_plan_path,
     _print_admitted_plan_notice,
     _print_admitted_plan_receipt,
     _save_admitted_plan,
@@ -19,11 +21,14 @@ def unlock(
 ) -> None:
     """Unlock a locked phase by validating all dependencies are done."""
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
     try:
         p = unlock_phase(p, phase_id)
     except PlanError as e:
         _die(str(e))
-    _save_plan(p, plan_path, def_h, f"vectl: unlock phase {phase_id}")
+    _save_plan(
+        p, plan_path, def_h, f"vectl: unlock phase {phase_id}", authority=authority
+    )
     out.print(f"[green]Unlocked:[/] {phase_id}")
     if evidence:
         out.print(f"[dim]Evidence: {evidence}[/]")
@@ -63,6 +68,7 @@ def recalc_lock(
     --dry-run previews what would change without saving the plan file.
     """
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     if dry_run:
         # Operate on a deep copy so the original plan is not mutated.
@@ -73,7 +79,9 @@ def recalc_lock(
     else:
         changed = recalc_lock_status(p)
         msg = format_lock_changes(changed, p)
-        _save_plan(p, plan_path, def_h, "vectl: recalc lock status")
+        _save_plan(
+            p, plan_path, def_h, "vectl: recalc lock status", authority=authority
+        )
         out.print(msg if msg else "[vectl] Lock status is consistent. No changes needed.")
 
 
@@ -105,15 +113,16 @@ def repair_claims_cmd(
     """Repair claims.json consistency against plan.yaml (current branch scope)."""
 
     p, _, plan_path = _load(plan)
-    claims_path = resolve_claims_path(plan_path)
+    authority = _authority_for_plan_path(plan_path)
 
     try:
         result = repair_claims(
             p,
-            plan_path,
-            claims_path,
+            authority.plan_path,
+            authority.claims_path,
             dry_run=dry_run,
             step_id=step,
+            branch=authority.branch,
         )
     except PlanError as e:
         _die(str(e))
@@ -187,6 +196,7 @@ def add_steps_cmd(
         return  # unreachable
 
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
     try:
         p, generated_ids = add_steps_bulk(p, phase, data)
     except PlanError as e:
@@ -194,7 +204,11 @@ def add_steps_cmd(
         return  # unreachable
 
     receipt, lock_notice = _save_admitted_plan(
-        p, plan_path, def_h, f"vectl: add steps to phase {phase}"
+        p,
+        plan_path,
+        def_h,
+        f"vectl: add steps to phase {phase}",
+        authority=authority,
     ).unwrap()
 
     out.print(f"[green]Added {len(generated_ids)} step(s)[/] to phase [bold]{phase}[/]:")

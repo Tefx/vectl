@@ -1,15 +1,11 @@
 """Internal implementation slice split from mcp_core_tools.py.
-
 Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 """
-
 from __future__ import annotations
-# Compatibility wildcard imports expose the shared mutation slice symbols.
 # ruff: noqa: F403, F405
 import json
 import re
 from typing import cast
-
 from pydantic import ValidationError
 
 from vectl.core.diagnostics import (
@@ -18,7 +14,7 @@ from vectl.core.diagnostics import (
     normalize_model_validation_issues,
 )
 from vectl.mcp_core_common import *
-from vectl.mcp_core_common import _save_admitted_plan_receipt
+from vectl.mcp_core_common import _authority, _save_admitted_plan_receipt
 from vectl.mcp_mutation_contracts import (
     BATCH_FIELDS,
     BATCH_REQUIRED_FIELDS,
@@ -28,7 +24,6 @@ from vectl.mcp_mutation_contracts import (
     BatchMutationRequest,
     MutationAction,
 )
-
 # ---------------------------------------------------------------------------
 # vectl_mutate
 # ---------------------------------------------------------------------------
@@ -579,7 +574,8 @@ def vectl_mutate(
     if guard_error:
         return guard_error
 
-    plan, expected_def_hash = _load()
+    authority = _authority().unwrap()
+    plan, expected_def_hash = _load(authority)
     current_base_sha256 = f"sha256:{expected_def_hash}"
     if expected_base_sha256 is not None and expected_base_sha256 != current_base_sha256:
         return (
@@ -646,16 +642,19 @@ def vectl_mutate(
             )
 
         if batch_mode:
-            receipt_payload, _ = cast(
+            receipt_payload, persisted_lock_notice = cast(
                 tuple[dict[str, object], str],
                 _save_admitted_plan_receipt(
                     working_plan,
                     expected_def_hash,
                     f"mcp: mutate batch ({len(normalized_requests)} requests)",
                     recalc_locks=False,
+                    authority=authority,
                 ),
             )
             plan_hash = str(receipt_payload["persisted_sha256"]).removeprefix("sha256:")
+            if not lock_notice:
+                lock_notice = persisted_lock_notice
         else:
             commit_target = step_id or phase_id or action
             receipt_payload, persisted_lock_notice = cast(
@@ -665,6 +664,7 @@ def vectl_mutate(
                     expected_def_hash,
                     f"mcp: mutate {action} {commit_target}",
                     recalc_locks=False,
+                    authority=authority,
                 ),
             )
             if not lock_notice:

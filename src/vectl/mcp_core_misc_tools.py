@@ -8,6 +8,7 @@ from __future__ import annotations
 from returns.result import Success
 
 from vectl.mcp_core_common import *
+from vectl.mcp_core_common import _authority
 
 # @shell_complexity: Checklist tool preserves validation and detailed match diagnostics in one public surface.
 def vectl_check(
@@ -62,7 +63,8 @@ def vectl_check(
     if keyword is None and add is None:
         return "**Error:** Must provide either 'keyword' or 'add'."
 
-    plan, expected_def_hash = _load()
+    authority = _authority().unwrap()
+    plan, expected_def_hash = _load(authority)
 
     try:
         plan = update_checklist(plan, step_id, check=keyword, append=add)
@@ -70,7 +72,8 @@ def vectl_check(
             plan,
             expected_def_hash,
             f"mcp: update checklist {step_id}",
-        )
+            authority=authority,
+        ).unwrap()
     except NoMatchError as e:
         return f"**Error:** No checklist item matches keyword '{e.keyword}'."
     except AmbiguousMatchError as e:
@@ -123,7 +126,8 @@ def _vectl_check_deterministic(
     )
     from vectl.core_checklist import get_inventory
 
-    plan, expected_def_hash = _load()
+    authority = _authority().unwrap()
+    plan, expected_def_hash = _load(authority)
     found = plan.find_step(step_id)
     if found is None:
         return Success({
@@ -158,7 +162,12 @@ def _vectl_check_deterministic(
             checked=None if checked is None else str(checked).lower(),
             batch=batch_text,
         )
-        lock_notice = _save_plan(plan, expected_def_hash, f"mcp: deterministic checklist {step_id}")
+        lock_notice = _save_plan(
+            plan,
+            expected_def_hash,
+            f"mcp: deterministic checklist {step_id}",
+            authority=authority,
+        ).unwrap()
         payload["markdown"] = f"**Updated checklist:** {step_id}"
         payload["Updated checklist"] = True
         if lock_notice:
@@ -202,15 +211,13 @@ def vectl_migrate_step_id(
     docs/contracts/duplicate-id-migration-contract.yaml dry_run_schema and
     migration_evidence_schema.
     """
-    plan, expected_def_hash = _load()
-    plan_path = _plan_path()
-    claims_path = resolve_claims_path(plan_path)
-    branch = get_current_branch()
+    authority = _authority().unwrap()
+    plan, expected_def_hash = _load(authority)
 
     report, _ = build_duplicate_step_id_migration_dry_run(
         plan,
-        claims_path=claims_path,
-        branch=branch,
+        claims_path=authority.claims_path,
+        branch=authority.branch,
     )
     preview_evidence = build_duplicate_step_id_migration_evidence(
         command="vectl_migrate_step_id",
@@ -230,10 +237,10 @@ def vectl_migrate_step_id(
 
     try:
         apply_result = apply_duplicate_step_id_migration(
-            plan_path,
+            authority.plan_path,
             expected_hash=expected_def_hash,
-            claims_path=claims_path,
-            branch=branch,
+            claims_path=authority.claims_path,
+            branch=authority.branch,
             command="vectl_migrate_step_id",
             command_args=["run_mode=apply"],
             run_mode="apply",

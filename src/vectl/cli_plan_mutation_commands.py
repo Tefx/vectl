@@ -6,6 +6,7 @@ import typer
 
 from vectl.cli_plan_common import *
 from vectl.cli_plan_common import (
+    _authority_for_plan_path,
     _print_admitted_plan_notice,
     _print_admitted_plan_receipt,
     _save_admitted_plan,
@@ -13,6 +14,7 @@ from vectl.cli_plan_common import (
 from vectl.models import StepStatus
 
 
+# @shell_complexity: option validation and import-status compatibility remain in one Typer adapter.
 def add_step_cmd(
     phase: str = typer.Option(..., "--phase", help="Phase ID to add step to."),
     name: str = typer.Option(..., "--name", help="Step name."),
@@ -60,6 +62,7 @@ def add_step_cmd(
     """
     _check_not_linked_worktree(plan)
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     depends_on = [d.strip() for d in after.split(",") if d.strip()] if after else None
     refs_list = [r.strip() for r in refs.split(",") if r.strip()] if refs else None
@@ -102,7 +105,7 @@ def add_step_cmd(
         return  # unreachable, for type checker
 
     receipt, lock_notice = _save_admitted_plan(
-        p, plan_path, def_h, f"vectl: add step {generated_id}"
+        p, plan_path, def_h, f"vectl: add step {generated_id}", authority=authority
     ).unwrap()
 
     out.print(f"[green]Added step:[/] {generated_id} → phase [bold]{phase}[/]")
@@ -133,6 +136,7 @@ def add_phase_cmd(
     """Add a new phase to the plan."""
     _check_not_linked_worktree(plan)
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     depends_on = [d.strip() for d in after.split(",") if d.strip()] if after else None
 
@@ -150,7 +154,7 @@ def add_phase_cmd(
         return  # unreachable, for type checker
 
     receipt, lock_notice = _save_admitted_plan(
-        p, plan_path, def_h, f"vectl: add phase {generated_id}"
+        p, plan_path, def_h, f"vectl: add phase {generated_id}", authority=authority
     ).unwrap()
 
     # Show status based on auto-determined initial status
@@ -223,6 +227,7 @@ def edit_plan_cmd(
         return  # unreachable
 
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     pg_val = project_guidance
     if project_guidance_file is not None:
@@ -244,7 +249,7 @@ def edit_plan_cmd(
         return  # unreachable
 
     receipt, lock_notice = _save_admitted_plan(
-        p, plan_path, def_h, "vectl: edit plan metadata"
+        p, plan_path, def_h, "vectl: edit plan metadata", authority=authority
     ).unwrap()
     out.print("[green]Updated plan metadata[/]")
     _print_admitted_plan_notice(lock_notice)
@@ -325,6 +330,7 @@ def edit_step_cmd(
     from vectl.core import _SENTINEL
 
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     add_deps = [d.strip() for d in add_dep.split(",") if d.strip()] if add_dep else None
     rm_deps = [d.strip() for d in rm_dep.split(",") if d.strip()] if rm_dep else None
@@ -379,7 +385,7 @@ def edit_step_cmd(
         _die(str(e))
 
     receipt, lock_notice = _save_admitted_plan(
-        p, plan_path, def_h, f"vectl: edit step {step_id}"
+        p, plan_path, def_h, f"vectl: edit step {step_id}", authority=authority
     ).unwrap()
 
     out.print(f"[green]Edited:[/] {step_id}")
@@ -409,6 +415,7 @@ def edit_phase_cmd(
     from vectl.core import _SENTINEL
 
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     add_deps = [d.strip() for d in add_dep.split(",") if d.strip()] if add_dep else None
     rm_deps = [d.strip() for d in rm_dep.split(",") if d.strip()] if rm_dep else None
@@ -434,7 +441,7 @@ def edit_phase_cmd(
         _die(str(e))
 
     receipt, lock_notice = _save_admitted_plan(
-        p, plan_path, def_h, f"vectl: edit phase {phase_id}"
+        p, plan_path, def_h, f"vectl: edit phase {phase_id}", authority=authority
     ).unwrap()
 
     out.print(f"[green]Edited phase:[/] {phase_id}")
@@ -455,12 +462,13 @@ def remove_step_cmd(
     """Remove a pending step from its phase."""
     _check_not_linked_worktree(plan)
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
     try:
         p = remove_step(p, step_id, force=force)
     except PlanError as e:
         _die(str(e))
     receipt, lock_notice = _save_admitted_plan(
-        p, plan_path, def_h, f"vectl: remove step {step_id}"
+        p, plan_path, def_h, f"vectl: remove step {step_id}", authority=authority
     ).unwrap()
     out.print(f"[yellow]Removed:[/] {step_id}")
     _print_admitted_plan_notice(lock_notice)
@@ -481,6 +489,7 @@ def move_step_cmd(
     """Move a pending step to a different phase."""
     _check_not_linked_worktree(plan)
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     # Capture deps before move (move_step clears them — lossy operation)
     found = p.find_step(step_id)
@@ -491,7 +500,7 @@ def move_step_cmd(
     except PlanError as e:
         _die(str(e))
     receipt, lock_notice = _save_admitted_plan(
-        p, plan_path, def_h, f"vectl: move step {step_id} to {to_phase}"
+        p, plan_path, def_h, f"vectl: move step {step_id} to {to_phase}", authority=authority
     ).unwrap()
     out.print(f"[green]Moved:[/] {step_id} → {to_phase}")
     _print_admitted_plan_notice(lock_notice)

@@ -24,7 +24,6 @@ from rich.table import Table
 from rich.text import Text
 
 from vectl import __version__
-from vectl.claims import get_current_branch, repair_claims
 from vectl.core import (
     RecoverResult,
     add_phase,
@@ -74,7 +73,7 @@ from vectl.io import (
     _finalize_admitted_plan_mutation,
     _resolve_git_dir,
     load_plan_definition,
-    save_plan,
+    save_plan_with_receipt,
 )
 from vectl.lifecycle import ClaimConflictError
 from vectl.merge_driver import merge_plans
@@ -93,6 +92,8 @@ from vectl.models import (
     format_step_selector,
 )
 from vectl.plan_path import (
+    PlanAuthority,
+    authority_for_plan_path,
     is_linked_worktree,
     resolve_claims_path,
     resolve_plan_path,
@@ -327,23 +328,34 @@ def _load(plan_path: Path | None):
     return plan_def, def_hash, target
 
 
-def _save_plan(plan: Plan, plan_path: Path, expected_def_hash: str, msg: str) -> None:
-    """Save plan.yaml with CAS semantics and lock recalculation."""
+# @shell:entry - CLI compatibility helper constructs one direct authority value per command.
+# @shell_orchestration: commands derive branch and claims from their already-resolved Plan target.
+def _authority_for_plan_path(plan_path: Path) -> PlanAuthority:
+    """Return immutable Plan authority without re-resolving from ambient CWD."""
+    return authority_for_plan_path(plan_path)
 
+
+# @shell_complexity: CLI save reports CAS and partial Git durability separately.
+def _save_plan(
+    plan: Plan,
+    plan_path: Path,
+    expected_def_hash: str,
+    msg: str,
+    *,
+    authority: PlanAuthority | None = None,
+) -> None:
+    """Save plan.yaml using the authority captured before command execution."""
     changed_ids = recalc_lock_status(plan)
-
-    # Source: claim-consistency-recovery.integration-verify-fix Issue 1.
-    # When --plan targets a different repo/worktree, write should still succeed
-    # quietly without misleading git pathspec/autosave warnings.
-    commit_message = msg if _should_autosave_commit(plan_path) else None
+    target = authority or authority_for_plan_path(plan_path, invocation_path=plan_path.parent)
+    commit_message = msg if _should_autosave_commit(target) else None
 
     try:
-        save_plan(
+        receipt = save_plan_with_receipt(
             plan,
-            plan_path,
+            target.plan_path,
             expected_hash=expected_def_hash,
             commit_message=commit_message,
-        )
+        ).unwrap()
     except CASConflictError:
         _die(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
@@ -353,6 +365,11 @@ def _save_plan(plan: Plan, plan_path: Path, expected_def_hash: str, msg: str) ->
     notice = format_lock_changes(changed_ids, plan)
     if notice:
         print(notice)
+    if receipt.git_attempted and not receipt.git_committed:
+        out.print(
+            "[yellow]Plan persisted, but Git commit failed; run `git status` and commit "
+            "plan.yaml to reconcile durability.[/]"
+        )
 
 
 # @shell_complexity: Preserves CAS diagnostics, receipt validation, lock notices, and CLI output.
@@ -361,15 +378,18 @@ def _save_admitted_plan(
     plan_path: Path,
     expected_def_hash: str,
     msg: str,
+    *,
+    authority: PlanAuthority | None = None,
 ) -> Result[tuple[dict[str, object], str], str]:
     """Persist one covered definition mutation and defer its success output."""
     changed_ids = recalc_lock_status(plan)
-    commit_message = msg if _should_autosave_commit(plan_path) else None
+    target = authority or authority_for_plan_path(plan_path, invocation_path=plan_path.parent)
+    commit_message = msg if _should_autosave_commit(target) else None
 
     try:
         receipt = _finalize_admitted_plan_mutation(
             plan,
-            plan_path,
+            target.plan_path,
             expected_hash=expected_def_hash,
             commit_message=commit_message,
         )
@@ -388,7 +408,18 @@ def _save_admitted_plan(
         raise AssertionError("unreachable")
     payload = cast(dict[str, object], asdict(receipt))
 
-    return Success((payload, format_lock_changes(changed_ids, plan)))
+    notice = format_lock_changes(changed_ids, plan)
+    if payload.get("git_attempted") and not payload.get("git_committed"):
+        notice = "\n".join(
+            filter(
+                None,
+                [
+                    notice,
+                    "Plan persisted, but Git commit failed; run `git status` and commit plan.yaml.",
+                ],
+            )
+        )
+    return Success((payload, notice))
 
 
 def _print_admitted_plan_notice(notice: str) -> None:
@@ -427,11 +458,10 @@ def _git_toplevel_for(path: Path):
     return Path(resolved).resolve()
 
 
-def _should_autosave_commit(plan_path: Path):
-    """Allow autosave commit only when plan is in current repo/worktree."""
-    cwd_repo = _git_toplevel_for(Path.cwd())
-    plan_repo = _git_toplevel_for(plan_path.parent.resolve())
-    return cwd_repo is not None and plan_repo is not None and cwd_repo == plan_repo
+# @shell_orchestration: CLI save policy delegates Git identity probes to the shared resolver.
+def _should_autosave_commit(authority: PlanAuthority):
+    """Read the commit decision captured with Plan authority."""
+    return authority.commit_policy
 
 
 def _is_claim_consistency_scoped_gate(phase_id: str):
@@ -440,39 +470,29 @@ def _is_claim_consistency_scoped_gate(phase_id: str):
 
 
 # @shell_orchestration: Claims mismatch helper belongs to status/show CLI diagnostics.
-def _check_claim_mismatch(p: Plan, plan_path: Path):
-    """Check for claims.json vs plan.yaml mismatch.
-
-    Returns:
-        Tuple of (has_mismatch, ghost_claims, stale_plan_claims)
-        - ghost_claims: claims entries with no corresponding claimed step in plan
-        - stale_plan_claims: claimed steps in plan with no entry in claims.json
-    """
-    from vectl.claims import get_current_branch as current_branch
-    from vectl.claims import load_claims
+def _check_claim_mismatch(
+    p: Plan,
+    plan_path: Path,
+    *,
+    branch: str | None = None,
+    claims_path: Path | None = None,
+):
+    """Return canonical key and full-entry claim consistency diagnostics."""
+    from vectl.claims import claim_consistency, get_current_branch
     from vectl.claims import resolve_claims_path as claims_path_resolver
 
-    claims_path = claims_path_resolver(plan_path)
-    claims = load_claims(claims_path)
-    branch = current_branch()
-
-    # Build current branch's claimed steps from plan
-    plan_claimed: set[str] = set()
-    for phase in p.phases:
-        for step in phase.steps:
-            if step.status == StepStatus.CLAIMED and step.claimed_by:
-                plan_claimed.add(f"{branch}:{step.id}")
-
-    # Find ghost claims (in claims but not claimed in plan)
-    ghost_claims = [
-        key for key in claims if key.startswith(f"{branch}:") and key not in plan_claimed
-    ]
-
-    # Find stale plan claims (claimed in plan but not in claims)
-    stale_plan_claims = [key.split(":", 1)[1] for key in plan_claimed if key not in claims]
-
-    has_mismatch = bool(ghost_claims or stale_plan_claims)
-    return has_mismatch, ghost_claims, stale_plan_claims
+    resolved_branch = branch if branch is not None else get_current_branch()
+    consistency = claim_consistency(
+        p,
+        claims_path or claims_path_resolver(plan_path),
+        resolved_branch,
+    ).unwrap()
+    return (
+        consistency.has_mismatch,
+        list(consistency.ghost_claims),
+        [key.split(":", 1)[1] for key in consistency.missing_claims],
+        list(consistency.stale_entries),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -500,7 +520,10 @@ PlanOption = typer.Option(
     None,
     "--plan",
     "-p",
-    help="Path to plan YAML file. Defaults to auto-discovery (walk-up). (env: VECTL_PLAN_PATH)",
+    help=(
+        "Path to plan YAML file. Linked worktrees default to the main Plan; "
+        "otherwise walk-up. (env: VECTL_PLAN_PATH)"
+    ),
 )
 
 # B008-compliant singleton options (defined at module level to avoid function call in defaults)

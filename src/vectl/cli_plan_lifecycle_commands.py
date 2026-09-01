@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 from vectl.cli_plan_common import *
-from vectl.cli_plan_common import _save_plan
+from vectl.cli_plan_common import _authority_for_plan_path, _save_plan
 from vectl.cli_plan_read_commands import _show_step_detail
 from vectl.lifecycle import release_claim_records, rollback_claim_record
-from vectl.plan_path import resolve_claims_path
 
 
 # @shell_orchestration: persist the Plan before deleting its exact prior claim identities.
 def _save_then_release_claims(
-    plan_obj, plan_path, expected_hash, message, claim_releases, claims_path
+    plan_obj, plan_path, expected_hash, message, claim_releases, claims_path, authority
 ):
-    _save_plan(plan_obj, plan_path, expected_hash, message)
+    _save_plan(plan_obj, plan_path, expected_hash, message, authority=authority)
     release_claim_records(claim_releases, claims_path)
 
 
@@ -50,6 +49,7 @@ def claim(
     Enforces agent affinity. Use --force to override exclusive affinity.
     """
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     if step_id is None:
         candidates = get_next_steps(p, agent=agent)
@@ -58,7 +58,7 @@ def claim(
         step_id = candidates[0].id
         out.print(f"[dim]Auto-selected:[/] {step_id}")
 
-    claims_path = resolve_claims_path(plan_path)
+    claims_path = authority.claims_path
     try:
         p, result = claim_step(
             p,
@@ -66,6 +66,7 @@ def claim(
             agent,
             force=force,
             claims_path=claims_path,
+            branch=authority.branch,
         )
     except ClaimConflictError as e:
         # Rich claim conflict diagnostics with actionable next step
@@ -96,7 +97,9 @@ def claim(
             out.print(f"[yellow]⚠️  Affinity warning: {result.warning_message}[/]")
 
     try:
-        _save_plan(p, plan_path, def_h, f"vectl: claim {step_id} by {agent}")
+        _save_plan(
+            p, plan_path, def_h, f"vectl: claim {step_id} by {agent}", authority=authority
+        )
     except Exception:
         rollback_claim_record(result, claims_path)
         raise
@@ -126,7 +129,13 @@ def claim(
     found = p.find_step(step_id)
     if found is not None:
         out.print()
-        _show_step_detail(p, step_id, plan_path=plan_path)
+        _show_step_detail(
+            p,
+            step_id,
+            plan_path=authority.plan_path,
+            branch=authority.branch,
+            claims_path=authority.claims_path,
+        )
 
 
 # @shell_complexity: complete preserves mutation, next-step preview, and no-more-work output in one Typer handler.
@@ -137,7 +146,8 @@ def complete(
 ) -> None:
     """Mark a step as done with evidence."""
     p, def_h, plan_path = _load(plan)
-    claims_path = resolve_claims_path(plan_path)
+    authority = _authority_for_plan_path(plan_path)
+    claims_path = authority.claims_path
     claim_releases = []
     try:
         p = complete_step(
@@ -146,11 +156,18 @@ def complete(
             evidence,
             claims_path=claims_path,
             claim_releases=claim_releases,
+            branch=authority.branch,
         )
     except PlanError as e:
         _die(str(e))
     _save_then_release_claims(
-        p, plan_path, def_h, f"vectl: complete {step_id}", claim_releases, claims_path
+        p,
+        plan_path,
+        def_h,
+        f"vectl: complete {step_id}",
+        claim_releases,
+        claims_path,
+        authority,
     )
     out.print(f"[green]Completed:[/] {step_id}")
 
@@ -188,13 +205,16 @@ def complete_phase_cmd(
           then test) before continuing migrate phase.
     """
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
     try:
         p, unlocked = complete_phase(p, phase_id, evidence)
     except PlanError as e:
         _die(str(e))
         return  # unreachable (typer exits), but keeps type-checkers honest
 
-    _save_plan(p, plan_path, def_h, f"vectl: complete phase {phase_id}")
+    _save_plan(
+        p, plan_path, def_h, f"vectl: complete phase {phase_id}", authority=authority
+    )
     out.print(f"[green]Completed phase:[/] {phase_id}")
     if unlocked:
         out.print(f"[green]Unlocked:[/] {', '.join(unlocked)}")
@@ -214,7 +234,8 @@ def defer(
 ) -> None:
     """Return a claimed step to pending."""
     p, def_h, plan_path = _load(plan)
-    claims_path = resolve_claims_path(plan_path)
+    authority = _authority_for_plan_path(plan_path)
+    claims_path = authority.claims_path
     claim_releases = []
     try:
         p = defer_step(
@@ -222,11 +243,18 @@ def defer(
             step_id,
             claims_path=claims_path,
             claim_releases=claim_releases,
+            branch=authority.branch,
         )
     except PlanError as e:
         _die(str(e))
     _save_then_release_claims(
-        p, plan_path, def_h, f"vectl: defer {step_id}", claim_releases, claims_path
+        p,
+        plan_path,
+        def_h,
+        f"vectl: defer {step_id}",
+        claim_releases,
+        claims_path,
+        authority,
     )
     out.print(f"[yellow]Deferred:[/] {step_id}")
     out.print()
@@ -243,11 +271,12 @@ def reject(
 ) -> None:
     """Reject a completed step, moving it back for rework."""
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
     try:
         p = reject_step(p, step_id, reason, reviewer)
     except PlanError as e:
         _die(str(e))
-    _save_plan(p, plan_path, def_h, f"vectl: reject {step_id}")
+    _save_plan(p, plan_path, def_h, f"vectl: reject {step_id}", authority=authority)
     out.print(f"[red]Rejected:[/] {step_id} — {reason}")
     out.print()
     out.print("[dim]→ vectl next                      Rejected steps appear first[/]")
@@ -268,7 +297,8 @@ def skip(
     Valid reasons: superseded, irrelevant, absorbed, deprioritized.
     """
     p, def_h, plan_path = _load(plan)
-    claims_path = resolve_claims_path(plan_path)
+    authority = _authority_for_plan_path(plan_path)
+    claims_path = authority.claims_path
     claim_releases = []
     try:
         p = skip_step(
@@ -277,11 +307,18 @@ def skip(
             reason,
             claims_path=claims_path,
             claim_releases=claim_releases,
+            branch=authority.branch,
         )
     except PlanError as e:
         _die(str(e))
     _save_then_release_claims(
-        p, plan_path, def_h, f"vectl: skip {step_id}", claim_releases, claims_path
+        p,
+        plan_path,
+        def_h,
+        f"vectl: skip {step_id}",
+        claim_releases,
+        claims_path,
+        authority,
     )
     out.print(f"[dim]Skipped:[/] {step_id} — {reason}")
     out.print()
@@ -295,7 +332,8 @@ def cancel(
 ) -> None:
     """Cancel a step (alias for skip --reason irrelevant)."""
     p, def_h, plan_path = _load(plan)
-    claims_path = resolve_claims_path(plan_path)
+    authority = _authority_for_plan_path(plan_path)
+    claims_path = authority.claims_path
     claim_releases = []
     try:
         p = skip_step(
@@ -304,11 +342,18 @@ def cancel(
             SkipReason.IRRELEVANT.value,
             claims_path=claims_path,
             claim_releases=claim_releases,
+            branch=authority.branch,
         )
     except PlanError as e:
         _die(str(e))
     _save_then_release_claims(
-        p, plan_path, def_h, f"vectl: cancel {step_id}", claim_releases, claims_path
+        p,
+        plan_path,
+        def_h,
+        f"vectl: cancel {step_id}",
+        claim_releases,
+        claims_path,
+        authority,
     )
     out.print(f"[dim]Cancelled:[/] {step_id} — irrelevant")
     out.print()
@@ -342,7 +387,8 @@ def skip_phase_cmd(
     Use --force to skip a locked phase that still has remaining steps.
     """
     p, def_h, plan_path = _load(plan)
-    claims_path = resolve_claims_path(plan_path)
+    authority = _authority_for_plan_path(plan_path)
+    claims_path = authority.claims_path
     claim_releases = []
     skipped_ids: list[str] = []
     try:
@@ -353,6 +399,7 @@ def skip_phase_cmd(
             force=force,
             claims_path=claims_path,
             claim_releases=claim_releases,
+            branch=authority.branch,
         )
     except PlanError as e:
         _die(str(e))
@@ -363,6 +410,7 @@ def skip_phase_cmd(
         f"vectl: skip phase {phase_id}",
         claim_releases,
         claims_path,
+        authority,
     )
     if skipped_ids:
         out.print(f"[dim]Skipped phase:[/] {phase_id} — {reason}")
@@ -438,8 +486,7 @@ def claim_many_cmd(
     Returns structured results for orchestrators when --json is passed.
     """
     from vectl.core.batch_claim import BatchClaimItem, BatchClaimRequest, claim_many
-    import json
-    
+
     p, def_h, plan_path = _load(plan)
     
     req_claims = []
@@ -466,21 +513,9 @@ def claim_many_cmd(
         
     req = BatchClaimRequest(claims=req_claims, guidance=guidance, force=force)
     
-    # We must mock os.environ temporarily to point plan_path specifically for claim_many
-    # wait, claim_many internally reads VECTL_PLAN_PATH from environment or uses default 
-    # instead of passing it as arg. Let's see: `claim_many` calls resolve_plan_path(None).
-    import os
-    o_env = os.environ.get("VECTL_PLAN_PATH")
-    os.environ["VECTL_PLAN_PATH"] = str(plan_path)
-    
-    try:
-        result = claim_many(req)
-    finally:
-        if o_env is not None:
-            os.environ["VECTL_PLAN_PATH"] = o_env
-        else:
-            os.environ.pop("VECTL_PLAN_PATH", None)
-            
+    authority = _authority_for_plan_path(plan_path)
+    result = claim_many(req, authority=authority)
+
     if is_json:
         import dataclasses
         from vectl.core.batch_claim import ClaimFailure

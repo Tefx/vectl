@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from vectl.cli_plan_common import *
+from vectl.cli_plan_common import (
+    _authority_for_plan_path,
+    _get_next_steps_with_phase,
+    out,
+)
 
 def next_cmd(
     detail: bool = typer.Option(False, "--detail", help="Show full descriptions inline."),
@@ -86,6 +93,7 @@ def status(
 ) -> None:
     """Show plan status overview."""
     p, _, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     if phase is not None:
         _show_phase_detail(p, phase)
@@ -93,7 +101,12 @@ def status(
         return
 
     # Check for claims.json vs plan.yaml mismatch
-    has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(p, plan_path)
+    has_mismatch, ghost_claims, stale_plan_claims, stale_entries = _check_claim_mismatch(
+        p,
+        authority.plan_path,
+        branch=authority.branch,
+        claims_path=authority.claims_path,
+    )
 
     # Overview: all phases
     out.print(_build_phase_overview_table(p).unwrap())
@@ -108,6 +121,8 @@ def status(
             out.print(f"  [dim]Ghost claims: {len(ghost_claims)}[/]")
         if stale_plan_claims:
             out.print(f"  [dim]Stale plan claims: {len(stale_plan_claims)}[/]")
+        if stale_entries:
+            out.print(f"  [dim]Stale claim entries: {len(stale_entries)}[/]")
         out.print("[dim]  → Run `vectl repair claims` to fix (safe, idempotent)[/]")
 
     out.print()
@@ -166,7 +181,14 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
 
 
 # @shell_complexity: step renderer preserves existing Rich layout across all step states and diagnostics.
-def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> None:
+def _show_step_detail(
+    p: Plan,
+    step_id: str,
+    plan_path: Path | None = None,
+    *,
+    branch: str | None = None,
+    claims_path: Path | None = None,
+) -> None:
     found = p.find_step(step_id)
     if not found:
         _die(f"Step '{_canonical_selector_error_target(step_id)}' not found.")
@@ -176,18 +198,22 @@ def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> N
     # B2: Check for mismatch for this specific step
     mismatch_info = ""
     if plan_path is not None and step.status == StepStatus.CLAIMED:
-        has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(p, plan_path)
+        has_mismatch, ghost_claims, stale_plan_claims, stale_entries = _check_claim_mismatch(
+            p, plan_path, branch=branch, claims_path=claims_path
+        )
         if has_mismatch:
             from vectl.claims import get_current_branch
 
-            branch = get_current_branch()
-            step_key = f"{branch}:{step_id}"
+            resolved_branch = branch if branch is not None else get_current_branch()
+            step_key = f"{resolved_branch}:{step_id}"
             if step_key in ghost_claims:
                 mismatch_info = (
                     "⚠ Claim exists in claims.json but step is not claimed in plan (ghost)"
                 )
             elif step_key not in ghost_claims and step_id in stale_plan_claims:
                 mismatch_info = "⚠ Step is claimed in plan but missing from claims.json"
+            elif step_key in stale_entries:
+                mismatch_info = "⚠ Claim entry owner or timestamp differs from plan.yaml"
 
     out.print(f"## Step: {step.name}", markup=False)
     out.print(f"**ID:** {step.id}", markup=False)
@@ -281,6 +307,7 @@ def show(
 ) -> None:
     """Show details for a step or phase."""
     p, _, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     # Try phase match
     ph = p.find_phase(target)
@@ -292,7 +319,13 @@ def show(
     # Try step match
     found = p.find_step(target)
     if found is not None:
-        _show_step_detail(p, target, plan_path=plan_path)
+        _show_step_detail(
+            p,
+            target,
+            plan_path=authority.plan_path,
+            branch=authority.branch,
+            claims_path=authority.claims_path,
+        )
         return
 
     canonical_target = _canonical_selector_error_target(target)

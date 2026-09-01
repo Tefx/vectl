@@ -21,7 +21,7 @@ from typing import Any, Literal
 
 from fastmcp import FastMCP
 from pydantic import BaseModel
-from returns.result import Result
+from returns.result import Result, Success
 
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
 from vectl.claims import get_current_branch, repair_claims
@@ -71,6 +71,7 @@ from vectl.io import (
     _resolve_git_dir,
     load_plan_definition,
     save_plan,
+    save_plan_with_receipt,
 )
 from vectl.lifecycle import (
     AffinityOverrideMetadata,
@@ -94,8 +95,9 @@ from vectl.models import (
     StepStatus,
 )
 from vectl.plan_path import (
+    PlanAuthority,
+    authority_for_plan_path,
     is_linked_worktree,
-    resolve_claims_path,
     resolve_plan_path,
 )
 from vectl.semantics import is_step_locked
@@ -122,27 +124,28 @@ _STEP_ICON = {
 
 
 def _plan_path() -> Result[Path, str]:
-    return resolve_plan_path()
+    return Success(resolve_plan_path())
 
 
-def _load() -> Result[tuple[Plan, str], str]:
-    """Load plan and definition hash from plan.yaml only.
-
-    Source: docs/ADR-unified-state.md migration posture.
-
-    Returns:
-        (plan, definition_hash)
-    """
-    plan_path = _plan_path()
-    return load_plan_definition(plan_path)
+def _authority() -> Result[PlanAuthority, str]:
+    """Resolve one immutable Plan authority for the current MCP request."""
+    return Success(authority_for_plan_path(_plan_path().unwrap(), target_commits=True))
 
 
+def _load(authority: PlanAuthority | None = None) -> Result[tuple[Plan, str], str]:
+    """Load plan and definition hash from one resolved Plan authority."""
+    target = authority or _authority().unwrap()
+    return load_plan_definition(target.plan_path)
+
+
+# @shell_complexity: project save reports CAS, backup, and partial Git durability together.
 def _save_plan(
     plan: Plan,
     expected_def_hash: str,
     commit_message: str,
     *,
     recalc_locks: bool = True,
+    authority: PlanAuthority | None = None,
 ) -> Result[str, str]:
     """Save plan.yaml with CAS semantics.
 
@@ -157,14 +160,15 @@ def _save_plan(
     if recalc_locks:
         changed = recalc_lock_status(plan)
 
-    plan_path = _plan_path()
+    target = authority or _authority().unwrap()
+    plan_path = target.plan_path
     try:
-        save_plan(
+        receipt = save_plan_with_receipt(
             plan,
             plan_path,
             expected_hash=expected_def_hash,
-            commit_message=commit_message,
-        )
+            commit_message=commit_message if target.commit_policy else None,
+        ).unwrap()
     except CASConflictError as err:
         raise PlanError(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
@@ -180,7 +184,19 @@ def _save_plan(
 
         logging.warning("Backup failed", exc_info=True)
 
-    return format_lock_changes(changed, plan)
+    lock_notice = format_lock_changes(changed, plan)
+    if receipt.git_attempted and not receipt.git_committed:
+        lock_notice = "\n".join(
+            filter(
+                None,
+                [
+                    lock_notice,
+                    "Plan persisted, but Git commit failed; run `git status` and commit "
+                    "plan.yaml.",
+                ],
+            )
+        )
+    return lock_notice
 
 
 # @shell_complexity: Step formatting preserves existing state, lock, expected-red, claim, and affinity display semantics.
@@ -328,8 +344,9 @@ def vectl_clipboard(
 # @shell_complexity: Clipboard write preserves load, validation, CAS, conflict, and lock-notice branches.
 def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> Result[str, str]:
     """Write to clipboard with CAS."""
+    authority = _authority().unwrap()
     try:
-        plan, expected_def_hash = _load()
+        plan, expected_def_hash = _load(authority)
     except PlanError as e:
         return f"**Error:** {e}"
 
@@ -343,6 +360,7 @@ def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> Resul
             plan,
             expected_def_hash,
             f"mcp: write clipboard by {author}",
+            authority=authority,
         )
     except PlanError as e:
         # CAS conflict - provide actionable message per RFC
@@ -369,8 +387,9 @@ def _clipboard_write(author: str, summary: str, content: str, ttl: int) -> Resul
 # @shell_complexity: Clipboard read preserves empty, expired, parse-error, and content rendering branches.
 def _clipboard_read() -> Result[str, str]:
     """Read clipboard (pure read, no CAS)."""
+    authority = _authority().unwrap()
     try:
-        plan, _ = _load()
+        plan, _ = _load(authority)
     except PlanError as e:
         return f"**Error:** {e}"
 
@@ -409,8 +428,9 @@ def _clipboard_read() -> Result[str, str]:
 # @shell_complexity: Clipboard clear preserves empty, CAS, conflict, and lock-notice branches.
 def _clipboard_clear() -> Result[str, str]:
     """Clear clipboard with CAS."""
+    authority = _authority().unwrap()
     try:
-        plan, expected_def_hash = _load()
+        plan, expected_def_hash = _load(authority)
     except PlanError as e:
         return f"**Error:** {e}"
 
@@ -424,6 +444,7 @@ def _clipboard_clear() -> Result[str, str]:
             plan,
             expected_def_hash,
             "mcp: clear clipboard",
+            authority=authority,
         )
     except PlanError as e:
         if "CAS conflict" in str(e):
@@ -530,7 +551,8 @@ def vectl_recover() -> Result[dict[str, Any], str]:
     """
     from vectl.core import apply_recovery, preview_recovery
 
-    plan_file = _plan_path()
+    authority = _authority().unwrap()
+    plan_file = authority.plan_path
 
     # Find backup path
     import sys
@@ -543,7 +565,7 @@ def vectl_recover() -> Result[dict[str, Any], str]:
             "ok": False,
             "restored": False,
             "diff_summary": "",
-            "error": "Not in a git repository or in a linked worktree",
+            "error": "Not in a git repository containing the resolved Plan",
         }
 
     backup_path = git_dir / "vectl" / "plan.yaml.bak"
@@ -571,17 +593,17 @@ def vectl_repair_claims(
     dry_run: bool = False, step_id: str | None = None
 ) -> Result[dict[str, Any], str]:
     """Repair claims store by deterministic reconciliation with plan state."""
-    plan, _ = _load()
-    plan_path = _plan_path()
-    claims_path = resolve_claims_path(plan_path)
+    authority = _authority().unwrap()
+    plan, _ = _load(authority)
 
     try:
         result = repair_claims(
             plan,
-            plan_path,
-            claims_path,
+            authority.plan_path,
+            authority.claims_path,
             dry_run=dry_run,
             step_id=step_id,
+            branch=authority.branch,
         )
     except PlanError as e:
         return {

@@ -5,7 +5,9 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 
 from __future__ import annotations
 
+from vectl.claims import claim_consistency
 from vectl.mcp_core_common import *
+from vectl.mcp_core_common import _authority
 
 # @shell_complexity: Status preserves summary, next-work, mine, and duplicate diagnostics without writes.
 def vectl_status(agent: str | None = None) -> Result[str, str]:
@@ -14,7 +16,8 @@ def vectl_status(agent: str | None = None) -> Result[str, str]:
     Args:
         agent: If provided, also show steps claimed by this agent.
     """
-    plan, _ = _load()
+    authority = _authority().unwrap()
+    plan, _ = _load(authority)
 
     parts: list[str] = [_fmt_phase_summary(plan)]
 
@@ -39,6 +42,19 @@ def vectl_status(agent: str | None = None) -> Result[str, str]:
                 parts.append(_fmt_step(plan, step, phase_id))
         else:
             parts.append(f"\n*No steps claimed by {agent}.*")
+
+    consistency = claim_consistency(
+        plan, authority.claims_path, authority.branch
+    ).unwrap()
+    if consistency.has_mismatch:
+        parts.append("\nℹ Stale claims detected (routine after agent restart):")
+        if consistency.ghost_claims:
+            parts.append(f"  Ghost claims: {len(consistency.ghost_claims)}")
+        if consistency.missing_claims:
+            parts.append(f"  Stale plan claims: {len(consistency.missing_claims)}")
+        if consistency.stale_entries:
+            parts.append(f"  Stale claim entries: {len(consistency.stale_entries)}")
+        parts.append("  → Run `vectl repair claims` to fix (safe, idempotent)")
 
     diag_lines = _duplicate_id_diagnostics_lines(plan)
     if diag_lines:
@@ -161,8 +177,9 @@ def vectl_search(
 # @shell_complexity: Validate preserves grouped error/warning Markdown output.
 def vectl_validate(check_refs: bool = False) -> Result[str, str]:
     """Validate Plan structure, lifecycle consistency, and optional refs."""
-    plan, _ = _load()
-    base_path = _plan_path().parent if check_refs else None
+    authority = _authority().unwrap()
+    plan, _ = _load(authority)
+    base_path = authority.plan_path.parent if check_refs else None
     issues = validate_plan(plan, check_refs=check_refs, base_path=base_path)
 
     parts: list[str] = ["## Validation"]

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 import yaml
-from returns.result import Result
+from returns.result import Result, Success
 
 from vectl.models import (
     CASConflictError,
@@ -75,6 +75,15 @@ class _PlanMutationReceipt:
     git_committed: bool
 
 
+@dataclass(frozen=True)
+class PlanSaveReceipt:
+    """Durability result for a regular Plan save after bytes are persisted."""
+
+    persisted_sha256: str
+    git_attempted: bool
+    git_committed: bool
+
+
 def _file_hash(path: Path) -> str | Result[str, str]:
     """Compute SHA-256 of file contents."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -112,20 +121,29 @@ def save_plan(
     expected_hash: str | None = None,
     commit_message: str | None = None,
 ) -> str | Result[str, str]:
-    """Save plan to YAML file atomically.
+    """Save plan to YAML file atomically and return its persisted hash."""
+    return save_plan_with_receipt(
+        plan, path, expected_hash=expected_hash, commit_message=commit_message
+    ).unwrap().persisted_sha256
 
-    If expected_hash is provided, performs CAS check.
-    Returns the new file hash.
-    """
+
+def save_plan_with_receipt(
+    plan: Plan,
+    path: Path | str,
+    expected_hash: str | None = None,
+    commit_message: str | None = None,
+) -> Result[PlanSaveReceipt, str]:
+    """Save Plan bytes and retain Git durability separately from persistence."""
     path = Path(path)
-
     with _locked_plan_file(path):
-        return _save_plan_locked(
+        receipt = _save_plan_locked(
             plan,
             path,
             expected_hash=expected_hash,
             commit_message=commit_message,
+            include_durability=True,
         )
+    return Success(cast(PlanSaveReceipt, receipt))
 
 
 @contextmanager
@@ -144,12 +162,15 @@ def _locked_plan_file(path: Path) -> Iterator[None]:
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
+# @shell_complexity: locked save preserves CAS, atomic persistence, and partial Git durability.
 def _save_plan_locked(
     plan: Plan,
     path: Path,
     expected_hash: str | None = None,
     commit_message: str | None = None,
-) -> str | Result[str, str]:
+    *,
+    include_durability: bool = False,
+) -> str | PlanSaveReceipt | Result[str, str]:
     """Save plan assuming caller already holds the plan-file lock."""
 
     # CAS check
@@ -167,9 +188,16 @@ def _save_plan_locked(
 
     new_hash = hashlib.sha256(content.encode()).hexdigest()
 
+    git_attempted = commit_message is not None
+    git_committed = False
     if commit_message is not None:
-        _git_commit_plan(path, commit_message)
-
+        git_committed = _git_commit_plan(path, commit_message) is True
+    if include_durability:
+        return PlanSaveReceipt(
+            persisted_sha256=new_hash,
+            git_attempted=git_attempted,
+            git_committed=git_committed,
+        )
     return new_hash
 
 
@@ -407,24 +435,38 @@ def _clean_dict(d: dict[str, Any]) -> dict[str, Any] | Result[dict[str, Any], st
     return result
 
 
+# @shell_complexity: Plan-root Git resolution handles subprocess and filesystem fallback states.
 def _resolve_git_dir(plan_path: Path) -> Path | None | Result[Path | None, str]:
-    """Resolve the .git directory for a plan file's parent directory.
+    """Resolve the Git directory for the worktree containing ``plan_path``.
 
-    Returns None if not in a git repo or if in a linked worktree.
+    The Plan target, rather than the process CWD, determines backup authority.
+    Linked callers therefore back up the integration Plan when resolution chose it.
     """
-    from vectl.plan_path import is_linked_worktree
+    plan_root = plan_path.parent.resolve()
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=str(plan_root),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        result = None
 
-    # Check if we're in a linked worktree - don't backup there
-    is_linked, _ = is_linked_worktree()
-    if is_linked:
-        return None
+    if result is not None and result.returncode == 0 and result.stdout.strip():
+        git_dir = Path(result.stdout.strip())
+        if not git_dir.is_absolute():
+            git_dir = plan_root / git_dir
+        return git_dir.resolve()
 
-    # Find .git directory
-    current = plan_path.parent.resolve()
+    current = plan_root
     while current != current.parent:
         git_dir = current / ".git"
-        if git_dir.exists() and git_dir.is_dir():
+        if git_dir.is_dir():
             return git_dir
+        if git_dir.is_file():
+            return None
         current = current.parent
     return None
 

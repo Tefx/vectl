@@ -126254,14 +126254,14 @@ phases:
       evidence compatibility classified. Repository/Plan/lifecycle read-only; no push.'
 - id: control-plane-correctness-0-9-0
   name: Vectl 0.9.0 Control-Plane Correctness
-  status: in_progress
+  status: done
   gate: Complete the single implementation transaction with source, behavioral tests,
     and contract documentation synchronized; require targeted regression, full pytest,
     Invar guard, and git diff checks.
   steps:
   - id: control-plane-correctness-0-9-0.implement-minimal-fixes
     name: Implement minimal control-plane correctness fixes
-    status: claimed
+    status: done
     description: 'Deliver: repair batch claim lost-update behavior by loading through
       the canonical Plan loader, binding save to the loaded SHA, using stored step
       IDs and identical claimed_at values in Plan/claims, and compensating CAS/save
@@ -126326,3 +126326,10 @@ phases:
     agent: general
     claimed_by: general
     claimed_at: '2026-09-01T08:48:23.920955Z'
+    done_at: '2026-09-01T09:05:32.946332+00:00'
+    evidence: 'Implemented the scoped 0.9.0 control-plane fixes: CAS-guarded canonical
+      batch claims with exact compensation and best-effort Git commit; Vectl-metadata
+      Plan locks; CLAIMED edit guard; strict persisted fields; pure status and explicit
+      skip/cancel claim release; optional MCP base-SHA precondition; and documentation
+      updates. Verification: `uv run pytest -q` -> 1389 passed, 15 skipped; `uv run
+      invar guard` -> passed with 0 errors; `git diff --check` -> passed.'

@@ -126333,3 +126333,23 @@ phases:
       skip/cancel claim release; optional MCP base-SHA precondition; and documentation
       updates. Verification: `uv run pytest -q` -> 1389 passed, 15 skipped; `uv run
       invar guard` -> passed with 0 errors; `git diff --check` -> passed.'
+- id: release-0-9-1
+  name: Vectl 0.9.1 Patch Release
+  status: pending
+  steps:
+  - id: release-0-9-1.bump-commit-install
+    name: Bump to 0.9.1, commit, and refresh local uvx
+    status: pending
+    description: Update package version to 0.9.1, verify the committed source, commit
+      the pending control-plane changes, then reinstall the local uv-managed vectl
+      tool and verify both vectl and uvx report 0.9.1.
+    verification: 'uv run pytest -q && uv run invar guard && git diff --check; after
+      commit: uv tool install --force --reinstall . and vectl --version and uvx --refresh
+      --from . vectl --version'
+    evidence_template: 'Version file: <path/change>
+
+      Commit: <sha/message>
+
+      Tests: <commands/results>
+
+      Local tool: <install command/version outputs>'

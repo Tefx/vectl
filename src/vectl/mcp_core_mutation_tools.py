@@ -14,7 +14,7 @@ from vectl.core.diagnostics import (
     normalize_model_validation_issues,
 )
 from vectl.mcp_core_common import *
-from vectl.mcp_core_common import _save_admitted_plan_receipt
+from vectl.mcp_core_common import _authority, _save_admitted_plan_receipt
 from vectl.mcp_mutation_contracts import (
     BATCH_FIELDS,
     BATCH_REQUIRED_FIELDS,

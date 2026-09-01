@@ -30,7 +30,7 @@ from watchfiles import Change, watch
 from vectl.cli_plan_common import _check_claim_mismatch, _load, out
 from vectl.duplicate_step_id_format import format_duplicate_step_id_diagnostics
 from vectl.models import Phase, PhaseStatus, Plan, StepStatus
-from vectl.plan_path import authority_for_plan_path, resolve_claims_path
+from vectl.plan_path import authority_for_plan_path
 from vectl.semantics import is_step_locked
 
 _TOP_DEBOUNCE_MS = 750

@@ -115,8 +115,12 @@ def claim_many(request: BatchClaimRequest, authority: Any = None) -> BatchClaimR
     >>> from vectl.plan_path import authority_for_plan_path
     >>> with tempfile.TemporaryDirectory() as tmp:
     ...     plan_path = Path(tmp) / 'plan.yaml'
-    ...     _ = plan_path.write_text(yaml.dump({'project': 'doctest', 'phases': [{'id': 'p', 'name': 'P', 'steps': [{'id': 's', 'name': 'S'}]}]}), encoding='utf-8')
-    ...     result = claim_many(BatchClaimRequest([BatchClaimItem('p.s', 'agent')]), authority_for_plan_path(plan_path))
+    ...     data = {'project': 'doctest', 'phases': [
+    ...         {'id': 'p', 'name': 'P', 'steps': [{'id': 's', 'name': 'S'}]}
+    ...     ]}
+    ...     _ = plan_path.write_text(yaml.dump(data), encoding='utf-8')
+    ...     request = BatchClaimRequest([BatchClaimItem('p.s', 'agent')])
+    ...     result = claim_many(request, authority_for_plan_path(plan_path))
     ...     outcome = (result.ok, len(result.claimed), len(result.failed))
     >>> outcome
     (True, 1, 0)
@@ -251,11 +255,19 @@ def claim_many(request: BatchClaimRequest, authority: Any = None) -> BatchClaimR
         lambda claims, guidance=False, force=False, authority=None: isinstance(claims, list)
         and isinstance(guidance, bool)
         and isinstance(force, bool)
-        and (authority is None or all(hasattr(authority, field) for field in ("plan_path", "claims_path", "branch"))),
+        and (
+            authority is None
+            or all(hasattr(authority, field) for field in ("plan_path", "claims_path", "branch"))
+        ),
         "type checks",
     )
 )
-@pre(Contract(lambda claims, guidance=False, force=False, authority=None: len(claims) > 0, "claims not empty"))
+@pre(
+    Contract(
+        lambda claims, guidance=False, force=False, authority=None: len(claims) > 0,
+        "claims not empty",
+    )
+)
 @post(
     Contract(
         lambda result: getattr(result, "ok", False) is True
@@ -264,7 +276,9 @@ def claim_many(request: BatchClaimRequest, authority: Any = None) -> BatchClaimR
     )
 )
 def claim_steps(
-    claims: List[Dict[str, str]], guidance: bool = False, force: bool = False,
+    claims: List[Dict[str, str]],
+    guidance: bool = False,
+    force: bool = False,
     authority: Any = None,
 ) -> BatchClaimResult:
     """Alternative signature taking dicts directly for claims.

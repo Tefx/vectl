@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from vectl.cli_plan_common import *
+from vectl.cli_plan_common import _authority_for_plan_path
+from vectl.plan_path import PlanAuthority
 
 
 def check_cmd(

@@ -6,6 +6,7 @@ import typer
 
 from vectl.cli_plan_common import *
 from vectl.cli_plan_common import (
+    _authority_for_plan_path,
     _print_admitted_plan_notice,
     _print_admitted_plan_receipt,
     _save_admitted_plan,

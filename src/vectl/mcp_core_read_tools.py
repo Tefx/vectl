@@ -5,7 +5,9 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 
 from __future__ import annotations
 
+from vectl.claims import claim_consistency
 from vectl.mcp_core_common import *
+from vectl.mcp_core_common import _authority
 
 # @shell_complexity: Status preserves summary, next-work, mine, and duplicate diagnostics without writes.
 def vectl_status(agent: str | None = None) -> Result[str, str]:

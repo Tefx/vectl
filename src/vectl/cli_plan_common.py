@@ -24,7 +24,6 @@ from rich.table import Table
 from rich.text import Text
 
 from vectl import __version__
-from vectl.claims import get_current_branch, repair_claims
 from vectl.core import (
     RecoverResult,
     add_phase,
@@ -521,7 +520,10 @@ PlanOption = typer.Option(
     None,
     "--plan",
     "-p",
-    help="Path to plan YAML file. Linked worktrees default to the main Plan; otherwise walk-up. (env: VECTL_PLAN_PATH)",
+    help=(
+        "Path to plan YAML file. Linked worktrees default to the main Plan; "
+        "otherwise walk-up. (env: VECTL_PLAN_PATH)"
+    ),
 )
 
 # B008-compliant singleton options (defined at module level to avoid function call in defaults)

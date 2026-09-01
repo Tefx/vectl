@@ -189,7 +189,9 @@ def _save_plan_locked(
     new_hash = hashlib.sha256(content.encode()).hexdigest()
 
     git_attempted = commit_message is not None
-    git_committed = _git_commit_plan(path, commit_message) is True if git_attempted else False
+    git_committed = False
+    if commit_message is not None:
+        git_committed = _git_commit_plan(path, commit_message) is True
     if include_durability:
         return PlanSaveReceipt(
             persisted_sha256=new_hash,

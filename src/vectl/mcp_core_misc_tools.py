@@ -8,6 +8,7 @@ from __future__ import annotations
 from returns.result import Success
 
 from vectl.mcp_core_common import *
+from vectl.mcp_core_common import _authority
 
 # @shell_complexity: Checklist tool preserves validation and detailed match diagnostics in one public surface.
 def vectl_check(
@@ -72,7 +73,7 @@ def vectl_check(
             expected_def_hash,
             f"mcp: update checklist {step_id}",
             authority=authority,
-        )
+        ).unwrap()
     except NoMatchError as e:
         return f"**Error:** No checklist item matches keyword '{e.keyword}'."
     except AmbiguousMatchError as e:
@@ -166,7 +167,7 @@ def _vectl_check_deterministic(
             expected_def_hash,
             f"mcp: deterministic checklist {step_id}",
             authority=authority,
-        )
+        ).unwrap()
         payload["markdown"] = f"**Updated checklist:** {step_id}"
         payload["Updated checklist"] = True
         if lock_notice:

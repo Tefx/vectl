@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vectl.cli_plan_common import *
-from vectl.cli_plan_common import _save_plan
+from vectl.cli_plan_common import _authority_for_plan_path, _save_plan
 from vectl.cli_plan_read_commands import _show_step_detail
 from vectl.lifecycle import release_claim_records, rollback_claim_record
 
@@ -486,8 +486,7 @@ def claim_many_cmd(
     Returns structured results for orchestrators when --json is passed.
     """
     from vectl.core.batch_claim import BatchClaimItem, BatchClaimRequest, claim_many
-    import json
-    
+
     p, def_h, plan_path = _load(plan)
     
     req_claims = []

@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from vectl.cli_plan_common import *
+from vectl.cli_plan_common import (
+    _authority_for_plan_path,
+    _get_next_steps_with_phase,
+    out,
+)
 
 def next_cmd(
     detail: bool = typer.Option(False, "--detail", help="Show full descriptions inline."),

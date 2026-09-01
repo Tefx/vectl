@@ -23,7 +23,10 @@ PlanOption = typer.Option(
     None,
     "--plan",
     "-p",
-    help="Path to plan YAML file. Linked worktrees default to the main Plan; otherwise walk-up. (env: VECTL_PLAN_PATH)",
+    help=(
+        "Path to plan YAML file. Linked worktrees default to the main Plan; "
+        "otherwise walk-up. (env: VECTL_PLAN_PATH)"
+    ),
 )
 RenderOutputOption = typer.Option(None, "--output", "-o", help="Write to file instead of stdout.")
 

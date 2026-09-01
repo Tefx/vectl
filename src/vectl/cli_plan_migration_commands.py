@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from vectl.cli_plan_common import *
+from vectl.cli_plan_common import _authority_for_plan_path
 
 def migrate_cmd(
     plan: Path | None = PlanOption,

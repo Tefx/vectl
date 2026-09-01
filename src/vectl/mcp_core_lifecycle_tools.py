@@ -5,11 +5,14 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 
 from __future__ import annotations
 
-from typing import cast
-
-from vectl.lifecycle import release_claim_records, rollback_claim_record
+from vectl.lifecycle import (
+    AffinityOverrideMetadata,
+    AffinityWarningMetadata,
+    release_claim_records,
+    rollback_claim_record,
+)
 from vectl.mcp_core_common import *
-from vectl.mcp_core_common import _save_plan
+from vectl.mcp_core_common import _authority, _save_plan
 
 class ClaimStepData(BaseModel):
     """Claimed step summary.
@@ -90,15 +93,12 @@ def vectl_claim(
             branch=authority.branch,
         )
         try:
-            lock_notice = cast(
-                str,
-                _save_plan(
-                    plan,
-                    expected_def_hash,
-                    f"mcp: claim step {step_id} by {agent}",
-                    authority=authority,
-                ),
-            )
+            lock_notice = _save_plan(
+                plan,
+                expected_def_hash,
+                f"mcp: claim step {step_id} by {agent}",
+                authority=authority,
+            ).unwrap()
         except Exception:
             rollback_claim_record(result, claims_path)
             raise
@@ -291,7 +291,7 @@ def vectl_complete(step_id: str, evidence: str) -> Result[str, str]:
             expected_def_hash,
             f"mcp: complete step {step_id}",
             authority=authority,
-        )
+        ).unwrap()
     except PlanError as e:
         return f"**Error:** {e}"
     release_claim_records(claim_releases, claims_path)
@@ -367,7 +367,7 @@ def vectl_lifecycle(
                 expected_def_hash,
                 f"mcp: defer step {target}",
                 authority=authority,
-            )
+            ).unwrap()
         elif action == "reject":
             if not reason:
                 return "**Error:** reason is required for reject."
@@ -378,7 +378,7 @@ def vectl_lifecycle(
                 expected_def_hash,
                 f"mcp: reject step {target}",
                 authority=authority,
-            )
+            ).unwrap()
         elif action == "skip":
             if not reason:
                 return (
@@ -399,7 +399,7 @@ def vectl_lifecycle(
                 expected_def_hash,
                 f"mcp: skip step {target}",
                 authority=authority,
-            )
+            ).unwrap()
         elif action == "skip-phase":
             if not reason:
                 return "**Error:** reason is required for skip-phase."
@@ -420,7 +420,7 @@ def vectl_lifecycle(
                 expected_def_hash,
                 f"mcp: skip phase {target}",
                 authority=authority,
-            )
+            ).unwrap()
         elif action == "complete-phase":
             if not evidence:
                 return "**Error:** evidence is required for complete-phase."
@@ -433,7 +433,7 @@ def vectl_lifecycle(
                 expected_def_hash,
                 f"mcp: complete phase {target}",
                 authority=authority,
-            )
+            ).unwrap()
         else:
             return (
                 f"**Error:** Unknown action '{action}'. Use: defer, reject, skip, "

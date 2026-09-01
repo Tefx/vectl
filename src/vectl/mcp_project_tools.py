@@ -98,7 +98,6 @@ from vectl.plan_path import (
     PlanAuthority,
     authority_for_plan_path,
     is_linked_worktree,
-    resolve_claims_path,
     resolve_plan_path,
 )
 from vectl.semantics import is_step_locked
@@ -125,12 +124,12 @@ _STEP_ICON = {
 
 
 def _plan_path() -> Result[Path, str]:
-    return resolve_plan_path()
+    return Success(resolve_plan_path())
 
 
 def _authority() -> Result[PlanAuthority, str]:
     """Resolve one immutable Plan authority for the current MCP request."""
-    return Success(authority_for_plan_path(_plan_path(), target_commits=True))
+    return Success(authority_for_plan_path(_plan_path().unwrap(), target_commits=True))
 
 
 def _load(authority: PlanAuthority | None = None) -> Result[tuple[Plan, str], str]:
@@ -188,7 +187,14 @@ def _save_plan(
     lock_notice = format_lock_changes(changed, plan)
     if receipt.git_attempted and not receipt.git_committed:
         lock_notice = "\n".join(
-            filter(None, [lock_notice, "Plan persisted, but Git commit failed; run `git status` and commit plan.yaml."])
+            filter(
+                None,
+                [
+                    lock_notice,
+                    "Plan persisted, but Git commit failed; run `git status` and commit "
+                    "plan.yaml.",
+                ],
+            )
         )
     return lock_notice
 

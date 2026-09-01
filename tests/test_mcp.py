@@ -21,7 +21,6 @@ import yaml
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
-from vectl.claims import get_current_branch as _claims_current_branch
 from vectl.claims import ClaimEntry, load_claims, repair_claims, save_claims
 from vectl.io import load_plan_definition, save_plan
 from vectl.mcp_server import (

@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from returns.result import Result, Success
 
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
-from vectl.claims import claim_consistency, get_current_branch, repair_claims
+from vectl.claims import get_current_branch, repair_claims
 from vectl.core import (
     _SENTINEL,
     AgentsTarget,
@@ -132,13 +132,13 @@ def _plan_path() -> Result[Path, str]:
     root_mcp = sys.modules.get("vectl.mcp_core_tools")
     patched = getattr(root_mcp, "resolve_plan_path", resolve_plan_path)
     if patched is not resolve_plan_path:
-        return patched()
-    return resolve_plan_path()
+        return Success(cast(Path, patched()))
+    return Success(resolve_plan_path())
 
 
 def _authority() -> Result[PlanAuthority, str]:
     """Resolve one immutable Plan authority for the current MCP request."""
-    return Success(authority_for_plan_path(_plan_path(), target_commits=True))
+    return Success(authority_for_plan_path(_plan_path().unwrap(), target_commits=True))
 
 
 def _load(authority: PlanAuthority | None = None) -> Result[tuple[Plan, str], str]:
@@ -197,7 +197,7 @@ def _save_plan_receipt(
                 ],
             )
         )
-    return new_plan_hash, lock_notice
+    return Success((new_plan_hash, lock_notice))
 
 
 def _save_plan(
@@ -215,8 +215,8 @@ def _save_plan(
         commit_message,
         recalc_locks=recalc_locks,
         authority=authority,
-    )
-    return lock_notice
+    ).unwrap()
+    return Success(lock_notice)
 
 
 # @shell_complexity: Preserves transaction diagnostics, receipt validation, and lock notices.

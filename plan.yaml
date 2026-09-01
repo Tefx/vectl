@@ -126473,7 +126473,7 @@ phases:
   steps:
   - id: release-0-9-2.bump-and-commit
     name: Bump and commit Vectl 0.9.2
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -126538,6 +126538,20 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-09-01T20:39:24.518885Z'
+    done_at: '2026-09-01T20:45:40.999321+00:00'
+    evidence: 'Integrated release commit c5c5dea773e770540b6acc32c41b4822eb24fdb4
+      by fast-forward from basis 1a59c5228baa0f48a47b2f73a482d3854b259ff4. Exact changed-file
+      list: pyproject.toml and uv.lock only; plan.yaml excluded. The pre-existing
+      ignored local uv.lock was preserved at /tmp/vectl-uv.lock.pre-0.9.2.68508 (SHA-256
+      43ef5e6c8f11d5e25b2d975387d130ba07979d532c51c9eae1421cf581856730) before the
+      reviewed tracked lock replaced it; direct diff showed its only content delta
+      from the integrated lock was root package version 0.9.1→0.9.2. Fresh exact-target
+      checks: `uv lock --offline` exit 0 (123 packages); `uv sync --frozen --group
+      dev` exit 0 (118 packages checked); package metadata probe printed 0.9.2; `uv
+      run --frozen --group dev vectl --version` printed `vectl 0.9.2`; `pytest -q
+      tests/test_cli.py::TestVersion` exit 0 (2 passed); `git diff --check` exit 0;
+      changed-file assertion passed; final candidate and integration tracked status
+      clean. No publish, push, tag, or local-tool update occurred in this transaction.'
   - id: release-0-9-2.refresh-local-uv-tool
     name: Refresh the local uv-installed Vectl tool
     status: pending

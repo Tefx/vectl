@@ -105,15 +105,16 @@ def repair_claims_cmd(
     """Repair claims.json consistency against plan.yaml (current branch scope)."""
 
     p, _, plan_path = _load(plan)
-    claims_path = resolve_claims_path(plan_path)
+    authority = _authority_for_plan_path(plan_path)
 
     try:
         result = repair_claims(
             p,
-            plan_path,
-            claims_path,
+            authority.plan_path,
+            authority.claims_path,
             dry_run=dry_run,
             step_id=step,
+            branch=authority.branch,
         )
     except PlanError as e:
         _die(str(e))

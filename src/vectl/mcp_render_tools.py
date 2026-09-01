@@ -24,7 +24,7 @@ from typing import Any
 
 from fastmcp import FastMCP
 from pydantic import BaseModel
-from returns.result import Result
+from returns.result import Result, Success
 
 from vectl.claim_guidance import GuidancePayload, build_claim_guidance
 from vectl.claims import get_current_branch, repair_claims
@@ -111,6 +111,8 @@ from vectl.models import (
     StepStatus,
 )
 from vectl.plan_path import (
+    PlanAuthority,
+    authority_for_plan_path,
     is_linked_worktree,
     resolve_claims_path,
     resolve_plan_path,
@@ -141,16 +143,15 @@ def _plan_path() -> Result[Path, str]:
     return resolve_plan_path()
 
 
-def _load() -> Result[tuple[Plan, str], str]:
-    """Load plan and definition hash from plan.yaml only.
+def _authority() -> Result[PlanAuthority, str]:
+    """Resolve one immutable Plan authority for the current MCP request."""
+    return Success(authority_for_plan_path(_plan_path()))
 
-    Source: docs/ADR-unified-state.md migration posture.
 
-    Returns:
-        (plan, definition_hash)
-    """
-    plan_path = _plan_path()
-    return load_plan_definition(plan_path)
+def _load(authority: PlanAuthority | None = None) -> Result[tuple[Plan, str], str]:
+    """Load plan and definition hash from one resolved Plan authority."""
+    target = authority or _authority().unwrap()
+    return load_plan_definition(target.plan_path)
 
 
 def _save_plan(
@@ -392,7 +393,8 @@ def vectl_review(
     selected_scope = scope
     issue_bound = max_issues
 
-    plan, _ = _load()
+    authority = _authority().unwrap()
+    plan, _ = _load(authority)
     try:
         selected_phase_ids = review_phase_ids(plan, selected_scope, phase_id)
         selected_step_keys = review_step_keys(plan, selected_scope, phase_id)
@@ -409,7 +411,7 @@ def vectl_review(
         else scoped_review_plan(plan, selected_phase_ids, selected_step_keys)
     )
     validation_target = review_validation_plan(plan, selected_scope, phase_id)
-    base_path = _plan_path().parent if check_refs else None
+    base_path = authority.plan_path.parent if check_refs else None
     if selected_scope == "global":
         result = review_plan(
             plan,

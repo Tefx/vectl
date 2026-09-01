@@ -41,6 +41,15 @@ class _WorktreeProbe:
     malformed: bool
 
 
+@dataclass(frozen=True)
+class PlanAuthority:
+    """Immutable Plan, claims, and branch target for one invocation."""
+
+    plan_path: Path
+    claims_path: Path
+    branch: str
+
+
 def _normalize_git_path(raw: str, cwd: Path):
     """Normalize git path output to an absolute path.
 
@@ -207,3 +216,62 @@ def resolve_claims_path(plan_path: Path | None = None) -> Path:
         return git_common_dir / "vectl" / "claims.json"
 
     return plan_path.parent / ".vectl" / "claims.json"
+
+
+# @shell:entry - direct Git probe retained for compatibility authority construction.
+def _git_branch(cwd: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True, text=True, cwd=cwd,
+        )
+    except OSError:
+        return None
+    return result.stdout.strip() if result.returncode == 0 and result.stdout.strip() else None
+
+
+# @shell:entry - authority helper pins Git probes to the Plan worktree.
+# @shell_orchestration: authority resolution avoids ambient CWD state.
+def _branch_for_plan(plan_path: Path) -> str:
+    """Return the branch checked out by the worktree containing ``plan_path``."""
+    if not plan_path.exists():
+        return "unknown"
+    # Non-Git Plan files retain legacy process-branch behavior captured once.
+    return _git_branch(plan_path.parent) or _git_branch(Path.cwd()) or "unknown"
+
+
+# @shell:entry - compatibility facade serves legacy CLI and MCP helpers.
+# @shell_orchestration: command/request boundary captures authority before lifecycle work.
+def authority_for_plan_path(plan_path: Path) -> PlanAuthority:
+    """Build authority from a resolved Plan path without consulting ambient CWD."""
+    canonical_plan_path = plan_path.resolve(strict=False)
+    return PlanAuthority(
+        plan_path=canonical_plan_path,
+        claims_path=resolve_claims_path(canonical_plan_path),
+        branch=_branch_for_plan(canonical_plan_path),
+    )
+
+
+# @shell:entry - command boundary resolves the legacy direct authority value once.
+# @shell_orchestration: command/request boundary fixes all related targets.
+def resolve_plan_authority(explicit: Path | None = None) -> PlanAuthority:
+    """Resolve immutable authority for one CLI command or MCP request."""
+    return authority_for_plan_path(resolve_plan_path(explicit))
+
+
+# @shell:entry - compatibility helper returns a direct optional common directory.
+# @shell_orchestration: CLI autosave compares repository identity, never CWD identity.
+def resolve_git_common_dir(path: Path) -> Path | None:
+    """Resolve a worktree's common Git directory, if available."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            cwd=path,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    return _normalize_git_path(result.stdout, path)

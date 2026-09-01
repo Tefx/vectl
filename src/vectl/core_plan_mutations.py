@@ -62,6 +62,7 @@ def claim_step(
     *,
     force: bool = False,
     claims_path: Path | None = None,
+    branch: str | None = None,
 ) -> tuple[Plan, _lifecycle.ClaimResult]:
     from vectl import lifecycle as _lifecycle
 
@@ -72,6 +73,7 @@ def claim_step(
         agent_name,
         force=force,
         claims_path=claims_path,
+        branch=branch,
     )
 
 
@@ -105,6 +107,7 @@ def complete_step(
     evidence: str,
     claims_path: Path | None = None,
     claim_releases: list[ClaimStoreToken] | None = None,
+    branch: str | None = None,
 ) -> Plan:
     from vectl import lifecycle as _lifecycle
 
@@ -115,6 +118,7 @@ def complete_step(
         evidence,
         claims_path=claims_path,
         claim_releases=claim_releases,
+        branch=branch,
     )
 
 
@@ -129,6 +133,7 @@ def defer_step(
     step_id: str,
     claims_path: Path | None = None,
     claim_releases: list[ClaimStoreToken] | None = None,
+    branch: str | None = None,
 ) -> Plan:
     from vectl import lifecycle as _lifecycle
 
@@ -138,6 +143,7 @@ def defer_step(
         step_id,
         claims_path=claims_path,
         claim_releases=claim_releases,
+        branch=branch,
     )
 
 
@@ -154,6 +160,7 @@ def skip_step(
     reason: str,
     claims_path: Path | None = None,
     claim_releases: list[ClaimStoreToken] | None = None,
+    branch: str | None = None,
 ) -> Plan:
     from vectl import lifecycle as _lifecycle
 
@@ -164,6 +171,7 @@ def skip_step(
         reason,
         claims_path=claims_path,
         claim_releases=claim_releases,
+        branch=branch,
     )
 
 
@@ -174,6 +182,7 @@ def skip_phase(
     force: bool = False,
     claims_path: Path | None = None,
     claim_releases: list[ClaimStoreToken] | None = None,
+    branch: str | None = None,
 ) -> tuple[Plan, list[str]]:
     from vectl import lifecycle as _lifecycle
 
@@ -184,6 +193,7 @@ def skip_phase(
         force=force,
         claims_path=claims_path,
         claim_releases=claim_releases,
+        branch=branch,
     )
 
 

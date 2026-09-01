@@ -19,7 +19,7 @@ PlanOption = typer.Option(
     None,
     "--plan",
     "-p",
-    help="Path to plan YAML file. Defaults to auto-discovery (walk-up). (env: VECTL_PLAN_PATH)",
+    help="Path to plan YAML file. Linked worktrees default to the main Plan; otherwise walk-up. (env: VECTL_PLAN_PATH)",
 )
 AgentsMdDirOption = typer.Option(
     Path("."),

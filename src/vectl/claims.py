@@ -547,6 +547,7 @@ def repair_claims(
     *,
     dry_run: bool = False,
     step_id: str | None = None,
+    branch: str | None = None,
 ):
     """Reconcile claims.json against plan.yaml for current branch.
 
@@ -561,7 +562,7 @@ def repair_claims(
 
     policy = _repair_policy_text()
 
-    branch = get_current_branch()
+    branch = branch if branch is not None else get_current_branch()
     missing_file = not claims_path.exists()
     desired_for_branch = _desired_claims_for_branch(plan, branch)
 

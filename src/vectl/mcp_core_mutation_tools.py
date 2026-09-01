@@ -2,14 +2,12 @@
 
 Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 """
-
 from __future__ import annotations
 # Compatibility wildcard imports expose the shared mutation slice symbols.
 # ruff: noqa: F403, F405
 import json
 import re
 from typing import cast
-
 from pydantic import ValidationError
 
 from vectl.core.diagnostics import (
@@ -28,7 +26,6 @@ from vectl.mcp_mutation_contracts import (
     BatchMutationRequest,
     MutationAction,
 )
-
 # ---------------------------------------------------------------------------
 # vectl_mutate
 # ---------------------------------------------------------------------------
@@ -579,6 +576,7 @@ def vectl_mutate(
     if guard_error:
         return guard_error
 
+    authority = _authority().unwrap()
     plan, expected_def_hash = _load()
     current_base_sha256 = f"sha256:{expected_def_hash}"
     if expected_base_sha256 is not None and expected_base_sha256 != current_base_sha256:
@@ -653,6 +651,7 @@ def vectl_mutate(
                     expected_def_hash,
                     f"mcp: mutate batch ({len(normalized_requests)} requests)",
                     recalc_locks=False,
+                    authority=authority,
                 ),
             )
             plan_hash = str(receipt_payload["persisted_sha256"]).removeprefix("sha256:")
@@ -665,6 +664,7 @@ def vectl_mutate(
                     expected_def_hash,
                     f"mcp: mutate {action} {commit_target}",
                     recalc_locks=False,
+                    authority=authority,
                 ),
             )
             if not lock_notice:

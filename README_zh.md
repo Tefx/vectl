@@ -47,6 +47,12 @@ Agent 框架管 agent 怎么想。vectl 管 **agent 看到什么、什么时候�
 
 `refs` 是辅助上下文。Vectl 会持久化引用；`validate --check-refs` 可能报告警告，但引用不会阻止领取步骤或修改 Plan。
 
+## Git linked worktree
+
+在 linked worktree 中启动且未显式指定 Plan 的 CLI 命令或 MCP 请求，会使用主 worktree 的 `plan.yaml`。Vectl 在操作开始时固定该 Plan 路径、共享 claims 路径和主 worktree 分支；claim、complete/defer/skip 清理、诊断、repair、重复 ID 迁移、批量 claim、Git commit 和备份都使用这一组目标。
+
+只有需要操作另一个 Plan 时才使用 `--plan` 或 `VECTL_PLAN_PATH`。CLI 指向另一 Git 仓库的 Plan 时只写入该 Plan，不会在调用方仓库自动创建 commit。MCP 的 commit 仍属于其解析出的目标 Plan 仓库。
+
 ## 快速开始
 
 ### 1. 初始化

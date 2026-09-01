@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from invar_runtime import Contract, post, pre
 
@@ -89,8 +89,15 @@ def _success_markdown(claimed: list[BatchClaimItem]) -> str:
 
 
 # @invar:allow shell_boundary: batch claim contract is a public core facade over plan/claims persistence.
-@pre(Contract(lambda request: isinstance(request.claims, list), "claims is list"))
-@pre(Contract(lambda request: len(request.claims) > 0, "claims not empty"))
+@pre(Contract(lambda request, authority=None: isinstance(request.claims, list), "claims is list"))
+@pre(Contract(lambda request, authority=None: len(request.claims) > 0, "claims not empty"))
+@pre(
+    Contract(
+        lambda request, authority=None: authority is None
+        or all(hasattr(authority, field) for field in ("plan_path", "claims_path", "branch")),
+        "authority provides Plan, claims, and branch targets",
+    )
+)
 @post(
     Contract(
         lambda result: getattr(result, "ok", False) is True
@@ -98,21 +105,19 @@ def _success_markdown(claimed: list[BatchClaimItem]) -> str:
         "result logic",
     )
 )
-def claim_many(request: BatchClaimRequest) -> BatchClaimResult:
+def claim_many(request: BatchClaimRequest, authority: Any = None) -> BatchClaimResult:
     """Explicit atomic batch claim operation.
 
     Must not accept `count`, auto-select steps, or embed dispatch policy.
 
-    >>> import os, tempfile, yaml
+    >>> import tempfile, yaml
+    >>> from pathlib import Path
+    >>> from vectl.plan_path import authority_for_plan_path
     >>> with tempfile.TemporaryDirectory() as tmp:
-    ...     plan_path = os.path.join(tmp, 'plan.yaml')
-    ...     _ = open(plan_path, 'w', encoding='utf-8').write(yaml.dump({'project': 'doctest', 'phases': [{'id': 'p', 'name': 'P', 'steps': [{'id': 's', 'name': 'S'}]}]}))
-    ...     old = os.environ.get('VECTL_PLAN_PATH')
-    ...     os.environ['VECTL_PLAN_PATH'] = plan_path
-    ...     result = claim_many(BatchClaimRequest([BatchClaimItem('p.s', 'agent')]))
+    ...     plan_path = Path(tmp) / 'plan.yaml'
+    ...     _ = plan_path.write_text(yaml.dump({'project': 'doctest', 'phases': [{'id': 'p', 'name': 'P', 'steps': [{'id': 's', 'name': 'S'}]}]}), encoding='utf-8')
+    ...     result = claim_many(BatchClaimRequest([BatchClaimItem('p.s', 'agent')]), authority_for_plan_path(plan_path))
     ...     outcome = (result.ok, len(result.claimed), len(result.failed))
-    ...     if old is None: _ = os.environ.pop('VECTL_PLAN_PATH', None)
-    ...     else: os.environ['VECTL_PLAN_PATH'] = old
     >>> outcome
     (True, 1, 0)
     """
@@ -131,9 +136,10 @@ def claim_many(request: BatchClaimRequest) -> BatchClaimResult:
     from vectl import claims as claims_api
     from vectl import core_plan_mutations
     from vectl.models import AffinityError, PlanError
-    from vectl.plan_path import resolve_plan_path
+    from vectl.plan_path import resolve_plan_authority
 
-    plan_path = resolve_plan_path(None)
+    authority = authority or resolve_plan_authority()
+    plan_path = authority.plan_path
     plan, base_hash = vectl_io.load_plan_definition(plan_path)
     working_plan = plan.model_copy(deep=True)
 
@@ -181,8 +187,8 @@ def claim_many(request: BatchClaimRequest) -> BatchClaimResult:
             lock_notice=None,
         )
 
-    branch = claims_api.get_current_branch()
-    claims_path = claims_api.resolve_claims_path(plan_path)
+    branch = authority.branch
+    claims_path = authority.claims_path
     acquired_entries = [
         claims_api.ClaimEntry(
             step_id=entry.step_id,
@@ -221,17 +227,11 @@ def claim_many(request: BatchClaimRequest) -> BatchClaimResult:
         )
     except Exception:
         try:
-            expected_by_key = {
-                f"{entry.branch}:{entry.step_id}": entry for entry in acquired_entries
-            }
-            with claims_api._locked_claims_file(claims_path):
-                claims = claims_api._read_claims_file(claims_path)
-                if all(claims.get(key) == entry for key, entry in expected_by_key.items()):
-                    for key in expected_by_key:
-                        claims.pop(key)
-                    claims_api._write_claims_file(claims_path, claims)
-                else:
-                    _logger.warning("Batch claim compensation skipped because claims no longer match")
+            released = claims_api.release_claim_entries_if_matches(
+                acquired_entries, claims_path
+            ).unwrap()
+            if released != len(acquired_entries):
+                _logger.warning("Batch claim compensation preserved replacement claims")
         except Exception:
             _logger.exception("Batch claim compensation failed")
         raise
@@ -248,13 +248,14 @@ def claim_many(request: BatchClaimRequest) -> BatchClaimResult:
 
 @pre(
     Contract(
-        lambda claims, guidance=False, force=False: isinstance(claims, list)
+        lambda claims, guidance=False, force=False, authority=None: isinstance(claims, list)
         and isinstance(guidance, bool)
-        and isinstance(force, bool),
+        and isinstance(force, bool)
+        and (authority is None or all(hasattr(authority, field) for field in ("plan_path", "claims_path", "branch"))),
         "type checks",
     )
 )
-@pre(Contract(lambda claims, guidance=False, force=False: len(claims) > 0, "claims not empty"))
+@pre(Contract(lambda claims, guidance=False, force=False, authority=None: len(claims) > 0, "claims not empty"))
 @post(
     Contract(
         lambda result: getattr(result, "ok", False) is True
@@ -263,7 +264,8 @@ def claim_many(request: BatchClaimRequest) -> BatchClaimResult:
     )
 )
 def claim_steps(
-    claims: List[Dict[str, str]], guidance: bool = False, force: bool = False
+    claims: List[Dict[str, str]], guidance: bool = False, force: bool = False,
+    authority: Any = None,
 ) -> BatchClaimResult:
     """Alternative signature taking dicts directly for claims.
 
@@ -281,4 +283,6 @@ def claim_steps(
     (True, 'p.s')
     """
     items = [BatchClaimItem(step_id=c["step_id"], agent=c["agent"]) for c in claims]
-    return claim_many(BatchClaimRequest(claims=items, guidance=guidance, force=force))
+    return claim_many(
+        BatchClaimRequest(claims=items, guidance=guidance, force=force), authority=authority
+    )

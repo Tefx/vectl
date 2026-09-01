@@ -3,8 +3,6 @@
 Extracted from ``vectl.core`` to reduce module size and isolate state
 transition operations.
 """
-
-
 from __future__ import annotations
 
 import logging
@@ -42,7 +40,6 @@ from vectl.models import (
 Path: TypeAlias = Any
 
 _logger = logging.getLogger(__name__)
-
 def get_claimed_steps(plan: Plan, agent: str | None = None) -> list[tuple[str, Step]]:
     """Get all currently claimed steps, optionally filtered by agent.
 
@@ -71,6 +68,7 @@ def claim_step(
     *,
     force: bool = False,
     claims_path: Path | None = None,
+    branch: str | None = None,
 ) -> tuple[Plan, ClaimResult]:
     """Claim a step for work.
 
@@ -126,6 +124,7 @@ def claim_step(
             agent_name=agent_name,
             claimed_at=claimed_at,
             claims_path=claims_path,
+            branch=branch,
         )
 
     step.status = StepStatus.CLAIMED
@@ -136,7 +135,6 @@ def claim_step(
         phase.status = PhaseStatus.IN_PROGRESS
 
     return plan, result
-
 
 def _apply_claim_affinity(
     *,
@@ -185,16 +183,16 @@ def _apply_claim_affinity(
         message=result.warning_message,
     )
 
-
 def _acquire_claim_record(
     *,
     step_id: str,
     agent_name: str,
     claimed_at: str,
     claims_path: Path,
+    branch: str | None = None,
 ) -> ClaimStoreToken:
     acquire_claim, cleanup_stale_claims, get_current_branch, _, get_claim_info = _claims_api()
-    branch = get_current_branch()
+    branch = branch if branch is not None else get_current_branch()
     existing = get_claim_info(step_id, branch, claims_path)
     if existing is not None:
         raise ClaimConflictError(
@@ -219,8 +217,6 @@ def _acquire_claim_record(
         agent=agent_name,
         claimed_at=claimed_at,
     )
-
-
 def rollback_claim_record(result: ClaimResult, claims_path: Path) -> bool:
     """Compensate a failed plan save without deleting a replacement claim."""
     token = result.claim_store_token
@@ -272,7 +268,8 @@ def release_claim_records(tokens: list[ClaimStoreToken], claims_path: Path) -> i
 
 
 def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | None = None,
-                  claim_releases: list[ClaimStoreToken] | None = None) -> Plan:
+                  claim_releases: list[ClaimStoreToken] | None = None,
+                  branch: str | None = None) -> Plan:
     """Mark a step as done with evidence."""
     found = plan.find_step(step_id)
     if found is None:
@@ -286,7 +283,9 @@ def complete_step(plan: Plan, step_id: str, evidence: str, claims_path: Path | N
             "must be claimed first)"
         )
 
-    token = _claim_release_token_if_needed(step, claims_path, action="completing")
+    token = _claim_release_token_if_needed(
+        step, claims_path, action="completing", branch=branch
+    )
     _queue_claim_release(token, claims_path, claim_releases)
 
     step.status = StepStatus.DONE
@@ -352,7 +351,8 @@ def complete_phase(plan: Plan, phase_id: str, evidence: str) -> tuple[Plan, list
 
 
 def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None,
-               claim_releases: list[ClaimStoreToken] | None = None) -> Plan:
+               claim_releases: list[ClaimStoreToken] | None = None,
+               branch: str | None = None) -> Plan:
     """Return a claimed step to pending."""
     found = plan.find_step(step_id)
     if found is None:
@@ -363,7 +363,9 @@ def defer_step(plan: Plan, step_id: str, claims_path: Path | None = None,
     if step.status != StepStatus.CLAIMED:
         raise PlanError(f"Step '{qualified_id}' cannot be deferred (status: {step.status.value})")
 
-    token = _claim_release_token_if_needed(step, claims_path, action="deferring")
+    token = _claim_release_token_if_needed(
+        step, claims_path, action="deferring", branch=branch
+    )
     _queue_claim_release(token, claims_path, claim_releases)
 
     step.status = StepStatus.PENDING
@@ -403,7 +405,8 @@ def reject_step(plan: Plan, step_id: str, reason: str, reviewer: str = "") -> Pl
 
 
 def skip_step(plan: Plan, step_id: str, reason: str, claims_path: Path | None = None,
-              claim_releases: list[ClaimStoreToken] | None = None) -> Plan:
+              claim_releases: list[ClaimStoreToken] | None = None,
+              branch: str | None = None) -> Plan:
     """Skip a step with a reason.
 
     The reason must be a valid SkipReason value: superseded, irrelevant,
@@ -421,7 +424,9 @@ def skip_step(plan: Plan, step_id: str, reason: str, claims_path: Path | None = 
         raise PlanError(f"Step '{qualified_id}' cannot be skipped (status: {step.status.value})")
 
     if step.status == StepStatus.CLAIMED:
-        token = _claim_release_token_if_needed(step, claims_path, action="skipping")
+        token = _claim_release_token_if_needed(
+            step, claims_path, action="skipping", branch=branch
+        )
         _queue_claim_release(token, claims_path, claim_releases)
         step.claimed_by = None
         step.claimed_at = None
@@ -443,6 +448,7 @@ def skip_phase(
     force: bool = False,
     claims_path: Path | None = None,
     claim_releases: list[ClaimStoreToken] | None = None,
+    branch: str | None = None,
 ) -> tuple[Plan, list[str]]:
     """Skip all remaining steps in a phase.
 
@@ -493,7 +499,9 @@ def skip_phase(
         if step.status in (StepStatus.DONE, StepStatus.SKIPPED):
             continue
         if step.status == StepStatus.CLAIMED:
-            token = _claim_release_token_if_needed(step, claims_path, action="skipping phase")
+            token = _claim_release_token_if_needed(
+                step, claims_path, action="skipping phase", branch=branch
+            )
             _queue_claim_release(token, claims_path, claim_releases)
             step.claimed_by = None
             step.claimed_at = None
@@ -537,14 +545,14 @@ def _queue_claim_release(
 
 
 def _claim_release_token_if_needed(
-    step: Step, claims_path: Path | None, *, action: str
+    step: Step, claims_path: Path | None, *, action: str, branch: str | None = None
 ) -> ClaimStoreToken | None:
     if claims_path is None:
         return None
     _, _, get_current_branch, _, get_claim_info = _claims_api()
     from vectl.claims import ClaimEntry
 
-    branch = get_current_branch()
+    branch = branch if branch is not None else get_current_branch()
     current = get_claim_info(step.id, branch, claims_path)
     if current is None:
         _logger.warning(

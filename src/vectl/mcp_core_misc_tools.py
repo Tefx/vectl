@@ -202,15 +202,13 @@ def vectl_migrate_step_id(
     docs/contracts/duplicate-id-migration-contract.yaml dry_run_schema and
     migration_evidence_schema.
     """
-    plan, expected_def_hash = _load()
-    plan_path = _plan_path()
-    claims_path = resolve_claims_path(plan_path)
-    branch = get_current_branch()
+    authority = _authority().unwrap()
+    plan, expected_def_hash = _load(authority)
 
     report, _ = build_duplicate_step_id_migration_dry_run(
         plan,
-        claims_path=claims_path,
-        branch=branch,
+        claims_path=authority.claims_path,
+        branch=authority.branch,
     )
     preview_evidence = build_duplicate_step_id_migration_evidence(
         command="vectl_migrate_step_id",
@@ -230,10 +228,10 @@ def vectl_migrate_step_id(
 
     try:
         apply_result = apply_duplicate_step_id_migration(
-            plan_path,
+            authority.plan_path,
             expected_hash=expected_def_hash,
-            claims_path=claims_path,
-            branch=branch,
+            claims_path=authority.claims_path,
+            branch=authority.branch,
             command="vectl_migrate_step_id",
             command_args=["run_mode=apply"],
             run_mode="apply",

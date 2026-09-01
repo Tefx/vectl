@@ -30,7 +30,7 @@ from watchfiles import Change, watch
 from vectl.cli_plan_common import _check_claim_mismatch, _load, out
 from vectl.duplicate_step_id_format import format_duplicate_step_id_diagnostics
 from vectl.models import Phase, PhaseStatus, Plan, StepStatus
-from vectl.plan_path import resolve_claims_path
+from vectl.plan_path import authority_for_plan_path, resolve_claims_path
 from vectl.semantics import is_step_locked
 
 _TOP_DEBOUNCE_MS = 750
@@ -224,7 +224,9 @@ def _build_top_phase_table(plan: Plan, max_phase_rows: int) -> Result[Table, str
 
 # @shell_orchestration: Rich Text diagnostics belong to the CLI output surface.
 # @shell_complexity: top diagnostics preserve duplicate-ID and claim mismatch branches.
-def _diagnostics(plan: Plan, plan_path: Path) -> Result[list[Text], str]:
+def _diagnostics(
+    plan: Plan, plan_path: Path, *, branch: str | None = None
+) -> Result[list[Text], str]:
     lines: list[Text] = []
 
     duplicate_lines = format_duplicate_step_id_diagnostics(plan)
@@ -233,7 +235,9 @@ def _diagnostics(plan: Plan, plan_path: Path) -> Result[list[Text], str]:
         lines.extend(Text(f"  {line}", style="yellow") for line in duplicate_lines)
 
     try:
-        has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(plan, plan_path)
+        has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(
+            plan, plan_path, branch=branch
+        )
     except Exception as exc:
         lines.append(Text(f"Claim diagnostics unavailable: {exc}", style="yellow"))
         return Success(lines)
@@ -289,9 +293,10 @@ def build_top_renderable(
     *,
     last_updated: str,
     message: str | None = None,
+    branch: str | None = None,
 ) -> Result[Panel, str]:
     """Build the live plan-level renderable for ``vectl top``."""
-    diagnostics = _diagnostics(plan, plan_path).unwrap()
+    diagnostics = _diagnostics(plan, plan_path, branch=branch).unwrap()
     terminal_height = max(1, out.size.height)
     terminal_width = max(20, out.size.width)
     phase_rows = _top_phase_row_budget(terminal_height, len(diagnostics)).unwrap()
@@ -328,7 +333,8 @@ def _load_top_state(plan_path: Path | None) -> Result[tuple[Plan, Path], str]:
 def run_top(plan_path: Path | None = None) -> None:
     """Run the live ``vectl top`` panel until interrupted."""
     plan, resolved_plan_path = _load_top_state(plan_path).unwrap()
-    claims_path = resolve_claims_path(resolved_plan_path)
+    authority = authority_for_plan_path(resolved_plan_path)
+    claims_path = authority.claims_path
     watched_files = {_canonical(resolved_plan_path).unwrap(), _canonical(claims_path).unwrap()}
     watch_roots = _watch_roots(resolved_plan_path, claims_path).unwrap()
     stop_event = threading.Event()
@@ -339,6 +345,7 @@ def run_top(plan_path: Path | None = None) -> None:
             plan,
             resolved_plan_path,
             last_updated=_now_label().unwrap(),
+            branch=authority.branch,
         ).unwrap(),
         console=out,
         auto_refresh=False,
@@ -361,6 +368,7 @@ def run_top(plan_path: Path | None = None) -> None:
                 message = None
                 try:
                     plan, resolved_plan_path = _load_top_state(plan_path).unwrap()
+                    authority = authority_for_plan_path(resolved_plan_path)
                 except Exception:
                     message = "Last reload failed; keeping previous view and retrying."
                 live.update(
@@ -369,6 +377,7 @@ def run_top(plan_path: Path | None = None) -> None:
                         resolved_plan_path,
                         last_updated=_now_label().unwrap(),
                         message=message,
+                        branch=authority.branch,
                     ).unwrap(),
                     refresh=True,
                 )

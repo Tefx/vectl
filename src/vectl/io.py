@@ -408,23 +408,36 @@ def _clean_dict(d: dict[str, Any]) -> dict[str, Any] | Result[dict[str, Any], st
 
 
 def _resolve_git_dir(plan_path: Path) -> Path | None | Result[Path | None, str]:
-    """Resolve the .git directory for a plan file's parent directory.
+    """Resolve the Git directory for the worktree containing ``plan_path``.
 
-    Returns None if not in a git repo or if in a linked worktree.
+    The Plan target, rather than the process CWD, determines backup authority.
+    Linked callers therefore back up the integration Plan when resolution chose it.
     """
-    from vectl.plan_path import is_linked_worktree
+    plan_root = plan_path.parent.resolve()
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=str(plan_root),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        result = None
 
-    # Check if we're in a linked worktree - don't backup there
-    is_linked, _ = is_linked_worktree()
-    if is_linked:
-        return None
+    if result is not None and result.returncode == 0 and result.stdout.strip():
+        git_dir = Path(result.stdout.strip())
+        if not git_dir.is_absolute():
+            git_dir = plan_root / git_dir
+        return git_dir.resolve()
 
-    # Find .git directory
-    current = plan_path.parent.resolve()
+    current = plan_root
     while current != current.parent:
         git_dir = current / ".git"
-        if git_dir.exists() and git_dir.is_dir():
+        if git_dir.is_dir():
             return git_dir
+        if git_dir.is_file():
+            return None
         current = current.parent
     return None
 

@@ -12,55 +12,69 @@ vectl uses split-state persistence:
 
 Multiple AI agents work in different git worktrees concurrently, operating on the same plan. Worktrees provide code isolation, not separate plans.
 
-**Current behavior:**
-- `resolve_state_path()` uses `--git-common-dir` → all worktrees share state.json (correct)
-- `resolve_plan_path()` uses walk-up discovery → each worktree finds its own plan.yaml copy (problematic)
+**Historical behavior (superseded by the 0.9.1 repair):**
+- linked-worktree Plan resolution selected the main worktree's `plan.yaml`
+- claim and diagnostic helpers still read the process CWD for the branch
+- Git backup detection also read the process CWD
 
-**Risks identified:**
-- Agents routinely run `git reset --hard`, `git checkout`, `git clean -fd` in worktrees, which can obliterate or replace plan.yaml
-- Walk-up discovery may find a stale plan.yaml in the linked worktree instead of the canonical one in the main worktree
+This split authority let one linked invocation read and write the integration
+Plan while acquiring or releasing claims under the linked branch. It also made
+repair, status/show/top diagnostics, migration, batch claim compensation, and
+MCP lifecycle operations disagree about which branch was authoritative.
 
 ## Decision
 
-### Core Design
+### Core Design — Solution B
 
-1. **plan.yaml is read-only during agent work** — claim/complete only write state.json (already the case post split-state refactor). Only `mutate` writes plan.yaml.
-2. **linked worktree → auto-resolve to main worktree's plan.yaml** — vectl detects linked worktrees and reads plan.yaml from the main worktree root.
-3. **mutate is blocked in linked worktrees** — structural changes must happen in the main worktree. Error messages include the main worktree path and `VECTL_PLAN_PATH` override instructions.
-4. **state.json unchanged** — already shared via `--git-common-dir` with CAS merge retry.
+1. **Resolve one immutable authority per CLI command or MCP request.** It contains the resolved Plan path, claims path, and branch.
+2. **A linked implicit invocation selects the integration/main worktree for all three fields.** The only ambient-CWD probe is initial Plan resolution. Branch, claims, Git commit, and backup probes use the resolved Plan worktree afterwards.
+3. **Lifecycle transitions use the captured branch.** Claim acquire and exact-match release share the same `ClaimEntry` identity. Repair, status/show/top diagnostics, duplicate-ID migration, and batch claim use it too.
+4. **Batch compensation uses the shared full-entry conditional release helper.** A replacement claim is preserved; a failure cannot delete it.
+5. **Claims schema and foreign branch entries remain compatible.** Repair scopes to the authority branch and does not delete legacy foreign-branch claims.
+6. **Structural mutation remains guarded in linked worktrees unless an explicit Plan override is supplied.** This repair changes lifecycle authority, not that structural-edit policy.
 
 ### Implementation
 
-Main worktree root resolution:
-```python
-git_common_dir = git rev-parse --git-common-dir
-git_dir = git rev-parse --git-dir
+`resolve_plan_authority()` first follows the existing precedence chain:
 
-if git_dir != git_common_dir:
-    # linked worktree → resolve main worktree root
-    main_root = git -C <common_dir> rev-parse --show-toplevel
-    return main_root / "plan.yaml"
-else:
-    # main worktree → normal walk-up discovery
-    ...
+1. explicit `--plan`/function argument;
+2. `VECTL_PLAN_PATH`, then deprecated `VECTL_PLAN`;
+3. linked worktree main Plan;
+4. walk-up discovery; and
+5. fallback `./plan.yaml`.
+
+It then constructs:
+
+```python
+PlanAuthority(
+    plan_path=<resolved canonical Plan>,
+    claims_path=resolve_claims_path(plan_path),
+    branch=git -C <plan_path.parent> rev-parse --abbrev-ref HEAD,
+)
 ```
 
-Using `git rev-parse --show-toplevel` from the common dir is more robust than assuming `git_common_dir.parent` (which fails for bare repos, `--separate-git-dir`, submodules).
+If a non-Git explicit Plan needs legacy compatibility, the branch fallback is
+captured once during authority construction. Nested lifecycle code never reads
+ambient CWD to choose a branch or claims target.
 
-Linked-worktree fallback semantics:
-- If linked-worktree main root resolves successfully, vectl returns `<main_root>/plan.yaml` deterministically even if the file is missing.
-- vectl does **not** fall back to linked-worktree/local walk-up discovery in that case (prevents stale local plan selection).
-- If linked-worktree probe is malformed/partial, vectl fails closed to an absolute `cwd/plan.yaml` sentinel path.
+Linked-worktree fallback semantics remain fail-closed: a successful linked
+probe returns the main-root `plan.yaml` even when absent; malformed probes use
+an absolute `cwd/plan.yaml` sentinel and never walk up into a stale local Plan.
 
-`VECTL_PLAN_PATH` remains as an escape hatch (already exists, highest precedence in resolution chain).
+CLI autosave compares Git common directories, so an implicit linked command
+commits the integration Plan. Explicit CLI targets in a different repository
+still suppress caller-repository autosave. MCP saves and commits the configured
+resolved Plan target.
 
 ### Code Changes
 
-| File | Change |
+| Area | Change |
 |------|--------|
-| `plan_path.py` | `resolve_plan_path()` adds worktree detection |
-| `core.py` or `mcp_server.py` | mutate operations add linked worktree guard |
-| tests | Cover worktree scenarios |
+| `plan_path.py` | immutable `PlanAuthority`, Plan-root branch and common-dir helpers |
+| lifecycle and claims | explicit branch propagation for acquire/release/repair |
+| CLI and MCP | one authority feeds lifecycle, repair, migration, diagnostics, and batch claim |
+| I/O | backup Git directory derives from `plan_path`, not process CWD |
+| tests | real `git worktree add` coverage for CLI, MCP, diagnostics, repair, migration, compensation, and explicit external Plans |
 
 ### Integrating parallel worktree changes
 
@@ -92,8 +106,9 @@ Configure each agent's environment variable at spawn time.
 
 ## Residual Risks
 
-1. **Main worktree agent does `git reset --hard`** — still overwrites plan.yaml. Mitigated by divergence-guard phase (Layer 2: backup in `.git/vectl/plan.yaml.bak`).
-2. **Agent `git add .` commits stale plan.yaml to branch** — doesn't break coordination (vectl reads from main worktree), but may cause merge noise. Can be handled via `.gitattributes` or merge strategy.
+1. **The integration worktree can still reset or overwrite `plan.yaml`.** Backups in `.git/vectl/plan.yaml.bak` provide recovery input; they do not prevent that operation.
+2. **A user can intentionally override Plan selection with `--plan` or `VECTL_PLAN_PATH`.** That is required for cross-repository operation; callers must select it deliberately.
+3. **Foreign-branch legacy claims remain retained.** They are outside the authority branch and require an explicit targeted lifecycle/reconciliation policy before removal.
 
 ## Discussion Transcript
 

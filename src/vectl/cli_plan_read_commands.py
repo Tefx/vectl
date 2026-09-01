@@ -86,6 +86,7 @@ def status(
 ) -> None:
     """Show plan status overview."""
     p, _, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     if phase is not None:
         _show_phase_detail(p, phase)
@@ -93,7 +94,9 @@ def status(
         return
 
     # Check for claims.json vs plan.yaml mismatch
-    has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(p, plan_path)
+    has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(
+        p, authority.plan_path, branch=authority.branch
+    )
 
     # Overview: all phases
     out.print(_build_phase_overview_table(p).unwrap())
@@ -166,7 +169,9 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
 
 
 # @shell_complexity: step renderer preserves existing Rich layout across all step states and diagnostics.
-def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> None:
+def _show_step_detail(
+    p: Plan, step_id: str, plan_path: Path | None = None, *, branch: str | None = None
+) -> None:
     found = p.find_step(step_id)
     if not found:
         _die(f"Step '{_canonical_selector_error_target(step_id)}' not found.")
@@ -176,12 +181,14 @@ def _show_step_detail(p: Plan, step_id: str, plan_path: Path | None = None) -> N
     # B2: Check for mismatch for this specific step
     mismatch_info = ""
     if plan_path is not None and step.status == StepStatus.CLAIMED:
-        has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(p, plan_path)
+        has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(
+            p, plan_path, branch=branch
+        )
         if has_mismatch:
             from vectl.claims import get_current_branch
 
-            branch = get_current_branch()
-            step_key = f"{branch}:{step_id}"
+            resolved_branch = branch if branch is not None else get_current_branch()
+            step_key = f"{resolved_branch}:{step_id}"
             if step_key in ghost_claims:
                 mismatch_info = (
                     "⚠ Claim exists in claims.json but step is not claimed in plan (ghost)"
@@ -281,6 +288,7 @@ def show(
 ) -> None:
     """Show details for a step or phase."""
     p, _, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     # Try phase match
     ph = p.find_phase(target)
@@ -292,7 +300,9 @@ def show(
     # Try step match
     found = p.find_step(target)
     if found is not None:
-        _show_step_detail(p, target, plan_path=plan_path)
+        _show_step_detail(
+            p, target, plan_path=authority.plan_path, branch=authority.branch
+        )
         return
 
     canonical_target = _canonical_selector_error_target(target)

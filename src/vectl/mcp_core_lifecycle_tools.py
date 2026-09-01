@@ -64,8 +64,9 @@ def vectl_claim(
     Returns:
         Structured result with claimed step, affinity warnings, and guidance.
     """
-    plan, expected_def_hash = _load()
-    claims_path = resolve_claims_path(_plan_path())
+    authority = _authority().unwrap()
+    plan, expected_def_hash = _load(authority)
+    claims_path = authority.claims_path
 
     if step_id is None:
         available = get_next_steps(plan, agent=agent)
@@ -80,7 +81,14 @@ def vectl_claim(
 
     lock_notice: str = ""
     try:
-        plan, result = claim_step(plan, step_id, agent, force=force, claims_path=claims_path)
+        plan, result = claim_step(
+            plan,
+            step_id,
+            agent,
+            force=force,
+            claims_path=claims_path,
+            branch=authority.branch,
+        )
         try:
             lock_notice = cast(
                 str,
@@ -263,8 +271,9 @@ def vectl_complete(step_id: str, evidence: str) -> Result[str, str]:
         step_id: The step ID to complete.
         evidence: Description of what was done and verification.
     """
-    plan, expected_def_hash = _load()
-    claims_path = resolve_claims_path(_plan_path())
+    authority = _authority().unwrap()
+    plan, expected_def_hash = _load(authority)
+    claims_path = authority.claims_path
     claim_releases = []
 
     try:
@@ -274,6 +283,7 @@ def vectl_complete(step_id: str, evidence: str) -> Result[str, str]:
             evidence,
             claims_path=claims_path,
             claim_releases=claim_releases,
+            branch=authority.branch,
         )
         lock_notice = _save_plan(
             plan,
@@ -335,8 +345,9 @@ def vectl_lifecycle(
         force: For skip-phase, allow skipping a locked phase with remaining steps.
             Empty phases (0 steps) are always allowed regardless of lock.
     """
-    plan, expected_def_hash = _load()
-    claims_path = resolve_claims_path(_plan_path())
+    authority = _authority().unwrap()
+    plan, expected_def_hash = _load(authority)
+    claims_path = authority.claims_path
     claim_releases = []
 
     try:
@@ -346,6 +357,7 @@ def vectl_lifecycle(
                 target,
                 claims_path=claims_path,
                 claim_releases=claim_releases,
+                branch=authority.branch,
             )
             msg = f"**Deferred:** {target} → back to pending"
             lock_notice = _save_plan(
@@ -375,6 +387,7 @@ def vectl_lifecycle(
                 reason,
                 claims_path=claims_path,
                 claim_releases=claim_releases,
+                branch=authority.branch,
             )
             msg = f"**Skipped:** {target} — {reason}"
             lock_notice = _save_plan(
@@ -392,6 +405,7 @@ def vectl_lifecycle(
                 force=force,
                 claims_path=claims_path,
                 claim_releases=claim_releases,
+                branch=authority.branch,
             )
             msg = f"**Skipped phase '{target}':** {len(skipped_ids)} steps skipped"
             if skipped_ids:
@@ -446,7 +460,10 @@ def vectl_claim_many(
     from vectl.core.batch_claim import claim_steps
     try:
         import dataclasses
-        result = claim_steps(claims, guidance=guidance, force=force)
+        authority = _authority().unwrap()
+        result = claim_steps(
+            claims, guidance=guidance, force=force, authority=authority
+        )
         return {
             "ok": result.ok,
             "claimed": [dataclasses.asdict(c) for c in result.claimed],

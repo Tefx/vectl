@@ -88,13 +88,12 @@ def migrate_step_id_cmd(
     """
 
     loaded_plan, def_h, plan_path = _load(plan)
-    claims_path = resolve_claims_path(plan_path)
-    branch = get_current_branch()
+    authority = _authority_for_plan_path(plan_path)
 
     report, _ = build_duplicate_step_id_migration_dry_run(
         loaded_plan,
-        claims_path=claims_path,
-        branch=branch,
+        claims_path=authority.claims_path,
+        branch=authority.branch,
     )
     preview_evidence = build_duplicate_step_id_migration_evidence(
         command="vectl migrate-step-id",
@@ -115,8 +114,8 @@ def migrate_step_id_cmd(
             return
 
         out.print("[bold]Duplicate step-ID migration dry-run[/]")
-        out.print(f"Plan: {plan_path}")
-        out.print(f"Branch: {branch}")
+        out.print(f"Plan: {authority.plan_path}")
+        out.print(f"Branch: {authority.branch}")
         out.print(f"Duplicate groups: {len(report.duplicate_groups)}")
         out.print(f"Rename map entries: {len(report.rename_map)}")
         affected_phases = ", ".join(report.affected_phases) if report.affected_phases else "-"
@@ -129,8 +128,8 @@ def migrate_step_id_cmd(
 
     if not yes:
         out.print("[bold]Duplicate step-ID migration apply preview[/]")
-        out.print(f"Plan: {plan_path}")
-        out.print(f"Branch: {branch}")
+        out.print(f"Plan: {authority.plan_path}")
+        out.print(f"Branch: {authority.branch}")
         out.print(f"Duplicate groups: {len(report.duplicate_groups)}")
         out.print(f"Rename map entries: {len(report.rename_map)}")
         if report.claimed_step_conflicts:
@@ -143,10 +142,10 @@ def migrate_step_id_cmd(
 
     try:
         apply_result = apply_duplicate_step_id_migration(
-            plan_path,
+            authority.plan_path,
             expected_hash=def_h,
-            claims_path=claims_path,
-            branch=branch,
+            claims_path=authority.claims_path,
+            branch=authority.branch,
             command="vectl migrate-step-id",
             command_args=["--yes"] if yes else [],
             run_mode="apply",
@@ -201,7 +200,7 @@ def recover(
     resolve_git_dir = getattr(root_cli, "_resolve_git_dir", _resolve_git_dir)
     git_dir = resolve_git_dir(plan_path)
     if git_dir is None:
-        _die("Not in a git repository or in a linked worktree")
+        _die("Not in a git repository containing the resolved Plan")
 
     assert git_dir is not None  # Type narrowing for pyright
     backup_path = git_dir / "vectl" / "plan.yaml.bak"

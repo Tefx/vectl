@@ -93,8 +93,11 @@ from vectl.models import (
     format_step_selector,
 )
 from vectl.plan_path import (
+    PlanAuthority,
+    authority_for_plan_path,
     is_linked_worktree,
     resolve_claims_path,
+    resolve_git_common_dir,
     resolve_plan_path,
 )
 from vectl.semantics import _get_active_phase_ids, is_step_locked
@@ -327,6 +330,13 @@ def _load(plan_path: Path | None):
     return plan_def, def_hash, target
 
 
+# @shell:entry - CLI compatibility helper constructs one direct authority value per command.
+# @shell_orchestration: commands derive branch and claims from their already-resolved Plan target.
+def _authority_for_plan_path(plan_path: Path) -> PlanAuthority:
+    """Return immutable Plan authority without re-resolving from ambient CWD."""
+    return authority_for_plan_path(plan_path)
+
+
 def _save_plan(plan: Plan, plan_path: Path, expected_def_hash: str, msg: str) -> None:
     """Save plan.yaml with CAS semantics and lock recalculation."""
 
@@ -427,11 +437,16 @@ def _git_toplevel_for(path: Path):
     return Path(resolved).resolve()
 
 
+# @shell_orchestration: CLI save policy delegates Git identity probes to the shared resolver.
 def _should_autosave_commit(plan_path: Path):
-    """Allow autosave commit only when plan is in current repo/worktree."""
-    cwd_repo = _git_toplevel_for(Path.cwd())
-    plan_repo = _git_toplevel_for(plan_path.parent.resolve())
-    return cwd_repo is not None and plan_repo is not None and cwd_repo == plan_repo
+    """Allow autosave only for the invocation repository's shared Git state."""
+    invocation_common_dir = resolve_git_common_dir(Path.cwd())
+    plan_common_dir = resolve_git_common_dir(plan_path.parent.resolve())
+    return (
+        invocation_common_dir is not None
+        and plan_common_dir is not None
+        and invocation_common_dir == plan_common_dir
+    )
 
 
 def _is_claim_consistency_scoped_gate(phase_id: str):
@@ -440,7 +455,7 @@ def _is_claim_consistency_scoped_gate(phase_id: str):
 
 
 # @shell_orchestration: Claims mismatch helper belongs to status/show CLI diagnostics.
-def _check_claim_mismatch(p: Plan, plan_path: Path):
+def _check_claim_mismatch(p: Plan, plan_path: Path, *, branch: str | None = None):
     """Check for claims.json vs plan.yaml mismatch.
 
     Returns:
@@ -454,7 +469,7 @@ def _check_claim_mismatch(p: Plan, plan_path: Path):
 
     claims_path = claims_path_resolver(plan_path)
     claims = load_claims(claims_path)
-    branch = current_branch()
+    branch = branch if branch is not None else current_branch()
 
     # Build current branch's claimed steps from plan
     plan_claimed: set[str] = set()
@@ -500,7 +515,7 @@ PlanOption = typer.Option(
     None,
     "--plan",
     "-p",
-    help="Path to plan YAML file. Defaults to auto-discovery (walk-up). (env: VECTL_PLAN_PATH)",
+    help="Path to plan YAML file. Linked worktrees default to the main Plan; otherwise walk-up. (env: VECTL_PLAN_PATH)",
 )
 
 # B008-compliant singleton options (defined at module level to avoid function call in defaults)

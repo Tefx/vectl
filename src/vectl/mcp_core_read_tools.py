@@ -161,8 +161,9 @@ def vectl_search(
 # @shell_complexity: Validate preserves grouped error/warning Markdown output.
 def vectl_validate(check_refs: bool = False) -> Result[str, str]:
     """Validate Plan structure, lifecycle consistency, and optional refs."""
-    plan, _ = _load()
-    base_path = _plan_path().parent if check_refs else None
+    authority = _authority().unwrap()
+    plan, _ = _load(authority)
+    base_path = authority.plan_path.parent if check_refs else None
     issues = validate_plan(plan, check_refs=check_refs, base_path=base_path)
 
     parts: list[str] = ["## Validation"]

@@ -126600,4 +126600,4 @@ phases:
     - uv.lock
     depends_on:
     - release-0-9-2.bump-and-commit
-    agent: devops-engineer
+    agent: general

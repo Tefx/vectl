@@ -126365,7 +126365,7 @@ phases:
       with no MUST_FIX blocker.'
 - id: linked-worktree-plan-authority
   name: Linked Worktree Plan Authority Repair
-  status: pending
+  status: in_progress
   gate: No separate gate. Completion requires one integrated implementation transaction
     with real-worktree CLI/MCP evidence, repository-wide regression, and Invar conformance.
   depends_on:
@@ -126373,7 +126373,7 @@ phases:
   steps:
   - id: linked-worktree-plan-authority.implement
     name: Unify linked-worktree lifecycle authority
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -126445,3 +126445,5 @@ phases:
     - tests/test_mcp.py
     - docs/ADR-worktree-support.md
     agent: general
+    claimed_by: general
+    claimed_at: '2026-09-01T18:12:00.681369Z'

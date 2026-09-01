@@ -126363,3 +126363,85 @@ phases:
       0.9.1; vectl --version, uvx --refresh --from . vectl --version, and plain uvx
       vectl --version all reported vectl 0.9.1. Independent Python senior review passed
       with no MUST_FIX blocker.'
+- id: linked-worktree-plan-authority
+  name: Linked Worktree Plan Authority Repair
+  status: pending
+  gate: No separate gate. Completion requires one integrated implementation transaction
+    with real-worktree CLI/MCP evidence, repository-wide regression, and Invar conformance.
+  depends_on:
+  - release-0-9-1
+  steps:
+  - id: linked-worktree-plan-authority.implement
+    name: Unify linked-worktree lifecycle authority
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver: Implement solution B for the verified Vectl 0.9.1 linked-worktree defect.
+      Resolve one immutable Plan authority per CLI command or MCP request, with canonical
+      plan path, integration worktree, integration branch, claims path, target provenance,
+      and explicit commit policy. Implicit linked-worktree lifecycle must use the
+      main/integration Plan branch for claim acquire/release, repair, status/show/top
+      diagnostics, duplicate-ID migration, batch claim, Git commit, backup, and MCP
+      operations. Remove deep ambient-CWD branch/path probes and the claim-many environment
+      mutation. Use one shared full-ClaimEntry consistency report so key, owner, and
+      timestamp mismatches render consistently across CLI/MCP status and repair. A
+      successful implicit linked lifecycle must leave the integration Plan clean and
+      create the expected durability commit; failed Plan persistence must compensate
+      only the exact matching claim and preserve replacements. Preserve CLI explicit
+      cross-repository --plan autosave suppression and current MCP configured-target
+      commit behavior. Keep plan.yaml and claims.json schemas compatible; do not automatically
+      delete pre-fix foreign-branch claims. Supersede the stale split-state worktree
+      ADR and align README/CLI help with actual behavior.
+
+
+      Boundary: Owner general. Repository-only reversible changes under Vectl source,
+      meaningful tests, README/help, and ADR documentation. No deployment, credentials,
+      external service, daemon, database, journal, integration service, or direct
+      plan.yaml edit. The canonical integration branch comes from the Plan target
+      worktree, never caller CWD. Branch-requiring writes fail closed on unresolved/detached
+      target authority with actionable diagnostics.
+
+
+      Admit: Exercise real git worktree add without mocking plan resolution. Prove
+      linked claim followed by main completion and linked completion/defer/skip use
+      one canonical key, release exact claims, commit the integration Plan, and leave
+      it clean; main/linked diagnostics and repair previews agree; CLI/MCP batch compensation
+      preserves replacement claims; MCP results are independent of startup CWD; explicit
+      external Plan safety remains. Run focused lifecycle/worktree tests, Invar guard,
+      and the repo-wide suite from locked dependencies.
+
+
+      Recovery: Keep Plan and claims logically consistent across pre-write failure
+      and post-write Git durability failure, report partial durability explicitly,
+      and allow one repository revert to remove the implementation. Stop with evidence
+      if a compatibility requirement cannot be met without a schema or external-state
+      change.'
+    verification: 'uv sync --frozen --group dev
+
+      uv run --frozen pytest -q tests/test_plan_path.py tests/test_claims.py tests/test_cli.py
+      tests/test_mcp.py tests/test_mcp_mutate_batch.py
+
+      uv run --frozen invar guard
+
+      uv run --frozen pytest -q'
+    evidence_template: List changed authority/lifecycle surfaces; paste exit summaries
+      for real-worktree CLI/MCP tests, exact replacement-safe compensation tests,
+      external-plan compatibility, `uv run --frozen invar guard`, and `uv run --frozen
+      pytest -q`; report Git cleanliness and any untested boundary.
+    refs:
+    - src/vectl/plan_path.py
+    - src/vectl/claims.py
+    - src/vectl/lifecycle.py
+    - src/vectl/cli_plan_common.py
+    - src/vectl/cli_plan_lifecycle_commands.py
+    - src/vectl/mcp_core_common.py
+    - src/vectl/mcp_core_lifecycle_tools.py
+    - src/vectl/core/batch_claim.py
+    - src/vectl/io.py
+    - tests/test_cli.py
+    - tests/test_mcp.py
+    - docs/ADR-worktree-support.md
+    agent: general

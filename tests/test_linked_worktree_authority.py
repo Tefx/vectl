@@ -335,6 +335,53 @@ def test_authority_captures_commit_policy_and_reports_partial_git_durability(
     assert "Plan persisted, but Git commit failed" in capsys.readouterr().out
 
 
+def test_add_steps_explicit_external_plan_keeps_captured_no_autocommit_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    invocation, _ = _seed_worktree_repo(tmp_path, ["invocation-step"])
+    external = tmp_path / "external"
+    external.mkdir()
+    _git(external, "init", "-q", "-b", "external")
+    _git(external, "config", "user.email", "authority@example.invalid")
+    _git(external, "config", "user.name", "Authority Test")
+    external_plan = external / "plan.yaml"
+    save_plan(
+        Plan(
+            project="external-add-steps",
+            phases=[Phase(id="delivery", name="Delivery", status=PhaseStatus.PENDING)],
+        ),
+        external_plan,
+    )
+    _git(external, "add", "plan.yaml")
+    _git(external, "commit", "-qm", "seed external plan")
+    invocation_head = _git(invocation, "rev-parse", "HEAD")
+    external_head = _git(external, "rev-parse", "HEAD")
+
+    import vectl.cli_plan_lock_commands as lock_commands
+
+    real_save = lock_commands._save_admitted_plan
+
+    def save_after_cwd_change(*args: object, **kwargs: object) -> object:
+        monkeypatch.chdir(external)
+        return real_save(*args, **kwargs)
+
+    monkeypatch.setattr(lock_commands, "_save_admitted_plan", save_after_cwd_change)
+    monkeypatch.chdir(invocation)
+    result = runner.invoke(
+        app,
+        ["add-steps", "--phase", "delivery", "--plan", str(external_plan)],
+        input="- name: External bulk step\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    external_plan_state, _ = load_plan_definition(external_plan)
+    assert any(step.name == "External bulk step" for step in external_plan_state.phases[0].steps)
+    assert _git(invocation, "rev-parse", "HEAD") == invocation_head
+    assert _git(invocation, "status", "--short") == ""
+    assert _git(external, "rev-parse", "HEAD") == external_head
+    assert _git(external, "status", "--short") == "M plan.yaml"
+
+
 def test_external_and_detached_authority_never_use_caller_cwd_branch(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

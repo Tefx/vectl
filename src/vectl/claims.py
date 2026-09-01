@@ -472,18 +472,21 @@ def _repair_policy_text():
 
 
 # @shell_orchestration: plan projection remains in claims shell to preserve repair_claims mapping API
-def _desired_claims_for_branch(plan: Plan, branch: str):
+def _desired_claims_for_branch(
+    plan: Plan, branch: str, existing_claims: dict[str, ClaimEntry]
+):
     plan_steps = {step.id: step for phase in plan.phases for step in phase.steps}
     desired: dict[str, ClaimEntry] = {}
     for step in plan_steps.values():
         if step.status != StepStatus.CLAIMED or step.claimed_by is None:
             continue
         key = _claim_key(branch, step.id)
+        existing = existing_claims.get(key)
         desired[key] = ClaimEntry(
             step_id=step.id,
             branch=branch,
             agent=step.claimed_by,
-            claimed_at=step.claimed_at or _now_iso(),
+            claimed_at=step.claimed_at or (existing.claimed_at if existing else _now_iso()),
         )
     return desired
 
@@ -496,7 +499,7 @@ def _claim_consistency_from_mapping(
     branch: str,
     step_id: str | None = None,
 ) -> Result[ClaimConsistency, str]:
-    desired_entries = _desired_claims_for_branch(plan, branch)
+    desired_entries = _desired_claims_for_branch(plan, branch, claims)
     scoped_keys = _scoped_repair_keys(claims, desired_entries, branch, step_id)
     ghost_claims: list[str] = []
     missing_claims: list[str] = []
@@ -539,9 +542,7 @@ def _scoped_repair_keys(
 ):
     if step_id is not None:
         return {_claim_key(branch, step_id)}
-    return {key for key, entry in claims.items() if entry.branch == branch} | set(
-        desired_for_branch.keys()
-    )
+    return {key for key in claims if key.startswith(f"{branch}:")} | set(desired_for_branch.keys())
 
 
 # @shell_orchestration: mutating helper returns action list expected by repair_claims

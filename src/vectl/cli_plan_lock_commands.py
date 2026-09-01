@@ -194,6 +194,7 @@ def add_steps_cmd(
         return  # unreachable
 
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
     try:
         p, generated_ids = add_steps_bulk(p, phase, data)
     except PlanError as e:
@@ -201,7 +202,11 @@ def add_steps_cmd(
         return  # unreachable
 
     receipt, lock_notice = _save_admitted_plan(
-        p, plan_path, def_h, f"vectl: add steps to phase {phase}"
+        p,
+        plan_path,
+        def_h,
+        f"vectl: add steps to phase {phase}",
+        authority=authority,
     ).unwrap()
 
     out.print(f"[green]Added {len(generated_ids)} step(s)[/] to phase [bold]{phase}[/]:")

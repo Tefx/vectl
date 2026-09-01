@@ -126467,7 +126467,7 @@ phases:
       HEAD equaled reviewed target before lifecycle completion and worktree was clean.'
 - id: release-0-9-2
   name: Vectl 0.9.2 Patch Release
-  status: in_progress
+  status: done
   depends_on:
   - linked-worktree-plan-authority
   steps:
@@ -126554,7 +126554,7 @@ phases:
       clean. No publish, push, tag, or local-tool update occurred in this transaction.'
   - id: release-0-9-2.refresh-local-uv-tool
     name: Refresh the local uv-installed Vectl tool
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: runtime_state_only
@@ -126619,3 +126619,14 @@ phases:
     agent: general
     claimed_by: general
     claimed_at: '2026-09-01T20:45:57.931926Z'
+    done_at: '2026-09-01T20:47:41.806459+00:00'
+    evidence: 'Applied `uv tool install --force --reinstall /Users/tefx/Projects/vectl`
+      exactly once; exit 0. Independent post-effect reconciliation: `/Users/tefx/.local/bin/vectl
+      --version` exactly `vectl 0.9.2`; full `uv tool list` contains vectl v0.9.2
+      and preserves harbor v0.13.2, invar-tools v1.20.3, mypy v1.19.1, pre-commit
+      v4.5.1, and ruff v0.15.0. tomllib readback confirms receipt source `/Users/tefx/Projects/vectl`.
+      Actual pre/post receipt SHA-256 is unchanged at ab6085091a5c7eda5edd9efaae70d17e7a6c55769b7857ae6eb34df2a5a6bf62
+      (the worker''s reported post hash was inconsistent, so it was not used). Repository
+      HEAD remained a868ec3f9b81487bdd257a1de83f6b787c8b1f07, tracked status remained
+      clean, and pyproject.toml plus the uv.lock Vectl package both read 0.9.2. No
+      retry or recovery was needed.'

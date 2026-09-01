@@ -86,7 +86,7 @@ from vectl.io import (
     _backup_definition,
     _resolve_git_dir,
     load_plan_definition,
-    save_plan,
+    save_plan_with_receipt,
 )
 from vectl.lifecycle import (
     AffinityOverrideMetadata,
@@ -145,7 +145,7 @@ def _plan_path() -> Result[Path, str]:
 
 def _authority() -> Result[PlanAuthority, str]:
     """Resolve one immutable Plan authority for the current MCP request."""
-    return Success(authority_for_plan_path(_plan_path()))
+    return Success(authority_for_plan_path(_plan_path(), target_commits=True))
 
 
 def _load(authority: PlanAuthority | None = None) -> Result[tuple[Plan, str], str]:
@@ -154,12 +154,14 @@ def _load(authority: PlanAuthority | None = None) -> Result[tuple[Plan, str], st
     return load_plan_definition(target.plan_path)
 
 
+# @shell_complexity: render save reports CAS, backup, and partial Git durability together.
 def _save_plan(
     plan: Plan,
     expected_def_hash: str,
     commit_message: str,
     *,
     recalc_locks: bool = True,
+    authority: PlanAuthority | None = None,
 ) -> Result[str, str]:
     """Save plan.yaml with CAS semantics.
 
@@ -174,14 +176,15 @@ def _save_plan(
     if recalc_locks:
         changed = recalc_lock_status(plan)
 
-    plan_path = _plan_path()
+    target = authority or _authority().unwrap()
+    plan_path = target.plan_path
     try:
-        save_plan(
+        receipt = save_plan_with_receipt(
             plan,
             plan_path,
             expected_hash=expected_def_hash,
-            commit_message=commit_message,
-        )
+            commit_message=commit_message if target.commit_policy else None,
+        ).unwrap()
     except CASConflictError as err:
         raise PlanError(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
@@ -197,7 +200,12 @@ def _save_plan(
 
         logging.warning("Backup failed", exc_info=True)
 
-    return format_lock_changes(changed, plan)
+    lock_notice = format_lock_changes(changed, plan)
+    if receipt.git_attempted and not receipt.git_committed:
+        lock_notice = "\n".join(
+            filter(None, [lock_notice, "Plan persisted, but Git commit failed; run `git status` and commit plan.yaml."])
+        )
+    return lock_notice
 
 
 # @shell_complexity: Step formatting preserves existing state, lock, expected-red,

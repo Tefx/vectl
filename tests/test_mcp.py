@@ -707,7 +707,15 @@ class TestVectlClaim:
         stored = next(iter(load_claims(claims_path).values()))
         claimed_step = plan.phases[0].steps[0]
         assert stored.claimed_at == claimed_step.claimed_at
-        repair = repair_claims(plan, plan_file, claims_path, dry_run=True)
+        from vectl.plan_path import authority_for_plan_path
+
+        repair = repair_claims(
+            plan,
+            plan_file,
+            claims_path,
+            dry_run=True,
+            branch=authority_for_plan_path(plan_file, target_commits=True).branch,
+        )
         assert repair.changed is False
         assert repair.actions == ()
 
@@ -842,7 +850,9 @@ class TestVectlClaim:
 
 class TestRepairClaimsMcp:
     def test_repair_claims_dry_run_preview(self, plan_file: Path) -> None:
-        branch = _claims_current_branch()
+        from vectl.plan_path import authority_for_plan_path
+
+        branch = authority_for_plan_path(plan_file, target_commits=True).branch
         claims_path = resolve_claims_path(plan_file)
         claims_path.parent.mkdir(parents=True, exist_ok=True)
         claims_path.write_text(
@@ -868,7 +878,9 @@ class TestRepairClaimsMcp:
         assert claims_path.read_text(encoding="utf-8") == before
 
     def test_repair_claims_step_scope_preserves_unrelated_entries(self, plan_file: Path) -> None:
-        branch = _claims_current_branch()
+        from vectl.plan_path import authority_for_plan_path
+
+        branch = authority_for_plan_path(plan_file, target_commits=True).branch
         claims_path = resolve_claims_path(plan_file)
         claims_path.parent.mkdir(parents=True, exist_ok=True)
         claims_path.write_text(
@@ -1090,7 +1102,7 @@ class TestVectlLifecycle:
         )
         real_save = lifecycle_tools._save_plan
 
-        def replace_then_attempt_stale_save(stale_plan, expected_hash, message):
+        def replace_then_attempt_stale_save(stale_plan, expected_hash, message, **kwargs):
             concurrent, current_hash = load_plan_definition(plan_file)
             found = concurrent.find_step("a.1")
             assert found is not None
@@ -1099,7 +1111,7 @@ class TestVectlLifecycle:
             concurrent_step.claimed_at = replacement.claimed_at
             save_claims({key: replacement}, claims_path)
             save_plan(concurrent, plan_file, expected_hash=current_hash)
-            return real_save(stale_plan, expected_hash, message)
+            return real_save(stale_plan, expected_hash, message, **kwargs)
 
         monkeypatch.setattr(
             "vectl.mcp_core_lifecycle_tools._save_plan",
@@ -1127,7 +1139,7 @@ class TestVectlLifecycle:
         vectl_claim(agent="original", step_id="a.1")
         real_save = lifecycle_tools._save_plan
 
-        def defer_then_attempt_stale_save(stale_plan, expected_hash, message):
+        def defer_then_attempt_stale_save(stale_plan, expected_hash, message, **kwargs):
             concurrent, current_hash = load_plan_definition(plan_file)
             found = concurrent.find_step("a.1")
             assert found is not None
@@ -1137,7 +1149,7 @@ class TestVectlLifecycle:
             concurrent_step.claimed_at = None
             save_claims({}, claims_path)
             save_plan(concurrent, plan_file, expected_hash=current_hash)
-            return real_save(stale_plan, expected_hash, message)
+            return real_save(stale_plan, expected_hash, message, **kwargs)
 
         monkeypatch.setattr(
             "vectl.mcp_core_lifecycle_tools._save_plan",
@@ -1193,7 +1205,9 @@ class TestVectlLifecycle:
         )
         plan_file.write_text(yaml.safe_dump(data), encoding="utf-8")
         claims_path = resolve_claims_path(plan_file)
-        branch = _claims_current_branch()
+        from vectl.plan_path import authority_for_plan_path
+
+        branch = authority_for_plan_path(plan_file, target_commits=True).branch
         first_entry = ClaimEntry(
             step_id="a.1",
             branch=branch,

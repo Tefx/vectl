@@ -1023,7 +1023,15 @@ class TestClaim:
         claims_path = resolve_claims_path(plan_file)
         stored = next(iter(load_claims(claims_path).values()))
         assert stored.claimed_at == step.claimed_at
-        repair = repair_claims(plan, plan_file, claims_path, dry_run=True)
+        from vectl.plan_path import authority_for_plan_path
+
+        repair = repair_claims(
+            plan,
+            plan_file,
+            claims_path,
+            dry_run=True,
+            branch=authority_for_plan_path(plan_file).branch,
+        )
         assert repair.changed is False
         assert repair.actions == ()
 
@@ -1776,7 +1784,7 @@ class TestSkip:
         claims_path = resolve_claims_path(plan_file)
         real_save = lifecycle_commands._save_plan
 
-        def defer_then_attempt_stale_save(plan_obj, path, expected_hash, message):
+        def defer_then_attempt_stale_save(plan_obj, path, expected_hash, message, **kwargs):
             concurrent, current_hash = load_plan_definition(plan_file)
             found = concurrent.find_step("s1")
             assert found is not None
@@ -1786,7 +1794,7 @@ class TestSkip:
             concurrent_step.claimed_at = None
             save_claims({}, claims_path)
             save_plan(concurrent, plan_file, expected_hash=current_hash)
-            return real_save(plan_obj, path, expected_hash, message)
+            return real_save(plan_obj, path, expected_hash, message, **kwargs)
 
         monkeypatch.setattr(
             "vectl.cli_plan_lifecycle_commands._save_plan",
@@ -4295,10 +4303,10 @@ class TestClaimMismatchVisibility:
         plan_path = tmp_path / "plan.yaml"
         save_plan(plan, plan_path)
 
-        # Use the same branch resolution path as CLI status/show.
-        from vectl.claims import get_current_branch
+        # Use the same explicit authority branch as CLI status/show.
+        from vectl.plan_path import authority_for_plan_path
 
-        branch = get_current_branch()
+        branch = authority_for_plan_path(plan_path).branch
 
         # Create claims.json with a ghost claim (matching current branch)
         claims_path = plan_path.parent / ".vectl" / "claims.json"
@@ -4681,6 +4689,7 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
 
     calls: list[str] = []
     monkeypatch.setattr(cli_plan_common, "_should_autosave_commit", lambda _: True)
+    monkeypatch.setattr(io_module, "_git_commit_plan", lambda *_args: True)
 
     def observed_transaction(*args: object, **kwargs: object) -> object:
         message = kwargs.get("commit_message", args[3] if len(args) > 3 else "")

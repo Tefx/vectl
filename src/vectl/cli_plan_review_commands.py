@@ -387,13 +387,16 @@ def clipboard_write_cmd(
     broadcasts, or notes that don't follow DAG edges.
     """
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     try:
         p = clipboard_write(p, author, summary, content, ttl)
     except PlanError as e:
         _die(str(e))
 
-    _save_plan(p, plan_path, def_h, f"vectl: clipboard write by {author}")
+    _save_plan(
+        p, plan_path, def_h, f"vectl: clipboard write by {author}", authority=authority
+    )
 
     cb = p.clipboard
     assert cb is not None
@@ -449,13 +452,14 @@ def clipboard_clear_cmd(
 ) -> None:
     """Clear the plan clipboard."""
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     if p.clipboard is None:
         out.print("[dim]Clipboard was already empty.[/]")
         return
 
     p = clipboard_clear(p)
-    _save_plan(p, plan_path, def_h, "vectl: clipboard clear")
+    _save_plan(p, plan_path, def_h, "vectl: clipboard clear", authority=authority)
     out.print("[green]Clipboard cleared.[/]")
 
 

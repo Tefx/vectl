@@ -26,9 +26,9 @@ MCP lifecycle operations disagree about which branch was authoritative.
 
 ### Core Design — Solution B
 
-1. **Resolve one immutable authority per CLI command or MCP request.** It contains the resolved Plan path, claims path, and branch.
-2. **A linked implicit invocation selects the integration/main worktree for all three fields.** The only ambient-CWD probe is initial Plan resolution. Branch, claims, Git commit, and backup probes use the resolved Plan worktree afterwards.
-3. **Lifecycle transitions use the captured branch.** Claim acquire and exact-match release share the same `ClaimEntry` identity. Repair, status/show/top diagnostics, duplicate-ID migration, and batch claim use it too.
+1. **Resolve one immutable authority per CLI command or MCP request.** It contains the canonical Plan/claims paths, branch namespace, provenance, Git common directory, and commit policy.
+2. **A linked implicit invocation selects the integration/main worktree for all authority fields.** Later saves do not re-probe process CWD.
+3. **Lifecycle transitions use the captured branch.** Claim acquire and exact-match release share the same `ClaimEntry` identity. Status/show/top, MCP status, and repair share one comparison over key, branch, step ID, owner, and timestamp.
 4. **Batch compensation uses the shared full-entry conditional release helper.** A replacement claim is preserved; a failure cannot delete it.
 5. **Claims schema and foreign branch entries remain compatible.** Repair scopes to the authority branch and does not delete legacy foreign-branch claims.
 6. **Structural mutation remains guarded in linked worktrees unless an explicit Plan override is supplied.** This repair changes lifecycle authority, not that structural-edit policy.
@@ -49,22 +49,26 @@ It then constructs:
 PlanAuthority(
     plan_path=<resolved canonical Plan>,
     claims_path=resolve_claims_path(plan_path),
-    branch=git -C <plan_path.parent> rev-parse --abbrev-ref HEAD,
+    branch=<attached Plan-worktree branch or "external">,
+    provenance=<git_worktree|external_non_git>,
+    git_common_dir=<resolved directory or None>,
+    commit_policy=<captured bool>,
 )
 ```
 
-If a non-Git explicit Plan needs legacy compatibility, the branch fallback is
-captured once during authority construction. Nested lifecycle code never reads
+A non-Git Plan uses the stable `external` claim namespace. Detached Git HEAD is
+rejected before branch-scoped work begins. Nested lifecycle code never reads
 ambient CWD to choose a branch or claims target.
 
 Linked-worktree fallback semantics remain fail-closed: a successful linked
 probe returns the main-root `plan.yaml` even when absent; malformed probes use
 an absolute `cwd/plan.yaml` sentinel and never walk up into a stale local Plan.
 
-CLI autosave compares Git common directories, so an implicit linked command
-commits the integration Plan. Explicit CLI targets in a different repository
-still suppress caller-repository autosave. MCP saves and commits the configured
-resolved Plan target.
+CLI captures autosave policy from Git common-directory identity, so an implicit
+linked command commits the integration Plan and an explicit cross-repository
+Plan suppresses autosave. MCP captures its configured target policy independent
+of startup CWD. If Plan bytes persist but the Git commit fails, the command
+reports partial durability without rolling back the persisted Plan.
 
 ### Code Changes
 

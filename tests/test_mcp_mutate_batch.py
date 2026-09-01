@@ -416,9 +416,9 @@ def test_ordered_batch_persists_once_with_exact_hash_and_results(
     original_save = mutation_module._save_admitted_plan_receipt
     original_commit = io_module._git_commit_plan
 
-    def counted_load() -> tuple[Plan, str]:
+    def counted_load(*args: Any, **kwargs: Any) -> tuple[Plan, str]:
         counts["load"] += 1
-        return original_load()
+        return original_load(*args, **kwargs)
 
     def counted_recalc(plan: Plan) -> list[str]:
         counts["recalc"] += 1
@@ -1086,8 +1086,8 @@ def test_cas_conflict_preserves_competing_writer_without_batch_commit(
     claims_before = claims_path.read_bytes()
     original_load = mutation_module._load
 
-    def load_then_compete() -> tuple[Plan, str]:
-        plan, expected_hash = original_load()
+    def load_then_compete(*args: Any, **kwargs: Any) -> tuple[Plan, str]:
+        plan, expected_hash = original_load(*args, **kwargs)
         competing = plan.model_copy(deep=True)
         competing.context = "competing writer"
         save_plan(competing, plan_path)

@@ -94,8 +94,11 @@ def status(
         return
 
     # Check for claims.json vs plan.yaml mismatch
-    has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(
-        p, authority.plan_path, branch=authority.branch
+    has_mismatch, ghost_claims, stale_plan_claims, stale_entries = _check_claim_mismatch(
+        p,
+        authority.plan_path,
+        branch=authority.branch,
+        claims_path=authority.claims_path,
     )
 
     # Overview: all phases
@@ -111,6 +114,8 @@ def status(
             out.print(f"  [dim]Ghost claims: {len(ghost_claims)}[/]")
         if stale_plan_claims:
             out.print(f"  [dim]Stale plan claims: {len(stale_plan_claims)}[/]")
+        if stale_entries:
+            out.print(f"  [dim]Stale claim entries: {len(stale_entries)}[/]")
         out.print("[dim]  → Run `vectl repair claims` to fix (safe, idempotent)[/]")
 
     out.print()
@@ -170,7 +175,12 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
 
 # @shell_complexity: step renderer preserves existing Rich layout across all step states and diagnostics.
 def _show_step_detail(
-    p: Plan, step_id: str, plan_path: Path | None = None, *, branch: str | None = None
+    p: Plan,
+    step_id: str,
+    plan_path: Path | None = None,
+    *,
+    branch: str | None = None,
+    claims_path: Path | None = None,
 ) -> None:
     found = p.find_step(step_id)
     if not found:
@@ -181,8 +191,8 @@ def _show_step_detail(
     # B2: Check for mismatch for this specific step
     mismatch_info = ""
     if plan_path is not None and step.status == StepStatus.CLAIMED:
-        has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(
-            p, plan_path, branch=branch
+        has_mismatch, ghost_claims, stale_plan_claims, stale_entries = _check_claim_mismatch(
+            p, plan_path, branch=branch, claims_path=claims_path
         )
         if has_mismatch:
             from vectl.claims import get_current_branch
@@ -195,6 +205,8 @@ def _show_step_detail(
                 )
             elif step_key not in ghost_claims and step_id in stale_plan_claims:
                 mismatch_info = "⚠ Step is claimed in plan but missing from claims.json"
+            elif step_key in stale_entries:
+                mismatch_info = "⚠ Claim entry owner or timestamp differs from plan.yaml"
 
     out.print(f"## Step: {step.name}", markup=False)
     out.print(f"**ID:** {step.id}", markup=False)
@@ -301,7 +313,11 @@ def show(
     found = p.find_step(target)
     if found is not None:
         _show_step_detail(
-            p, target, plan_path=authority.plan_path, branch=authority.branch
+            p,
+            target,
+            plan_path=authority.plan_path,
+            branch=authority.branch,
+            claims_path=authority.claims_path,
         )
         return
 

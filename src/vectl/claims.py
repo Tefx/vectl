@@ -43,6 +43,20 @@ class ClaimEntry(BaseModel):
 
 
 @dataclass(frozen=True)
+class ClaimConsistency:
+    """Canonical branch-scoped comparison of Plan claims and claims.json."""
+
+    desired_entries: dict[str, ClaimEntry]
+    ghost_claims: tuple[str, ...]
+    missing_claims: tuple[str, ...]
+    stale_entries: tuple[str, ...]
+
+    @property
+    def has_mismatch(self) -> bool:
+        return bool(self.ghost_claims or self.missing_claims or self.stale_entries)
+
+
+@dataclass(frozen=True)
 class RepairAction:
     """Single deterministic reconciliation action."""
 
@@ -93,6 +107,7 @@ class RepairClaimsResult:
 
 
 __all__ = [
+    "ClaimConsistency",
     "ClaimEntry",
     "RepairAction",
     "RepairClaimsResult",
@@ -473,6 +488,48 @@ def _desired_claims_for_branch(plan: Plan, branch: str):
     return desired
 
 
+# @shell_orchestration: canonical comparison feeds status, show, top, MCP, and repair.
+# @shell_complexity: comparison distinguishes ghost, missing, stale, and matching entries.
+def _claim_consistency_from_mapping(
+    plan: Plan,
+    claims: dict[str, ClaimEntry],
+    branch: str,
+    step_id: str | None = None,
+) -> Result[ClaimConsistency, str]:
+    desired_entries = _desired_claims_for_branch(plan, branch)
+    scoped_keys = _scoped_repair_keys(claims, desired_entries, branch, step_id)
+    ghost_claims: list[str] = []
+    missing_claims: list[str] = []
+    stale_entries: list[str] = []
+    for key in sorted(scoped_keys):
+        actual = claims.get(key)
+        desired = desired_entries.get(key)
+        if actual is not None and desired is None:
+            ghost_claims.append(key)
+        elif actual is None and desired is not None:
+            missing_claims.append(key)
+        elif actual is not None and desired is not None and actual != desired:
+            stale_entries.append(key)
+    return Success(
+        ClaimConsistency(
+            desired_entries=desired_entries,
+            ghost_claims=tuple(ghost_claims),
+            missing_claims=tuple(missing_claims),
+            stale_entries=tuple(stale_entries),
+        )
+    )
+
+
+# @shell_orchestration: public diagnostic API shares the repair comparison rules.
+def claim_consistency(
+    plan: Plan, claims_path: Path, branch: str, *, step_id: str | None = None
+) -> Result[ClaimConsistency, str]:
+    """Compare claim key and full ClaimEntry identity for one branch scope."""
+    with _locked_claims_file(claims_path):
+        claims = _read_claims_file(claims_path)
+    return _claim_consistency_from_mapping(plan, claims, branch, step_id)
+
+
 # @shell_orchestration: repair scope calculation remains local to claims reconciliation
 def _scoped_repair_keys(
     claims: dict[str, ClaimEntry],
@@ -540,6 +597,7 @@ def _apply_claim_repairs(
 
 
 # @shell_orchestration: public repair API returns structured RepairClaimsResult and raises PlanError
+# @shell_complexity: repair must retain foreign claims while reconciling four mismatch classes.
 def repair_claims(
     plan: Plan,
     plan_path: Path,
@@ -561,15 +619,16 @@ def repair_claims(
         raise PlanError(f"Step '{step_id}' not found")
 
     policy = _repair_policy_text()
+    missing_file = not claims_path.exists()
 
     branch = branch if branch is not None else get_current_branch()
-    missing_file = not claims_path.exists()
-    desired_for_branch = _desired_claims_for_branch(plan, branch)
-
     with _locked_claims_file(claims_path):
         claims = _read_claims_file(claims_path)
-        scoped_keys = _scoped_repair_keys(claims, desired_for_branch, branch, step_id)
-        actions = _apply_claim_repairs(claims, desired_for_branch, scoped_keys)
+        consistency = _claim_consistency_from_mapping(plan, claims, branch, step_id).unwrap()
+        scoped_keys = set(consistency.ghost_claims) | set(consistency.missing_claims) | set(
+            consistency.stale_entries
+        )
+        actions = _apply_claim_repairs(claims, consistency.desired_entries, scoped_keys)
 
         changed = len(actions) > 0
         if changed and not dry_run:

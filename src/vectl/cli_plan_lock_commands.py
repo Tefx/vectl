@@ -19,11 +19,14 @@ def unlock(
 ) -> None:
     """Unlock a locked phase by validating all dependencies are done."""
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
     try:
         p = unlock_phase(p, phase_id)
     except PlanError as e:
         _die(str(e))
-    _save_plan(p, plan_path, def_h, f"vectl: unlock phase {phase_id}")
+    _save_plan(
+        p, plan_path, def_h, f"vectl: unlock phase {phase_id}", authority=authority
+    )
     out.print(f"[green]Unlocked:[/] {phase_id}")
     if evidence:
         out.print(f"[dim]Evidence: {evidence}[/]")
@@ -63,6 +66,7 @@ def recalc_lock(
     --dry-run previews what would change without saving the plan file.
     """
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
 
     if dry_run:
         # Operate on a deep copy so the original plan is not mutated.
@@ -73,7 +77,9 @@ def recalc_lock(
     else:
         changed = recalc_lock_status(p)
         msg = format_lock_changes(changed, p)
-        _save_plan(p, plan_path, def_h, "vectl: recalc lock status")
+        _save_plan(
+            p, plan_path, def_h, "vectl: recalc lock status", authority=authority
+        )
         out.print(msg if msg else "[vectl] Lock status is consistent. No changes needed.")
 
 

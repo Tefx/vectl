@@ -8,14 +8,14 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from vectl.claims import ClaimEntry, get_current_branch, save_claims
+from vectl.claims import ClaimEntry, save_claims
 from vectl.cli import _get_next_steps_with_phase as cli_next_steps_with_phase
 from vectl.cli import app
 from vectl.io import save_plan
 from vectl.mcp_server import _get_next_steps_with_phase as mcp_next_steps_with_phase
 from vectl.mcp_server import vectl_claim as _vectl_claim_tool
 from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
-from vectl.plan_path import resolve_claims_path
+from vectl.plan_path import authority_for_plan_path, resolve_claims_path
 
 runner = CliRunner()
 vectl_claim = _vectl_claim_tool.fn  # type: ignore[attr-defined]
@@ -145,7 +145,7 @@ def test_wave0_claim_conflict_shape_matches_cli_and_mcp(
     )
     plan_path = tmp_path / "plan.yaml"
     save_plan(plan, plan_path)
-    branch = get_current_branch()
+    branch = authority_for_plan_path(plan_path).branch
     claims_path = resolve_claims_path(plan_path)
     claims_path.parent.mkdir(parents=True, exist_ok=True)
     save_claims(

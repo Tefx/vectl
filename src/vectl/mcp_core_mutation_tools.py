@@ -1,9 +1,7 @@
 """Internal implementation slice split from mcp_core_tools.py.
-
 Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 """
 from __future__ import annotations
-# Compatibility wildcard imports expose the shared mutation slice symbols.
 # ruff: noqa: F403, F405
 import json
 import re
@@ -577,7 +575,7 @@ def vectl_mutate(
         return guard_error
 
     authority = _authority().unwrap()
-    plan, expected_def_hash = _load()
+    plan, expected_def_hash = _load(authority)
     current_base_sha256 = f"sha256:{expected_def_hash}"
     if expected_base_sha256 is not None and expected_base_sha256 != current_base_sha256:
         return (
@@ -644,7 +642,7 @@ def vectl_mutate(
             )
 
         if batch_mode:
-            receipt_payload, _ = cast(
+            receipt_payload, persisted_lock_notice = cast(
                 tuple[dict[str, object], str],
                 _save_admitted_plan_receipt(
                     working_plan,
@@ -655,6 +653,8 @@ def vectl_mutate(
                 ),
             )
             plan_hash = str(receipt_payload["persisted_sha256"]).removeprefix("sha256:")
+            if not lock_notice:
+                lock_notice = persisted_lock_notice
         else:
             commit_target = step_id or phase_id or action
             receipt_payload, persisted_lock_notice = cast(

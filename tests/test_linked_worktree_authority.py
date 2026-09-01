@@ -12,10 +12,11 @@ from typer.testing import CliRunner
 import vectl.io as io_module
 from vectl.claims import ClaimEntry, load_claims, save_claims
 from vectl.cli import app
+from vectl.cli_plan_common import _save_plan
 from vectl.cli_top import _diagnostics
 from vectl.core.batch_claim import BatchClaimItem, BatchClaimRequest, claim_many
 from vectl.io import load_plan_definition, save_plan
-from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
+from vectl.models import Phase, PhaseStatus, Plan, PlanError, Step, StepStatus
 from vectl.plan_path import authority_for_plan_path
 
 runner = CliRunner()
@@ -268,3 +269,88 @@ def test_batch_claim_compensation_preserves_a_concurrent_replacement(
 
     claims = load_claims(authority.claims_path)
     assert claims[f"{authority.branch}:step"].agent == "replacement"
+
+
+def test_linked_cli_mcp_status_and_repair_share_full_entry_diagnostics(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    main, linked = _seed_worktree_repo(tmp_path, ["claimed"])
+    plan_path = main / "plan.yaml"
+    authority = authority_for_plan_path(plan_path)
+    plan, plan_hash = load_plan_definition(plan_path)
+    step = plan.find_step("claimed")[1]  # type: ignore[index]
+    step.status = StepStatus.CLAIMED
+    step.claimed_by = "plan-owner"
+    step.claimed_at = "2026-01-01T00:00:00Z"
+    save_plan(plan, plan_path, expected_hash=plan_hash)
+    save_claims(
+        {
+            "integration:claimed": ClaimEntry(
+                step_id="claimed",
+                branch="integration",
+                agent="stale-owner",
+                claimed_at="2026-01-02T00:00:00Z",
+            )
+        },
+        authority.claims_path,
+    )
+
+    linked_status = _invoke(monkeypatch, linked, ["status"]).output
+    main_status = _invoke(monkeypatch, main, ["status"]).output
+    assert "Stale claim entries: 1" in linked_status
+    assert "Stale claim entries: 1" in main_status
+
+    monkeypatch.chdir(linked)
+    from vectl.mcp_server import vectl_repair_claims, vectl_status
+
+    mcp_status = vectl_status.fn()
+    assert "Stale claim entries: 1" in mcp_status
+    cli_repair = json.loads(
+        _invoke(monkeypatch, linked, ["repair", "claims", "--dry-run", "--json"]).output
+    )
+    mcp_repair = vectl_repair_claims.fn(dry_run=True)
+    assert [action["action"] for action in cli_repair["actions"]] == ["update"]
+    assert mcp_repair["actions"] == cli_repair["actions"]
+
+
+def test_authority_captures_commit_policy_and_reports_partial_git_durability(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    main, linked = _seed_worktree_repo(tmp_path, ["captured"])
+    plan_path = main / "plan.yaml"
+    monkeypatch.chdir(main)
+    authority = authority_for_plan_path(plan_path)
+    head_before = _git(main, "rev-parse", "HEAD")
+    plan, plan_hash = load_plan_definition(plan_path)
+    plan.project = "captured-policy"
+    monkeypatch.chdir(linked)
+    _save_plan(plan, plan_path, plan_hash, "vectl: captured policy", authority=authority)
+    assert _git(main, "rev-parse", "HEAD") != head_before
+
+    monkeypatch.setattr("vectl.io._git_commit_plan", lambda *_args: False)
+    plan, plan_hash = load_plan_definition(plan_path)
+    plan.project = "partial-durability"
+    _save_plan(plan, plan_path, plan_hash, "vectl: partial durability", authority=authority)
+    assert load_plan_definition(plan_path)[0].project == "partial-durability"
+    assert "Plan persisted, but Git commit failed" in capsys.readouterr().out
+
+
+def test_external_and_detached_authority_never_use_caller_cwd_branch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    main, linked = _seed_worktree_repo(tmp_path, ["authority"])
+    external_plan = tmp_path / "external" / "plan.yaml"
+    external_plan.parent.mkdir()
+    save_plan(Plan(project="external", phases=[]), external_plan)
+    monkeypatch.chdir(main)
+    external_authority = authority_for_plan_path(external_plan)
+    monkeypatch.chdir(linked)
+    assert authority_for_plan_path(external_plan).branch == external_authority.branch == "external"
+    assert external_authority.provenance == "external_non_git"
+    assert external_authority.commit_policy is False
+
+    monkeypatch.chdir(main)
+    _git(main, "worktree", "remove", "--force", str(linked))
+    _git(main, "checkout", "--detach")
+    with pytest.raises(PlanError, match="ambiguous"):
+        authority_for_plan_path(main / "plan.yaml")

@@ -62,7 +62,8 @@ def vectl_check(
     if keyword is None and add is None:
         return "**Error:** Must provide either 'keyword' or 'add'."
 
-    plan, expected_def_hash = _load()
+    authority = _authority().unwrap()
+    plan, expected_def_hash = _load(authority)
 
     try:
         plan = update_checklist(plan, step_id, check=keyword, append=add)
@@ -70,6 +71,7 @@ def vectl_check(
             plan,
             expected_def_hash,
             f"mcp: update checklist {step_id}",
+            authority=authority,
         )
     except NoMatchError as e:
         return f"**Error:** No checklist item matches keyword '{e.keyword}'."
@@ -123,7 +125,8 @@ def _vectl_check_deterministic(
     )
     from vectl.core_checklist import get_inventory
 
-    plan, expected_def_hash = _load()
+    authority = _authority().unwrap()
+    plan, expected_def_hash = _load(authority)
     found = plan.find_step(step_id)
     if found is None:
         return Success({
@@ -158,7 +161,12 @@ def _vectl_check_deterministic(
             checked=None if checked is None else str(checked).lower(),
             batch=batch_text,
         )
-        lock_notice = _save_plan(plan, expected_def_hash, f"mcp: deterministic checklist {step_id}")
+        lock_notice = _save_plan(
+            plan,
+            expected_def_hash,
+            f"mcp: deterministic checklist {step_id}",
+            authority=authority,
+        )
         payload["markdown"] = f"**Updated checklist:** {step_id}"
         payload["Updated checklist"] = True
         if lock_notice:

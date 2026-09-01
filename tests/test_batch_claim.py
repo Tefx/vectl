@@ -146,7 +146,7 @@ def test_claim_many_uses_canonical_ids_and_one_timestamp(
     from vectl.io import load_plan_definition
     from vectl.plan_path import resolve_claims_path
 
-    monkeypatch.setattr("vectl.plan_path._branch_for_plan", lambda _: "batch-test")
+    monkeypatch.setattr("vectl.plan_path._branch_for_plan", lambda *_: "batch-test")
     result = claim_many(
         BatchClaimRequest(claims=[BatchClaimItem(step_id="p1.s1", agent="worker-a")])
     )
@@ -177,7 +177,7 @@ def test_claim_many_cas_conflict_preserves_concurrent_plan_and_cleans_claims(
     from vectl.io import CASConflictError
     from vectl.plan_path import resolve_claims_path
 
-    monkeypatch.setattr("vectl.plan_path._branch_for_plan", lambda _: "batch-test")
+    monkeypatch.setattr("vectl.plan_path._branch_for_plan", lambda *_: "batch-test")
     original_acquire = claims.acquire_claims
 
     def acquire_then_change_plan(*args, **kwargs):
@@ -204,7 +204,7 @@ def test_claim_many_save_failure_keeps_replacement_claim(
     from vectl.plan_path import resolve_claims_path
 
     claims_path = resolve_claims_path(plan_file)
-    monkeypatch.setattr("vectl.plan_path._branch_for_plan", lambda _: "batch-test")
+    monkeypatch.setattr("vectl.plan_path._branch_for_plan", lambda *_: "batch-test")
 
     def replace_then_fail(*args, **kwargs):
         save_claims(

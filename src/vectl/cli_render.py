@@ -12,9 +12,9 @@ from returns.result import Result, Success
 from rich.console import Console
 
 from vectl.core import diff_plans, format_lock_changes, recalc_lock_status, render_plan
-from vectl.io import load_plan_definition, save_plan
+from vectl.io import load_plan_definition, save_plan_with_receipt
 from vectl.models import CASConflictError, Plan, PlanError, PlanIOError
-from vectl.plan_path import resolve_plan_path
+from vectl.plan_path import PlanAuthority, authority_for_plan_path, resolve_plan_path
 
 console = Console(stderr=True)
 out = Console()
@@ -48,16 +48,27 @@ def _load(plan_path: Path | None) -> Result[tuple[Plan, str, Path], str]:
     return plan_def, def_hash, target
 
 
-# @shell_orchestration: Delegates persistence through save_plan while preserving CLI API.
+# @shell_orchestration: Delegates persistence through the captured Plan authority.
 def _save_plan(
-    plan: Plan, plan_path: Path, expected_def_hash: str, msg: str
+    plan: Plan,
+    plan_path: Path,
+    expected_def_hash: str,
+    msg: str,
+    *,
+    authority: PlanAuthority | None = None,
 ) -> Result[None, str]:
-    """Save plan.yaml with CAS semantics and lock recalculation."""
+    """Save plan.yaml with a commit policy captured before mutation."""
 
     changed_ids = recalc_lock_status(plan)
-    commit_message = msg if _should_autosave_commit(plan_path).unwrap() else None
+    target = authority or authority_for_plan_path(plan_path, invocation_path=plan_path.parent)
+    commit_message = msg if _should_autosave_commit(target).unwrap() else None
     try:
-        save_plan(plan, plan_path, expected_hash=expected_def_hash, commit_message=commit_message)
+        receipt = save_plan_with_receipt(
+            plan,
+            target.plan_path,
+            expected_hash=expected_def_hash,
+            commit_message=commit_message,
+        ).unwrap()
     except CASConflictError:
         _die(
             "CAS conflict: plan.yaml was modified by another process since you loaded it. "
@@ -67,6 +78,11 @@ def _save_plan(
     notice = format_lock_changes(changed_ids, plan)
     if notice:
         print(notice)
+    if receipt.git_attempted and not receipt.git_committed:
+        out.print(
+            "[yellow]Plan persisted, but Git commit failed; run `git status` and commit "
+            "plan.yaml to reconcile durability.[/]"
+        )
     return Success(None)
 
 
@@ -92,12 +108,9 @@ def _git_toplevel_for(path: Path) -> Result[Path | None, str]:
     return Success(Path(resolved).resolve())
 
 
-def _should_autosave_commit(plan_path: Path) -> Result[bool, str]:
-    """Allow autosave commit only when plan is in current repo/worktree."""
-
-    cwd_repo = _git_toplevel_for(Path.cwd()).unwrap()
-    plan_repo = _git_toplevel_for(plan_path.parent.resolve()).unwrap()
-    return Success(cwd_repo is not None and plan_repo is not None and cwd_repo == plan_repo)
+def _should_autosave_commit(authority: PlanAuthority) -> Result[bool, str]:
+    """Read the immutable commit policy captured with Plan authority."""
+    return Success(authority.commit_policy)
 
 
 def render(

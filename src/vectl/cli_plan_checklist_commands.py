@@ -26,11 +26,12 @@ def check_cmd(
     """Toggle/add a checklist item or run deterministic checklist mutation."""
     _check_not_linked_worktree(plan)
     p, def_h, plan_path = _load(plan)
+    authority = _authority_for_plan_path(plan_path)
     deterministic_supplied = any(
         value is not None for value in (revision, item_id, field, index, checked, batch)
     )
     if not deterministic_supplied:
-        _run_legacy_check(p, def_h, plan_path, step_id, keyword, add)
+        _run_legacy_check(p, def_h, plan_path, step_id, keyword, add, authority)
         return
     try:
         p, payload = _run_deterministic_check_mutation(
@@ -52,7 +53,13 @@ def check_cmd(
             _print_checklist_error(payload)
         raise typer.Exit(1) from None
 
-    _save_plan(p, plan_path, def_h, f"vectl: deterministic checklist {step_id}")
+    _save_plan(
+        p,
+        plan_path,
+        def_h,
+        f"vectl: deterministic checklist {step_id}",
+        authority=authority,
+    )
     if json_output:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return
@@ -62,12 +69,22 @@ def check_cmd(
     out.print(f"[dim]→ vectl check-inventory {step_id} --json[/]")
 
 
-def _run_legacy_check(p: Plan, def_h: str, plan_path: Path, step_id: str, keyword: str | None, add: str | None) -> None:
+def _run_legacy_check(
+    p: Plan,
+    def_h: str,
+    plan_path: Path,
+    step_id: str,
+    keyword: str | None,
+    add: str | None,
+    authority: PlanAuthority,
+) -> None:
     try:
         updated = update_checklist(p, step_id, check=keyword, append=add)
     except PlanError as e:
         _die(str(e))
-    _save_plan(updated, plan_path, def_h, f"vectl: update checklist {step_id}")
+    _save_plan(
+        updated, plan_path, def_h, f"vectl: update checklist {step_id}", authority=authority
+    )
     out.print(f"[green]Updated checklist:[/] {step_id}")
     out.print()
     out.print(f"[dim]→ vectl show {step_id}[/]")

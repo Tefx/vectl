@@ -225,7 +225,11 @@ def _build_top_phase_table(plan: Plan, max_phase_rows: int) -> Result[Table, str
 # @shell_orchestration: Rich Text diagnostics belong to the CLI output surface.
 # @shell_complexity: top diagnostics preserve duplicate-ID and claim mismatch branches.
 def _diagnostics(
-    plan: Plan, plan_path: Path, *, branch: str | None = None
+    plan: Plan,
+    plan_path: Path,
+    *,
+    branch: str | None = None,
+    claims_path: Path | None = None,
 ) -> Result[list[Text], str]:
     lines: list[Text] = []
 
@@ -235,8 +239,8 @@ def _diagnostics(
         lines.extend(Text(f"  {line}", style="yellow") for line in duplicate_lines)
 
     try:
-        has_mismatch, ghost_claims, stale_plan_claims = _check_claim_mismatch(
-            plan, plan_path, branch=branch
+        has_mismatch, ghost_claims, stale_plan_claims, stale_entries = _check_claim_mismatch(
+            plan, plan_path, branch=branch, claims_path=claims_path
         )
     except Exception as exc:
         lines.append(Text(f"Claim diagnostics unavailable: {exc}", style="yellow"))
@@ -248,6 +252,8 @@ def _diagnostics(
             lines.append(Text(f"  Ghost claims: {len(ghost_claims)}", style="dim"))
         if stale_plan_claims:
             lines.append(Text(f"  Stale plan claims: {len(stale_plan_claims)}", style="dim"))
+        if stale_entries:
+            lines.append(Text(f"  Stale claim entries: {len(stale_entries)}", style="dim"))
         lines.append(Text("  → Run `vectl repair claims` to fix (safe, idempotent)", style="dim"))
 
     return Success(lines)
@@ -294,9 +300,12 @@ def build_top_renderable(
     last_updated: str,
     message: str | None = None,
     branch: str | None = None,
+    claims_path: Path | None = None,
 ) -> Result[Panel, str]:
     """Build the live plan-level renderable for ``vectl top``."""
-    diagnostics = _diagnostics(plan, plan_path, branch=branch).unwrap()
+    diagnostics = _diagnostics(
+        plan, plan_path, branch=branch, claims_path=claims_path
+    ).unwrap()
     terminal_height = max(1, out.size.height)
     terminal_width = max(20, out.size.width)
     phase_rows = _top_phase_row_budget(terminal_height, len(diagnostics)).unwrap()
@@ -346,6 +355,7 @@ def run_top(plan_path: Path | None = None) -> None:
             resolved_plan_path,
             last_updated=_now_label().unwrap(),
             branch=authority.branch,
+            claims_path=authority.claims_path,
         ).unwrap(),
         console=out,
         auto_refresh=False,
@@ -378,6 +388,7 @@ def run_top(plan_path: Path | None = None) -> None:
                         last_updated=_now_label().unwrap(),
                         message=message,
                         branch=authority.branch,
+                        claims_path=authority.claims_path,
                     ).unwrap(),
                     refresh=True,
                 )

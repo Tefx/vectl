@@ -96,6 +96,7 @@ def vectl_claim(
                     plan,
                     expected_def_hash,
                     f"mcp: claim step {step_id} by {agent}",
+                    authority=authority,
                 ),
             )
         except Exception:
@@ -289,6 +290,7 @@ def vectl_complete(step_id: str, evidence: str) -> Result[str, str]:
             plan,
             expected_def_hash,
             f"mcp: complete step {step_id}",
+            authority=authority,
         )
     except PlanError as e:
         return f"**Error:** {e}"
@@ -364,6 +366,7 @@ def vectl_lifecycle(
                 plan,
                 expected_def_hash,
                 f"mcp: defer step {target}",
+                authority=authority,
             )
         elif action == "reject":
             if not reason:
@@ -374,6 +377,7 @@ def vectl_lifecycle(
                 plan,
                 expected_def_hash,
                 f"mcp: reject step {target}",
+                authority=authority,
             )
         elif action == "skip":
             if not reason:
@@ -394,6 +398,7 @@ def vectl_lifecycle(
                 plan,
                 expected_def_hash,
                 f"mcp: skip step {target}",
+                authority=authority,
             )
         elif action == "skip-phase":
             if not reason:
@@ -414,6 +419,7 @@ def vectl_lifecycle(
                 plan,
                 expected_def_hash,
                 f"mcp: skip phase {target}",
+                authority=authority,
             )
         elif action == "complete-phase":
             if not evidence:
@@ -426,6 +432,7 @@ def vectl_lifecycle(
                 plan,
                 expected_def_hash,
                 f"mcp: complete phase {target}",
+                authority=authority,
             )
         else:
             return (

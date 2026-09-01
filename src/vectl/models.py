@@ -7,7 +7,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from returns.result import Result
 
 # ---------------------------------------------------------------------------
@@ -62,6 +62,8 @@ class AffinityMode(str, Enum):
 class RejectionEntry(BaseModel):
     """A single rejection event in a step's history."""
 
+    model_config = ConfigDict(extra="forbid")
+
     reason: str
     timestamp: str
     reviewer: str = ""
@@ -69,6 +71,8 @@ class RejectionEntry(BaseModel):
 
 class Step(BaseModel):
     """A single actionable work item inside a phase."""
+
+    model_config = ConfigDict(extra="forbid")
 
     id: str
     name: str
@@ -118,6 +122,8 @@ class Step(BaseModel):
 class Phase(BaseModel):
     """A group of steps with a gate criterion and DAG dependencies."""
 
+    model_config = ConfigDict(extra="forbid")
+
     id: str
     name: str
     status: PhaseStatus = PhaseStatus.PENDING
@@ -142,6 +148,8 @@ class Clipboard(BaseModel):
     cross-tool handoff, cross-phase broadcasts, reviewer notes.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     author: str
     summary: str
     content: str
@@ -159,6 +167,8 @@ class Clipboard(BaseModel):
 
 class Plan(BaseModel):
     """Top-level plan document."""
+
+    model_config = ConfigDict(extra="forbid")
 
     version: int = 1
     project: str

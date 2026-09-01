@@ -4,10 +4,10 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 """
 
 from __future__ import annotations
-
 # Compatibility wildcard imports expose the shared mutation slice symbols.
 # ruff: noqa: F403, F405
 import json
+import re
 from typing import cast
 
 from pydantic import ValidationError
@@ -447,6 +447,7 @@ def vectl_mutate(
     steps: list[dict] | None = None,
     requests: list[BatchMutationRequest] | None = None,
     max_issues: int | None = None,
+    expected_base_sha256: str | None = None,
 ) -> Result[str, str]:
     """Modify plan structure in single-action or atomic batch mode.
 
@@ -490,7 +491,14 @@ def vectl_mutate(
         max_issues: Optional positive row bound for final-validation issues. Every
             canonical or structural issue value is control-escaped and capped at 512
             codepoints; counts and count/value truncation flags remain explicit.
+        expected_base_sha256: Optional raw-Plan SHA-256 observed by the caller.
+            A mismatch rejects the request before candidate mutation or persistence.
     """
+    if expected_base_sha256 is not None and (
+        not isinstance(expected_base_sha256, str)
+        or re.fullmatch(r"sha256:[0-9a-f]{64}", expected_base_sha256) is None
+    ):
+        return "**Error:** expected_base_sha256 must be sha256:<64 lowercase hex>."
     if (
         max_issues is not None
         and (isinstance(max_issues, bool) or not isinstance(max_issues, int) or max_issues < 1)
@@ -572,6 +580,14 @@ def vectl_mutate(
         return guard_error
 
     plan, expected_def_hash = _load()
+    current_base_sha256 = f"sha256:{expected_def_hash}"
+    if expected_base_sha256 is not None and expected_base_sha256 != current_base_sha256:
+        return (
+            "**Conflict:** expected_base_sha256 does not match the current Plan.\n"
+            f"expected_base_sha256: {expected_base_sha256}\n"
+            f"current_base_sha256: {current_base_sha256}\n"
+            "plan_applied: false"
+        )
     working_plan = plan.model_copy(deep=True)
     results: list[tuple[str, str]] = []
     try:

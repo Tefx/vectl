@@ -55,7 +55,12 @@ Batch claim is only for orchestrators that have already decided explicit
 step-to-agent assignments and need one atomic commit. Use CLI `vectl claim-many`
 or MCP `vectl_claim_many` with an explicit list of `{step_id, agent}` requests.
 It is not dispatch, selection, or reservation. Non-goals: no count,
-no auto-select, no dispatch policy, no reserve_steps.
+no auto-select, no dispatch policy, no reserve_steps. Batch persistence is
+CAS-guarded and uses the existing best-effort Git commit path.
+
+`refs` are advisory context. Vectl persists supplied references and
+`validate --check-refs` may report warnings, but references do not block a
+claim or Plan mutation.
 
 ## Quick Start
 

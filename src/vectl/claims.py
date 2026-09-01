@@ -105,6 +105,7 @@ __all__ = [
     "load_claims",
     "load_claims_for_branch",
     "release_claim",
+    "release_claim_entries_if_matches",
     "release_claim_if_matches",
     "release_claims",
     "repair_claims",
@@ -388,6 +389,25 @@ def release_claim_if_matches(
         claims.pop(key)
         _write_claims_file(claims_path, claims)
         return True
+
+
+# @shell_orchestration: deferred release preserves concurrent replacement claims.
+def release_claim_entries_if_matches(
+    entries: list[ClaimEntry], claims_path: Path
+) -> Result[int, str]:
+    """Release only entries whose complete stored identity still matches."""
+    with _locked_claims_file(claims_path):
+        claims = _read_claims_file(claims_path)
+        released = 0
+        for entry in entries:
+            key = _claim_key(entry.branch, entry.step_id)
+            if claims.get(key) != entry:
+                continue
+            claims.pop(key)
+            released += 1
+        if released:
+            _write_claims_file(claims_path, claims)
+        return Success(released)
 
 
 # @shell_orchestration: atomic rollback helper performs indirect I/O through locked read/write helpers.

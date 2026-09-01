@@ -278,7 +278,7 @@ class TestAffinityCleanup:
 
 
 class TestDeletedStepIsolationField:
-    def test_load_legacy_step_isolation_payload_does_not_round_trip(self, tmp_path: Path) -> None:
+    def test_load_rejects_unknown_legacy_step_field(self, tmp_path: Path) -> None:
         path = tmp_path / "plan.yaml"
         deleted_field = "".join(("isol", "ation"))
         path.write_text(
@@ -293,14 +293,11 @@ class TestDeletedStepIsolationField:
             encoding="utf-8",
         )
 
-        plan, _ = load_plan(path)
-        step = plan.phases[0].steps[0]
-        assert "isolation" not in Step.model_fields
-        assert "isolation" not in step.model_dump()
+        before = path.read_bytes()
+        with pytest.raises(PlanIOError, match="Extra inputs are not permitted"):
+            load_plan(path)
 
-        save_plan(plan, path)
-
-        assert "isolation" not in path.read_text(encoding="utf-8")
+        assert path.read_bytes() == before
 
 
 class TestCAS:

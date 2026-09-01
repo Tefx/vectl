@@ -15,6 +15,7 @@ from vectl.claims import (
     cleanup_stale_claims,
     load_claims,
     release_claim,
+    release_claim_entries_if_matches,
     release_claim_if_matches,
     repair_claims,
     resolve_claims_path,
@@ -117,6 +118,46 @@ def test_release_claim_if_matches_preserves_replacement_claim(tmp_path: Path) ->
         is False
     )
     assert load_claims(claims_path)["feature/test:core.step"] == replacement
+
+
+def test_release_claim_entries_if_matches_preserves_replacement(tmp_path: Path) -> None:
+    claims_path = tmp_path / "claims.json"
+    replacement = ClaimEntry(
+        step_id="core.replaced",
+        branch="feature/test",
+        agent="replacement",
+        claimed_at="2026-07-23T16:04:00Z",
+    )
+    exact = ClaimEntry(
+        step_id="core.exact",
+        branch="feature/test",
+        agent="original",
+        claimed_at="2026-07-23T16:03:00Z",
+    )
+    save_claims(
+        {
+            "feature/test:core.replaced": replacement,
+            "feature/test:core.exact": exact,
+        },
+        claims_path,
+    )
+
+    released = release_claim_entries_if_matches(
+        [
+            ClaimEntry(
+                step_id="core.replaced",
+                branch="feature/test",
+                agent="original",
+                claimed_at="2026-07-23T16:03:00Z",
+            ),
+            exact,
+        ],
+        claims_path,
+    ).unwrap()
+
+    claims = load_claims(claims_path)
+    assert released == 1
+    assert claims == {"feature/test:core.replaced": replacement}
 
 
 def test_stale_claim_cleanup(tmp_path: Path) -> None:

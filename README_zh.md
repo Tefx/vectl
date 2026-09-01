@@ -45,6 +45,8 @@ Agent 框架管 agent 怎么想。vectl 管 **agent 看到什么、什么时候�
 | **交接便条** | 跨 host/跨会话状态丢失 | `clipboard-write/read/clear` 把短便条存进 `plan.yaml`（带 TTL） |
 | **Agent 亲和** | 不同 agent 擅长不同任务 | 步骤可标记建议 agent，`next` 按亲和度排序 |
 
+`refs` 是辅助上下文。Vectl 会持久化引用；`validate --check-refs` 可能报告警告，但引用不会阻止领取步骤或修改 Plan。
+
 ## 快速开始
 
 ### 1. 初始化

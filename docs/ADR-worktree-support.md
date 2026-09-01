@@ -62,6 +62,14 @@ Linked-worktree fallback semantics:
 | `core.py` or `mcp_server.py` | mutate operations add linked worktree guard |
 | tests | Cover worktree scenarios |
 
+### Integrating parallel worktree changes
+
+A candidate branch produced in a linked worktree must be rebased onto the current
+integration branch, or its commits cherry-picked there, before the integration
+branch runs `git merge --ff-only`. Resolve any Plan conflict during that rebase
+or cherry-pick. Vectl does not perform branch integration or create an
+integration service.
+
 ## Alternatives Considered
 
 ### Move plan.yaml to `.git/vectl/` (Rejected)

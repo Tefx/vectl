@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from vectl.lifecycle import rollback_claim_record
+from vectl.lifecycle import release_claim_records, rollback_claim_record
 from vectl.mcp_core_common import *
 from vectl.mcp_core_common import _save_plan
 
@@ -265,9 +265,16 @@ def vectl_complete(step_id: str, evidence: str) -> Result[str, str]:
     """
     plan, expected_def_hash = _load()
     claims_path = resolve_claims_path(_plan_path())
+    claim_releases = []
 
     try:
-        plan = complete_step(plan, step_id, evidence, claims_path=claims_path)
+        plan = complete_step(
+            plan,
+            step_id,
+            evidence,
+            claims_path=claims_path,
+            claim_releases=claim_releases,
+        )
         lock_notice = _save_plan(
             plan,
             expected_def_hash,
@@ -275,6 +282,7 @@ def vectl_complete(step_id: str, evidence: str) -> Result[str, str]:
         )
     except PlanError as e:
         return f"**Error:** {e}"
+    release_claim_records(claim_releases, claims_path)
 
     # Check if phase completed
     found = plan.find_step(step_id)
@@ -329,10 +337,16 @@ def vectl_lifecycle(
     """
     plan, expected_def_hash = _load()
     claims_path = resolve_claims_path(_plan_path())
+    claim_releases = []
 
     try:
         if action == "defer":
-            plan = defer_step(plan, target, claims_path=claims_path)
+            plan = defer_step(
+                plan,
+                target,
+                claims_path=claims_path,
+                claim_releases=claim_releases,
+            )
             msg = f"**Deferred:** {target} → back to pending"
             lock_notice = _save_plan(
                 plan,
@@ -355,7 +369,13 @@ def vectl_lifecycle(
                     "**Error:** reason is required for skip "
                     "(superseded/irrelevant/absorbed/deprioritized)."
                 )
-            plan = skip_step(plan, target, reason)
+            plan = skip_step(
+                plan,
+                target,
+                reason,
+                claims_path=claims_path,
+                claim_releases=claim_releases,
+            )
             msg = f"**Skipped:** {target} — {reason}"
             lock_notice = _save_plan(
                 plan,
@@ -365,7 +385,14 @@ def vectl_lifecycle(
         elif action == "skip-phase":
             if not reason:
                 return "**Error:** reason is required for skip-phase."
-            plan, skipped_ids = skip_phase(plan, target, reason, force=force)
+            plan, skipped_ids = skip_phase(
+                plan,
+                target,
+                reason,
+                force=force,
+                claims_path=claims_path,
+                claim_releases=claim_releases,
+            )
             msg = f"**Skipped phase '{target}':** {len(skipped_ids)} steps skipped"
             if skipped_ids:
                 msg += "\n" + "\n".join(f"  - {sid}" for sid in skipped_ids)
@@ -393,6 +420,7 @@ def vectl_lifecycle(
             )
     except PlanError as e:
         return f"**Error:** {e}"
+    release_claim_records(claim_releases, claims_path)
 
     if lock_notice:
         msg += f"\n\n{lock_notice}"

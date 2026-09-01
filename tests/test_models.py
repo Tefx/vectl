@@ -1,6 +1,7 @@
 """Tests for core.1: Pydantic Data Models."""
 
 import pytest
+from pydantic import ValidationError
 
 from vectl.core.diagnostics import normalize_model_validation_issues
 from vectl.models import (
@@ -125,10 +126,12 @@ class TestStep:
         assert step.refs == []
         assert "isolation" not in Step.model_fields
 
-    def test_legacy_isolation_payload_is_not_model_state(self):
-        step = Step.model_validate({"id": "s1", "name": "Do thing", "isolation": "workspace"})
-        assert "isolation" not in Step.model_fields
-        assert "isolation" not in step.model_dump()
+    def test_unknown_step_field_is_rejected(self):
+        with pytest.raises(ValidationError) as exc_info:
+            Step.model_validate({"id": "s1", "name": "Do thing", "isolation": "workspace"})
+
+        assert exc_info.value.errors()[0]["loc"] == ("isolation",)
+        assert exc_info.value.errors()[0]["type"] == "extra_forbidden"
 
     def test_skipped_requires_reason(self):
         with pytest.raises(ValueError, match="skipped_reason is required"):
@@ -208,6 +211,39 @@ class TestPhase:
     def test_locked_phase(self):
         phase = Phase(id="p2", name="Phase Two", status=PhaseStatus.LOCKED, depends_on=["p1"])
         assert phase.status == PhaseStatus.LOCKED
+
+
+class TestPersistedModelExtras:
+    @pytest.mark.parametrize(
+        ("model", "payload", "location"),
+        [
+            (Plan, {"project": "test", "unknown": "reject"}, "unknown"),
+            (Phase, {"id": "phase", "name": "Phase", "unknown": "reject"}, "unknown"),
+            (
+                Clipboard,
+                {
+                    "author": "a",
+                    "summary": "s",
+                    "content": "c",
+                    "written_at": "2025-01-01T00:00:00Z",
+                    "expires_at": "2025-01-01T01:00:00Z",
+                    "unknown": "reject",
+                },
+                "unknown",
+            ),
+            (
+                RejectionEntry,
+                {"reason": "r", "timestamp": "2025-01-01T00:00:00Z", "unknown": "reject"},
+                "unknown",
+            ),
+        ],
+    )
+    def test_unknown_persisted_field_is_rejected(self, model, payload, location: str):
+        with pytest.raises(ValidationError) as exc_info:
+            model(**payload)
+
+        assert exc_info.value.errors()[0]["loc"] == (location,)
+        assert exc_info.value.errors()[0]["type"] == "extra_forbidden"
 
 
 class TestPlan:

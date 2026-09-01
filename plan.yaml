@@ -126553,8 +126553,8 @@ phases:
       0.9.2`.
 
 
-      Boundary: Owner `devops-engineer`. Authorized runtime-state target is only the
-      existing Vectl uv tool environment, `/Users/tefx/.local/share/uv/tools/vectl/uv-receipt.toml`,
+      Boundary: Owner `general`. Authorized runtime-state target is only the existing
+      Vectl uv tool environment, `/Users/tefx/.local/share/uv/tools/vectl/uv-receipt.toml`,
       and `/Users/tefx/.local/bin/vectl`. Preserve every other installed uv tool and
       leave the repository byte-for-byte unchanged. No repository commit, plan mutation,
       publish, push, tag, external service, credential, account, or paid effect.

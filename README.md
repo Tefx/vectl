@@ -523,6 +523,21 @@ uvx vectl repair claims --dry-run  # Should now show no changes
 
 ---
 
+## Development checks
+
+Use Python 3.12 or newer. Install the locked development dependencies and run:
+
+```bash
+uv sync --frozen
+uv run --frozen pytest tests/ -q
+uv run --frozen ruff check src/ tests/
+uv run --frozen invar guard
+```
+
+The test workflow runs on pushes and pull requests targeting `Main` (case-sensitive),
+using Python 3.12. Ruff is pinned in the development dependency group.
+`invar guard` checks changed files by default; use `--all` for a repository-wide scan.
+
 ## Technical Details
 
 Architecture, CAS safety, and test coverage (Hypothesis state machine verification): [docs/DESIGN.md](docs/DESIGN.md).

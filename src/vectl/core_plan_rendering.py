@@ -5,7 +5,17 @@ Extracted from vectl.core_plan_queries while preserving public imports.
 
 from __future__ import annotations
 
-from vectl.models import DiffResult, Phase, PhaseChange, PhaseStatus, Plan, PlanError, Step, StepChange, StepStatus
+from vectl.models import (
+    DiffResult,
+    Phase,
+    PhaseChange,
+    PhaseStatus,
+    Plan,
+    PlanError,
+    Step,
+    StepChange,
+    StepStatus,
+)
 from vectl.semantics import is_step_locked as _is_step_locked_shared
 
 _PHASE_ICON = {
@@ -22,6 +32,7 @@ _STEP_ICON = {
     StepStatus.SKIPPED: "⊘",
     StepStatus.REJECTED: "✗",
 }
+
 
 def render_plan(plan: Plan, phase_id: str | None = None, full: bool = False) -> str:
     """Render plan as Markdown stakeholder report.
@@ -69,7 +80,8 @@ def render_plan(plan: Plan, phase_id: str | None = None, full: bool = False) -> 
     return "\n".join(lines)
 
 
-# @shell_complexity: Branches preserve phase context/gate display, lock icon selection, full descriptions, summaries, and progress math.
+# @shell_complexity: Branches preserve phase context/gate display, lock icon selection, full
+# descriptions, summaries, and progress math.
 def _render_phase(plan: Plan, ph: Phase, full: bool = False) -> str:
     """Render a single phase as Markdown section.
 
@@ -184,7 +196,8 @@ def _mermaid_phase_dag(plan: Plan) -> str:
     return "\n".join(lines)
 
 
-# @shell_complexity: Branches preserve missing-phase validation, lock icon selection, node emission, and dependency edge emission.
+# @shell_complexity: Branches preserve missing-phase validation, lock icon selection, node emission,
+# and dependency edge emission.
 def _mermaid_step_dag(plan: Plan, phase_id: str) -> str:
     """Generate step-level Mermaid DAG for a single phase."""
     ph = plan.find_phase(phase_id)
@@ -219,7 +232,8 @@ def _mermaid_node_id(step_id: str) -> str:
     return step_id.replace(".", "_").replace("-", "_")
 
 
-# @shell_complexity: Branches preserve added/removed/status/modified phase and step diff classifications in one deterministic pass.
+# @shell_complexity: Branches preserve added/removed/status/modified phase and step diff
+# classifications in one deterministic pass.
 def diff_plans(old: Plan, new: Plan) -> DiffResult:
     """Compare two plan states and produce a structured diff.
 

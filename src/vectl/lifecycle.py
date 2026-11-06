@@ -6,7 +6,7 @@ transition operations.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass as dataclass
 from datetime import datetime, timezone
 from typing import Any, TypeAlias
 

@@ -1,11 +1,14 @@
 """Internal implementation slice split from mcp_core_tools.py.
 Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 """
+
 from __future__ import annotations
+
 # ruff: noqa: F403, F405
 import json
 import re
 from typing import cast
+
 from pydantic import ValidationError
 
 from vectl.core.diagnostics import (
@@ -24,6 +27,7 @@ from vectl.mcp_mutation_contracts import (
     BatchMutationRequest,
     MutationAction,
 )
+
 # ---------------------------------------------------------------------------
 # vectl_mutate
 # ---------------------------------------------------------------------------
@@ -93,9 +97,7 @@ def _validate_batch_requests(requests: object) -> Result[list[dict[str, Any]], s
         for field in _STRING_LIST_FIELDS & request.keys():
             value = request[field]
             if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-                raise PlanError(
-                    f"request[{index}] {action}: '{field}' must be a list of strings."
-                )
+                raise PlanError(f"request[{index}] {action}: '{field}' must be a list of strings.")
         if "force" in request and not isinstance(request["force"], bool):
             raise PlanError(f"request[{index}] {action}: 'force' must be a boolean.")
 
@@ -159,10 +161,7 @@ def _validate_batch_requests(requests: object) -> Result[list[dict[str, Any]], s
                 after = entry.get("after")
                 if after is not None and not (
                     isinstance(after, str)
-                    or (
-                        isinstance(after, list)
-                        and all(isinstance(item, str) for item in after)
-                    )
+                    or (isinstance(after, list) and all(isinstance(item, str) for item in after))
                 ):
                     raise PlanError(f"{prefix} 'after' must be a string or list of strings.")
                 missing_step_fields = [
@@ -208,9 +207,7 @@ def _normalize_bulk_steps(steps: list[dict[str, Any]]) -> Result[list[dict[str, 
 
 
 # @shell_complexity: One dispatcher preserves all existing mutation action semantics.
-def _apply_mutation_request(
-    plan: Plan, request: dict[str, Any]
-) -> Result[tuple[Plan, str], str]:
+def _apply_mutation_request(plan: Plan, request: dict[str, Any]) -> Result[tuple[Plan, str], str]:
     """Apply one existing mutation action to an in-memory Plan."""
     action = request["action"]
     phase_id = request.get("phase_id", "")
@@ -494,9 +491,8 @@ def vectl_mutate(
         or re.fullmatch(r"sha256:[0-9a-f]{64}", expected_base_sha256) is None
     ):
         return "**Error:** expected_base_sha256 must be sha256:<64 lowercase hex>."
-    if (
-        max_issues is not None
-        and (isinstance(max_issues, bool) or not isinstance(max_issues, int) or max_issues < 1)
+    if max_issues is not None and (
+        isinstance(max_issues, bool) or not isinstance(max_issues, int) or max_issues < 1
     ):
         return "**Error:** max_issues must be a positive integer."
     issue_bound = max_issues
@@ -619,13 +615,9 @@ def vectl_mutate(
                     source="canonical_model",
                 )
             except Exception:
-                return format_unexpected_final_validation_failure(
-                    "canonical_model", issue_bound
-                )
+                return format_unexpected_final_validation_failure("canonical_model", issue_bound)
         except Exception:
-            return format_unexpected_final_validation_failure(
-                "canonical_model", issue_bound
-            )
+            return format_unexpected_final_validation_failure("canonical_model", issue_bound)
 
         try:
             issues = validate_plan(working_plan, check_refs=False)
@@ -637,9 +629,7 @@ def vectl_mutate(
                     source="structural",
                 )
         except Exception:
-            return format_unexpected_final_validation_failure(
-                "structural", issue_bound
-            )
+            return format_unexpected_final_validation_failure("structural", issue_bound)
 
         if batch_mode:
             receipt_payload, persisted_lock_notice = cast(
@@ -694,6 +684,3 @@ def vectl_mutate(
     if lock_notice:
         lines.extend(["", lock_notice])
     return "\n".join(lines)
-
-
-

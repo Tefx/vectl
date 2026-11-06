@@ -25,59 +25,23 @@ from vectl.claims import ClaimEntry, load_claims, repair_claims, save_claims
 from vectl.io import load_plan_definition, save_plan
 from vectl.mcp_server import (
     _load as _vectl_load,
-)
-from vectl.mcp_server import (
     _save_plan as _vectl_save_plan,
-)
-from vectl.mcp_server import (
     vectl_check as _vectl_check_tool,
-)
-from vectl.mcp_server import (
     vectl_claim as _vectl_claim_tool,
-)
-from vectl.mcp_server import (
     vectl_clipboard as _vectl_clipboard_tool,
-)
-from vectl.mcp_server import (
     vectl_complete as _vectl_complete_tool,
-)
-from vectl.mcp_server import (
     vectl_dag as _vectl_dag_tool,
-)
-from vectl.mcp_server import (
     vectl_guide as _vectl_guide_tool,
-)
-from vectl.mcp_server import (
     vectl_lifecycle as _vectl_lifecycle_tool,
-)
-from vectl.mcp_server import (
     vectl_migrate_step_id as _vectl_migrate_step_id_tool,
-)
-from vectl.mcp_server import (
     vectl_mutate as _vectl_mutate_tool,
-)
-from vectl.mcp_server import (
     vectl_recover as _vectl_recover_tool,
-)
-from vectl.mcp_server import (
     vectl_render as _vectl_render_tool,
-)
-from vectl.mcp_server import (
     vectl_repair_claims as _vectl_repair_claims_tool,
-)
-from vectl.mcp_server import (
     vectl_review as _vectl_review_tool,
-)
-from vectl.mcp_server import (
     vectl_search as _vectl_search_tool,
-)
-from vectl.mcp_server import (
     vectl_show as _vectl_show_tool,
-)
-from vectl.mcp_server import (
     vectl_status as _vectl_status_tool,
-)
-from vectl.mcp_server import (
     vectl_validate as _vectl_validate_tool,
 )
 from vectl.migration import migrate_from_split_state

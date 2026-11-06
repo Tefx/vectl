@@ -82,7 +82,9 @@ def init(
 
     target = plan or Path("plan.yaml")
     if target.exists():
-        console.print(f"[red bold]Error:[/] {target} already exists. Delete it first or use a different path.")
+        console.print(
+            f"[red bold]Error:[/] {target} already exists. Delete it first or use a different path."
+        )
         raise typer.Exit(1)
 
     template = Plan(project=project, context=f"Implementation plan for {project}.")

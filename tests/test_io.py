@@ -24,10 +24,8 @@ from vectl.io import (
     _clean_dict,
     _git_commit_plan,
     _write_plan_content,
-    save_plan,
-)
-from vectl.io import (
     load_plan_definition as load_plan,
+    save_plan,
 )
 from vectl.models import (
     AffinityMode,

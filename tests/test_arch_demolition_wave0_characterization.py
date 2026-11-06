@@ -9,11 +9,12 @@ import pytest
 from typer.testing import CliRunner
 
 from vectl.claims import ClaimEntry, save_claims
-from vectl.cli import _get_next_steps_with_phase as cli_next_steps_with_phase
-from vectl.cli import app
+from vectl.cli import _get_next_steps_with_phase as cli_next_steps_with_phase, app
 from vectl.io import save_plan
-from vectl.mcp_server import _get_next_steps_with_phase as mcp_next_steps_with_phase
-from vectl.mcp_server import vectl_claim as _vectl_claim_tool
+from vectl.mcp_server import (
+    _get_next_steps_with_phase as mcp_next_steps_with_phase,
+    vectl_claim as _vectl_claim_tool,
+)
 from vectl.models import Phase, PhaseStatus, Plan, Step, StepStatus
 from vectl.plan_path import authority_for_plan_path, resolve_claims_path
 

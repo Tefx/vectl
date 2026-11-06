@@ -2,8 +2,31 @@
 
 from __future__ import annotations
 
-from vectl.cli_plan_common import *
-from vectl.cli_plan_common import _authority_for_plan_path
+from vectl.cli_plan_common import (
+    CASConflictError,
+    Path,
+    PlanError,
+    PlanIOError,
+    PlanOption,
+    RecoverResult,
+    _authority_for_plan_path,
+    _die,
+    _load,
+    _resolve_git_dir,
+    apply_duplicate_step_id_migration,
+    build_duplicate_step_id_migration_dry_run,
+    build_duplicate_step_id_migration_evidence,
+    json,
+    migrate_from_split_state,
+    os,
+    out,
+    require_unambiguous_target_step_id,
+    resolve_plan_path,
+    resolve_state_path,
+    sys,
+    typer,
+)
+
 
 def migrate_cmd(
     plan: Path | None = PlanOption,
@@ -67,7 +90,8 @@ def migrate_cmd(
             out.print(f"  - {warning}")
 
 
-# @shell_complexity: duplicate-ID migration CLI must preserve dry-run/apply JSON and human output contract in one public command.
+# @shell_complexity: duplicate-ID migration CLI must preserve dry-run/apply JSON and human output
+# contract in one public command.
 def migrate_step_id_cmd(
     dry_run: bool = typer.Option(
         False,
@@ -182,7 +206,8 @@ def migrate_step_id_cmd(
     out.print(json.dumps(apply_result.evidence.to_dict(), indent=2, sort_keys=True))
 
 
-# @shell_complexity: recovery command preserves backup discovery, diff preview, confirmation, and restore diagnostics.
+# @shell_complexity: recovery command preserves backup discovery, diff preview, confirmation, and
+# restore diagnostics.
 def recover(
     plan: Path | None = PlanOption,
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt."),
@@ -292,4 +317,5 @@ def checkpoint(
 # ---------------------------------------------------------------------------
 
 
-# @shell_complexity: add-step preserves import-status parsing, template source validation, mutation, and guidance output.
+# @shell_complexity: add-step preserves import-status parsing, template source validation, mutation,
+# and guidance output.

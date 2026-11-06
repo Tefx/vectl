@@ -15,51 +15,54 @@ Plan path: resolved via shared plan_path.resolve_plan_path() —
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable as Callable
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any as Any, Literal as Literal, cast as cast
 
-from fastmcp import FastMCP
-from pydantic import BaseModel
+from fastmcp import FastMCP as FastMCP
+from pydantic import BaseModel as BaseModel
 from returns.result import Result, Success
 
-from vectl.claim_guidance import GuidancePayload, build_claim_guidance
-from vectl.claims import get_current_branch, repair_claims
+from vectl.claim_guidance import (
+    GuidancePayload as GuidancePayload,
+    build_claim_guidance as build_claim_guidance,
+)
+from vectl.claims import get_current_branch as get_current_branch, repair_claims as repair_claims
 from vectl.core import (
-    _SENTINEL,
-    AgentsTarget,
-    add_phase,
-    add_step,
-    add_steps_bulk,
-    apply_duplicate_step_id_migration,
-    build_duplicate_step_id_migration_dry_run,
-    build_duplicate_step_id_migration_evidence,
-    claim_step,
-    clipboard_clear,
-    clipboard_write,
-    complete_phase,
-    complete_step,
-    defer_step,
-    edit_phase,
-    edit_plan,
-    edit_step,
+    _SENTINEL as _SENTINEL,
+    AgentsTarget as AgentsTarget,
+    add_phase as add_phase,
+    add_step as add_step,
+    add_steps_bulk as add_steps_bulk,
+    apply_duplicate_step_id_migration as apply_duplicate_step_id_migration,
+    build_duplicate_step_id_migration_dry_run as build_duplicate_step_id_migration_dry_run,
+    build_duplicate_step_id_migration_evidence as build_duplicate_step_id_migration_evidence,
+    claim_step as claim_step,
+    clipboard_clear as clipboard_clear,
+    clipboard_write as clipboard_write,
+    complete_phase as complete_phase,
+    complete_step as complete_step,
+    defer_step as defer_step,
+    edit_phase as edit_phase,
+    edit_plan as edit_plan,
+    edit_step as edit_step,
     format_lock_changes,
-    gate_check,
-    get_claimed_steps,
-    get_next_steps,
-    move_step,
+    gate_check as gate_check,
+    get_claimed_steps as get_claimed_steps,
+    get_next_steps as get_next_steps,
+    move_step as move_step,
     recalc_lock_status,
-    reject_step,
-    remove_step,
-    render_plan,
-    review_plan,
-    search_plan,
-    skip_phase,
-    skip_step,
-    update_checklist,
-    upsert_agents_md,
-    validate_plan,
+    reject_step as reject_step,
+    remove_step as remove_step,
+    render_plan as render_plan,
+    review_plan as review_plan,
+    search_plan as search_plan,
+    skip_phase as skip_phase,
+    skip_step as skip_step,
+    update_checklist as update_checklist,
+    upsert_agents_md as upsert_agents_md,
+    validate_plan as validate_plan,
 )
 from vectl.decide import decide as _decide_impl
 from vectl.duplicate_step_id_format import (
@@ -70,41 +73,40 @@ from vectl.duplicate_step_id_format import (
 from vectl.io import (
     _backup_definition,
     _finalize_admitted_plan_mutation,
-    _resolve_git_dir,
+    _resolve_git_dir as _resolve_git_dir,
     load_plan_definition,
     save_plan_with_receipt,
 )
 from vectl.lifecycle import (
-    AffinityOverrideMetadata,
-    AffinityWarningMetadata,
-    ClaimConflictError,
-    ClaimConflictMetadata,
+    AffinityOverrideMetadata as AffinityOverrideMetadata,
+    AffinityWarningMetadata as AffinityWarningMetadata,
+    ClaimConflictError as ClaimConflictError,
+    ClaimConflictMetadata as ClaimConflictMetadata,
 )
 from vectl.models import (
-    AffinityError,
-    AmbiguousMatchError,
+    AffinityError as AffinityError,
+    AmbiguousMatchError as AmbiguousMatchError,
     CASConflictError,
-    CompletedResult,
-    InitResult,
-    NoMatchError,
+    CompletedResult as CompletedResult,
+    InitResult as InitResult,
+    NoMatchError as NoMatchError,
     Phase,
     PhaseStatus,
     Plan,
     PlanError,
     PlanIOError,
-    RunningTask,
+    RunningTask as RunningTask,
     Step,
     StepStatus,
 )
 from vectl.plan_path import (
     PlanAuthority,
     authority_for_plan_path,
-    is_linked_worktree,
-    resolve_claims_path,
+    is_linked_worktree as is_linked_worktree,
+    resolve_claims_path as resolve_claims_path,
     resolve_plan_path,
 )
 from vectl.semantics import is_step_locked
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -266,7 +268,8 @@ def _save_admitted_plan_receipt(
     return cast(Result[tuple[dict[str, object], str], str], (payload, lock_notice))
 
 
-# @shell_complexity: Step formatting preserves existing state, lock, expected-red, claim, and affinity display semantics.
+# @shell_complexity: Step formatting preserves existing state, lock, expected-red, claim, and
+# affinity display semantics.
 def _fmt_step(plan: Plan, step: Step, phase_id: str) -> Result[str, str]:
     phase = plan.find_phase(phase_id)
     if phase and is_step_locked(plan, phase, step):
@@ -304,7 +307,7 @@ def _duplicate_id_diagnostics_lines(plan: Plan) -> Result[list[str], str]:
     lines = format_duplicate_step_id_diagnostics(plan)
     if not lines:
         return []
-    return ["## Duplicate Step-ID Diagnostics", "" , *lines]
+    return ["## Duplicate Step-ID Diagnostics", "", *lines]
 
 
 def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> Result[list[str], str]:
@@ -324,7 +327,8 @@ def _duplicate_id_recommendation_lines(plan: Plan, step_id: str) -> Result[list[
 # ---------------------------------------------------------------------------
 
 
-# @shell_complexity: Phase-aware selection mirrors existing get_next_steps ordering without changing MCP output.
+# @shell_complexity: Phase-aware selection mirrors existing get_next_steps ordering without changing
+# MCP output.
 def _get_next_steps_with_phase(
     plan: Plan, agent: str | None = None
 ) -> Result[list[tuple[Phase, Step]], str]:
@@ -378,7 +382,5 @@ def _get_next_steps_with_phase(
 # ---------------------------------------------------------------------------
 
 
-
-
 # Re-export private helpers for cohesive split command modules.
-__all__ = [name for name in globals() if not name.startswith("__")]
+__all__ = [name for name in globals() if not name.startswith("__")] + ["_decide_impl"]

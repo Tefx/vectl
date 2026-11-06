@@ -4,12 +4,28 @@ from __future__ import annotations
 
 import typer
 
-from vectl.cli_plan_common import *
 from vectl.cli_plan_common import (
+    ContextFileOption,
+    EvidenceTemplateFileOption,
+    Path,
+    PlanError,
+    PlanOption,
+    ProjectGuidanceFileOption,
     _authority_for_plan_path,
+    _check_not_linked_worktree,
+    _die,
+    _load,
+    _phase_icon,
     _print_admitted_plan_notice,
     _print_admitted_plan_receipt,
     _save_admitted_plan,
+    add_phase,
+    add_step,
+    edit_phase,
+    edit_step,
+    move_step,
+    out,
+    remove_step,
 )
 from vectl.models import StepStatus
 
@@ -176,7 +192,8 @@ def add_phase_cmd(
     _print_admitted_plan_receipt(receipt)
 
 
-# @shell_complexity: edit-plan preserves mutually-exclusive file/inline options and sentinel update semantics.
+# @shell_complexity: edit-plan preserves mutually-exclusive file/inline options and sentinel update
+# semantics.
 def edit_plan_cmd(
     project_guidance: str | None = typer.Option(
         None,
@@ -281,7 +298,11 @@ def _ensure_edit_step_has_change(
         return
     if step_agent is not None:
         return
-    if evidence_template is not None or new_step_id is not None or evidence_template_file is not None:
+    if (
+        evidence_template is not None
+        or new_step_id is not None
+        or evidence_template_file is not None
+    ):
         return
     _die(
         "Nothing to edit. Provide at least one of --name, --desc, --verify, --agent, "
@@ -291,7 +312,8 @@ def _ensure_edit_step_has_change(
     )
 
 
-# @shell_complexity: edit-step preserves mutually-exclusive template sources, sentinel semantics, dependency/ref edits, and rename output.
+# @shell_complexity: edit-step preserves mutually-exclusive template sources, sentinel semantics,
+# dependency/ref edits, and rename output.
 def edit_step_cmd(
     step_id: str = typer.Argument(help="Step ID to edit."),
     name: str | None = typer.Option(None, "--name", help="New step name."),
@@ -396,7 +418,8 @@ def edit_step_cmd(
     _print_admitted_plan_receipt(receipt)
 
 
-# @shell_complexity: edit-phase preserves no-op validation, dependency parsing, sentinel semantics, and output hints.
+# @shell_complexity: edit-phase preserves no-op validation, dependency parsing, sentinel semantics,
+# and output hints.
 def edit_phase_cmd(
     phase_id: str = typer.Argument(help="Phase ID to edit."),
     name: str | None = typer.Option(None, "--name", help="New phase name."),
@@ -517,4 +540,3 @@ def move_step_cmd(
 # ---------------------------------------------------------------------------
 # cli.12: unlock (explicit phase unlock)
 # ---------------------------------------------------------------------------
-

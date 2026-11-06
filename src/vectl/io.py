@@ -26,17 +26,9 @@ from vectl.models import (
 )
 from vectl.shell.admitted_plan_mutation import (
     PLAN_ADMISSION_CONFIG as _RAW_PLAN_ADMISSION_CONFIG,
-)
-from vectl.shell.admitted_plan_mutation import (
     PlanAdmissionConfig as _PlanAdmissionConfig,
-)
-from vectl.shell.admitted_plan_mutation import (
     admit_candidate_bytes as _admit_candidate_bytes,
-)
-from vectl.shell.admitted_plan_mutation import (
     freeze_plan_admission_config as _freeze_plan_admission_config_impl,
-)
-from vectl.shell.admitted_plan_mutation import (
     sha256_digest as _sha256_digest,
 )
 
@@ -89,7 +81,8 @@ def _file_hash(path: Path) -> str | Result[str, str]:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-# @shell_complexity: Loader keeps missing-file, YAML, mapping, and model validation diagnostics together.
+# @shell_complexity: Loader keeps missing-file, YAML, mapping, and model validation diagnostics
+# together.
 def load_plan_definition(path: Path | str) -> tuple[Plan, str] | Result[tuple[Plan, str], str]:
     """Load plan definition from YAML file only.
 
@@ -122,9 +115,13 @@ def save_plan(
     commit_message: str | None = None,
 ) -> str | Result[str, str]:
     """Save plan to YAML file atomically and return its persisted hash."""
-    return save_plan_with_receipt(
-        plan, path, expected_hash=expected_hash, commit_message=commit_message
-    ).unwrap().persisted_sha256
+    return (
+        save_plan_with_receipt(
+            plan, path, expected_hash=expected_hash, commit_message=commit_message
+        )
+        .unwrap()
+        .persisted_sha256
+    )
 
 
 def save_plan_with_receipt(
@@ -244,11 +241,7 @@ def _finalize_admitted_plan_mutation(
     except Exception as exc:
         raise PlanIOError(f"Plan final validation failed: {exc}") from exc
     blocking_issue = next(
-        (
-            issue
-            for issue in validate_plan(finalized, check_refs=False)
-            if not issue.is_warning
-        ),
+        (issue for issue in validate_plan(finalized, check_refs=False) if not issue.is_warning),
         None,
     )
     if blocking_issue is not None:
@@ -275,9 +268,7 @@ def _finalize_admitted_plan_mutation(
         persisted_bytes = plan_path.read_bytes()
         persisted_sha256 = cast(str, _sha256_digest(persisted_bytes))
         if persisted_sha256 != candidate_sha256:
-            raise PlanIOError(
-                "Persisted Plan bytes do not match the admitted candidate_sha256"
-            )
+            raise PlanIOError("Persisted Plan bytes do not match the admitted candidate_sha256")
 
     try:
         _backup_definition(plan_path)
@@ -325,7 +316,8 @@ def _write_plan_content(path: Path, content: str) -> None:
     _write_plan_bytes(path, content.encode("utf-8"))
 
 
-# @shell_complexity: Retry, subprocess, timeout, and logging branches preserve commit failure semantics.
+# @shell_complexity: Retry, subprocess, timeout, and logging branches preserve commit failure
+# semantics.
 def _git_commit_plan(plan_path: Path, message: str) -> bool | Result[bool, str]:
     """Best-effort git commit for ``plan_path`` after a successful write."""
 
@@ -368,7 +360,8 @@ def _git_commit_plan(plan_path: Path, message: str) -> bool | Result[bool, str]:
     return False
 
 
-# @shell_orchestration: Serialization stays adjacent to YAML writer to preserve plan.yaml compatibility.
+# @shell_orchestration: Serialization stays adjacent to YAML writer to preserve plan.yaml
+# compatibility.
 def _plan_to_dict(plan: Plan) -> dict[str, Any] | Result[dict[str, Any], str]:
     """Convert Plan to a clean dict for YAML serialization.
 
@@ -401,8 +394,12 @@ def _cleanup_default_fields() -> dict[str, Any] | Result[dict[str, Any], str]:
     return cleanup_defaults
 
 
-# @shell_complexity: Recursive YAML cleanup must preserve list, mapping, empty-string, and default omission semantics.
-# @shell_orchestration: Recursive cleanup stays in IO module to preserve current YAML output surface.
+# Recursive YAML cleanup must preserve list, mapping, empty-string, and default
+# omission semantics.
+# Recursive cleanup stays in IO module to preserve current YAML output
+# surface.
+# @shell_complexity: Preserve recursive YAML omission and normalization rules.
+# @shell_orchestration: Keep YAML normalization next to serialization.
 def _clean_dict(d: dict[str, Any]) -> dict[str, Any] | Result[dict[str, Any], str]:
     """Remove empty/default values for cleaner YAML output."""
     cleanup_default_fields = _cleanup_default_fields()

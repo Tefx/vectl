@@ -3,35 +3,71 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from enum import Enum
-from typing import NamedTuple
+from dataclasses import dataclass as dataclass
+from datetime import datetime as datetime, timedelta as timedelta, timezone as timezone
+from enum import Enum as Enum
+from typing import Any, NamedTuple as NamedTuple, TypeAlias
 
-from vectl import claims as _claims
-from vectl import lifecycle as _lifecycle
-from vectl.io import load_plan_definition, save_plan
-from vectl.models import (
-    AmbiguousMatchError, Clipboard, DiffResult, DuplicateStepIdApplyResult,
-    DuplicateStepIdClaimConflict, DuplicateStepIdDependsOnRewrite,
-    DuplicateStepIdDiagnostic, DuplicateStepIdDiagnostics, DuplicateStepIdDryRunReport,
-    DuplicateStepIdGroup, DuplicateStepIdMigrationEvidence, DuplicateStepIdPhaseRef,
-    DuplicateStepIdRenameEntry, DuplicateStepIdRepairRecommendation,
-    DuplicateStepIdResolutionPath, DuplicateStepIdRetryEvidence, GateCheckResult,
-    NoMatchError, Phase, PhaseChange, PhaseProgress, PhaseStatus, Plan, PlanError,
-    PlanIOError, PlanValidationIssue, ReviewResult, SearchMatch, Step, StepChange,
-    StepStatus, format_step_selector,
+from vectl.core_duplicate_step_id import analyze_duplicate_step_ids as analyze_duplicate_step_ids
+from vectl.core_plan_rendering import (
+    _first_line as _first_line,
+    _mermaid_node_id as _mermaid_node_id,
+    _mermaid_phase_dag as _mermaid_phase_dag,
+    _mermaid_step_dag as _mermaid_step_dag,
+    _render_phase as _render_phase,
+    diff_plans as diff_plans,
+    generate_mermaid_dag as generate_mermaid_dag,
+    render_plan as render_plan,
 )
-from vectl.semantics import is_step_locked as _is_step_locked_shared
-
-from vectl.core_duplicate_step_id import analyze_duplicate_step_ids
-from vectl.core_plan_validation import _detect_cycle, validate_plan
+from vectl.core_plan_validation import (
+    _detect_cycle as _detect_cycle,
+    validate_plan as validate_plan,
+)
+from vectl.io import load_plan_definition as load_plan_definition, save_plan as save_plan
+from vectl.models import (
+    AmbiguousMatchError as AmbiguousMatchError,
+    Clipboard as Clipboard,
+    DiffResult as DiffResult,
+    DuplicateStepIdApplyResult as DuplicateStepIdApplyResult,
+    DuplicateStepIdClaimConflict as DuplicateStepIdClaimConflict,
+    DuplicateStepIdDependsOnRewrite as DuplicateStepIdDependsOnRewrite,
+    DuplicateStepIdDiagnostic as DuplicateStepIdDiagnostic,
+    DuplicateStepIdDiagnostics as DuplicateStepIdDiagnostics,
+    DuplicateStepIdDryRunReport as DuplicateStepIdDryRunReport,
+    DuplicateStepIdGroup as DuplicateStepIdGroup,
+    DuplicateStepIdMigrationEvidence as DuplicateStepIdMigrationEvidence,
+    DuplicateStepIdPhaseRef as DuplicateStepIdPhaseRef,
+    DuplicateStepIdRenameEntry as DuplicateStepIdRenameEntry,
+    DuplicateStepIdRepairRecommendation as DuplicateStepIdRepairRecommendation,
+    DuplicateStepIdResolutionPath as DuplicateStepIdResolutionPath,
+    DuplicateStepIdRetryEvidence as DuplicateStepIdRetryEvidence,
+    GateCheckResult as GateCheckResult,
+    NoMatchError as NoMatchError,
+    Phase as Phase,
+    PhaseChange as PhaseChange,
+    PhaseProgress as PhaseProgress,
+    PhaseStatus as PhaseStatus,
+    Plan as Plan,
+    PlanError as PlanError,
+    PlanIOError as PlanIOError,
+    PlanValidationIssue as PlanValidationIssue,
+    ReviewResult as ReviewResult,
+    SearchMatch as SearchMatch,
+    Step as Step,
+    StepChange as StepChange,
+    StepStatus as StepStatus,
+    format_step_selector as format_step_selector,
+)
 
 # @shell_complexity: Branches preserve ordered structural diagnostics for phase IDs,
 # DAGs, statuses, duplicate IDs, and refs.
 
 
-# @shell_complexity: DFS branches preserve neighbor filtering, back-edge reconstruction, recursive traversal, and no-cycle sentinel semantics.
+# @shell_complexity: DFS branches preserve neighbor filtering, back-edge reconstruction, recursive
+# traversal, and no-cycle sentinel semantics.
+Path: TypeAlias = Any
+
+
 def get_next_steps(plan: Plan, agent: str | None = None) -> list[Step]:
     """Get all claimable steps across active phases.
 
@@ -125,7 +161,8 @@ def auto_unlock_phases(plan: Plan) -> list[str]:
     return unlocked
 
 
-# @shell_complexity: Branches encode documented non-regression and locked/pending recalculation rules in one ordered pass.
+# @shell_complexity: Branches encode documented non-regression and locked/pending recalculation
+# rules in one ordered pass.
 def recalc_lock_status(plan: Plan) -> list[str]:
     """Recalculate LOCKED/PENDING status for all phases based on dependency state.
 
@@ -200,7 +237,8 @@ def format_lock_changes(changed: list[str], plan: Plan) -> str:
     return f"[vectl] Lock status updated: {parts}"
 
 
-# @shell_complexity: Branches preserve regex/substr matching, phase/status filtering, phase-field matches, step-field matches, and snippets.
+# @shell_complexity: Branches preserve regex/substr matching, phase/status filtering, phase-field
+# matches, step-field matches, and snippets.
 def search_plan(
     plan: Plan,
     pattern: str,
@@ -283,7 +321,8 @@ def search_plan(
     return results
 
 
-# @shell_complexity: Branches preserve regex and substring match-line extraction, truncation, and first-line fallback.
+# @shell_complexity: Branches preserve regex and substring match-line extraction, truncation, and
+# first-line fallback.
 def _extract_snippet(text: str, pattern: str, use_regex: bool, max_len: int = 80) -> str:
     """Extract the line containing the match, truncated to max_len."""
     if use_regex:
@@ -318,7 +357,8 @@ def _extract_snippet(text: str, pattern: str, use_regex: bool, max_len: int = 80
     return first_line
 
 
-# @shell_complexity: Branches preserve validation invocation, progress totals, active phase filtering, and ref reverse-index construction.
+# @shell_complexity: Branches preserve validation invocation, progress totals, active phase
+# filtering, and ref reverse-index construction.
 def review_plan(
     plan: Plan,
     *,
@@ -437,14 +477,5 @@ _STEP_ICON = {
 }
 
 
-# @shell_complexity: Branches preserve selected-phase rendering, summary table construction, per-phase detail, and progress math.
-from vectl.core_plan_rendering import (
-    _first_line,
-    _mermaid_node_id,
-    _mermaid_phase_dag,
-    _mermaid_step_dag,
-    _render_phase,
-    diff_plans,
-    generate_mermaid_dag,
-    render_plan,
-)
+# @shell_complexity: Branches preserve selected-phase rendering, summary table construction,
+# per-phase detail, and progress math.

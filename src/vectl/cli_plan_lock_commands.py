@@ -5,12 +5,25 @@ from __future__ import annotations
 import typer
 
 from vectl.claims import repair_claims
-from vectl.cli_plan_common import *
 from vectl.cli_plan_common import (
+    Path,
+    PlanError,
+    PlanOption,
     _authority_for_plan_path,
+    _check_not_linked_worktree,
+    _die,
+    _load,
     _print_admitted_plan_notice,
     _print_admitted_plan_receipt,
     _save_admitted_plan,
+    _save_plan,
+    add_steps_bulk,
+    format_lock_changes,
+    json,
+    out,
+    recalc_lock_status,
+    sys,
+    unlock_phase,
 )
 
 
@@ -26,9 +39,7 @@ def unlock(
         p = unlock_phase(p, phase_id)
     except PlanError as e:
         _die(str(e))
-    _save_plan(
-        p, plan_path, def_h, f"vectl: unlock phase {phase_id}", authority=authority
-    )
+    _save_plan(p, plan_path, def_h, f"vectl: unlock phase {phase_id}", authority=authority)
     out.print(f"[green]Unlocked:[/] {phase_id}")
     if evidence:
         out.print(f"[dim]Evidence: {evidence}[/]")
@@ -79,9 +90,7 @@ def recalc_lock(
     else:
         changed = recalc_lock_status(p)
         msg = format_lock_changes(changed, p)
-        _save_plan(
-            p, plan_path, def_h, "vectl: recalc lock status", authority=authority
-        )
+        _save_plan(p, plan_path, def_h, "vectl: recalc lock status", authority=authority)
         out.print(msg if msg else "[vectl] Lock status is consistent. No changes needed.")
 
 
@@ -91,7 +100,8 @@ def recalc_lock(
 # ---------------------------------------------------------------------------
 
 
-# @shell_complexity: repair-claims preserves dry-run/json modes and human reconciliation report formatting.
+# @shell_complexity: repair-claims preserves dry-run/json modes and human reconciliation report
+# formatting.
 def repair_claims_cmd(
     dry_run: bool = typer.Option(
         False,
@@ -155,7 +165,8 @@ def repair_claims_cmd(
         out.print(f"- {action.action}: {action.key} ({action.reason})")
 
 
-# @shell_complexity: batch add command preserves stdin/YAML validation and post-mutation output contract.
+# @shell_complexity: batch add command preserves stdin/YAML validation and post-mutation output
+# contract.
 def add_steps_cmd(
     phase: str = typer.Option(..., "--phase", help="Phase ID to add steps to."),
     plan: Path | None = PlanOption,

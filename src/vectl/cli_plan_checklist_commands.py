@@ -2,8 +2,24 @@
 
 from __future__ import annotations
 
-from vectl.cli_plan_common import *
-from vectl.cli_plan_common import _authority_for_plan_path
+from vectl.cli_plan_common import (
+    Any,
+    Path,
+    Plan,
+    PlanError,
+    PlanOption,
+    _authority_for_plan_path,
+    _check_not_linked_worktree,
+    _die,
+    _load,
+    _save_plan,
+    asdict,
+    is_dataclass,
+    json,
+    out,
+    typer,
+    update_checklist,
+)
 from vectl.plan_path import PlanAuthority
 
 
@@ -84,9 +100,7 @@ def _run_legacy_check(
         updated = update_checklist(p, step_id, check=keyword, append=add)
     except PlanError as e:
         _die(str(e))
-    _save_plan(
-        updated, plan_path, def_h, f"vectl: update checklist {step_id}", authority=authority
-    )
+    _save_plan(updated, plan_path, def_h, f"vectl: update checklist {step_id}", authority=authority)
     out.print(f"[green]Updated checklist:[/] {step_id}")
     out.print()
     out.print(f"[dim]→ vectl show {step_id}[/]")
@@ -118,7 +132,9 @@ def check_inventory_cmd(
     out.print(f"checklist_inventory_revision: {revision_value}")
     for item in payload["items"]:
         mark = "x" if item["checked"] else " "
-        out.print(f"  - [{mark}] {item['field']}[{item['index']}] {item['item_id']} — {item['text']}")
+        out.print(
+            f"  - [{mark}] {item['field']}[{item['index']}] {item['item_id']} — {item['text']}"
+        )
 
 
 def _run_deterministic_check_mutation(
@@ -150,7 +166,9 @@ def _run_deterministic_check_mutation(
     result = mutate_checklist.__wrapped__(
         step,
         revision,
-        _parse_checklist_requests(batch=batch, item_id=item_id, field=field, index=index, checked=checked),
+        _parse_checklist_requests(
+            batch=batch, item_id=item_id, field=field, index=index, checked=checked
+        ),
     )
     phase.steps = [result.step if existing is step else existing for existing in phase.steps]
     _current_revision, items = get_inventory.__wrapped__(result.step)
@@ -164,7 +182,12 @@ def _run_deterministic_check_mutation(
 
 
 def _parse_checklist_requests(
-    *, batch: str | None, item_id: str | None, field: str | None, index: int | None, checked: str | None
+    *,
+    batch: str | None,
+    item_id: str | None,
+    field: str | None,
+    index: int | None,
+    checked: str | None,
 ) -> list[Any]:
     from vectl.core_checklist import FieldIndexSelector, ItemIdSelector, MutationRequest
 
@@ -184,16 +207,19 @@ def _parse_checklist_requests(
 
 
 def _request_from_mapping(entry: Any) -> Any:
-    from vectl.core_checklist import FieldIndexSelector, ItemIdSelector, LegacyKeywordSelector, MutationRequest
+    from vectl.core_checklist import (
+        FieldIndexSelector,
+        ItemIdSelector,
+        LegacyKeywordSelector,
+        MutationRequest,
+    )
 
     if not isinstance(entry, dict):
         raise ValueError("Each batch request must be an object")
     selector_obj = entry.get("selector")
     if selector_obj is None:
         selector_obj = {
-            key: entry[key]
-            for key in ("item_id", "field", "index", "keyword")
-            if key in entry
+            key: entry[key] for key in ("item_id", "field", "index", "keyword") if key in entry
         }
     if not isinstance(selector_obj, dict):
         raise ValueError("Each batch request selector must be an object")
@@ -203,7 +229,9 @@ def _request_from_mapping(entry: Any) -> Any:
         return MutationRequest(ItemIdSelector(str(selector_obj["item_id"])), checked_value)
     if "field" in selector_obj and "index" in selector_obj:
         return MutationRequest(
-            FieldIndexSelector(_supported_field(str(selector_obj["field"])), int(selector_obj["index"])),
+            FieldIndexSelector(
+                _supported_field(str(selector_obj["field"])), int(selector_obj["index"])
+            ),
             checked_value,
         )
     if "keyword" in selector_obj:
@@ -231,7 +259,13 @@ def _parse_checked(value: str) -> bool:
 
 
 def _checklist_item_payload(item: Any) -> dict[str, Any]:
-    return {"item_id": item.item_id, "field": item.field, "index": item.index, "text": item.text, "checked": item.checked}
+    return {
+        "item_id": item.item_id,
+        "field": item.field,
+        "index": item.index,
+        "text": item.text,
+        "checked": item.checked,
+    }
 
 
 def _batch_diagnostics_payload(diagnostics: Any) -> dict[str, Any]:
@@ -262,7 +296,11 @@ def _checklist_exception_payload(exc: Exception) -> dict[str, Any]:
             "type": exc.__class__.__name__,
             "code": "invalid_selector",
             "message": str(exc),
-            "retry": {"retryable": True, "action": "fix_request", "message": "Fix the selector or request shape before retrying."},
+            "retry": {
+                "retryable": True,
+                "action": "fix_request",
+                "message": "Fix the selector or request shape before retrying.",
+            },
         },
     }
 

@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from returns.result import Result
+
 from vectl.io import load_plan_definition, save_plan
 from vectl.models import Clipboard, Phase, PlanIOError, Step
 
@@ -137,7 +139,7 @@ def _merge_phase(phase: Phase, phase_state: dict[str, Any]):
 
 
 # @shell_complexity: migration transaction keeps validation, save, and rename atomicity visible
-def migrate_from_split_state(plan_path: Path) -> "Result[MigrationResult, str]":
+def migrate_from_split_state(plan_path: Path) -> Result[MigrationResult, str]:
     """Migrate legacy split-state runtime data into plan.yaml.
 
     Source: plan step `unified-state-migration.implement-migration-function`.

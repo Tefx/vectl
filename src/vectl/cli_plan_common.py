@@ -5,100 +5,103 @@ Spec authority: tools/vectl/plan.yaml, phases cli_read + cli_write.
 
 from __future__ import annotations
 
-import enum
+import enum as enum
 import json
 import os
 import sys
-import time
-from dataclasses import asdict, is_dataclass, replace
+import time as time
+from dataclasses import asdict as asdict, is_dataclass as is_dataclass, replace as replace
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any as Any, Literal as Literal, cast as cast
 
 import typer
 from returns.result import Result, Success
 from rich.console import Console
-from rich.markdown import Markdown
+from rich.markdown import Markdown as Markdown
 from rich.markup import escape as _esc
-from rich.panel import Panel
+from rich.panel import Panel as Panel
 from rich.table import Table
 from rich.text import Text
 
 from vectl import __version__
 from vectl.core import (
-    RecoverResult,
-    add_phase,
-    add_step,
-    add_steps_bulk,
-    apply_duplicate_step_id_migration,
-    build_duplicate_step_id_migration_dry_run,
-    build_duplicate_step_id_migration_evidence,
-    claim_step,
-    clipboard_clear,
-    clipboard_write,
-    complete_phase,
-    complete_step,
-    defer_step,
-    diff_plans,
-    edit_phase,
-    edit_step,
+    RecoverResult as RecoverResult,
+    add_phase as add_phase,
+    add_step as add_step,
+    add_steps_bulk as add_steps_bulk,
+    apply_duplicate_step_id_migration as apply_duplicate_step_id_migration,
+    build_duplicate_step_id_migration_dry_run as build_duplicate_step_id_migration_dry_run,
+    build_duplicate_step_id_migration_evidence as build_duplicate_step_id_migration_evidence,
+    claim_step as claim_step,
+    clipboard_clear as clipboard_clear,
+    clipboard_write as clipboard_write,
+    complete_phase as complete_phase,
+    complete_step as complete_step,
+    defer_step as defer_step,
+    diff_plans as diff_plans,
+    edit_phase as edit_phase,
+    edit_step as edit_step,
     format_lock_changes,
-    get_claimed_steps,
-    get_next_steps,
-    move_step,
-    recalc_lock_status,
-    reject_step,
-    remove_step,
-    render_plan,
-    require_unambiguous_target_step_id,
-    review_plan,
-    search_plan,
-    skip_phase,
-    skip_step,
-    unlock_phase,
-    update_checklist,
-    validate_plan,
-)
-from vectl.core import (
     gate_check as core_gate_check,
+    get_claimed_steps as get_claimed_steps,
+    get_next_steps as get_next_steps,
+    move_step as move_step,
+    recalc_lock_status,
+    reject_step as reject_step,
+    remove_step as remove_step,
+    render_plan as render_plan,
+    require_unambiguous_target_step_id as require_unambiguous_target_step_id,
+    review_plan as review_plan,
+    search_plan as search_plan,
+    skip_phase as skip_phase,
+    skip_step as skip_step,
+    unlock_phase as unlock_phase,
+    update_checklist as update_checklist,
+    validate_plan as validate_plan,
 )
-from vectl.dashboard import generate_dashboard
+from vectl.dashboard import generate_dashboard as generate_dashboard
 from vectl.duplicate_step_id_format import (
     format_duplicate_step_id_diagnostics,
     format_duplicate_step_id_recommendation,
     get_duplicate_step_id_recommendation,
 )
-from vectl.guide import GUIDE_ALL as _GUIDE_ALL
-from vectl.guide import GUIDE_TOPICS as _GUIDE_TOPICS
+from vectl.guide import GUIDE_ALL as _GUIDE_ALL, GUIDE_TOPICS as _GUIDE_TOPICS
 from vectl.io import (
     _finalize_admitted_plan_mutation,
-    _resolve_git_dir,
+    _resolve_git_dir as _resolve_git_dir,
     load_plan_definition,
     save_plan_with_receipt,
 )
-from vectl.lifecycle import ClaimConflictError
-from vectl.merge_driver import merge_plans
-from vectl.migration import migrate_from_split_state, resolve_state_path
+from vectl.lifecycle import ClaimConflictError as ClaimConflictError
+from vectl.merge_driver import merge_plans as merge_plans
+from vectl.migration import (
+    migrate_from_split_state as migrate_from_split_state,
+    resolve_state_path as resolve_state_path,
+)
 from vectl.models import (
-    AffinityMode,
+    AffinityMode as AffinityMode,
     CASConflictError,
     Phase,
     PhaseStatus,
     Plan,
-    PlanError,
+    PlanError as PlanError,
     PlanIOError,
-    SkipReason,
+    SkipReason as SkipReason,
     Step,
     StepStatus,
-    format_step_selector,
+    format_step_selector as format_step_selector,
 )
 from vectl.plan_path import (
     PlanAuthority,
     authority_for_plan_path,
     is_linked_worktree,
-    resolve_claims_path,
+    resolve_claims_path as resolve_claims_path,
     resolve_plan_path,
 )
-from vectl.semantics import _get_active_phase_ids, is_step_locked
+from vectl.semantics import (
+    _get_active_phase_ids as _get_active_phase_ids,
+    is_step_locked as is_step_locked,
+)
 
 console = Console(stderr=True)
 out = Console()
@@ -169,7 +172,8 @@ def _build_phase_overview_table(p: Plan) -> Result[Table, str]:
 
 
 # @shell_orchestration: Text formatting helper belongs to CLI output surface.
-# @shell_complexity: checklist skipping and truncation are intentionally kept together for CLI summary compatibility.
+# @shell_complexity: checklist skipping and truncation are intentionally kept together for CLI
+# summary compatibility.
 def _one_line_summary(description: str, max_len: int = 72):
     """Extract first meaningful line from description, truncated.
 
@@ -215,8 +219,11 @@ def _print_duplicate_id_recommendation_for_step(p: Plan, step_id: str) -> None:
             out.print(f"  [dim]{label}:[/] {_esc(rest)}")
         else:
             out.print(f"  [dim]{_esc(line)}[/]")
+
+
 # @shell_orchestration: Phase-aware claimability helper belongs to CLI output flow.
-# @shell_complexity: phase-aware claimability mirrors existing get_next_steps ordering without changing CLI semantics.
+# @shell_complexity: phase-aware claimability mirrors existing get_next_steps ordering without
+# changing CLI semantics.
 def _get_next_steps_with_phase(plan: Plan, agent: str | None = None):
     """Get next steps with their containing phase.
 
@@ -478,8 +485,11 @@ def _check_claim_mismatch(
     claims_path: Path | None = None,
 ):
     """Return canonical key and full-entry claim consistency diagnostics."""
-    from vectl.claims import claim_consistency, get_current_branch
-    from vectl.claims import resolve_claims_path as claims_path_resolver
+    from vectl.claims import (
+        claim_consistency,
+        get_current_branch,
+        resolve_claims_path as claims_path_resolver,
+    )
 
     resolved_branch = branch if branch is not None else get_current_branch()
     consistency = claim_consistency(
@@ -566,7 +576,12 @@ DashboardOutputOption = typer.Option(
 )
 
 
-# @shell_complexity: Typer command coordinates strategy panel, duplicate phase display, and guidance text in one output surface.
+# @shell_complexity: Typer command coordinates strategy panel, duplicate phase display, and guidance
+# text in one output surface.
 
 # Re-export private helpers for cohesive split command modules.
-__all__ = [name for name in globals() if not name.startswith("__")]
+__all__ = [name for name in globals() if not name.startswith("__")] + [
+    "core_gate_check",
+    "_GUIDE_ALL",
+    "_GUIDE_TOPICS",
+]

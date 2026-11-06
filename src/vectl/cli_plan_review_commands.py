@@ -2,8 +2,40 @@
 
 from __future__ import annotations
 
-from vectl.cli_plan_common import *
-from vectl.cli_plan_common import _authority_for_plan_path
+from vectl.cli_plan_common import (
+    _PHASE_STATUS_STYLE,
+    _STEP_STATUS_STYLE,
+    Any,
+    DashboardOutputOption,
+    Panel,
+    Path,
+    Plan,
+    PlanError,
+    PlanOption,
+    StepStatus,
+    _authority_for_plan_path,
+    _die,
+    _esc,
+    _is_claim_consistency_scoped_gate,
+    _load,
+    _one_line_summary,
+    _save_plan,
+    clipboard_clear,
+    clipboard_write,
+    console,
+    core_gate_check,
+    generate_dashboard,
+    get_claimed_steps,
+    is_step_locked,
+    os,
+    out,
+    replace,
+    review_plan,
+    search_plan,
+    typer,
+    validate_plan,
+)
+
 
 # @shell_complexity: search preserves grouped phase output and empty-result CLI messaging.
 def search(
@@ -52,7 +84,8 @@ def search(
 # ---------------------------------------------------------------------------
 
 
-# @shell_complexity: mine preserves env fallback, --all behavior, empty-state hints, and claimed-step detail output.
+# @shell_complexity: mine preserves env fallback, --all behavior, empty-state hints, and
+# claimed-step detail output.
 def mine(
     agent: str | None = typer.Option(
         None,
@@ -265,7 +298,8 @@ def _exit_if_gate_validation_fails(p: Plan) -> None:
     raise typer.Exit(1)
 
 
-# @shell_complexity: gate-check preserves validation, subprocess gate script execution, manual criteria, and summary output.
+# @shell_complexity: gate-check preserves validation, subprocess gate script execution, manual
+# criteria, and summary output.
 def gate_check(
     phase_id: str = typer.Argument(help="Phase ID to check gate readiness."),
     plan: Path | None = PlanOption,
@@ -395,9 +429,7 @@ def clipboard_write_cmd(
     except PlanError as e:
         _die(str(e))
 
-    _save_plan(
-        p, plan_path, def_h, f"vectl: clipboard write by {author}", authority=authority
-    )
+    _save_plan(p, plan_path, def_h, f"vectl: clipboard write by {author}", authority=authority)
 
     cb = p.clipboard
     assert cb is not None

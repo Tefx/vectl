@@ -7,6 +7,7 @@ Spec authority: top-level CLI registration delegates ``render``, ``diff``, and
 from __future__ import annotations
 
 from pathlib import Path
+
 import typer
 from returns.result import Result, Success
 from rich.console import Console
@@ -208,9 +209,7 @@ def diff_cmd(
             elif sc.kind == "status_changed":
                 old_val = sc.old_status.value if sc.old_status else "?"
                 new_val = sc.new_status.value if sc.new_status else "?"
-                out.print(
-                    f"  [yellow]~[/] {sc.step_id} — {old_val} → {new_val} ({sc.phase_id})"
-                )
+                out.print(f"  [yellow]~[/] {sc.step_id} — {old_val} → {new_val} ({sc.phase_id})")
             elif sc.kind == "modified":
                 out.print(f"  [cyan]≈[/] {sc.step_id} — {sc.detail} ({sc.phase_id})")
 

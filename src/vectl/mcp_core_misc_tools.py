@@ -5,12 +5,32 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from returns.result import Success
 
-from vectl.mcp_core_common import *
-from vectl.mcp_core_common import _authority
+from vectl.mcp_core_common import (
+    AmbiguousMatchError,
+    Any,
+    CASConflictError,
+    CompletedResult,
+    NoMatchError,
+    PlanError,
+    Result,
+    RunningTask,
+    _authority,
+    _decide_impl,
+    _load,
+    _save_plan,
+    apply_duplicate_step_id_migration,
+    build_duplicate_step_id_migration_dry_run,
+    build_duplicate_step_id_migration_evidence,
+    update_checklist,
+)
 
-# @shell_complexity: Checklist tool preserves validation and detailed match diagnostics in one public surface.
+
+# @shell_complexity: Checklist tool preserves validation and detailed match diagnostics in one
+# public surface.
 def vectl_check(
     step_id: str,
     keyword: str | None = None,
@@ -44,9 +64,10 @@ def vectl_check(
         structured JSON-serializable payload with markdown, revision, items,
         diagnostics, and structured retry errors.
     """
-    deterministic_supplied = any(
-        value is not None for value in (revision, requests, item_id, field, index, checked)
-    ) or inventory
+    deterministic_supplied = (
+        any(value is not None for value in (revision, requests, item_id, field, index, checked))
+        or inventory
+    )
     if deterministic_supplied:
         return _vectl_check_deterministic(
             step_id=step_id,
@@ -103,8 +124,10 @@ def vectl_check(
     return f"**Updated checklist:** {step_id}"
 
 
-# @shell_adapter: Loads/saves plan through shared shell helpers and adapts JSON-serializable FastMCP payloads.
-# @shell_complexity: Deterministic checklist surface must preserve inventory, mutation, and structured error branches.
+# @shell_adapter: Loads/saves plan through shared shell helpers and adapts JSON-serializable FastMCP
+# payloads.
+# @shell_complexity: Deterministic checklist surface must preserve inventory, mutation, and
+# structured error branches.
 def _vectl_check_deterministic(
     *,
     step_id: str,
@@ -130,21 +153,29 @@ def _vectl_check_deterministic(
     plan, expected_def_hash = _load(authority)
     found = plan.find_step(step_id)
     if found is None:
-        return Success({
-            "ok": False,
-            "markdown": f"**Error:** Step not found: {step_id}",
-            "error": {"type": "PlanError", "code": "not_found", "message": f"Step not found: {step_id}"},
-        })
+        return Success(
+            {
+                "ok": False,
+                "markdown": f"**Error:** Step not found: {step_id}",
+                "error": {
+                    "type": "PlanError",
+                    "code": "not_found",
+                    "message": f"Step not found: {step_id}",
+                },
+            }
+        )
     if inventory:
         _phase, step = found
         revision_value, items = get_inventory.__wrapped__(step)
-        return Success({
-            "ok": True,
-            "markdown": f"**Checklist inventory:** {step_id}",
-            "step_id": step_id,
-            "checklist_inventory_revision": revision_value,
-            "items": [_checklist_item_payload(item) for item in items],
-        })
+        return Success(
+            {
+                "ok": True,
+                "markdown": f"**Checklist inventory:** {step_id}",
+                "step_id": step_id,
+                "checklist_inventory_revision": revision_value,
+                "items": [_checklist_item_payload(item) for item in items],
+            }
+        )
     try:
         batch_text = None
         if requests is not None:
@@ -190,7 +221,18 @@ def _vectl_check_deterministic(
                 )
                 payload.setdefault(
                     "diagnostics",
-                    _batch_diagnostics_payload(type("D", (), {"total_requested": len(request_objects), "matched_items": 0, "changed_items": 0, "selector_diagnostics": ()})()),
+                    _batch_diagnostics_payload(
+                        type(
+                            "D",
+                            (),
+                            {
+                                "total_requested": len(request_objects),
+                                "matched_items": 0,
+                                "changed_items": 0,
+                                "selector_diagnostics": (),
+                            },
+                        )()
+                    ),
                 )
             except Exception:
                 pass
@@ -203,7 +245,7 @@ def _vectl_check_deterministic(
 
 
 def vectl_migrate_step_id(
-    run_mode: Literal["dry-run", "apply"] = "dry-run"
+    run_mode: Literal["dry-run", "apply"] = "dry-run",
 ) -> Result[dict[str, Any], str]:
     """Expose duplicate step-ID migration dry-run/apply surfaces.
 

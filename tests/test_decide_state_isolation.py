@@ -23,17 +23,16 @@ Contract spec: docs/RFC-vectl-decide-advisor-refresh.md
 
 from __future__ import annotations
 
-from pathlib import Path
 import time
+from pathlib import Path
 
 import pytest
 
-from vectl.decision_state import DecideState
 from vectl.decide import (
     decide,
     should_reuse_session,
-    REUSE_TTL,
 )
+from vectl.decision_state import DecideState
 from vectl.io import save_plan
 from vectl.models import (
     CompletedResult,
@@ -45,7 +44,6 @@ from vectl.models import (
     Step,
     StepStatus,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -287,7 +285,9 @@ class TestDriverRuntimePathIsolation:
         # Should have actions
         assert isinstance(output, DecideOutput)
 
-    def test_failure_counts_isolated_in_advisor_state(self, tmp_path: Path) -> None:
+    def test_failure_counts_isolated_in_advisor_state(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Failure counts in explicit advisor_state must not leak to module global.
 
         Gap: Currently fails because decide() doesn't properly isolate explicit state.
@@ -301,9 +301,16 @@ class TestDriverRuntimePathIsolation:
             "failure_counts": {"s1": 2},
         }
 
-        # Check that module global is NOT contaminated
+        # Exercise the explicit state before checking the legacy fallback.
         import vectl.decide as decide_mod
 
+        monkeypatch.setattr(decide_mod, "resolve_plan_path", lambda: plan_path)
+        decide(
+            running_tasks=[],
+            completed_results=[],
+            max_parallelism=5,
+            advisor_state=advisor_state,
+        )
         assert "s1" not in decide_mod._legacy_state.failure_counts, (
             "Gap: Failure counts from explicit advisor_state leaked into module global "
             "_legacy_state. This indicates the impl is using the legacy fallback "
@@ -404,6 +411,8 @@ class TestDecideIntegrationIsolation:
                 max_parallelism=5,
                 advisor_state=state_b,
             )
+
+            assert "s2" in output_b.next_state.get("completion_times", {})
 
             # state_a should NOT see any changes from output_b.next_state
             assert "s2" not in output_a.next_state.get("completion_times", {})
@@ -539,7 +548,6 @@ class TestRunnerProvenanceGaps:
         This test PASSES - model validation enforces it.
         Gap: Old test fixtures don't include runner and fail at construction.
         """
-        import pytest
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
@@ -570,7 +578,6 @@ class TestRunnerProvenanceGaps:
 
         This test PASSES - model validation enforces it.
         """
-        import pytest
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):

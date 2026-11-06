@@ -6,16 +6,16 @@ Authority: docs/RFC-deterministic-checklists.md
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Optional, TypeAlias, Union
+from typing import Literal, TypeAlias
+
+from invar_runtime import post, pre
 
 from vectl.core_checklist_inventory import (
-    canonicalize_markdown_impl,
+    canonicalize_markdown_impl as canonicalize_markdown_impl,
     inventory_snapshot_impl as _raw_inventory_snapshot_impl,
-    set_item_marker_impl,
+    set_item_marker_impl as set_item_marker_impl,
 )
 from vectl.models import Step
-from invar_runtime import pre, post
-
 
 # -- Types and Dataclasses --
 
@@ -53,7 +53,7 @@ class LegacyKeywordSelector:
 
 # Public type-only alias: MutationRequest.selector is the runtime public use;
 # callers should instantiate one of the concrete selector dataclasses.
-ChecklistSelector: TypeAlias = Union[ItemIdSelector, FieldIndexSelector, LegacyKeywordSelector]
+ChecklistSelector: TypeAlias = ItemIdSelector | FieldIndexSelector | LegacyKeywordSelector
 
 
 @dataclass(frozen=True)
@@ -81,7 +81,7 @@ class MutationRequest:
     selector: ChecklistSelector
     # If None, toggles state (only valid for LegacyKeywordSelector in legacy mode)
     # If bool, sets deterministic state
-    checked: Optional[bool] = None
+    checked: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -197,11 +197,18 @@ class NoLegacyMatch(ChecklistContractError):
 @pre(lambda code: code != "")
 def _retry_guidance(code: ChecklistErrorCode) -> RetryGuidance:
     if code == "stale_revision":
-        return RetryGuidance(True, "refresh_inventory", "Refresh the checklist inventory and retry against the latest revision.")
+        return RetryGuidance(
+            True, "refresh_inventory",
+            "Refresh the checklist inventory and retry against the latest revision.",
+        )
     if code == "ambiguous_legacy_match":
-        return RetryGuidance(True, "narrow_selector", "Use a more specific keyword or a deterministic selector.")
+        return RetryGuidance(
+            True, "narrow_selector", "Use a more specific keyword or a deterministic selector."
+        )
     if code == "unsupported_field":
-        return RetryGuidance(False, "unsupported", "Restrict checklist operations to description and verification.")
+        return RetryGuidance(
+            False, "unsupported", "Restrict checklist operations to description and verification."
+        )
     return RetryGuidance(True, "fix_request", "Fix the selector or request shape before retrying.")
 
 
@@ -232,7 +239,10 @@ def _error_payload(
 _error_payload_impl = _error_payload.__wrapped__
 
 
-@pre(lambda error_type, payload: issubclass(error_type, ChecklistContractError) and payload.message != "")
+@pre(
+    lambda error_type, payload: issubclass(error_type, ChecklistContractError)
+    and payload.message != ""
+)
 def _raise(error_type: type[ChecklistContractError], payload: ChecklistErrorPayload) -> None:
     error = error_type(payload.message)
     error.payload = payload  # type: ignore[attr-defined]
@@ -270,16 +280,22 @@ def _validate_request_modes(requests: list[MutationRequest]) -> None:
         if isinstance(selector, LegacyKeywordSelector):
             saw_legacy = True
             if request.checked is not None:
-                _raise_invalid_selector_impl("Legacy keyword selectors must omit checked and toggle state.")
+                _raise_invalid_selector_impl(
+                    "Legacy keyword selectors must omit checked and toggle state."
+                )
         elif isinstance(selector, (ItemIdSelector, FieldIndexSelector)):
             saw_deterministic = True
             if request.checked is None:
-                _raise_invalid_selector_impl("Deterministic selectors require an explicit checked boolean.")
+                _raise_invalid_selector_impl(
+                    "Deterministic selectors require an explicit checked boolean."
+                )
         else:
             _raise_invalid_selector_impl("Unknown checklist selector type.")
 
     if saw_legacy and saw_deterministic:
-        _raise_invalid_selector_impl("Cannot mix legacy keyword toggle selectors with deterministic selectors.")
+        _raise_invalid_selector_impl(
+            "Cannot mix legacy keyword toggle selectors with deterministic selectors."
+        )
 
 
 _validate_request_modes_impl = _validate_request_modes.__wrapped__
@@ -449,9 +465,9 @@ _inventory_snapshot_impl = _inventory_snapshot.__wrapped__
 @post(lambda result: isinstance(result, tuple) and len(result) == 2)
 def get_inventory(step: Step) -> tuple[ChecklistInventoryRevision, list[ChecklistItem]]:
     """Get the deterministic checklist inventory and revision for a step.
-    
+
     Only the `description` and `verification` fields are supported.
-    
+
     >>> # Placeholder doctest
     >>> True
     True
@@ -467,10 +483,10 @@ def mutate_checklist(
     requests: list[MutationRequest]
 ) -> MutationBatchResult:
     """Deterministically mutate checklist items based on selectors.
-    
+
     Enforces all-or-nothing batch semantics. The only permitted change to the
     Markdown text is toggling `[ ]` <-> `[x]` markers.
-    
+
     >>> from vectl.models import Step
     >>> step = Step(id="s", name="S", description="- [ ] A")
     >>> current_revision, _ = get_inventory.__wrapped__(step)

@@ -5,15 +5,14 @@ Authority: docs/RFC-deterministic-checklists.md
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import re
+from dataclasses import dataclass
 from typing import Literal
 
 from invar_runtime import post, pre
 
 from vectl.models import Step
-
 
 SupportedInventoryField = Literal["description", "verification"]
 ChecklistInventoryRevision = str
@@ -73,7 +72,8 @@ def calculate_revision(step: Step) -> ChecklistInventoryRevision:
     """Hash the canonical supported-field Markdown snapshot.
 
     >>> from vectl.models import Step
-    >>> calculate_revision_impl(Step(id="s", name="S")) == calculate_revision_impl(Step(id="t", name="T"))
+    >>> first = calculate_revision_impl(Step(id="s", name="S"))
+    >>> first == calculate_revision_impl(Step(id="t", name="T"))
     True
     """
     digest = hashlib.sha256(revision_material_impl(step).encode("utf-8")).hexdigest()
@@ -84,10 +84,12 @@ calculate_revision_impl = calculate_revision.__wrapped__
 
 
 @pre(
-    lambda revision, field, index, line: revision != ""
-    and field in ("description", "verification")
-    and index >= 0
-    and line is not None
+    lambda revision, field, index, line: (
+        revision != ""
+        and field in ("description", "verification")
+        and index >= 0
+        and line is not None
+    )
 )
 @post(lambda result: result.count(":") == 2)
 def item_id(
@@ -101,7 +103,7 @@ def item_id(
     >>> item_id_impl("sha256:abc", "description", 0, "- [ ] A").startswith("description:0:")
     True
     """
-    material = f"{revision}\0{field}\0{index}\0{line}".encode("utf-8")
+    material = f"{revision}\0{field}\0{index}\0{line}".encode()
     fragment = hashlib.sha256(material).hexdigest()[:12]
     return f"{field}:{index}:{fragment}"
 
@@ -110,9 +112,9 @@ item_id_impl = item_id.__wrapped__
 
 
 @pre(
-    lambda field, markdown, revision: field in ("description", "verification")
-    and markdown is not None
-    and revision != ""
+    lambda field, markdown, revision: (
+        field in ("description", "verification") and markdown is not None and revision != ""
+    )
 )
 @post(lambda result: all(row.index >= 0 for row in result))
 def inventory_rows(
@@ -147,9 +149,9 @@ inventory_rows_impl = inventory_rows.__wrapped__
 
 
 @pre(
-    lambda markdown, target_index, checked: markdown is not None
-    and target_index >= 0
-    and isinstance(checked, bool)
+    lambda markdown, target_index, checked: (
+        markdown is not None and target_index >= 0 and isinstance(checked, bool)
+    )
 )
 @post(lambda result: isinstance(result[0], str) and isinstance(result[1], bool))
 def set_item_marker(markdown: str, target_index: int, checked: bool) -> tuple[str, bool]:

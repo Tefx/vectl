@@ -5,14 +5,41 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from vectl.lifecycle import (
     AffinityOverrideMetadata,
     AffinityWarningMetadata,
     release_claim_records,
     rollback_claim_record,
 )
-from vectl.mcp_core_common import *
-from vectl.mcp_core_common import _authority, _save_plan
+from vectl.mcp_core_common import (
+    AffinityError,
+    Any,
+    BaseModel,
+    ClaimConflictError,
+    ClaimConflictMetadata,
+    GuidancePayload,
+    PhaseStatus,
+    PlanError,
+    Result,
+    _authority,
+    _fmt_step,
+    _get_next_steps_with_phase,
+    _load,
+    _save_plan,
+    build_claim_guidance,
+    claim_step,
+    complete_phase,
+    complete_step,
+    defer_step,
+    get_duplicate_step_id_recommendation,
+    get_next_steps,
+    reject_step,
+    skip_phase,
+    skip_step,
+)
+
 
 class ClaimStepData(BaseModel):
     """Claimed step summary.
@@ -49,7 +76,8 @@ class ClaimResponseEnvelope(BaseModel):
     claim_conflict: ClaimConflictMetadata | None = None
 
 
-# @shell_complexity: Claim preserves conflict, affinity, guidance, duplicate-ID, and lock-notice compatibility.
+# @shell_complexity: Claim preserves conflict, affinity, guidance, duplicate-ID, and lock-notice
+# compatibility.
 def vectl_claim(
     agent: str, step_id: str | None = None, guidance: bool = True, force: bool = False
 ) -> Result[dict[str, Any], str]:
@@ -261,7 +289,8 @@ def vectl_claim(
 # ---------------------------------------------------------------------------
 
 
-# @shell_complexity: Complete preserves mutation, phase completion, next-step preview, and lock notice output.
+# @shell_complexity: Complete preserves mutation, phase completion, next-step preview, and lock
+# notice output.
 def vectl_complete(step_id: str, evidence: str) -> Result[str, str]:
     """Complete a step.
 
@@ -453,31 +482,28 @@ def vectl_lifecycle(
 # ---------------------------------------------------------------------------
 
 
-
 def vectl_claim_many(
-    claims: list[dict[str, str]],
-    guidance: bool = False,
-    force: bool = False
+    claims: list[dict[str, str]], guidance: bool = False, force: bool = False
 ) -> Result[dict[str, Any], str]:
     """Atomic batch claim operation for committing multiple explicitly decided claims.
-    
+
     Accepts explicit claim requests [{"step_id": "foo", "agent": "worker"}].
     Returns structured results including successfully claimed steps and any failures.
     """
     from vectl.core.batch_claim import claim_steps
+
     try:
         import dataclasses
+
         authority = _authority().unwrap()
-        result = claim_steps(
-            claims, guidance=guidance, force=force, authority=authority
-        )
+        result = claim_steps(claims, guidance=guidance, force=force, authority=authority)
         return {
             "ok": result.ok,
             "claimed": [dataclasses.asdict(c) for c in result.claimed],
             "failed": [dataclasses.asdict(f) for f in result.failed],
             "affinity_warnings": result.affinity_warnings,
             "markdown": result.markdown,
-            "lock_notice": result.lock_notice
+            "lock_notice": result.lock_notice,
         }
     except Exception as e:
         # Wrap everything in a nice error response just in case
@@ -487,5 +513,5 @@ def vectl_claim_many(
             "failed": [],
             "affinity_warnings": [],
             "markdown": f"Batch claim syntax or systemic error: {e}",
-            "lock_notice": None
+            "lock_notice": None,
         }

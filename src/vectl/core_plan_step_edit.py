@@ -32,7 +32,8 @@ class _Unset(Enum):
 _SENTINEL = _Unset.TOKEN
 
 
-# @shell_complexity: Branches preserve sentinel-based partial updates, ID rewrite, dependency mutation, cycle rollback, refs, and agent clearing semantics.
+# @shell_complexity: Branches preserve sentinel-based partial updates, ID rewrite, dependency
+# mutation, cycle rollback, refs, and agent clearing semantics.
 def edit_step(
     plan: Plan,
     step_id: str,
@@ -162,7 +163,8 @@ def _apply_step_ref_changes(
                 step.refs.remove(ref)
 
 
-# @shell_complexity: Branches preserve sentinel-based phase updates, dependency replacement/add/remove, and self-dependency validation.
+# @shell_complexity: Branches preserve sentinel-based phase updates, dependency
+# replacement/add/remove, and self-dependency validation.
 def edit_phase(
     plan: Plan,
     phase_id: str,
@@ -231,7 +233,8 @@ def edit_plan(
     return plan
 
 
-# @shell_complexity: Branches preserve pending-only removal, dependent detection, force cleanup, and qualified diagnostics.
+# @shell_complexity: Branches preserve pending-only removal, dependent detection, force cleanup, and
+# qualified diagnostics.
 def remove_step(plan: Plan, step_id: str, *, force: bool = False) -> Plan:
     """Remove a pending step from its phase."""
     require_unambiguous_target_step_id(plan, step_id, operation="remove-step")
@@ -279,7 +282,8 @@ def unlock_phase(plan: Plan, phase_id: str) -> Plan:
     return plan
 
 
-# @shell_complexity: Branches preserve pending-only moves, target validation, same-phase rejection, dependent guard, and phase-scoped dependency clearing.
+# @shell_complexity: Branches preserve pending-only moves, target validation, same-phase rejection,
+# dependent guard, and phase-scoped dependency clearing.
 def move_step(plan: Plan, step_id: str, to_phase_id: str) -> Plan:
     """Move a pending step from one phase to another."""
     require_unambiguous_target_step_id(plan, step_id, operation="move-step")
@@ -315,7 +319,8 @@ def move_step(plan: Plan, step_id: str, to_phase_id: str) -> Plan:
 _CHECKLIST_RE = re.compile(r"^(\s*-\s*\[)([ xX])(\]\s*.+)$", re.MULTILINE)
 
 
-# @shell_complexity: Branches preserve mutually optional check/append operations and existing fuzzy checklist toggling behavior.
+# @shell_complexity: Branches preserve mutually optional check/append operations and existing fuzzy
+# checklist toggling behavior.
 def update_checklist(
     plan: Plan, step_id: str, *, check: str | None = None, append: str | None = None
 ) -> Plan:

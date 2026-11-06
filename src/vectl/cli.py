@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import json
+import json as json
 
 import typer
 from returns.result import Result, Success
@@ -15,8 +15,8 @@ from vectl.cli_plan import (
     add_step_cmd,
     add_steps_cmd,
     cancel,
-    check_inventory_cmd,
     check_cmd,
+    check_inventory_cmd,
     checkpoint,
     claim,
     claim_many_cmd,
@@ -53,12 +53,21 @@ from vectl.cli_plan import (
     unlock,
     validate,
 )
-from vectl.cli_plan_common import _get_next_steps_with_phase
-from vectl.cli_render import _load, _save_plan, diff_cmd, log_cmd, render
-from vectl.io import _resolve_git_dir
+from vectl.cli_plan_common import _get_next_steps_with_phase as _get_next_steps_with_phase
+from vectl.cli_render import (
+    _load as _load,
+    _save_plan as _save_plan,
+    diff_cmd as diff_cmd,
+    log_cmd as log_cmd,
+    render as render,
+)
+from vectl.io import _resolve_git_dir as _resolve_git_dir
 from vectl.merge_driver import merge_plans
-from vectl.plan_path import is_linked_worktree, resolve_plan_path
-from vectl.semantics import is_step_locked
+from vectl.plan_path import (
+    is_linked_worktree as is_linked_worktree,
+    resolve_plan_path as resolve_plan_path,
+)
+from vectl.semantics import is_step_locked as is_step_locked
 
 console = Console(stderr=True)
 out = Console()
@@ -71,6 +80,7 @@ app = typer.Typer(
 )
 repair_app = typer.Typer(help="Operator recovery commands.")
 app.add_typer(repair_app, name="repair")
+
 
 def _version_callback(value: bool) -> Result[None, str]:
     if value:

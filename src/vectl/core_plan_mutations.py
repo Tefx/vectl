@@ -1,4 +1,6 @@
-# @invar:allow file_size: Plan mutation compatibility module keeps lifecycle, clipboard, agents-md, and recovery APIs co-located for existing CLI/MCP imports while step add/edit internals migrate behind stable re-exports.
+# @invar:allow file_size: Plan mutation compatibility module keeps lifecycle, clipboard, agents-md,
+# and recovery APIs co-located for existing CLI/MCP imports while step add/edit internals migrate
+# behind stable re-exports.
 """Compatibility facade for plan mutation, lifecycle, clipboard, agents-md, and recovery APIs."""
 
 from __future__ import annotations
@@ -7,7 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, TypeAlias
 
-from vectl.core_plan_clipboard import *  # noqa: F403
+from vectl import claims as _claims, lifecycle as _lifecycle
 from vectl.core_checklist import (  # noqa: F401
     AmbiguousLegacyMatch,
     BatchDiagnostics,
@@ -30,24 +32,29 @@ from vectl.core_checklist import (  # noqa: F401
     get_inventory,
     mutate_checklist,
 )
-from vectl.core_plan_step_add import *  # noqa: F403
-from vectl.core_plan_step_edit import *  # noqa: F403
 from vectl.core_duplicate_step_id import require_unambiguous_target_step_id
+from vectl.core_plan_clipboard import *  # noqa: F403
+from vectl.core_plan_clipboard import _clipboard_expired as _clipboard_expired
+from vectl.core_plan_step_add import *  # noqa: F403
+from vectl.core_plan_step_add import (
+    _slugify as _slugify,
+    _unique_phase_id as _unique_phase_id,
+    _unique_step_id as _unique_step_id,
+)
+from vectl.core_plan_step_edit import *  # noqa: F403
+from vectl.core_plan_step_edit import (
+    _CHECKLIST_RE as _CHECKLIST_RE,
+    _SENTINEL as _SENTINEL,
+    _toggle_checklist_item as _toggle_checklist_item,
+    _Unset as _Unset,
+    update_checklist as _legacy_update_checklist,
+)
 from vectl.lifecycle_metadata import ClaimStoreToken
 from vectl.models import (
     DiffResult,
     Plan,
     PlanError,
     Step,
-)
-from vectl.core_plan_clipboard import _clipboard_expired
-from vectl.core_plan_step_add import _slugify, _unique_phase_id, _unique_step_id
-from vectl.core_plan_step_edit import (
-    _CHECKLIST_RE,
-    _SENTINEL,
-    _Unset,
-    _toggle_checklist_item,
-    update_checklist as _legacy_update_checklist,
 )
 
 # Preserve postponed path annotations without classifying this compatibility
@@ -250,7 +257,8 @@ _AGENTS_MD_LEGACY_HEADER = "## Plan Tracking (vectl)"
 _AGENTS_MD_BEGIN = "<!-- VECTL:AGENTS:BEGIN -->"
 _AGENTS_MD_END = "<!-- VECTL:AGENTS:END -->"
 
-_AGENTS_MD_SNIPPET = f"""\
+_AGENTS_MD_SNIPPET = (
+    f"""\
 {_AGENTS_MD_BEGIN}
 ## Plan Tracking (vectl)
 
@@ -262,7 +270,10 @@ Quick view: `vectl_status` (CLI fallback: `vectl status`)
 
 ### MCP vs CLI
 - Source of truth: `plan.yaml` (channel-agnostic).
-- **Always prefer MCP tools** (`vectl_status`, `vectl_claim`, `vectl_complete`, etc.) when available.
+"""
+    "- **Always prefer MCP tools** (`vectl_status`, `vectl_claim`, `vectl_complete`, etc.) "
+    "when available.\n"
+    f"""\
 - CLI fallback priority: `uv run vectl` > `vectl` > `uvx vectl`.
 - Evidence requirements are identical across MCP and CLI.
 
@@ -299,13 +310,17 @@ directly as a workaround. Use `vectl guide stuck` for troubleshooting.
   to preview and `--yes` to repair.
 
 ### For Architects / Planners
-- **Design Mode**: Run `vectl_guide` (CLI fallback: `vectl guide --on planning`) to learn the Architect Protocol.
+"""
+    "- **Design Mode**: Run `vectl_guide` (CLI fallback: `vectl guide --on planning`) "
+    "to learn the Architect Protocol.\n"
+    f"""\
 - **Ambiguity = Failure**: Workers will hallucinate if steps are vague.
 - **Constraint Tools**:
   - `--evidence-template`: Force workers to provide specific proof (e.g., "Paste logs here").
   - `--refs`: Pin specific files (e.g., "src/auth.py") to the worker's context.
 {_AGENTS_MD_END}
 """
+)
 
 
 class AgentsTarget(str, Enum):
@@ -316,7 +331,8 @@ class AgentsTarget(str, Enum):
     claude = "claude"
 
 
-# @shell_complexity: Branches preserve explicit target overrides and documented auto-detection priority without changing file selection.
+# @shell_complexity: Branches preserve explicit target overrides and documented auto-detection
+# priority without changing file selection.
 def detect_agents_target(directory: Path, target: AgentsTarget = AgentsTarget.auto) -> Path:
     """Detect the best target file for the vectl agents-md section."""
     agents_md = directory / "AGENTS.md"
@@ -387,7 +403,8 @@ class RecoverResult:
     error: str | None = None
 
 
-# @shell_complexity: Branches preserve backup validation, exception compatibility, and human diff summary construction.
+# @shell_complexity: Branches preserve backup validation, exception compatibility, and human diff
+# summary construction.
 def preview_recovery(plan_path: Path, backup_path: Path) -> RecoverResult:
     """Preview recovery diff without writing to disk."""
     from vectl.core_plan_queries import diff_plans

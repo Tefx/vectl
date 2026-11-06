@@ -6,10 +6,28 @@ Runtime MCP inventory: 20-tool MCP inventory includes `vectl_decide`.
 from __future__ import annotations
 
 from vectl.claims import claim_consistency
-from vectl.mcp_core_common import *
-from vectl.mcp_core_common import _authority
+from vectl.mcp_core_common import (
+    _STATUS_ICON,
+    _STEP_ICON,
+    PlanError,
+    Result,
+    StepStatus,
+    _authority,
+    _duplicate_id_diagnostics_lines,
+    _duplicate_id_recommendation_lines,
+    _fmt_phase_summary,
+    _fmt_step,
+    _get_next_steps_with_phase,
+    _load,
+    get_claimed_steps,
+    is_step_locked,
+    search_plan,
+    validate_plan,
+)
 
-# @shell_complexity: Status preserves summary, next-work, mine, and duplicate diagnostics without writes.
+
+# @shell_complexity: Status preserves summary, next-work, mine, and duplicate diagnostics without
+# writes.
 def vectl_status(agent: str | None = None) -> Result[str, str]:
     """Show plan status overview + next steps + optionally mine.
 
@@ -43,9 +61,7 @@ def vectl_status(agent: str | None = None) -> Result[str, str]:
         else:
             parts.append(f"\n*No steps claimed by {agent}.*")
 
-    consistency = claim_consistency(
-        plan, authority.claims_path, authority.branch
-    ).unwrap()
+    consistency = claim_consistency(plan, authority.claims_path, authority.branch).unwrap()
     if consistency.has_mismatch:
         parts.append("\nℹ Stale claims detected (routine after agent restart):")
         if consistency.ghost_claims:
@@ -69,7 +85,8 @@ def vectl_status(agent: str | None = None) -> Result[str, str]:
 # ---------------------------------------------------------------------------
 
 
-# @shell_complexity: Show preserves step-vs-phase rendering and all optional detail fields in one public tool.
+# @shell_complexity: Show preserves step-vs-phase rendering and all optional detail fields in one
+# public tool.
 def vectl_show(target: str) -> Result[str, str]:
     """Show step or phase detail.
 
@@ -195,5 +212,3 @@ def vectl_validate(check_refs: bool = False) -> Result[str, str]:
         parts.append(f"WARN: {issue.message}")
     parts.append(f"{len(errors)} error(s), {len(warnings)} warning(s)")
     return "\n".join(parts)
-
-

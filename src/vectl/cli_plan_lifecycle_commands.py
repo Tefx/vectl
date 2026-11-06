@@ -2,8 +2,36 @@
 
 from __future__ import annotations
 
-from vectl.cli_plan_common import *
-from vectl.cli_plan_common import _authority_for_plan_path, _save_plan
+import dataclasses
+import json
+
+from vectl.cli_plan_common import (
+    ClaimConflictError,
+    Path,
+    PlanError,
+    PlanOption,
+    SkipReason,
+    _authority_for_plan_path,
+    _die,
+    _esc,
+    _get_next_steps_with_phase,
+    _load,
+    _save_plan,
+    _step_icon,
+    claim_step,
+    complete_phase,
+    complete_step,
+    console,
+    defer_step,
+    get_next_steps,
+    os,
+    out,
+    reject_step,
+    skip_phase,
+    skip_step,
+    typer,
+    validate_plan,
+)
 from vectl.cli_plan_read_commands import _show_step_detail
 from vectl.lifecycle import release_claim_records, rollback_claim_record
 
@@ -97,9 +125,7 @@ def claim(
             out.print(f"[yellow]⚠️  Affinity warning: {result.warning_message}[/]")
 
     try:
-        _save_plan(
-            p, plan_path, def_h, f"vectl: claim {step_id} by {agent}", authority=authority
-        )
+        _save_plan(p, plan_path, def_h, f"vectl: claim {step_id} by {agent}", authority=authority)
     except Exception:
         rollback_claim_record(result, claims_path)
         raise
@@ -138,7 +164,8 @@ def claim(
         )
 
 
-# @shell_complexity: complete preserves mutation, next-step preview, and no-more-work output in one Typer handler.
+# @shell_complexity: complete preserves mutation, next-step preview, and no-more-work output in one
+# Typer handler.
 def complete(
     step_id: str = typer.Argument(help="Step ID to complete."),
     evidence: str = typer.Option(..., "--evidence", "-e", help="Evidence of completion."),
@@ -212,9 +239,7 @@ def complete_phase_cmd(
         _die(str(e))
         return  # unreachable (typer exits), but keeps type-checkers honest
 
-    _save_plan(
-        p, plan_path, def_h, f"vectl: complete phase {phase_id}", authority=authority
-    )
+    _save_plan(p, plan_path, def_h, f"vectl: complete phase {phase_id}", authority=authority)
     out.print(f"[green]Completed phase:[/] {phase_id}")
     if unlocked:
         out.print(f"[green]Unlocked:[/] {', '.join(unlocked)}")
@@ -462,33 +487,43 @@ def validate(
         raise typer.Exit(1)
 
 
-# @shell_complexity: migration command preserves preview, confirmation, idempotence, and warning output semantics.
-from datetime import datetime
-import json
-import dataclasses
-from rich.console import Console
+# @shell_complexity: migration command preserves preview, confirmation, idempotence, and warning
+# output semantics.
+
 
 def encode_batch_result(result):
-    from vectl.core.batch_claim import BatchClaimResult
     return dataclasses.asdict(result)
 
+
+ClaimManyJsonOption = typer.Option(False, "--json", help="Output machine-readable JSON")
+ClaimManyArgsOption = typer.Option(None, "--claim", help="Claim request in agent:step_id format")
+
+
 def claim_many_cmd(
-    claims_json: str | None = typer.Option(None, "--claims-json", help="JSON array of claims: [{'step_id':'foo','agent':'worker-a'}, ...]"),
-    claim_args: list[str] | None = typer.Option(None, "--claim", help="Claim request in agent:step_id format"),
-    is_json: bool = typer.Option(False, "--json", help="Output machine-readable JSON"),
-    guidance: bool = typer.Option(True, "--guidance/--no-guidance", help="Show claim-time Guidance block"),
-    force: bool = typer.Option(False, "--force", "-f", help="Override exclusive affinity violations"),
+    claims_json: str | None = typer.Option(
+        None,
+        "--claims-json",
+        help="JSON array of claims: [{'step_id':'foo','agent':'worker-a'}, ...]",
+    ),
+    claim_args: list[str] | None = ClaimManyArgsOption,
+    is_json: bool = ClaimManyJsonOption,
+    guidance: bool = typer.Option(
+        True, "--guidance/--no-guidance", help="Show claim-time Guidance block"
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Override exclusive affinity violations"
+    ),
     plan: Path | None = PlanOption,
 ):
     """Explict atomic batch claim operation.
-    
+
     Accepts explicit claim requests via --claims-json or repeated --claim args.
     Returns structured results for orchestrators when --json is passed.
     """
     from vectl.core.batch_claim import BatchClaimItem, BatchClaimRequest, claim_many
 
     p, def_h, plan_path = _load(plan)
-    
+
     req_claims = []
     if claims_json:
         try:
@@ -498,7 +533,7 @@ def claim_many_cmd(
         except Exception as e:
             _die(f"Invalid --claims-json payload: {e}")
             return
-            
+
     if claim_args:
         for arg in claim_args:
             parts = arg.split(":", 1)
@@ -506,34 +541,36 @@ def claim_many_cmd(
                 _die(f"Invalid --claim argument format (expected agent:step_id): {arg}")
                 return
             req_claims.append(BatchClaimItem(agent=parts[0], step_id=parts[1]))
-            
+
     if not req_claims:
         _die("No claims provided. Use --claims-json or --claim.")
         return
-        
+
     req = BatchClaimRequest(claims=req_claims, guidance=guidance, force=force)
-    
+
     authority = _authority_for_plan_path(plan_path)
     result = claim_many(req, authority=authority)
 
     if is_json:
         import dataclasses
-        from vectl.core.batch_claim import ClaimFailure
+
+        from vectl.core.batch_claim import ClaimFailure as ClaimFailure
+
         out_dict = {
             "ok": result.ok,
             "claimed": [dataclasses.asdict(c) for c in result.claimed],
             "failed": [dataclasses.asdict(f) for f in result.failed],
             "affinity_warnings": result.affinity_warnings,
             "markdown": result.markdown,
-            "lock_notice": result.lock_notice
+            "lock_notice": result.lock_notice,
         }
         typer.echo(json.dumps(out_dict, indent=2))
         if not result.ok:
             raise typer.Exit(1)
         return
-        
+
     if not result.ok:
-        out.print(f"[red bold]Batch claim failed[/]")
+        out.print("[red bold]Batch claim failed[/]")
         for failure in result.failed:
             out.print(f"  [red]Failed:[/] {failure.step_id} (by {failure.agent}): {failure.reason}")
         raise typer.Exit(1)
@@ -541,10 +578,10 @@ def claim_many_cmd(
     for warning in result.affinity_warnings:
         out.print(f"[yellow]⚠️  {warning}[/]")
 
-    out.print(f"[green]Batch Claimed:[/]")
+    out.print("[green]Batch Claimed:[/]")
     for c in result.claimed:
         out.print(f"  [green]✓[/] {c.step_id} by {c.agent}")
-        
+
     if guidance:
         # Load the updated plan since claim_many re-saved it
         p2, _, _ = _load(plan)
@@ -552,9 +589,9 @@ def claim_many_cmd(
             found = p2.find_step(c.step_id)
             if found is not None:
                 from vectl.claim_guidance import build_claim_guidance
+
                 phase_obj, step_obj = found
                 payload = build_claim_guidance(p2, phase_obj, step_obj)
                 out.print()
                 out.print(f"[bold cyan]--- Guidance for {c.step_id} ---[/]")
                 out.print(payload.markdown, markup=False)
-

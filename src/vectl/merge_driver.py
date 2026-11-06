@@ -43,7 +43,8 @@ class _StepIndexes:
     theirs_step_order: list[str]
 
 
-# @shell_orchestration: Merge-driver file keeps pure ordering helper colocated with status-code shell boundary.
+# @shell_orchestration: Merge-driver file keeps pure ordering helper colocated with status-code
+# shell boundary.
 def _ordered_union(*sequences: Sequence[str]) -> Result[list[str], str]:
     ordered: list[str] = []
     seen: set[str] = set()
@@ -55,22 +56,26 @@ def _ordered_union(*sequences: Sequence[str]) -> Result[list[str], str]:
     return Success(ordered)
 
 
-# @shell_orchestration: Merge-driver file keeps pure serialization helper colocated with conflict orchestration.
+# @shell_orchestration: Merge-driver file keeps pure serialization helper colocated with conflict
+# orchestration.
 def _step_payload(step: Step) -> Result[dict[str, Any], str]:
     return Success(step.model_dump(mode="json", exclude_none=False, exclude_defaults=False))
 
 
-# @shell_orchestration: Merge-driver file keeps pure serialization helper colocated with conflict orchestration.
+# @shell_orchestration: Merge-driver file keeps pure serialization helper colocated with conflict
+# orchestration.
 def _phase_payload(phase: Phase) -> Result[dict[str, Any], str]:
     return Success(
-        phase.model_dump(
-            mode="json", exclude_none=False, exclude_defaults=False, exclude={"steps"}
-        )
+        phase.model_dump(mode="json", exclude_none=False, exclude_defaults=False, exclude={"steps"})
     )
 
 
-# @shell_complexity: Branches encode standard three-way merge cases and must preserve conflict behavior.
-# @shell_orchestration: Three-way decision stays near merge-driver I/O to preserve conflict/status semantics.
+# Branches encode standard three-way merge cases and must preserve conflict
+# behavior.
+# Three-way decision stays near merge-driver I/O to preserve conflict/status
+# semantics.
+# @shell_complexity: Preserve standard three-way conflict and status cases.
+# @shell_orchestration: Keep the decision near merge-driver I/O.
 def _three_way(
     base: _T | None,
     ours: _T | None,
@@ -117,7 +122,8 @@ def _write_conflict_markers(ours_path: Path, ours_raw: str, theirs_raw: str) -> 
     return Success(None)
 
 
-# @shell_orchestration: Merge-driver file keeps pure indexing helper colocated with conflict orchestration.
+# @shell_orchestration: Merge-driver file keeps pure indexing helper colocated with conflict
+# orchestration.
 def _build_step_index(plan: Plan) -> Result[tuple[dict[str, Step], dict[str, str], list[str]], str]:
     by_id: dict[str, Step] = {}
     phase_by_step: dict[str, str] = {}
@@ -130,8 +136,12 @@ def _build_step_index(plan: Plan) -> Result[tuple[dict[str, Step], dict[str, str
     return Success((by_id, phase_by_step, order))
 
 
-# @shell_complexity: Branches mirror field-level three-way merge outcomes including deletions and same-field conflicts.
-# @shell_orchestration: Field merge stays colocated with status-code merge driver to preserve conflict semantics.
+# Branches mirror field-level three-way merge outcomes including deletions and
+# same-field conflicts.
+# Field merge stays colocated with status-code merge driver to preserve
+# conflict semantics.
+# @shell_complexity: Preserve field deletion and same-field conflict cases.
+# @shell_orchestration: Keep field merging near Git conflict-status handling.
 def _three_way_mapping(
     base: dict[str, Any] | None,
     ours: dict[str, Any] | None,
@@ -176,8 +186,11 @@ def _three_way_mapping(
     return Success((merged, False))
 
 
-# @shell_orchestration: Adapter keeps phase movement represented in merge-driver field conflict logic.
-def _step_state_fields(step: Step | None, phase_id: str | None) -> Result[dict[str, Any] | None, str]:
+# @shell_orchestration: Adapter keeps phase movement represented in merge-driver field conflict
+# logic.
+def _step_state_fields(
+    step: Step | None, phase_id: str | None
+) -> Result[dict[str, Any] | None, str]:
     if step is None:
         return Success(None)
     payload_result = _step_payload(step)
@@ -188,14 +201,18 @@ def _step_state_fields(step: Step | None, phase_id: str | None) -> Result[dict[s
     return Success(payload)
 
 
-# @shell_orchestration: Conflict path writes markers but always returns Git-compatible conflict status.
+# @shell_orchestration: Conflict path writes markers but always returns Git-compatible conflict
+# status.
 def _conflict(ours_file: Path, ours_raw: str, theirs_raw: str) -> Result[int, str]:
     _write_conflict_markers(ours_file, ours_raw, theirs_raw)
     return Success(1)
 
 
-# @shell_orchestration: Loads merge-driver file inputs while preserving missing/invalid input semantics for caller.
-def _load_merge_inputs(base_path: str, ours_path: str, theirs_path: str) -> Result[_MergeInputs, str]:
+# @shell_orchestration: Loads merge-driver file inputs while preserving missing/invalid input
+# semantics for caller.
+def _load_merge_inputs(
+    base_path: str, ours_path: str, theirs_path: str
+) -> Result[_MergeInputs, str]:
     ours_file = Path(ours_path)
     theirs_file = Path(theirs_path)
 
@@ -216,7 +233,9 @@ def _load_merge_inputs(base_path: str, ours_path: str, theirs_path: str) -> Resu
 
 
 # @shell_orchestration: Aggregate indexes remain colocated with merge-driver conflict orchestration.
-def _build_step_indexes(base_plan: Plan, ours_plan: Plan, theirs_plan: Plan) -> Result[_StepIndexes, str]:
+def _build_step_indexes(
+    base_plan: Plan, ours_plan: Plan, theirs_plan: Plan
+) -> Result[_StepIndexes, str]:
     base_result = _build_step_index(base_plan)
     ours_result = _build_step_index(ours_plan)
     theirs_result = _build_step_index(theirs_plan)
@@ -229,21 +248,27 @@ def _build_step_indexes(base_plan: Plan, ours_plan: Plan, theirs_plan: Plan) -> 
     base_steps, base_step_phase, base_step_order = base_result.unwrap()
     ours_steps, ours_step_phase, ours_step_order = ours_result.unwrap()
     theirs_steps, theirs_step_phase, theirs_step_order = theirs_result.unwrap()
-    return Success(_StepIndexes(
-        base_steps,
-        base_step_phase,
-        base_step_order,
-        ours_steps,
-        ours_step_phase,
-        ours_step_order,
-        theirs_steps,
-        theirs_step_phase,
-        theirs_step_order,
-    ))
+    return Success(
+        _StepIndexes(
+            base_steps,
+            base_step_phase,
+            base_step_order,
+            ours_steps,
+            ours_step_phase,
+            ours_step_order,
+            theirs_steps,
+            theirs_step_phase,
+            theirs_step_order,
+        )
+    )
 
 
-# @shell_complexity: Branches preserve phase add/delete/modify conflict handling in one ordered merge pass.
-# @shell_orchestration: Phase shell merge returns structured conflict signal for Git status-code caller.
+# Branches preserve phase add/delete/modify conflict handling in one ordered
+# merge pass.
+# Phase shell merge returns structured conflict signal for Git status-code
+# caller.
+# @shell_complexity: Preserve ordered phase add/delete/modify cases.
+# @shell_orchestration: Return the Git merge-driver conflict signal.
 def _merge_phase_shells(
     base_plan: Plan, ours_plan: Plan, theirs_plan: Plan
 ) -> Result[tuple[dict[str, Phase], list[str]], str]:
@@ -276,7 +301,8 @@ def _merge_phase_shells(
     return Success((merged_phases_by_id, merged_phase_order))
 
 
-# @shell_complexity: Branches preserve step deletion, movement, validation, and conflict semantics in one merge pass.
+# @shell_complexity: Branches preserve step deletion, movement, validation, and conflict semantics
+# in one merge pass.
 # @shell_orchestration: Step record merge preserves conflict signaling for Git status-code caller.
 def _merge_step_records(
     indexes: _StepIndexes, merged_phases_by_id: dict[str, Phase]
@@ -330,8 +356,12 @@ def _merge_step_records(
     return Success((merged_steps, merged_step_phase))
 
 
-# @shell_complexity: Branches preserve phase order, duplicate-attachment prevention, and fallback append semantics.
-# @shell_orchestration: Attachment pass mutates merged phase shells immediately before merge-driver write boundary.
+# Branches preserve phase order, duplicate-attachment prevention, and fallback
+# append semantics.
+# Attachment pass mutates merged phase shells immediately before merge-driver
+# write boundary.
+# @shell_complexity: Preserve phase order, de-duplication, and fallback attachment.
+# @shell_orchestration: Attach merged steps immediately before the write boundary.
 def _attach_merged_steps(
     base_plan: Plan,
     ours_plan: Plan,
@@ -343,7 +373,9 @@ def _attach_merged_steps(
 ) -> Result[bool, str]:
     base_phase_steps = {phase.id: [step.id for step in phase.steps] for phase in base_plan.phases}
     ours_phase_steps = {phase.id: [step.id for step in phase.steps] for phase in ours_plan.phases}
-    theirs_phase_steps = {phase.id: [step.id for step in phase.steps] for phase in theirs_plan.phases}
+    theirs_phase_steps = {
+        phase.id: [step.id for step in phase.steps] for phase in theirs_plan.phases
+    }
 
     attached: set[str] = set()
     for phase_id in merged_phase_order:
@@ -378,7 +410,8 @@ def _attach_merged_steps(
     return Success(True)
 
 
-# @shell_orchestration: Final writer maps serialization and file errors into merge-driver status handling.
+# @shell_orchestration: Final writer maps serialization and file errors into merge-driver status
+# handling.
 def _write_merged_plan(
     ours_file: Path,
     ours_plan: Plan,
@@ -407,8 +440,12 @@ def _write_merged_plan(
     return Success(True)
 
 
-# @shell_complexity: Entry-point branches preserve conflict-marker writes, input errors, write errors, and success status.
-# @shell_orchestration: Public entry point coordinates I/O helpers for Git's integer merge-driver contract.
+# Entry-point branches preserve conflict-marker writes, input errors, write
+# errors, and success status.
+# Public entry point coordinates I/O helpers for Git's integer merge-driver
+# contract.
+# @shell_complexity: Preserve conflict markers, I/O failures, and success status.
+# @shell_orchestration: Keep the public Git integer-status I/O entry point.
 def merge_plans(base_path: str, ours_path: str, theirs_path: str) -> Result[int, str]:
     """Merge plan YAML files for git merge-driver integration.
 

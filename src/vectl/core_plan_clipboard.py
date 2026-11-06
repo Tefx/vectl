@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 
 from vectl.models import Clipboard, Plan, PlanError
 
-
 CLIPBOARD_SUMMARY_MAX = 80
 CLIPBOARD_CONTENT_MAX = 8000
 CLIPBOARD_TTL_DEFAULT_HOURS = 24
@@ -21,7 +20,8 @@ def _clipboard_expired(cb: Clipboard) -> bool:
         return True
 
 
-# @shell_complexity: Branches preserve author/content/size validation, soft summary truncation, and TTL timestamp assignment.
+# @shell_complexity: Branches preserve author/content/size validation, soft summary truncation, and
+# TTL timestamp assignment.
 def clipboard_write(
     plan: Plan,
     author: str,

@@ -4,12 +4,35 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from vectl.cli_plan_common import *
 from vectl.cli_plan_common import (
+    _GUIDE_ALL,
+    _GUIDE_TOPICS,
+    AffinityMode,
+    Markdown,
+    Panel,
+    Plan,
+    PlanError,
+    PlanOption,
+    StepStatus,
+    Text,
     _authority_for_plan_path,
+    _build_phase_overview_table,
+    _check_claim_mismatch,
+    _die,
+    _esc,
     _get_next_steps_with_phase,
+    _load,
+    _one_line_summary,
+    _phase_icon,
+    _print_duplicate_id_recommendation_for_step,
+    _print_duplicate_id_warning_block,
+    _step_icon,
+    format_step_selector,
+    is_step_locked,
     out,
+    typer,
 )
+
 
 def next_cmd(
     detail: bool = typer.Option(False, "--detail", help="Show full descriptions inline."),
@@ -86,7 +109,8 @@ def next_cmd(
 # ---------------------------------------------------------------------------
 
 
-# @shell_complexity: status must preserve phase-detail, mismatch, duplicate-warning, and hint output formatting.
+# @shell_complexity: status must preserve phase-detail, mismatch, duplicate-warning, and hint output
+# formatting.
 def status(
     plan: Path | None = PlanOption,
     phase: str | None = typer.Option(None, "--phase", help="Show detail for a specific phase."),
@@ -180,7 +204,8 @@ def _show_phase_detail(p: Plan, phase_id: str) -> None:
     out.print()
 
 
-# @shell_complexity: step renderer preserves existing Rich layout across all step states and diagnostics.
+# @shell_complexity: step renderer preserves existing Rich layout across all step states and
+# diagnostics.
 def _show_step_detail(
     p: Plan,
     step_id: str,
@@ -394,4 +419,5 @@ def dag(
 # ---------------------------------------------------------------------------
 
 
-# @shell_complexity: claim preserves conflict diagnostics, affinity output, autosave, guidance, and detail rendering semantics.
+# @shell_complexity: claim preserves conflict diagnostics, affinity output, autosave, guidance, and
+# detail rendering semantics.

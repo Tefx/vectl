@@ -20,8 +20,6 @@ from vectl.cli import app
 from vectl.io import save_plan
 from vectl.mcp_server import (
     vectl_claim as _vectl_claim_tool,
-)
-from vectl.mcp_server import (
     vectl_complete as _vectl_complete_tool,
 )
 from vectl.models import Phase, PhaseStatus, Plan, Step

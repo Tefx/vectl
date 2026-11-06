@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from invar_runtime import Contract, post, pre
-
 
 _logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class ClaimFailure:
 
 @dataclass
 class BatchClaimRequest:
-    claims: List[BatchClaimItem]
+    claims: list[BatchClaimItem]
     guidance: bool = False
     force: bool = False
 
@@ -33,11 +32,11 @@ class BatchClaimRequest:
 @dataclass
 class BatchClaimResult:
     ok: bool
-    claimed: List[BatchClaimItem]
-    failed: List[ClaimFailure]
-    affinity_warnings: List[str]
+    claimed: list[BatchClaimItem]
+    failed: list[ClaimFailure]
+    affinity_warnings: list[str]
     markdown: str
-    lock_notice: Optional[str] = None
+    lock_notice: str | None = None
 
 
 @pre(Contract(lambda claims: isinstance(claims, list), "claims is list"))
@@ -88,20 +87,24 @@ def _success_markdown(claimed: list[BatchClaimItem]) -> str:
     return f"Claimed {len(claimed)} step(s): " + ", ".join(item.step_id for item in claimed)
 
 
-# @invar:allow shell_boundary: batch claim contract is a public core facade over plan/claims persistence.
+# @invar:allow shell_boundary: batch claim contract is a public core facade over plan/claims
+# persistence.
 @pre(Contract(lambda request, authority=None: isinstance(request.claims, list), "claims is list"))
 @pre(Contract(lambda request, authority=None: len(request.claims) > 0, "claims not empty"))
 @pre(
     Contract(
-        lambda request, authority=None: authority is None
-        or all(hasattr(authority, field) for field in ("plan_path", "claims_path", "branch")),
+        lambda request, authority=None: (
+            authority is None
+            or all(hasattr(authority, field) for field in ("plan_path", "claims_path", "branch"))
+        ),
         "authority provides Plan, claims, and branch targets",
     )
 )
 @post(
     Contract(
-        lambda result: getattr(result, "ok", False) is True
-        or len(getattr(result, "claimed", [])) == 0,
+        lambda result: (
+            getattr(result, "ok", False) is True or len(getattr(result, "claimed", [])) == 0
+        ),
         "result logic",
     )
 )
@@ -137,8 +140,7 @@ def claim_many(request: BatchClaimRequest, authority: Any = None) -> BatchClaimR
         )
 
     import vectl.io as vectl_io
-    from vectl import claims as claims_api
-    from vectl import core_plan_mutations
+    from vectl import claims as claims_api, core_plan_mutations
     from vectl.models import AffinityError, PlanError
     from vectl.plan_path import resolve_plan_authority
 
@@ -252,12 +254,16 @@ def claim_many(request: BatchClaimRequest, authority: Any = None) -> BatchClaimR
 
 @pre(
     Contract(
-        lambda claims, guidance=False, force=False, authority=None: isinstance(claims, list)
-        and isinstance(guidance, bool)
-        and isinstance(force, bool)
-        and (
-            authority is None
-            or all(hasattr(authority, field) for field in ("plan_path", "claims_path", "branch"))
+        lambda claims, guidance=False, force=False, authority=None: (
+            isinstance(claims, list)
+            and isinstance(guidance, bool)
+            and isinstance(force, bool)
+            and (
+                authority is None
+                or all(
+                    hasattr(authority, field) for field in ("plan_path", "claims_path", "branch")
+                )
+            )
         ),
         "type checks",
     )
@@ -270,13 +276,14 @@ def claim_many(request: BatchClaimRequest, authority: Any = None) -> BatchClaimR
 )
 @post(
     Contract(
-        lambda result: getattr(result, "ok", False) is True
-        or len(getattr(result, "claimed", [])) == 0,
+        lambda result: (
+            getattr(result, "ok", False) is True or len(getattr(result, "claimed", [])) == 0
+        ),
         "result logic",
     )
 )
 def claim_steps(
-    claims: List[Dict[str, str]],
+    claims: list[dict[str, str]],
     guidance: bool = False,
     force: bool = False,
     authority: Any = None,
@@ -286,10 +293,16 @@ def claim_steps(
     >>> import os, tempfile, yaml
     >>> with tempfile.TemporaryDirectory() as tmp:
     ...     plan_path = os.path.join(tmp, 'plan.yaml')
-    ...     _ = open(plan_path, 'w', encoding='utf-8').write(yaml.dump({'project': 'doctest', 'phases': [{'id': 'p', 'name': 'P', 'steps': [{'id': 's', 'name': 'S'}]}]}))
+    ...     step = {'id': 's', 'name': 'S'}
+    ...     phase = {'id': 'p', 'name': 'P', 'steps': [step]}
+    ...     definition = {'project': 'doctest', 'phases': [phase]}
+    ...     with open(plan_path, 'w', encoding='utf-8') as stream:
+    ...         _ = stream.write(yaml.dump(definition))
     ...     old = os.environ.get('VECTL_PLAN_PATH')
     ...     os.environ['VECTL_PLAN_PATH'] = plan_path
-    ...     result = claim_steps([{'step_id': 'p.s', 'agent': 'agent'}], guidance=False, force=False)
+    ...     result = claim_steps(
+    ...         [{'step_id': 'p.s', 'agent': 'agent'}], guidance=False, force=False
+    ...     )
     ...     outcome = (result.ok, result.claimed[0].step_id)
     ...     if old is None: _ = os.environ.pop('VECTL_PLAN_PATH', None)
     ...     else: os.environ['VECTL_PLAN_PATH'] = old

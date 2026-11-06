@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+import select
+import sys
+import threading
 from collections.abc import Callable
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from typing import Any
-import select
-import sys
-import threading
 
 try:
     import termios
@@ -151,9 +151,7 @@ def _visible_phase_indices(plan: Plan, max_phase_rows: int) -> Result[set[int], 
     if phase_count <= budget:
         return Success(set(range(phase_count)))
 
-    visible = {
-        index for index, phase in enumerate(plan.phases) if phase.status != PhaseStatus.DONE
-    }
+    visible = {index for index, phase in enumerate(plan.phases) if phase.status != PhaseStatus.DONE}
     tail_budget = max(0, budget - len(visible) - 1)
     tail_start = max(0, phase_count - tail_budget)
     visible.update(range(tail_start, phase_count))
@@ -303,9 +301,7 @@ def build_top_renderable(
     claims_path: Path | None = None,
 ) -> Result[Panel, str]:
     """Build the live plan-level renderable for ``vectl top``."""
-    diagnostics = _diagnostics(
-        plan, plan_path, branch=branch, claims_path=claims_path
-    ).unwrap()
+    diagnostics = _diagnostics(plan, plan_path, branch=branch, claims_path=claims_path).unwrap()
     terminal_height = max(1, out.size.height)
     terminal_width = max(20, out.size.width)
     phase_rows = _top_phase_row_budget(terminal_height, len(diagnostics)).unwrap()

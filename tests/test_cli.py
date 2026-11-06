@@ -6,22 +6,21 @@ import hashlib
 import json
 import os
 import subprocess as sp
+import threading
 from io import StringIO
 from pathlib import Path
-import threading
 
 import pytest
 import yaml
 from rich.console import Console
 from typer.testing import CliRunner
 
-from vectl import __version__
-from vectl.claims import ClaimEntry, load_claims, repair_claims, save_claims
 import vectl.cli_plan_common as cli_plan_common
 import vectl.io as io_module
+from vectl import __version__
+from vectl.claims import ClaimEntry, load_claims, repair_claims, save_claims
 from vectl.cli import app
-from vectl.io import load_plan_definition, save_plan
-from vectl.io import load_plan_definition as load_plan
+from vectl.io import load_plan_definition, load_plan_definition as load_plan, save_plan
 from vectl.models import (
     AffinityMode,
     CASConflictError,
@@ -2024,9 +2023,7 @@ class TestValidate:
                             id="gate",
                             name="Gate",
                             description=(
-                                "<vectl_gate_scope>\n"
-                                f"{json.dumps(gate_scope)}\n"
-                                "</vectl_gate_scope>"
+                                f"<vectl_gate_scope>\n{json.dumps(gate_scope)}\n</vectl_gate_scope>"
                             ),
                         )
                     ],
@@ -4488,36 +4485,88 @@ class TestDriveCLI:
 
 class TestDeterministicCheckCLI:
     def test_legacy_keyword_toggle_works(self, plan_file):
-        from tests.test_cli import runner, app
+        from tests.test_cli import app, runner
+
         result = runner.invoke(app, ["check", "s3", "Item A", "--plan", str(plan_file)])
         assert result.exit_code == 0
         assert "Updated checklist" in result.output
 
     def test_deterministic_mutation_requires_revision(self, plan_file):
-        from tests.test_cli import runner, app
-        # If --revision is missing, it should fail with a structured error, but right now the CLI parser fails.
+        from tests.test_cli import app, runner
+
+        # If --revision is missing, it should fail with a structured error, but right now the CLI
+        # parser fails.
         # Let's assert it fails with the specific StaleRevisionError or missing argument error.
-        result = runner.invoke(app, ["check", "s3", "--item-id", "some-id", "--checked", "true", "--plan", str(plan_file)])
+        result = runner.invoke(
+            app,
+            ["check", "s3", "--item-id", "some-id", "--checked", "true", "--plan", str(plan_file)],
+        )
         assert result.exit_code != 0
-        assert "Missing required parameter" in result.output or "checklist_inventory_revision" in result.output
+        assert (
+            "Missing required parameter" in result.output
+            or "checklist_inventory_revision" in result.output
+        )
 
     def test_deterministic_mutation_stale_revision(self, plan_file):
-        from tests.test_cli import runner, app
+        from tests.test_cli import app, runner
+
         # Passing a stale revision should fail with StaleRevisionError and RetryGuidance
-        result = runner.invoke(app, ["check", "s3", "--revision", "stale-hash", "--item-id", "some-id", "--checked", "true", "--plan", str(plan_file)])
+        result = runner.invoke(
+            app,
+            [
+                "check",
+                "s3",
+                "--revision",
+                "stale-hash",
+                "--item-id",
+                "some-id",
+                "--checked",
+                "true",
+                "--plan",
+                str(plan_file),
+            ],
+        )
         assert result.exit_code != 0
         assert "StaleRevisionError" in result.output
         assert "refresh_inventory" in result.output
 
     def test_invalid_selector_modes_fail(self, plan_file):
-        from tests.test_cli import runner, app
-        result = runner.invoke(app, ["check", "s3", "Item A", "--item-id", "some-id", "--checked", "true", "--plan", str(plan_file)])
+        from tests.test_cli import app, runner
+
+        result = runner.invoke(
+            app,
+            [
+                "check",
+                "s3",
+                "Item A",
+                "--item-id",
+                "some-id",
+                "--checked",
+                "true",
+                "--plan",
+                str(plan_file),
+            ],
+        )
         assert result.exit_code != 0
         assert "InvalidSelectorError" in result.output
 
     def test_batch_mutation_atomic(self, plan_file):
-        from tests.test_cli import runner, app
-        result = runner.invoke(app, ["check", "s3", "--batch", '[{"selector": {"item_id": "a"}, "checked": true}]', "--revision", "hash", "--json", "--plan", str(plan_file)])
+        from tests.test_cli import app, runner
+
+        result = runner.invoke(
+            app,
+            [
+                "check",
+                "s3",
+                "--batch",
+                '[{"selector": {"item_id": "a"}, "checked": true}]',
+                "--revision",
+                "hash",
+                "--json",
+                "--plan",
+                str(plan_file),
+            ],
+        )
         assert result.exit_code != 0
         payload = json.loads(result.output)
         assert payload["ok"] is False
@@ -4547,7 +4596,9 @@ class TestDeterministicCheckCLI:
         assert "- [ ] Item A" in _must_find_step(plan_after, "s3").description
 
     def test_valid_json_batch_uses_current_revision_and_top_level_selector_alias(self, plan_file):
-        inventory = runner.invoke(app, ["check-inventory", "s3", "--json", "--plan", str(plan_file)])
+        inventory = runner.invoke(
+            app, ["check-inventory", "s3", "--json", "--plan", str(plan_file)]
+        )
         assert inventory.exit_code == 0
         inventory_payload = json.loads(inventory.output)
         revision = inventory_payload["checklist_inventory_revision"]
@@ -4573,7 +4624,9 @@ class TestDeterministicCheckCLI:
         assert payload["diagnostics"]["changed_items"] == 1
 
     def test_json_batch_unsupported_field_exits_nonzero(self, plan_file):
-        inventory = runner.invoke(app, ["check-inventory", "s3", "--json", "--plan", str(plan_file)])
+        inventory = runner.invoke(
+            app, ["check-inventory", "s3", "--json", "--plan", str(plan_file)]
+        )
         revision = json.loads(inventory.output)["checklist_inventory_revision"]
         result = runner.invoke(
             app,
@@ -4595,31 +4648,58 @@ class TestDeterministicCheckCLI:
         assert payload["error"]["code"] == "unsupported_field"
 
     def test_inventory_machine_readable(self, plan_file):
-        from tests.test_cli import runner, app
+        from tests.test_cli import app, runner
+
         result = runner.invoke(app, ["check-inventory", "s3", "--json", "--plan", str(plan_file)])
         assert result.exit_code == 0
         assert '"checklist_inventory_revision":' in result.output
 
+
 def test_cli_claim_many_human(plan_file: Path) -> None:
     # Test `vectl claim-many --claim worker-a:s1 --claim worker-b:s3`
-    result = runner.invoke(app, ["claim-many", "--claim", "worker-a:s1", "--claim", "worker-b:s3", "--no-guidance", "--plan", str(plan_file)])
+    result = runner.invoke(
+        app,
+        [
+            "claim-many",
+            "--claim",
+            "worker-a:s1",
+            "--claim",
+            "worker-b:s3",
+            "--no-guidance",
+            "--plan",
+            str(plan_file),
+        ],
+    )
     assert result.exit_code == 0, f"claim-many missing implementation: exit {result.exit_code}"
     assert "worker-a" in result.stdout
     assert "s1" in result.stdout
 
+
 def test_cli_claim_many_json(plan_file: Path) -> None:
     # Test `vectl claim-many --claims-json '[...]'`
     import json
-    claims_json = json.dumps([
-        {"step_id": "s1", "agent": "worker-a"},
-        {"step_id": "s3", "agent": "worker-b"}
-    ])
-    result = runner.invoke(app, ["claim-many", "--claims-json", claims_json, "--json", "--no-guidance", "--plan", str(plan_file)])
+
+    claims_json = json.dumps(
+        [{"step_id": "s1", "agent": "worker-a"}, {"step_id": "s3", "agent": "worker-b"}]
+    )
+    result = runner.invoke(
+        app,
+        [
+            "claim-many",
+            "--claims-json",
+            claims_json,
+            "--json",
+            "--no-guidance",
+            "--plan",
+            str(plan_file),
+        ],
+    )
     assert result.exit_code == 0, f"claim-many missing implementation: exit {result.exit_code}"
     res = json.loads(result.stdout)
     assert res["ok"] is True
     assert len(res["claimed"]) == 2
     assert "failed" in res
+
 
 def test_cli_claim_many_nongoal_guards(plan_file: Path) -> None:
     non_goal_args_cases = [
@@ -4635,40 +4715,59 @@ def test_cli_claim_many_nongoal_guards(plan_file: Path) -> None:
     ]
     for case in non_goal_args_cases:
         result = runner.invoke(app, ["claim-many", "--plan", str(plan_file)] + case)
-        assert result.exit_code != 0, f"claim-many missed guard for {case}: expected non-zero exit code"
+        assert result.exit_code != 0, (
+            f"claim-many missed guard for {case}: expected non-zero exit code"
+        )
         if "No such command" in result.output:
-            assert False, "claim-many missing implementation"
-        assert ("No such option" in result.output) or ("Error" in result.output), f"claim-many missed error message for {case}: {result.output}"
+            raise AssertionError("claim-many missing implementation")
+        assert ("No such option" in result.output) or ("Error" in result.output), (
+            f"claim-many missed error message for {case}: {result.output}"
+        )
 
-def test_cli_claim_many_rollback_on_save_failure(plan_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from vectl.io import save_plan
-    from vectl.models import PlanError
+
+def test_cli_claim_many_rollback_on_save_failure(
+    plan_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from vectl.claims import load_claims
+    from vectl.models import PlanError
     from vectl.plan_path import resolve_claims_path
 
-    original_save_plan = save_plan
     def fake_save_plan(plan, path):
         raise PlanError("Simulated CAS failure")
 
-    import vectl.cli
     monkeypatch.setattr("vectl.core.batch_claim.save_plan", fake_save_plan, raising=False)
     monkeypatch.setattr("vectl.cli.save_plan", fake_save_plan, raising=False)
     monkeypatch.setattr("vectl.io.save_plan", fake_save_plan, raising=False)
 
     import json
-    claims_json = json.dumps([
-        {"step_id": "s1", "agent": "worker-a"}
-    ])
-    result = runner.invoke(app, ["claim-many", "--claims-json", claims_json, "--json", "--no-guidance", "--plan", str(plan_file)])
-    
+
+    claims_json = json.dumps([{"step_id": "s1", "agent": "worker-a"}])
+    result = runner.invoke(
+        app,
+        [
+            "claim-many",
+            "--claims-json",
+            claims_json,
+            "--json",
+            "--no-guidance",
+            "--plan",
+            str(plan_file),
+        ],
+    )
+
     claims_path = resolve_claims_path(plan_file)
     claims = load_claims(claims_path)
     assert "s1" not in claims
-    
+
     if result.exit_code == 2:
-        assert False, f"claim-many missing implementation: exit {result.exit_code} output {result.output}"
+        raise AssertionError(
+            f"claim-many missing implementation: exit {result.exit_code} output {result.output}"
+        )
     if result.exit_code == 0:
-        assert False, f"claim-many rollback test passed but should have failed due to CAS error (or it's stubbed)"
+        raise AssertionError(
+            "claim-many rollback test passed but should have failed "
+            "due to CAS error (or it's stubbed)"
+        )
 
 
 def test_admitted_mutation_all_definition_commands_share_transaction(
@@ -5085,22 +5184,28 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
                 assert protected not in output
             assert public_plan.read_bytes() == before[0]
             assert (backup.read_bytes() if backup.exists() else None) == before[1]
-            assert sp.run(
-                ["git", "rev-parse", "HEAD"],
-                cwd=repo,
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout == before[2]
+            assert (
+                sp.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=repo,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout
+                == before[2]
+            )
             assert (repo / ".git" / "index").read_bytes() == before[3]
             assert unrelated.read_bytes() == before[4]
-            assert sp.run(
-                ["git", "status", "--porcelain=v1"],
-                cwd=repo,
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout == before[5]
+            assert (
+                sp.run(
+                    ["git", "status", "--porcelain=v1"],
+                    cwd=repo,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout
+                == before[5]
+            )
             assert frozenset(item.relative_to(repo) for item in repo.rglob("*")) == before[6]
             assert list(external_tmp.iterdir()) == []
 
@@ -5139,14 +5244,10 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
         unrelated.write_text("preserve staged identity CLI content\n", encoding="utf-8")
         sp.run(["git", "add", "unrelated.txt"], cwd=repo, check=True)
 
-        adapter, seam_root, launch_marker = _write_initial_identity_process_seam(
-            case_root
-        )
+        adapter, seam_root, launch_marker = _write_initial_identity_process_seam(case_root)
         external_tmp = case_root / "external-tmp"
         external_tmp.mkdir()
-        operating_system_text = (
-            f"identity EIO for {filename} {case_root} PUBLIC-CLI-PLAN-SECRET"
-        )
+        operating_system_text = f"identity EIO for {filename} {case_root} PUBLIC-CLI-PLAN-SECRET"
         environment = os.environ.copy()
         environment.update(
             {
@@ -5219,22 +5320,28 @@ def test_admitted_mutation_all_definition_commands_share_transaction(
         assert not launch_marker.exists(), "adapter launched after initial identity failure"
         assert public_plan.read_bytes() == before[0]
         assert (backup.read_bytes() if backup.exists() else None) == before[1]
-        assert sp.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout == before[2]
+        assert (
+            sp.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout
+            == before[2]
+        )
         assert (repo / ".git" / "index").read_bytes() == before[3]
         assert unrelated.read_bytes() == before[4]
-        assert sp.run(
-            ["git", "status", "--porcelain=v1"],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout == before[5]
+        assert (
+            sp.run(
+                ["git", "status", "--porcelain=v1"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout
+            == before[5]
+        )
         assert frozenset(item.relative_to(repo) for item in repo.rglob("*")) == before[6]
         assert list(external_tmp.iterdir()) == []
 

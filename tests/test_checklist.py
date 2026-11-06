@@ -3,6 +3,17 @@
 import pytest
 
 from vectl.core import update_checklist
+from vectl.core_checklist import (
+    FieldIndexSelector,
+    InvalidSelectorError,
+    ItemNotFoundError,
+    LegacyKeywordSelector,
+    MutationRequest,
+    StaleRevisionError,
+    UnsupportedFieldError,
+    get_inventory as _get_inventory,
+    mutate_checklist as _mutate_checklist,
+)
 from vectl.models import (
     AmbiguousMatchError,
     NoMatchError,
@@ -108,31 +119,19 @@ class TestEdgeCases:
         assert "- [ ] B" in desc
         assert "- [x] C" in desc
 
-from vectl.core_checklist import (
-    get_inventory as _get_inventory,
-    mutate_checklist as _mutate_checklist,
-    ItemIdSelector,
-    FieldIndexSelector,
-    LegacyKeywordSelector,
-    MutationRequest,
-    ChecklistInventoryRevision,
-    ChecklistItem,
-    StaleRevisionError,
-    ItemNotFoundError,
-    InvalidSelectorError,
-    UnsupportedFieldError,
-)
 
 # Unwrap to bypass contract stub errors in expected-red state
 get_inventory = getattr(_get_inventory, "__wrapped__", _get_inventory)
 mutate_checklist = getattr(_mutate_checklist, "__wrapped__", _mutate_checklist)
 
+
 class TestDeterministicInventory:
     def test_inventory_discovers_items_from_both_fields(self):
         step = Step(
-            id="s1", name="S1",
+            id="s1",
+            name="S1",
             description="Desc:\n- [ ] Desc item 1\n- [x] Desc item 2\n",
-            verification="Verif:\n- [ ] Verif item 1\n"
+            verification="Verif:\n- [ ] Verif item 1\n",
         )
         rev, items = get_inventory(step)
         assert len(items) == 3
@@ -174,6 +173,7 @@ class TestDeterministicInventory:
         rev3, items3 = get_inventory(step_diff)
         assert items1[0].item_id != items3[0].item_id
         assert rev1 != rev3
+
 
 class TestDeterministicMutation:
     def test_stale_revision_rejects_mutation(self):

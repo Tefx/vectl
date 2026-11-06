@@ -6,12 +6,13 @@ Extracted from vectl.models while preserving compatibility re-exports.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path as Path
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
 from vectl.models import Phase, PhaseStatus, PlanValidationIssue, Step, StepStatus
+
 
 class SearchMatch:
     """A single search result with location and context."""

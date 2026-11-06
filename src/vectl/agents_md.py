@@ -7,7 +7,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Generic, TypeAlias, TypeVar
 
-
 AGENTS_MD_LEGACY_HEADER = "## Plan Tracking (vectl)"
 AGENTS_MD_BEGIN = "<!-- VECTL:AGENTS:BEGIN -->"
 AGENTS_MD_END = "<!-- VECTL:AGENTS:END -->"
@@ -95,8 +94,11 @@ class Failure(Generic[_E]):
 Result: TypeAlias = Success[_T] | Failure[_E]
 
 
-# @shell_complexity: Ordered AGENTS.md/CLAUDE.md precedence preserves documented target selection semantics.
-def detect_agents_target(directory: Path, target: AgentsTarget = AgentsTarget.auto) -> Result[Path, OSError]:
+# @shell_complexity: Ordered AGENTS.md/CLAUDE.md precedence preserves documented target selection
+# semantics.
+def detect_agents_target(
+    directory: Path, target: AgentsTarget = AgentsTarget.auto
+) -> Result[Path, OSError]:
     """Detect the best target file for the vectl agents-md section."""
 
     agents_md = directory / "AGENTS.md"
@@ -127,7 +129,8 @@ def detect_agents_target(directory: Path, target: AgentsTarget = AgentsTarget.au
     return Success(agents_md)
 
 
-# @shell_complexity: Branches preserve create, replace, legacy-append, and fresh-append user messages.
+# @shell_complexity: Branches preserve create, replace, legacy-append, and fresh-append user
+# messages.
 def upsert_agents_md(
     directory: Path, target: AgentsTarget = AgentsTarget.auto
 ) -> Result[tuple[str, str], OSError]:
@@ -156,8 +159,7 @@ def upsert_agents_md(
         with target_path.open("a", encoding="utf-8") as handle:
             handle.write("\n\n" + AGENTS_MD_SNIPPET)
         return (
-            f"Appended updated vectl block to {target_path.name} "
-            "(legacy block preserved)",
+            f"Appended updated vectl block to {target_path.name} (legacy block preserved)",
             target_path.name,
         )
 

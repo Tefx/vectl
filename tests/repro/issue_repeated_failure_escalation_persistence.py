@@ -24,7 +24,6 @@ Spec refs:
 from __future__ import annotations
 
 import importlib
-import time
 from pathlib import Path
 
 from vectl.decide import ESCALATION_THRESHOLD, decide
@@ -37,7 +36,6 @@ from vectl.models import (
     Step,
     StepStatus,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers (spec-derived fixtures only)
@@ -253,9 +251,9 @@ def test_followup_call_stays_blocked():
 
             # PROOF 2b: follow-up must NOT regress to no_executable_steps
             assert followup.reason_code != "no_executable_steps", (
-                f"ISSUE: Follow-up call regressed to reason_code='no_executable_steps'. "
-                f"Unresolved escalation must keep reason_code='repeated_failures'. "
-                f"DecideState pending_escalations must persist until explicitly cleared."
+                "ISSUE: Follow-up call regressed to reason_code='no_executable_steps'. "
+                "Unresolved escalation must keep reason_code='repeated_failures'. "
+                "DecideState pending_escalations must persist until explicitly cleared."
             )
 
             # PROOF 2c: follow-up status must remain blocked
@@ -406,7 +404,8 @@ def test_end_to_end_escalation_persistence():
             print("✓ TRIGGER:  next_state.pending_escalations = {'s1': 'repeated_failures'}")
             print("✓ FOLLOWUP: status=blocked, reason_code=repeated_failures (no regression!)")
             print(
-                "✓ FOLLOWUP: next_state.pending_escalations = {'s1': 'repeated_failures'} (persisted!)"
+                "✓ FOLLOWUP: next_state.pending_escalations = "
+                "{'s1': 'repeated_failures'} (persisted!)"
             )
             print("✓ FOLLOWUP: No duplicate escalate action (idempotent)")
 
@@ -433,7 +432,8 @@ def main():
     try:
         test_trigger_call_produces_blocked_and_escalate()
         print(
-            "  PASS: Trigger call produces blocked/repeated_failures + escalate + pending_escalations"
+            "  PASS: Trigger call produces blocked/repeated_failures "
+            "+ escalate + pending_escalations"
         )
     except AssertionError as e:
         failures += 1

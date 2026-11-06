@@ -129,7 +129,8 @@ __all__ = [
 ]
 
 
-# @shell_orchestration: pure key formatter remains in claims shell to preserve established string API
+# @shell_orchestration: pure key formatter remains in claims shell to preserve established string
+# API
 def _claim_key(branch: str, step_id: str):
     return f"{branch}:{step_id}"
 
@@ -333,8 +334,10 @@ def acquire_claim(
         raise PlanError(result.failure()) from exc
 
 
-# @shell_orchestration: atomic claims-store helper performs indirect I/O through locked read/write helpers.
-# @shell_complexity: atomic batch acquisition must validate duplicates, conflicts, stale cleanup, and writes under one lock.
+# @shell_orchestration: atomic claims-store helper performs indirect I/O through locked read/write
+# helpers.
+# @shell_complexity: atomic batch acquisition must validate duplicates, conflicts, stale cleanup,
+# and writes under one lock.
 def acquire_claims(
     step_agents: list[tuple[str, str]],
     branch: str,
@@ -425,7 +428,8 @@ def release_claim_entries_if_matches(
         return Success(released)
 
 
-# @shell_orchestration: atomic rollback helper performs indirect I/O through locked read/write helpers.
+# @shell_orchestration: atomic rollback helper performs indirect I/O through locked read/write
+# helpers.
 def release_claims(step_ids: list[str], branch: str, claims_path: Path) -> Result[int, str]:
     """Release branch-scoped claims with one claims-store write."""
     with _locked_claims_file(claims_path):
@@ -461,7 +465,8 @@ def get_current_branch():
     return branch or "unknown"
 
 
-# @shell_orchestration: static policy text helper remains in claims shell for repair payload compatibility
+# @shell_orchestration: static policy text helper remains in claims shell for repair payload
+# compatibility
 def _repair_policy_text():
     return (
         "plan_precedence: for current branch, ensure claims entry exists iff "
@@ -471,10 +476,9 @@ def _repair_policy_text():
     )
 
 
-# @shell_orchestration: plan projection remains in claims shell to preserve repair_claims mapping API
-def _desired_claims_for_branch(
-    plan: Plan, branch: str, existing_claims: dict[str, ClaimEntry]
-):
+# @shell_orchestration: plan projection remains in claims shell to preserve repair_claims mapping
+# API
+def _desired_claims_for_branch(plan: Plan, branch: str, existing_claims: dict[str, ClaimEntry]):
     plan_steps = {step.id: step for phase in plan.phases for step in phase.steps}
     desired: dict[str, ClaimEntry] = {}
     for step in plan_steps.values():
@@ -626,8 +630,10 @@ def repair_claims(
     with _locked_claims_file(claims_path):
         claims = _read_claims_file(claims_path)
         consistency = _claim_consistency_from_mapping(plan, claims, branch, step_id).unwrap()
-        scoped_keys = set(consistency.ghost_claims) | set(consistency.missing_claims) | set(
-            consistency.stale_entries
+        scoped_keys = (
+            set(consistency.ghost_claims)
+            | set(consistency.missing_claims)
+            | set(consistency.stale_entries)
         )
         actions = _apply_claim_repairs(claims, consistency.desired_entries, scoped_keys)
 

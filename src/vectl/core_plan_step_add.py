@@ -27,7 +27,8 @@ def _slugify(name: str) -> str:
     return re.sub(r"-+", "-", slug)
 
 
-# @shell_complexity: Branches preserve collision probing semantics for globally unique phase-prefixed step ids.
+# @shell_complexity: Branches preserve collision probing semantics for globally unique
+# phase-prefixed step ids.
 def _unique_step_id(plan: Plan, phase: Phase, base_slug: str) -> str:
     """Generate a unique step ID across the full plan.
 
@@ -60,7 +61,8 @@ def _unique_phase_id(plan: Plan, base_slug: str) -> str:
 _IMPORTABLE_STATUSES = frozenset({StepStatus.PENDING, StepStatus.DONE, StepStatus.SKIPPED})
 
 
-# @shell_complexity: Branches preserve add-step validation for phase lookup, import statuses, dependency refs, duplicate IDs, and DONE-phase reopen semantics.
+# @shell_complexity: Branches preserve add-step validation for phase lookup, import statuses,
+# dependency refs, duplicate IDs, and DONE-phase reopen semantics.
 def add_step(
     plan: Plan,
     phase_id: str,
@@ -135,7 +137,8 @@ def add_step(
     return plan, step_id
 
 
-# @shell_complexity: Branches preserve phase-id generation, dependency validation, duplicate rejection, and initial lock-state semantics.
+# @shell_complexity: Branches preserve phase-id generation, dependency validation, duplicate
+# rejection, and initial lock-state semantics.
 def add_phase(
     plan: Plan,
     name: str,
@@ -183,7 +186,8 @@ def add_phase(
     return plan, phase_id
 
 
-# @shell_complexity: Branches preserve typed import parsing, status/evidence guards, duplicate protection, intra-batch refs, and cycle rollback semantics.
+# @shell_complexity: Branches preserve typed import parsing, status/evidence guards, duplicate
+# protection, intra-batch refs, and cycle rollback semantics.
 def add_steps_bulk(
     plan: Plan,
     phase_id: str,

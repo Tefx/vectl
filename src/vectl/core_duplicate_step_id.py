@@ -2,31 +2,53 @@
 
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from enum import Enum
+import re as re
+from dataclasses import dataclass as dataclass
+from datetime import datetime as datetime, timedelta as timedelta, timezone as timezone
+from enum import Enum as Enum
 from typing import Any, NamedTuple, TypeAlias
+
+from vectl import claims as _claims
+from vectl.io import load_plan_definition, save_plan
+from vectl.models import (
+    AmbiguousMatchError as AmbiguousMatchError,
+    Clipboard as Clipboard,
+    DiffResult as DiffResult,
+    DuplicateStepIdApplyResult as DuplicateStepIdApplyResult,
+    DuplicateStepIdClaimConflict,
+    DuplicateStepIdDependsOnRewrite,
+    DuplicateStepIdDiagnostic,
+    DuplicateStepIdDiagnostics,
+    DuplicateStepIdDryRunReport,
+    DuplicateStepIdGroup,
+    DuplicateStepIdMigrationEvidence,
+    DuplicateStepIdPhaseRef,
+    DuplicateStepIdRenameEntry,
+    DuplicateStepIdRepairRecommendation,
+    DuplicateStepIdResolutionPath as DuplicateStepIdResolutionPath,
+    DuplicateStepIdRetryEvidence as DuplicateStepIdRetryEvidence,
+    GateCheckResult as GateCheckResult,
+    NoMatchError as NoMatchError,
+    Phase as Phase,
+    PhaseChange as PhaseChange,
+    PhaseProgress as PhaseProgress,
+    PhaseStatus as PhaseStatus,
+    Plan as Plan,
+    PlanError as PlanError,
+    PlanIOError as PlanIOError,
+    PlanValidationIssue as PlanValidationIssue,
+    ReviewResult as ReviewResult,
+    SearchMatch as SearchMatch,
+    Step as Step,
+    StepChange as StepChange,
+    StepStatus as StepStatus,
+    format_step_selector as format_step_selector,
+)
 
 # Path is kept as a local typing alias so postponed public annotations remain
 # source-compatible without importing pathlib, which invar classifies as Shell I/O.
 Path: TypeAlias = Any
 
-from vectl import claims as _claims
-from vectl import lifecycle as _lifecycle
-from vectl.io import load_plan_definition, save_plan
-from vectl.models import (
-    AmbiguousMatchError, Clipboard, DiffResult, DuplicateStepIdApplyResult,
-    DuplicateStepIdClaimConflict, DuplicateStepIdDependsOnRewrite,
-    DuplicateStepIdDiagnostic, DuplicateStepIdDiagnostics, DuplicateStepIdDryRunReport,
-    DuplicateStepIdGroup, DuplicateStepIdMigrationEvidence, DuplicateStepIdPhaseRef,
-    DuplicateStepIdRenameEntry, DuplicateStepIdRepairRecommendation,
-    DuplicateStepIdResolutionPath, DuplicateStepIdRetryEvidence, GateCheckResult,
-    NoMatchError, Phase, PhaseChange, PhaseProgress, PhaseStatus, Plan, PlanError,
-    PlanIOError, PlanValidationIssue, ReviewResult, SearchMatch, Step, StepChange,
-    StepStatus, format_step_selector,
-)
-from vectl.semantics import is_step_locked as _is_step_locked_shared
 
 def analyze_duplicate_step_ids(plan: Plan) -> DuplicateStepIdDiagnostics:
     """Analyze plan-wide duplicate step IDs and build repair guidance.

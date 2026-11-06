@@ -34,14 +34,16 @@ from vectl.models import (
     StepStatus,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures constructed from RFC contract only (no implementation knowledge)
 # ---------------------------------------------------------------------------
 
 
 def _fresh_advisor_state() -> dict[str, object]:
-    """RFC section 7.1: advisor_state shape with completion_times, session_registry, failure_counts."""
+    """RFC section 7.1: advisor_state shape.
+
+    Includes completion_times, session_registry, and failure_counts.
+    """
     return {
         "completion_times": {},
         "session_registry": {},
@@ -145,24 +147,12 @@ def test_refreshed_output_fields_present():
         "RFC 7.2: DecideOutput must have 'status' field. "
         "Got fields: " + str(list(DecideOutput.model_fields.keys()))
     )
-    assert hasattr(output, "reason_code"), (
-        "RFC 7.2: DecideOutput must have 'reason_code' field."
-    )
-    assert hasattr(output, "message"), (
-        "RFC 7.2: DecideOutput must have 'message' field."
-    )
-    assert hasattr(output, "actions"), (
-        "RFC 7.2: DecideOutput must have 'actions' field."
-    )
-    assert hasattr(output, "next_state"), (
-        "RFC 7.2: DecideOutput must have 'next_state' field."
-    )
-    assert hasattr(output, "policy"), (
-        "RFC 7.2: DecideOutput must have 'policy' field."
-    )
-    assert hasattr(output, "decision_log"), (
-        "RFC 7.2: DecideOutput must have 'decision_log' field."
-    )
+    assert hasattr(output, "reason_code"), "RFC 7.2: DecideOutput must have 'reason_code' field."
+    assert hasattr(output, "message"), "RFC 7.2: DecideOutput must have 'message' field."
+    assert hasattr(output, "actions"), "RFC 7.2: DecideOutput must have 'actions' field."
+    assert hasattr(output, "next_state"), "RFC 7.2: DecideOutput must have 'next_state' field."
+    assert hasattr(output, "policy"), "RFC 7.2: DecideOutput must have 'policy' field."
+    assert hasattr(output, "decision_log"), "RFC 7.2: DecideOutput must have 'decision_log' field."
     print("PASS: All refreshed output fields present on DecideOutput")
 
 
@@ -228,8 +218,7 @@ def test_action_session_field_removed():
     action_fields = set(Action.model_fields.keys())
     assert "session" not in action_fields, (
         "RFC 6.1: Action.session has been removed from refreshed contract. "
-        "Use reuse_token/reuse_runner instead. Got Action fields: "
-        + str(action_fields)
+        "Use reuse_token/reuse_runner instead. Got Action fields: " + str(action_fields)
     )
     # Verify replacement fields present
     assert "reuse_token" in action_fields, "RFC 6.1: Action must have reuse_token field"
@@ -407,14 +396,14 @@ def test_runner_provenance_required():
             runner="unknown-runner",
             dispatched_at=time.time(),
         )
-        assert False, "RFC 6.1: Unknown runner must be rejected by validation"
+        raise AssertionError("RFC 6.1: Unknown runner must be rejected by validation")
     except ValidationError:
         pass  # Expected
 
     # Missing runner on CompletedResult must be rejected
     try:
         CompletedResult(step_id="s1", task_id="t1", status="SUCCESS", output_summary="ok")
-        assert False, "RFC 6.1: Missing runner must be rejected by validation"
+        raise AssertionError("RFC 6.1: Missing runner must be rejected by validation")
     except ValidationError:
         pass  # Expected
 
@@ -470,9 +459,7 @@ def test_advisor_state_round_trip():
 
             # Verify completion was recorded
             next_ct = output1.next_state.get("completion_times", {})
-            assert "s1" in next_ct, (
-                f"RFC 6.2: next_state must record s1 completion. Got: {next_ct}"
-            )
+            assert "s1" in next_ct, f"RFC 6.2: next_state must record s1 completion. Got: {next_ct}"
 
             # Second call: pass next_state as advisor_state
             output2 = decide(
@@ -484,9 +471,7 @@ def test_advisor_state_round_trip():
 
             # Child s2 should be claimable now
             claim_actions = [
-                a
-                for a in output2.actions
-                if a.action == "claim_and_dispatch" and a.step_id == "s2"
+                a for a in output2.actions if a.action == "claim_and_dispatch" and a.step_id == "s2"
             ]
             assert claim_actions, (
                 f"RFC 6.2: After parent completion via next_state, child s2 must be "
@@ -589,9 +574,7 @@ def test_reuse_token_not_task_id():
 
             # Find child s2 claim action
             claim_actions = [
-                a
-                for a in output.actions
-                if a.action == "claim_and_dispatch" and a.step_id == "s2"
+                a for a in output.actions if a.action == "claim_and_dispatch" and a.step_id == "s2"
             ]
             assert claim_actions, (
                 f"RFC 6.1: Expected claim_and_dispatch for s2 after s1 completion. "
@@ -655,9 +638,7 @@ def test_policy_metadata_exposed():
     assert isinstance(output.policy, dict), (
         f"RFC 7.3: policy must be dict, got {type(output.policy)}"
     )
-    assert "reuse_ttl_s" in output.policy, (
-        "RFC 7.3: policy must include 'reuse_ttl_s'"
-    )
+    assert "reuse_ttl_s" in output.policy, "RFC 7.3: policy must include 'reuse_ttl_s'"
     assert "escalation_threshold" in output.policy, (
         "RFC 7.3: policy must include 'escalation_threshold'"
     )
@@ -695,12 +676,16 @@ def test_deterministic_same_inputs_same_outputs():
             state2 = _fresh_advisor_state()
 
             output1 = decide(
-                running_tasks=[], completed_results=None,
-                max_parallelism=5, advisor_state=state1,
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+                advisor_state=state1,
             )
             output2 = decide(
-                running_tasks=[], completed_results=None,
-                max_parallelism=5, advisor_state=state2,
+                running_tasks=[],
+                completed_results=None,
+                max_parallelism=5,
+                advisor_state=state2,
             )
 
         finally:
@@ -722,9 +707,7 @@ def test_deterministic_same_inputs_same_outputs():
     # Same action step_ids
     ids1 = [a.step_id for a in output1.actions]
     ids2 = [a.step_id for a in output2.actions]
-    assert ids1 == ids2, (
-        f"Determinism violation: action step_ids differ: {ids1} vs {ids2}"
-    )
+    assert ids1 == ids2, f"Determinism violation: action step_ids differ: {ids1} vs {ids2}"
     print("PASS: Deterministic behavior -- same inputs, same outputs")
 
 
@@ -816,7 +799,7 @@ def test_should_reuse_session_contract():
         session_registry={"s1": "ses-ok"},
     )
     should, token = should_reuse_session(step_id="s2", parent_step_id="s1", state=state)
-    assert should is True, f"Expected should=True for recently completed parent"
+    assert should is True, "Expected should=True for recently completed parent"
     assert token == "ses-ok", f"Expected token='ses-ok', got '{token}'"
 
     # Expired - should NOT reuse
@@ -824,9 +807,7 @@ def test_should_reuse_session_contract():
         completion_times={"s1": time.time() - REUSE_TTL - 100},
         session_registry={"s1": "ses-stale"},
     )
-    should2, token2 = should_reuse_session(
-        step_id="s2", parent_step_id="s1", state=state_stale
-    )
+    should2, token2 = should_reuse_session(step_id="s2", parent_step_id="s1", state=state_stale)
     assert should2 is False, "Expected should=False for stale parent"
     assert token2 is None, f"Expected token=None for stale, got '{token2}'"
 
@@ -845,6 +826,7 @@ def test_advisor_state_none_isolated():
     'vectl does not persist advisor state automatically'
     """
     import tempfile
+
     import vectl.decide as decide_mod
 
     with tempfile.TemporaryDirectory() as td:
@@ -917,7 +899,7 @@ def main():
             print(f"FAIL: {test_fn.__name__}")
             print(f"  Error: {e}")
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Results: {len(tests) - failures}/{len(tests)} passed, {failures} failed")
     if failures > 0:
         print("VERDICT: FAILED -- See individual test failures above")

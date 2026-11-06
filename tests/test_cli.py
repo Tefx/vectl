@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 import yaml
 from rich.console import Console
+from typer import unstyle
 from typer.testing import CliRunner
 
 import vectl.cli_plan_common as cli_plan_common
@@ -759,13 +760,19 @@ class TestStatus:
 
 
 class TestTop:
-    def test_help_is_simple(self):
+    @pytest.mark.parametrize("force_color", [False, True])
+    def test_help_is_simple(self, monkeypatch: pytest.MonkeyPatch, force_color: bool):
+        monkeypatch.delenv("NO_COLOR", raising=False)
+        monkeypatch.delenv("FORCE_COLOR", raising=False)
+        if force_color:
+            monkeypatch.setenv("FORCE_COLOR", "1")
         result = runner.invoke(app, ["top", "--help"])
         assert result.exit_code == 0
-        assert "--plan" in result.output
-        assert "--phase" not in result.output
-        assert "--watch-backend" not in result.output
-        assert "--poll-interval" not in result.output
+        output = unstyle(result.output)
+        assert "--plan" in output
+        assert "--phase" not in output
+        assert "--watch-backend" not in output
+        assert "--poll-interval" not in output
 
     def test_top_renders_and_watches_plan_files(
         self,

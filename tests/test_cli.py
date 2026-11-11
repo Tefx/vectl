@@ -783,6 +783,7 @@ class TestTop:
 
         live_instances = []
         captured: dict[str, object] = {}
+        draw_events = []
 
         class FakeLive:
             def __init__(self, renderable, **kwargs):
@@ -792,12 +793,14 @@ class TestTop:
                 live_instances.append(self)
 
             def __enter__(self):
+                draw_events.append("initial draw")
                 return self
 
             def __exit__(self, exc_type, exc, tb):
                 return False
 
             def update(self, renderable, *, refresh: bool = False):
+                draw_events.append("redraw")
                 self.updates.append((renderable, refresh))
 
         def fake_watch(*paths, **kwargs):
@@ -806,6 +809,7 @@ class TestTop:
             yield {(None, str(plan_file))}
             raise KeyboardInterrupt
 
+        monkeypatch.setattr(cli_top.out, "clear", lambda: draw_events.append("clear"))
         monkeypatch.setattr(cli_top, "Live", FakeLive)
         monkeypatch.setattr(cli_top, "watch", fake_watch)
 
@@ -815,6 +819,7 @@ class TestTop:
         assert live_instances
         assert len(live_instances[0].updates) == 1
         assert live_instances[0].updates[0][1] is True
+        assert draw_events == ["clear", "initial draw", "clear", "redraw"]
         assert captured["paths"] == (
             plan_file.parent.resolve(),
             plan_file.parent.resolve() / ".vectl",
@@ -823,8 +828,77 @@ class TestTop:
         assert captured["kwargs"]["raise_interrupt"] is False
         assert captured["kwargs"]["poll_delay_ms"] == 10_000
         assert captured["kwargs"]["rust_timeout"] == 500
+        assert captured["kwargs"]["yield_on_timeout"] is True
         assert callable(captured["kwargs"]["stop_event"].is_set)
         assert "Stopped" in result.output
+
+    @pytest.mark.parametrize("resized_size", [(80, 40), (120, 20)])
+    def test_top_redraws_only_on_resized_timeout_without_reloading(
+        self,
+        plan_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        resized_size: tuple[int, int],
+    ) -> None:
+        from unittest.mock import Mock
+
+        from returns.result import Success
+        from rich.panel import Panel
+
+        import vectl.cli_top as cli_top
+
+        events = []
+        panels = []
+        fake_out = Console(file=StringIO(), width=120, height=40, color_system=None)
+        load_state = Mock(wraps=cli_top._load_top_state)
+        now_label = Mock(return_value=Success("12:34:56"))
+        build_renderable = Mock(wraps=cli_top.build_top_renderable)
+
+        class FakeLive:
+            def __init__(self, renderable, **kwargs):
+                panels.append(renderable)
+
+            def __enter__(self):
+                events.append("initial draw")
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def update(self, renderable, *, refresh=False):
+                assert refresh is True
+                events.append("redraw")
+                panels.append(renderable)
+
+        def fake_watch(*paths, **kwargs):
+            yield set()
+            assert events == ["clear", "initial draw"]
+            fake_out.width, fake_out.height = resized_size
+            yield set()
+            assert events == ["clear", "initial draw", "clear", "redraw"]
+            yield set()
+            assert events == ["clear", "initial draw", "clear", "redraw"]
+
+        monkeypatch.setattr(fake_out, "clear", lambda: events.append("clear"))
+        monkeypatch.setattr(cli_top, "out", fake_out)
+        monkeypatch.setattr(cli_top, "Live", FakeLive)
+        monkeypatch.setattr(cli_top, "watch", fake_watch)
+        monkeypatch.setattr(cli_top, "_load_top_state", load_state)
+        monkeypatch.setattr(cli_top, "_now_label", now_label)
+        monkeypatch.setattr(cli_top, "build_top_renderable", build_renderable)
+
+        cli_top.run_top(plan_file)
+
+        load_state.assert_called_once_with(plan_file)
+        now_label.assert_called_once_with()
+        assert len(panels) == 2
+        assert all(isinstance(panel, Panel) for panel in panels)
+        assert panels[0].width == 120
+        assert panels[1].width == resized_size[0]
+        assert panels[0] is not panels[1]
+        assert [call.kwargs["last_updated"] for call in build_renderable.call_args_list] == [
+            "12:34:56",
+            "12:34:56",
+        ]
 
     def test_top_is_read_only_for_plan_yaml(
         self,
@@ -929,10 +1003,13 @@ class TestTop:
         assert "p7" in output
         assert "completed phases folded" in output
 
+    @pytest.mark.parametrize("width,height", [(120, 20), (80, 24)])
     def test_top_renderable_fits_terminal_height_without_duplicate_titles(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        width: int,
+        height: int,
     ) -> None:
         import vectl.cli_top as cli_top
 
@@ -946,7 +1023,7 @@ class TestTop:
             for index in range(30)
         ]
         plan = Plan(project="fit-test", phases=phases)
-        fake_out = Console(file=StringIO(), width=120, height=20, color_system=None)
+        fake_out = Console(file=StringIO(), width=width, height=height, color_system=None)
         monkeypatch.setattr(cli_top, "out", fake_out)
 
         panel = cli_top.build_top_renderable(
@@ -954,12 +1031,13 @@ class TestTop:
             tmp_path / "plan.yaml",
             last_updated="00:00:00",
         ).unwrap()
-        console = Console(file=StringIO(), record=True, width=120, color_system=None)
+        console = Console(file=StringIO(), record=True, width=width, color_system=None)
 
         console.print(panel)
         output = console.export_text()
 
-        assert cli_top._rendered_line_count(panel, 120).unwrap() <= 20
+        assert panel.width == width
+        assert cli_top._rendered_line_count(panel, width).unwrap() <= height
         assert "vectl top · Plan" not in output
         assert "q/Ctrl-C to exit" in output
         assert output.count("Plan: fit-test") == 1

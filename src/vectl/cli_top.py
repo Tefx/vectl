@@ -43,6 +43,11 @@ def _now_label() -> Result[str, str]:
     return Success(datetime.now().strftime("%H:%M:%S"))
 
 
+def _terminal_size() -> Result[tuple[int, int], str]:
+    size = out.size
+    return Success((size.width, size.height))
+
+
 def _canonical(path: Path | str) -> Result[Path, str]:
     return Success(Path(path).resolve(strict=False))
 
@@ -264,6 +269,7 @@ def _compose_top_panel(
     *,
     last_updated: str,
     phase_rows: int,
+    terminal_width: int | None = None,
     message: str | None = None,
 ) -> Result[Panel, str]:
     header = Text(f"Plan: {plan.project}", style="bold")
@@ -279,7 +285,9 @@ def _compose_top_panel(
     ]
     parts.extend(diagnostics)
     parts.append(footer)
-    return Success(Panel(Group(*parts), title="vectl top", border_style="blue"))
+    return Success(
+        Panel(Group(*parts), title="vectl top", border_style="blue", width=terminal_width)
+    )
 
 
 # @shell_orchestration: off-screen Rich render measures whether the live panel fits.
@@ -302,14 +310,16 @@ def build_top_renderable(
 ) -> Result[Panel, str]:
     """Build the live plan-level renderable for ``vectl top``."""
     diagnostics = _diagnostics(plan, plan_path, branch=branch, claims_path=claims_path).unwrap()
-    terminal_height = max(1, out.size.height)
-    terminal_width = max(20, out.size.width)
+    width, height = _terminal_size().unwrap()
+    terminal_height = max(1, height)
+    terminal_width = max(20, width)
     phase_rows = _top_phase_row_budget(terminal_height, len(diagnostics)).unwrap()
     panel = _compose_top_panel(
         plan,
         diagnostics,
         last_updated=last_updated,
         phase_rows=phase_rows,
+        terminal_width=terminal_width,
         message=message,
     ).unwrap()
 
@@ -322,6 +332,7 @@ def build_top_renderable(
             diagnostics,
             last_updated=last_updated,
             phase_rows=phase_rows,
+            terminal_width=terminal_width,
             message=message,
         ).unwrap()
 
@@ -344,12 +355,17 @@ def run_top(plan_path: Path | None = None) -> None:
     watch_roots = _watch_roots(resolved_plan_path, claims_path).unwrap()
     stop_event = threading.Event()
     quit_thread = _start_quit_key_listener(stop_event).unwrap()
+    terminal_size = _terminal_size().unwrap()
+    last_updated = _now_label().unwrap()
+    message = None
+    out.clear()
 
     with Live(
         build_top_renderable(
             plan,
             resolved_plan_path,
-            last_updated=_now_label().unwrap(),
+            last_updated=last_updated,
+            message=message,
             branch=authority.branch,
             claims_path=authority.claims_path,
         ).unwrap(),
@@ -368,20 +384,28 @@ def run_top(plan_path: Path | None = None) -> None:
                 ignore_permission_denied=True,
                 stop_event=stop_event,
                 rust_timeout=500,
+                yield_on_timeout=True,
             ):
                 if stop_event.is_set():
                     break
-                message = None
-                try:
-                    plan, resolved_plan_path = _load_top_state(plan_path).unwrap()
-                    authority = authority_for_plan_path(resolved_plan_path)
-                except Exception:
-                    message = "Last reload failed; keeping previous view and retrying."
+                current_size = _terminal_size().unwrap()
+                if _changes:
+                    message = None
+                    try:
+                        plan, resolved_plan_path = _load_top_state(plan_path).unwrap()
+                        authority = authority_for_plan_path(resolved_plan_path)
+                    except Exception:
+                        message = "Last reload failed; keeping previous view and retrying."
+                    last_updated = _now_label().unwrap()
+                elif current_size == terminal_size:
+                    continue
+                terminal_size = current_size
+                out.clear()
                 live.update(
                     build_top_renderable(
                         plan,
                         resolved_plan_path,
-                        last_updated=_now_label().unwrap(),
+                        last_updated=last_updated,
                         message=message,
                         branch=authority.branch,
                         claims_path=authority.claims_path,

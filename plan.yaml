@@ -126643,7 +126643,7 @@ phases:
   - id: top-responsive-layout.implement
     name: Implement responsive vectl top layout, atomic live-reload hardening, and
       F-1..F-8 closure
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: contract-and-simplicity]\nConsume the converged Stage 1 Admitted\
       \ Finding Ledger (F-1 through F-8) in docs/RFC-top-responsive-layout.md (§1–§3,\
@@ -126753,6 +126753,73 @@ phases:
     agent: python-engineer
     claimed_by: python-engineer
     claimed_at: '2026-11-14T11:16:45.768369Z'
+    done_at: '2026-11-14T11:33:27.987278+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 1229831f7e5061c3fd106eb75f981eb6dcbb97d0 (fast-forwarded onto Main;
+      base 63cf4df55b65097915b840528e2fefac27e093cb)
+
+      - Executor: python-engineer (isolated worktree /Users/tefx/Projects/vectl/.vectl/worktrees/top-responsive-layout.implement)
+
+      - Modified files: src/vectl/cli_top.py, src/vectl/cli_plan_read_commands.py,
+      src/vectl/cli_plan_common.py, tests/test_cli.py
+
+
+      Closure summary (F-1..F-8):
+
+      - F-1: Added responsive width tiers (Wide >=80, Compact 56..79 with box.HORIZONTALS
+      and 3 columns, Narrow 36..55 with 2 columns and 1-cell symbols/bars) and progressive
+      vertical chrome shedding / _BorderlessPanel height fitting down to 36x8 with
+      >=1 visible phase row.
+
+      - F-2: Bounded _visible_phase_indices to max(1, max_phase_rows) by priority
+      IN_PROGRESS -> PENDING/LOCKED -> tail DONE (preserving {1, 6, 7} at max_phase_rows=4),
+      emitting "{n} completed phases folded" vs "{n} phases folded".
+
+      - F-3: Atomic _load_top_state returning (plan, resolved_plan_path, authority)
+      without _die/typer.Exit/stderr; PlanIOError/PlanError/OSError recovery with
+      in-panel message and timeout retry while message is not None; resize-only redraw
+      without reload when healthy; dynamic watch_roots re-evaluation to capture late
+      claims_parent directory creation.
+
+      - F-4: Enclosed initial build_top_renderable and Live.__enter__ inside the try/finally
+      stop_event + quit_thread.join cleanup boundary.
+
+      - F-5: Evaluated ghost_claims in _show_step_detail regardless of step.status
+      when plan_path is not None, using canonical step.id in step_key.
+
+      - F-6, F-8: Expanded tests/test_cli.py (TestTop, TestStatus, TestShow) for viewports
+      (42,24), (40,12), (76,14), (80,24), (120,20), (36,8), non-DONE priority bounding,
+      atomic reload failure + timeout retry, late claims directory watch, listener
+      cleanup, ghost claims on non-CLAIMED steps, and real loader-seam resize assertions.
+      Deleted dead _git_toplevel_for and orphaned comment in cli_plan_common.py.
+
+      - F-7: Consolidated _duplicate_id_diagnostics and _claim_mismatch_diagnostics
+      across status and cli_top._diagnostics, removed redundant inner import in _check_claim_mismatch,
+      and updated _build_phase_overview_table docstring.
+
+
+      Verification (executed in worktree at 1229831f7e5061c3fd106eb75f981eb6dcbb97d0):
+
+      - uv run pytest tests/test_cli.py -k "TestTop or status or show" -v -> 102 passed,
+      207 deselected
+
+      - uv run pytest tests/test_linked_worktree_authority.py -q -> 7 passed
+
+      - uv run pytest tests/test_cli.py -q -> 309 passed
+
+      - uv run invar guard --changed -> Passed (0 errors, 2 size warnings, 4 complexity
+      infos)
+
+      - uv run ruff check src/vectl/cli_top.py src/vectl/cli_plan_read_commands.py
+      src/vectl/cli_plan_common.py tests/test_cli.py -> Passed
+
+      - git diff --check -> Passed
+
+
+      Spec link:
+
+      - docs/RFC-top-responsive-layout.md §1.1-§1.4 and §3 (F-1..F-8)'
   - id: top-responsive-layout.gate
     name: Frozen-ledger closure verification and full-suite phase gate for vectl top
     status: pending

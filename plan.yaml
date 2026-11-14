@@ -126630,3 +126630,174 @@ phases:
       HEAD remained a868ec3f9b81487bdd257a1de83f6b787c8b1f07, tracked status remained
       clean, and pyproject.toml plus the uv.lock Vectl package both read 0.9.2. No
       retry or recovery was needed.'
+- id: top-responsive-layout
+  name: vectl top Responsive Small-Screen Layout & Live-Reload Hardening
+  status: pending
+  gate: Independent FULL Phase Gate (gate-reviewer) verifying zero silently dropped
+    items and zero regressions across Admitted Finding Ledger F-1..F-8 and docs/RFC-top-responsive-layout.md
+    §1.1–§1.4 on the integrated candidate commit, paired with post-convergence repository
+    regression and Invar guard.
+  depends_on:
+  - release-0-9-2
+  steps:
+  - id: top-responsive-layout.implement
+    name: Implement responsive vectl top layout, atomic live-reload hardening, and
+      F-1..F-8 closure
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      [REQUIRES_SKILL: contract-and-simplicity]\nConsume the converged Stage 1 Admitted\
+      \ Finding Ledger (F-1 through F-8) in docs/RFC-top-responsive-layout.md (§1–§3,\
+      \ pinned to baseline commit eddb79f52d5aed00de92c9e6bb5b79b14bf66b1d) directly\
+      \ without repeating Stage 1 discovery. If executing in a linked worktree where\
+      \ docs/RFC-top-responsive-layout.md is not yet tracked, read /Users/tefx/Projects/vectl/docs/RFC-top-responsive-layout.md\
+      \ and stage docs/RFC-top-responsive-layout.md in the candidate commit alongside\
+      \ the code and test changes.\n\nDeliver: Close Admitted Finding Ledger items\
+      \ F-1..F-8 and satisfy all binding requirements in docs/RFC-top-responsive-layout.md\
+      \ §1.1–§1.4:\n1. Scope & Ownership Guardrails (§1.1): Keep vectl top strictly\
+      \ read-only for plan.yaml and claims.json payloads; preserve vectl top [--plan\
+      \ PATH] with zero new CLI flags or subcommands; keep phase-level table granularity\
+      \ without embedding step-level sub-rows.\n2. Public & Cross-Module Surfaces\
+      \ (§1.2): Preserve build_top_renderable(plan, plan_path, *, last_updated, message=None,\
+      \ branch=None, claims_path=None) -> Result[Panel, str] with panel.width == max(20,\
+      \ terminal_width), rendering \"Plan: <plan.project>\" exactly once, \"q/Ctrl-C\
+      \ to exit\", and never \"vectl top · Plan\". Preserve positional _build_top_phase_table(plan,\
+      \ max_phase_rows) defaulting to the wide tier (terminal_width >= 80, 4-column\
+      \ Table with show_lines=True) and _diagnostics(plan, plan_path, *, branch=None,\
+      \ claims_path=None) -> Result[list[Text], str] signature and full output (condensing\
+      \ diagnostics to a single line only during short-viewport panel composition).\n\
+      3. State Authority, Concurrency & Failure Precedence (§1.3, F-3, F-4, F-5):\n\
+      \   - Atomic reload & error containment (F-3): resolve (plan, resolved_plan_path,\
+      \ authority) atomically in run_top before updating live view state, without\
+      \ calling _die / typer.Exit or writing to stderr. On PlanIOError, PlanError,\
+      \ or OSError, retain the complete prior (plan, resolved_plan_path, authority)\
+      \ tuple and surface \"Last reload failed; keeping previous view and retrying.\"\
+      \ via in-panel message. While message is not None, retry loading on subsequent\
+      \ watch timeout ticks even when current_size == terminal_size; when healthy\
+      \ (message is None), redraw resize-only timeout ticks from in-memory state without\
+      \ reloading from disk.\n   - Late claims directory discovery (F-3): include\
+      \ authority.claims_path.parent in active watch roots once initial diagnostics\
+      \ or a subsequent operation creates .vectl/ or .git/vectl/.\n   - Terminal cbreak\
+      \ & listener teardown boundary (F-4): enclose initial render construction and\
+      \ Live.__enter__ inside the try/finally cleanup boundary that sets stop_event\
+      \ and joins the quit-key listener thread.\n   - Peer read-only claim-mismatch\
+      \ symmetry (F-5): in src/vectl/cli_plan_read_commands.py:_show_step_detail,\
+      \ evaluate ghost_claims even when step.status != StepStatus.CLAIMED whenever\
+      \ plan_path is not None, forming step_key = f\"{resolved_branch}:{step.id}\"\
+      \ from canonical step.id.\n4. Responsive Width Tiers, Bounded Phase Selection\
+      \ & Height Fitting (§1.4, F-1, F-2):\n   - Responsive width tiers (F-1): Wide\
+      \ (terminal_width >= 80: full-border Panel, 4-column Table Phase/Name/Progress/Depends\
+      \ On); Compact (56 <= terminal_width < 80: omit left/right outer Panel vertical\
+      \ borders and Depends On column, 3-column Table Phase/Name/Progress with show_lines=False\
+      \ and readable Phase/Name widths); Narrow (36 <= terminal_width < 56: omit left/right\
+      \ outer Panel vertical borders, table borders, and column headers; render each\
+      \ visible phase on one line with \"<status_symbol> <phase.id> <phase.name>\"\
+      \ in primary column and 4-cell bar + done/total at 40..55 or done/total at <40\
+      \ in right-aligned secondary column; keep folded-phase notices in the primary\
+      \ column span; use deterministic 1-cell single-width status/diagnostic glyphs\
+      \ on terminal_width < 80).\n   - Bounded phase selection (F-2): bound _visible_phase_indices\
+      \ to max(1, max_phase_rows) in priority order IN_PROGRESS -> earliest PENDING/LOCKED\
+      \ -> tail DONE while preserving {p1, p6, p7} at max_phase_rows=4 when p1 is\
+      \ active among 8 phases; emit \"{folded} completed phases folded\" for all-DONE\
+      \ contiguous folded ranges and \"{folded} phases folded\" when any folded phase\
+      \ is non-DONE.\n   - Height fitting (F-1): progressively shed vertical chrome\
+      \ (show_lines=False, single-line diagnostics summary, single-line header/footer,\
+      \ show_header=False at terminal_height < 15, borderless panel fallback at terminal_height\
+      \ < 10) and decrement phase_rows down to floor 1 so _rendered_line_count(panel,\
+      \ terminal_width) <= terminal_height with at least 1 visible phase row across\
+      \ terminal_width >= 36, terminal_height >= 8.\n5. Consolidation, Hygiene & Calibrated\
+      \ Tests (F-6, F-7, F-8):\n   - Consolidate shared step-ID and 5-line stale-claim\
+      \ diagnostic formatting across status and cli_top._diagnostics; remove redundant\
+      \ inner import in _check_claim_mismatch; update _build_phase_overview_table\
+      \ docstring (F-7).\n   - Delete dead _git_toplevel_for helper and trailing orphaned\
+      \ comment in src/vectl/cli_plan_common.py after consumer-safety check (F-8).\n\
+      \   - Calibrate and expand tests/test_cli.py (TestTop, status, show) to verify\
+      \ viewports (42, 24), (40, 12), (76, 14), (80, 24), and (120, 20), non-DONE\
+      \ priority bounding when len(non_done) > max_phase_rows, atomic PlanIOError\
+      \ reload recovery + timeout retry, late claims_parent watch coverage, listener\
+      \ cleanup on initial render failure, _show_step_detail ghost claims on non-CLAIMED\
+      \ steps, and resize-without-reload anchored to real I/O or compatible loader\
+      \ seam (F-6, F-8).\n\nImplementation Notes (Non-Binding):\n- src/vectl/cli_top.py:_compose_top_panel:\
+      \ Panel(..., box=box.HORIZONTALS, padding=(0, 0), width=terminal_width) preserves\
+      \ the Panel return type and panel.width invariant while removing 4-column left/right\
+      \ border overhead on < 80 column viewports.\n- src/vectl/cli_top.py:_load_top_state:\
+      \ Calling resolve_plan_path and load_plan_definition directly instead of cli_plan_common._load\
+      \ avoids _die() writing to stderr and raising typer.Exit (BaseException) during\
+      \ live reload.\n- src/vectl/cli_top.py:_quit_key_listener: Keep quit-key detection\
+      \ restricted to {\"q\", \"Q\"} under stream.read(1); do not treat bare \\x1b\
+      \ as quit.\n\nBoundary: Owner python-engineer. Expected change surface (scope.allowed_paths):\
+      \ src/vectl/cli_top.py, src/vectl/cli_plan_read_commands.py, src/vectl/cli_plan_common.py,\
+      \ tests/test_cli.py, tests/test_linked_worktree_authority.py, docs/RFC-top-responsive-layout.md.\
+      \ Blocked surface (scope.blocked_paths): plan.yaml, src/vectl/models.py, src/vectl/semantics.py,\
+      \ src/vectl/core.py, src/vectl/mcp_server.py. Repository-only reversible changes\
+      \ in a single isolated worktree.\n\nAdmit: Witnessed inputs are docs/RFC-top-responsive-layout.md\
+      \ (pinned to eddb79f52d5aed00de92c9e6bb5b79b14bf66b1d) and completed phase release-0-9-2.\
+      \ Verify with fast targeted inner-loop CLI/worktree tests and Invar guard on\
+      \ changed files before handing off to top-responsive-layout.gate.\n\nRecovery:\
+      \ Discard or revert uncommitted/candidate worktree edits if any check fails;\
+      \ do not weaken tests, touch Core/MCP modules, or edit plan.yaml directly."
+    verification: 'uv run pytest tests/test_cli.py -k "TestTop or status or show"
+      -v
+
+      uv run pytest tests/test_linked_worktree_authority.py -q
+
+      uv run invar guard --changed
+
+      git diff --check'
+    refs:
+    - docs/RFC-top-responsive-layout.md
+    - src/vectl/cli_top.py
+    - src/vectl/cli_plan_read_commands.py
+    - src/vectl/cli_plan_common.py
+    - tests/test_cli.py
+    - tests/test_linked_worktree_authority.py
+    agent: python-engineer
+  - id: top-responsive-layout.gate
+    name: Frozen-ledger closure verification and full-suite phase gate for vectl top
+    status: pending
+    description: 'step_type: gate
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver: Independent FULL PHASE_GATE decision (gate.report.v2) for phase top-responsive-layout
+      bound to the integrated candidate commit from top-responsive-layout.implement,
+      verifying complete closure of Admitted Finding Ledger items F-1..F-8 and all
+      binding requirements in docs/RFC-top-responsive-layout.md §1.1–§1.4 with zero
+      silently dropped items and zero regressions.
+
+
+      Boundary: Owner gate-reviewer. Strictly read-only (no_repo_change). Must not
+      modify repository source, tests, docs, plan.yaml, or claims state.
+
+
+      Admit: Consumes the integrated candidate commit from top-responsive-layout.implement,
+      the repair diff (git diff eddb79f52d5aed00de92c9e6bb5b79b14bf66b1d..HEAD), and
+      docs/RFC-top-responsive-layout.md (§1.1–§1.4 and §3 F-1..F-8). Executes and
+      inspects targeted CLI and linked-worktree suites, uv run invar guard --changed,
+      and post-convergence full-workspace regression (uv run pytest -q). Excludes
+      unrelated completed phases and the pre-existing repo-wide invar guard --all
+      escape_hatch_budget baseline.
+
+
+      Recovery: If any scoped requirement in docs/RFC-top-responsive-layout.md §1.1–§1.4
+      or admitted ledger item F-1..F-8 is DISPROVEN or UNPROVEN, return one consolidated
+      gate.report.v2 finding batch to the Orchestrator for repair routing and subsequent
+      DELTA gate re-verification.'
+    verification: 'uv run pytest tests/test_cli.py -k "TestTop or status or show"
+      -v
+
+      uv run pytest tests/test_linked_worktree_authority.py -q
+
+      uv run invar guard --changed
+
+      uv run pytest -q'
+    refs:
+    - docs/RFC-top-responsive-layout.md
+    - src/vectl/cli_top.py
+    - src/vectl/cli_plan_read_commands.py
+    - src/vectl/cli_plan_common.py
+    - tests/test_cli.py
+    - tests/test_linked_worktree_authority.py
+    depends_on:
+    - top-responsive-layout.implement
+    agent: gate-reviewer

@@ -797,6 +797,115 @@ class TestStatus:
 
 
 class TestTop:
+    def test_terminal_size_uses_live_streams_before_environment(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import os
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+
+        import vectl.cli_top as cli_top
+
+        monkeypatch.setenv("COLUMNS", "120")
+        monkeypatch.setenv("LINES", "24")
+        console = Console(file=StringIO())
+        assert (console._width, console._height) == (120, 24)
+        monkeypatch.setattr(cli_top, "out", console)
+        monkeypatch.setattr(cli_top, "_DEFAULT_OUT", console)
+        streams = [Mock(), Mock(), Mock()]
+        for fd, stream in enumerate(streams):
+            stream.fileno.return_value = fd
+        monkeypatch.setattr(
+            cli_top, "sys", SimpleNamespace(stdout=streams[0], stderr=streams[1], stdin=streams[2])
+        )
+        probe = Mock(
+            side_effect=[
+                OSError("redirected stdout"),
+                os.terminal_size((76, 14)),
+                os.terminal_size((80, 24)),
+            ]
+        )
+        monkeypatch.setattr(cli_top, "os", SimpleNamespace(get_terminal_size=probe))
+
+        assert cli_top._terminal_size().unwrap() == (76, 14)
+        assert cli_top._terminal_size().unwrap() == (80, 24)
+        assert [call.args for call in probe.call_args_list] == [(0,), (1,), (0,)]
+
+    def test_terminal_size_falls_back_when_streams_are_not_terminals(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+
+        import vectl.cli_top as cli_top
+
+        monkeypatch.setenv("COLUMNS", "76")
+        monkeypatch.setenv("LINES", "14")
+        console = Console(file=StringIO())
+        monkeypatch.setattr(cli_top, "out", console)
+        monkeypatch.setattr(cli_top, "_DEFAULT_OUT", console)
+        monkeypatch.setattr(
+            cli_top,
+            "sys",
+            SimpleNamespace(
+                stdout=StringIO(),
+                stderr=Mock(fileno=Mock(return_value=2)),
+                stdin=Mock(fileno=Mock(side_effect=ValueError)),
+            ),
+        )
+        monkeypatch.setattr(
+            cli_top, "os", SimpleNamespace(get_terminal_size=Mock(side_effect=OSError))
+        )
+
+        assert cli_top._terminal_size().unwrap() == (76, 14)
+
+    @pytest.mark.parametrize("dimensions", [{"width": 56}, {"height": 14}])
+    def test_terminal_size_respects_explicit_console_dimensions(
+        self, monkeypatch: pytest.MonkeyPatch, dimensions: dict[str, int]
+    ) -> None:
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+
+        import vectl.cli_top as cli_top
+
+        console = Console(file=StringIO(), **dimensions)
+        monkeypatch.setattr(cli_top, "out", console)
+        probe = Mock(side_effect=AssertionError("explicit size must bypass live probe"))
+        monkeypatch.setattr(cli_top, "os", SimpleNamespace(get_terminal_size=probe))
+
+        assert cli_top._terminal_size().unwrap() == (console.size.width, console.size.height)
+        probe.assert_not_called()
+
+    def test_live_console_ignores_startup_environment_dimensions(
+        self, plan_file: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import os
+        from unittest.mock import MagicMock, Mock
+
+        from returns.result import Success
+
+        import vectl.cli_top as cli_top
+
+        monkeypatch.setenv("COLUMNS", "120")
+        monkeypatch.setenv("LINES", "24")
+        console = Console(file=StringIO(), force_terminal=True)
+        monkeypatch.setattr(cli_top, "out", console)
+        monkeypatch.setattr(cli_top, "_DEFAULT_OUT", console)
+        monkeypatch.setattr(cli_top, "_start_quit_key_listener", lambda _: Success(None))
+        monkeypatch.setattr(cli_top, "watch", lambda *args, **kwargs: (x for x in ()))
+        # Rich and the CLI must both observe the same live kernel dimensions.
+        monkeypatch.setattr(os, "get_terminal_size", Mock(return_value=os.terminal_size((76, 14))))
+        live = MagicMock()
+        monkeypatch.setattr(cli_top, "Live", live)
+
+        cli_top.run_top(plan_file)
+
+        assert live.call_args.kwargs["console"] is console
+        assert console._width is None and console._height is None
+        assert console.size == (76, 14)
+        assert "COLUMNS" not in console._environ and "LINES" not in console._environ
+        assert os.environ["COLUMNS"] == "120" and os.environ["LINES"] == "24"
+
     @pytest.mark.parametrize("force_color", [False, True])
     def test_help_is_simple(self, monkeypatch: pytest.MonkeyPatch, force_color: bool):
         monkeypatch.delenv("NO_COLOR", raising=False)
@@ -1064,6 +1173,7 @@ class TestTop:
             (76, 14),
             (80, 24),
             (120, 20),
+            (120, 24),
             (36, 8),
             (39, 9),
         ],
@@ -1112,10 +1222,48 @@ class TestTop:
         assert output.count("Plan: fit-test") == 1
         assert "p15" in output
         assert "Delivery" in output
+        if (width, height) in {(120, 24), (80, 24)}:
+            for text in ("vectl top", "Phase", "Depends On", "████"):
+                assert text in output
+        if (width, height) == (76, 14):
+            assert "vectl top" in output
+            assert "░░░░" in output
         if width < 80:
             assert "⚠" not in output
             assert "ℹ" not in output
             assert "Depends On" not in output
+
+    @pytest.mark.parametrize("width,height", [(120, 24), (80, 24), (76, 14)])
+    def test_top_preserves_title_and_progress_with_completed_history(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, width: int, height: int
+    ) -> None:
+        import vectl.cli_top as cli_top
+
+        plan = Plan(
+            project="history",
+            phases=[
+                Phase(
+                    id=f"p{i}",
+                    name=f"Phase {i}",
+                    status=PhaseStatus.DONE,
+                    steps=[Step(id=f"s{i}", name="Work", status=StepStatus.DONE)],
+                )
+                for i in range(30)
+            ],
+        )
+        console = Console(file=StringIO(), record=True, width=width, height=height)
+        monkeypatch.setattr(cli_top, "out", console)
+        panel = cli_top.build_top_renderable(
+            plan, tmp_path / "plan.yaml", last_updated="00:00:00"
+        ).unwrap()
+        console.print(panel)
+        output = console.export_text()
+        assert len(output.splitlines()) <= height
+        assert "vectl top" in output
+        assert "████" in output
+        if width >= 80:
+            assert "Phase" in output
+            assert "Depends On" in output
 
     @pytest.mark.parametrize("width", [36, 56, 80, 120])
     @pytest.mark.parametrize("height", [8, 10, 15])
@@ -1214,7 +1362,12 @@ class TestTop:
         assert len(table.columns) == columns
         assert table.show_lines is (width >= 80)
         assert "release" in output and "Delivery" in output
-        assert "completed phases folded" in " ".join(output.replace("│", " ").split())
+        if width == 56:
+            assert "5 completed phase…" in output
+            assert len([line for line in output.splitlines() if "completed" in line]) == 1
+            assert table.columns[1].no_wrap is True
+        else:
+            assert "completed phases folded" in " ".join(output.replace("│", " ").split())
         if width < 56:
             assert table.box is None
             assert table.show_header is False

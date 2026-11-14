@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import select
 import sys
 import threading
@@ -38,6 +39,8 @@ from vectl.models import Phase, PhaseStatus, Plan, PlanError, PlanIOError, StepS
 from vectl.plan_path import PlanAuthority, authority_for_plan_path, resolve_plan_path
 from vectl.semantics import is_step_locked
 
+_DEFAULT_OUT = out
+
 _TOP_DEBOUNCE_MS = 750
 _TOP_POLL_DELAY_MS = 10_000
 _TOP_FIXED_ROW_ALLOWANCE = 14
@@ -57,6 +60,17 @@ def _now_label() -> Result[str, str]:
 
 
 def _terminal_size() -> Result[tuple[int, int], str]:
+    if out is not _DEFAULT_OUT and (
+        getattr(out, "_width", None) is not None or getattr(out, "_height", None) is not None
+    ):
+        size = out.size
+        return Success((size.width, size.height))
+    for stream in (sys.stdout, sys.stderr, sys.stdin):
+        try:
+            size = os.get_terminal_size(stream.fileno())
+        except (OSError, ValueError, AttributeError):
+            continue
+        return Success((size.columns, size.lines))
     size = out.size
     return Success((size.width, size.height))
 
@@ -227,8 +241,10 @@ def _build_top_phase_table(
         show_header=show_header and not narrow,
     )
     table.add_column("Phase", style="bold", no_wrap=True, overflow="ellipsis", ratio=3)
-    if not narrow:
+    if wide:
         table.add_column("Name", overflow="fold", ratio=5, min_width=26)
+    elif not narrow:
+        table.add_column("Name", ratio=5, no_wrap=True, overflow="ellipsis")
     table.add_column("Progress", no_wrap=True, justify="right")
     if wide:
         table.add_column("Depends On", no_wrap=True, overflow="ellipsis", ratio=3)
@@ -252,7 +268,16 @@ def _build_top_phase_table(
             cells = (
                 [Text(f"… {label}", style="dim"), ""]
                 if narrow
-                else [Text("…", style="dim"), Text(label, style="dim"), ""]
+                else [
+                    Text("…", style="dim"),
+                    Text(
+                        label,
+                        style="dim",
+                        no_wrap=not wide or not show_header,
+                        overflow="ellipsis",
+                    ),
+                    "",
+                ]
             )
             if wide:
                 cells.append("")
@@ -265,7 +290,7 @@ def _build_top_phase_table(
         cells.append(
             _phase_progress_cell(
                 phase,
-                terminal_width=terminal_width if show_header or narrow else 36,
+                terminal_width=terminal_width,
             ).unwrap()
         )
         if wide:
@@ -362,7 +387,7 @@ def _compose_top_panel(
     return Success(
         panel_type(
             Group(*parts),
-            title=None if dense else "vectl top",
+            title="vectl top" if terminal_height >= 10 else None,
             border_style="blue",
             box=box.SQUARE if terminal_width >= 80 else box.HORIZONTALS,
             padding=(0, 1) if terminal_width >= 80 and terminal_height >= 10 else (0, 0),
@@ -411,7 +436,9 @@ def build_top_renderable(
         ).unwrap()
         if _rendered_line_count(panel, terminal_width).unwrap() <= terminal_height:
             return Success(panel)
-        if not dense:
+        if not dense and phase_rows > max(2, _TOP_MIN_PHASE_ROWS):
+            phase_rows -= 1
+        elif not dense:
             dense = True
         elif phase_rows > _TOP_MIN_PHASE_ROWS:
             phase_rows -= 1
@@ -431,6 +458,14 @@ def _load_top_state(plan_path: Path | None) -> Result[tuple[Plan, Path, PlanAuth
 def run_top(plan_path: Path | None = None) -> None:
     """Run the live ``vectl top`` panel until interrupted."""
     plan, resolved_plan_path, authority = _load_top_state(plan_path).unwrap()
+    if out is _DEFAULT_OUT:
+        # Rich caches dimensions at construction and also consults its environment on each render.
+        # Use a console-local environment so Live follows resizes without changing os.environ.
+        out._width = None
+        out._height = None
+        out._environ = {
+            key: value for key, value in out._environ.items() if key not in {"COLUMNS", "LINES"}
+        }
     stop_event = threading.Event()
     quit_thread = _start_quit_key_listener(stop_event).unwrap()
     try:

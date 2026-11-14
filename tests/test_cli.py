@@ -739,6 +739,43 @@ class TestNext:
 
 
 class TestStatus:
+    def test_status_and_top_share_full_diagnostics(self, plan_file: Path) -> None:
+        from vectl.cli_top import _diagnostics
+        from vectl.plan_path import authority_for_plan_path
+
+        plan, _ = load_plan(plan_file)
+        plan.phases[1].steps.append(Step(id="s1", name="Duplicate"))
+        for step in plan.phases[0].steps[1:]:
+            step.status = StepStatus.CLAIMED
+            step.claimed_by = "plan-owner"
+            step.claimed_at = "2026-01-01T00:00:00Z"
+        save_plan(plan, plan_file)
+        authority = authority_for_plan_path(plan_file)
+        save_claims(
+            {
+                f"{authority.branch}:{step_id}": ClaimEntry(
+                    step_id=step_id,
+                    branch=authority.branch,
+                    agent="other-owner",
+                    claimed_at="2026-01-02T00:00:00Z",
+                )
+                for step_id in ("s1", "s2")
+            },
+            authority.claims_path,
+        )
+        lines = _diagnostics(
+            plan, plan_file, branch=authority.branch, claims_path=authority.claims_path
+        ).unwrap()
+        text = [line.plain.strip() for line in lines]
+        for expected in ("Ghost claims: 1", "Stale plan claims: 1", "Stale claim entries: 1"):
+            assert expected in text
+        assert any("Duplicate step-ID diagnostics" in line for line in text)
+        result = runner.invoke(app, ["status", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        output = " ".join(result.output.split())
+        for line in text:
+            assert " ".join(line.split()) in output
+
     def test_overview(self, plan_file: Path):
         result = runner.invoke(app, ["status", "--plan", str(plan_file)])
         assert result.exit_code == 0
@@ -849,7 +886,7 @@ class TestTop:
         events = []
         panels = []
         fake_out = Console(file=StringIO(), width=120, height=40, color_system=None)
-        load_state = Mock(wraps=cli_top._load_top_state)
+        load_definition = Mock(wraps=cli_top.load_plan_definition)
         now_label = Mock(return_value=Success("12:34:56"))
         build_renderable = Mock(wraps=cli_top.build_top_renderable)
 
@@ -882,13 +919,13 @@ class TestTop:
         monkeypatch.setattr(cli_top, "out", fake_out)
         monkeypatch.setattr(cli_top, "Live", FakeLive)
         monkeypatch.setattr(cli_top, "watch", fake_watch)
-        monkeypatch.setattr(cli_top, "_load_top_state", load_state)
+        monkeypatch.setattr(cli_top, "load_plan_definition", load_definition)
         monkeypatch.setattr(cli_top, "_now_label", now_label)
         monkeypatch.setattr(cli_top, "build_top_renderable", build_renderable)
 
         cli_top.run_top(plan_file)
 
-        load_state.assert_called_once_with(plan_file)
+        load_definition.assert_called_once_with(plan_file)
         now_label.assert_called_once_with()
         assert len(panels) == 2
         assert all(isinstance(panel, Panel) for panel in panels)
@@ -927,12 +964,26 @@ class TestTop:
         monkeypatch.setattr(cli_top, "Live", FakeLive)
         monkeypatch.setattr(cli_top, "watch", fake_watch)
 
-        before = plan_file.read_text(encoding="utf-8")
-        result = runner.invoke(app, ["top", "--plan", str(plan_file)], catch_exceptions=False)
-        after = plan_file.read_text(encoding="utf-8")
+        from vectl.plan_path import authority_for_plan_path
 
+        authority = authority_for_plan_path(plan_file)
+        save_claims(
+            {
+                f"{authority.branch}:s1": ClaimEntry(
+                    step_id="s1",
+                    branch=authority.branch,
+                    agent="ghost",
+                    claimed_at="2026-01-01T00:00:00Z",
+                )
+            },
+            authority.claims_path,
+        )
+        before = plan_file.read_bytes()
+        claims_before = authority.claims_path.read_bytes()
+        result = runner.invoke(app, ["top", "--plan", str(plan_file)], catch_exceptions=False)
         assert result.exit_code == 0
-        assert after == before
+        assert plan_file.read_bytes() == before
+        assert authority.claims_path.read_bytes() == claims_before
 
     def test_watch_filter_only_accepts_plan_and_claims_paths(self, tmp_path: Path) -> None:
         from vectl.cli_top import _make_watch_filter
@@ -977,7 +1028,7 @@ class TestTop:
         assert "Phase 7" in output
 
     def test_top_phase_table_keeps_non_done_phase_outside_tail(self) -> None:
-        from vectl.cli_top import _build_top_phase_table
+        from vectl.cli_top import _build_top_phase_table, _visible_phase_indices
 
         phases = [
             Phase(
@@ -990,6 +1041,7 @@ class TestTop:
         ]
         phases[1] = phases[1].model_copy(update={"status": PhaseStatus.IN_PROGRESS})
         plan = Plan(project="fold-test", phases=phases)
+        assert _visible_phase_indices(plan, 4).unwrap() == {1, 6, 7}
         table = _build_top_phase_table(plan, max_phase_rows=4).unwrap()
         console = Console(record=True, width=120, color_system=None)
 
@@ -1003,7 +1055,19 @@ class TestTop:
         assert "p7" in output
         assert "completed phases folded" in output
 
-    @pytest.mark.parametrize("width,height", [(120, 20), (80, 24)])
+    @pytest.mark.parametrize(
+        "width,height",
+        [
+            (42, 24),
+            (56, 24),
+            (40, 12),
+            (76, 14),
+            (80, 24),
+            (120, 20),
+            (36, 8),
+            (39, 9),
+        ],
+    )
     def test_top_renderable_fits_terminal_height_without_duplicate_titles(
         self,
         tmp_path: Path,
@@ -1022,6 +1086,11 @@ class TestTop:
             )
             for index in range(30)
         ]
+        phases[15].status = PhaseStatus.IN_PROGRESS
+        phases[15].name = "Delivery work"
+        phases[15].steps[0].status = StepStatus.CLAIMED
+        phases[15].steps[0].claimed_by = "worker"
+        phases[15].steps[0].claimed_at = "2026-01-01T00:00:00Z"
         plan = Plan(project="fit-test", phases=phases)
         fake_out = Console(file=StringIO(), width=width, height=height, color_system=None)
         monkeypatch.setattr(cli_top, "out", fake_out)
@@ -1041,12 +1110,322 @@ class TestTop:
         assert "vectl top · Plan" not in output
         assert "q/Ctrl-C to exit" in output
         assert output.count("Plan: fit-test") == 1
+        assert "p15" in output
+        assert "Delivery" in output
+        if width < 80:
+            assert "⚠" not in output
+            assert "ℹ" not in output
+            assert "Depends On" not in output
+
+    @pytest.mark.parametrize("width", [36, 56, 80, 120])
+    @pytest.mark.parametrize("height", [8, 10, 15])
+    def test_short_viewports_fit_with_diagnostics_and_reload_notice(
+        self,
+        plan_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        width: int,
+        height: int,
+    ) -> None:
+        import vectl.cli_top as cli_top
+
+        # Duplicate IDs and a missing claim generate both diagnostic families.
+        plan = Plan(
+            project="short",
+            phases=[
+                Phase(
+                    id=f"p{i}",
+                    name="Delivery work",
+                    status=(PhaseStatus.IN_PROGRESS if i == 15 else PhaseStatus.DONE),
+                    steps=[Step(id="duplicate", name="Work")],
+                )
+                for i in range(30)
+            ],
+        )
+        plan.phases[15].steps.append(
+            Step(
+                id="missing-claim",
+                name="Claimed work",
+                status=StepStatus.CLAIMED,
+                claimed_by="worker",
+                claimed_at="2026-01-01T00:00:00Z",
+            )
+        )
+        monkeypatch.setattr(cli_top, "out", Console(file=StringIO(), width=width, height=height))
+        panel = cli_top.build_top_renderable(
+            plan,
+            plan_file,
+            last_updated="00:00:00",
+            message="Last reload failed; keeping previous view and retrying.",
+        ).unwrap()
+        console = Console(file=StringIO(), record=True, width=width)
+        console.print(panel)
+        output = console.export_text()
+        assert len(output.splitlines()) <= height
+        assert "p15" in output and "Delivery" in output
+        assert output.count("Plan: short") == 1
+        assert "q/Ctrl-C to exit" in output
+        assert "diagnostic" in output
+        assert "Last reload failed" in output
+        assert len(cli_top._diagnostics(plan, plan_file).unwrap()) > 1
+
+    @pytest.fixture
+    def live_panels(self, monkeypatch: pytest.MonkeyPatch):
+        import vectl.cli_top as cli_top
+
+        panels = []
+
+        class FakeLive:
+            def __init__(self, renderable, **kwargs):
+                panels.append(renderable)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def update(self, renderable, **kwargs):
+                panels.append(renderable)
+
+        monkeypatch.setattr(cli_top, "Live", FakeLive)
+        monkeypatch.setattr(cli_top, "out", Console(file=StringIO(), width=80, height=24))
+        return panels
+
+    @pytest.mark.parametrize("width,columns", [(36, 2), (42, 2), (56, 3), (76, 3), (80, 4)])
+    def test_phase_table_width_tiers(self, width: int, columns: int) -> None:
+        from vectl.cli_top import _build_top_phase_table
+
+        plan = Plan(
+            project="tiers",
+            phases=[
+                Phase(
+                    id="release",
+                    name="Delivery",
+                    status=PhaseStatus.IN_PROGRESS,
+                    steps=[Step(id="work", name="Work")],
+                ),
+                *[Phase(id=f"p{i}", name="History", status=PhaseStatus.DONE) for i in range(5)],
+            ],
+        )
+        table = _build_top_phase_table(plan, 2, terminal_width=width).unwrap()
+        console = Console(file=StringIO(), record=True, width=width)
+        console.print(table)
+        output = console.export_text()
+        assert len(table.columns) == columns
+        assert table.show_lines is (width >= 80)
+        assert "release" in output and "Delivery" in output
+        assert "completed phases folded" in " ".join(output.replace("│", " ").split())
+        if width < 56:
+            assert table.box is None
+            assert table.show_header is False
+            assert "▶ release Delivery" in output
+            assert "0/1" in output
+            assert ("░░░░" in output) is (width >= 40)
+
+    @pytest.mark.parametrize(
+        "budget,expected",
+        [
+            (0, {4}),
+            (1, {4}),
+            (2, {1, 4}),
+            (3, {1, 2, 4}),
+        ],
+    )
+    def test_phase_priority_is_bounded(self, budget: int, expected: set[int]) -> None:
+        from vectl.cli_top import _build_top_phase_table, _visible_phase_indices
+
+        statuses = [
+            PhaseStatus.DONE,
+            PhaseStatus.PENDING,
+            PhaseStatus.LOCKED,
+            PhaseStatus.PENDING,
+            PhaseStatus.IN_PROGRESS,
+            PhaseStatus.PENDING,
+        ]
+        plan = Plan(
+            project="priority",
+            phases=[
+                Phase(id=f"p{i}", name=f"Phase {i}", status=status)
+                for i, status in enumerate(statuses)
+            ],
+        )
+        assert _visible_phase_indices(plan, budget).unwrap() == expected
+        console = Console(file=StringIO(), record=True, width=80)
+        console.print(_build_top_phase_table(plan, budget).unwrap())
+        output = console.export_text()
+        folded = {0: 4, 1: 4, 2: 2, 3: 1}[budget]
+        assert f"{folded} phases folded" in output
+        if budget <= 1:
+            assert "completed phases folded" not in output
+        else:
+            assert "1 completed phases folded" in " ".join(output.replace("│", " ").split())
+
+    @pytest.mark.parametrize("failure", ["read", "authority-plan", "authority-os"])
+    def test_atomic_reload_failure_retries_on_timeout(
+        self,
+        plan_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        live_panels,
+        failure: str,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        import vectl.cli_top as cli_top
+
+        replacement = plan_file.with_name("replacement.yaml")
+        plan, _ = load_plan(plan_file)
+        plan.project = "replacement"
+        save_plan(plan, replacement)
+        original_authority = cli_top.authority_for_plan_path
+        target = plan_file
+        reject_authority = False
+        frames = []
+        render = cli_top.build_top_renderable
+
+        def resolve(_path):
+            return target
+
+        def authority(path):
+            if reject_authority:
+                error = PlanError if failure == "authority-plan" else OSError
+                raise error("authority temporarily unavailable")
+            return original_authority(path)
+
+        def capture(plan, path, **kwargs):
+            frames.append((plan.project, path, kwargs["claims_path"], kwargs.get("message")))
+            return render(plan, path, **kwargs)
+
+        def events(*args, **kwargs):
+            nonlocal target, reject_authority
+            if frames[-1][0] == "replacement":
+                return
+            target = replacement
+            if failure == "read":
+                valid = replacement.read_bytes()
+                replacement.write_text("invalid: [")
+            else:
+                reject_authority = True
+            yield {(None, str(plan_file))}
+            assert frames[-1][:3] == frames[0][:3]
+            assert frames[-1][3] == "Last reload failed; keeping previous view and retrying."
+            if failure == "read":
+                replacement.write_bytes(valid)
+            reject_authority = False
+            yield set()
+            assert frames[-1][0:2] == ("replacement", replacement)
+            assert frames[-1][3] is None
+            # A healthy timeout performs no further load or redraw.
+            target = plan_file.with_name("missing.yaml")
+            yield set()
+
+        monkeypatch.setattr(cli_top, "resolve_plan_path", resolve)
+        monkeypatch.setattr(cli_top, "authority_for_plan_path", authority)
+        monkeypatch.setattr(cli_top, "build_top_renderable", capture)
+        monkeypatch.setattr(cli_top, "watch", events)
+        cli_top.run_top(plan_file)
+        assert len(live_panels) == 3
+        assert frames[-1][0:2] == ("replacement", replacement)
+        assert frames[-1][3] is None
+        assert capsys.readouterr().err == ""
+
+    @pytest.mark.parametrize("created_during_render", [True, False])
+    def test_late_claims_directory_enters_watch_coverage(
+        self,
+        plan_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        live_panels,
+        created_during_render: bool,
+    ) -> None:
+        from dataclasses import replace
+
+        from returns.result import Success
+
+        import vectl.cli_top as cli_top
+
+        authority = cli_top.authority_for_plan_path(plan_file)
+        # The fixture's save path may already have created its own backup directory.
+        claims_parent = plan_file.parent / ".vectl" / "late"
+        monkeypatch.setattr(
+            cli_top,
+            "authority_for_plan_path",
+            lambda _path: replace(
+                authority,
+                claims_path=claims_parent / "claims.json",
+            ),
+        )
+        calls = []
+
+        def diagnostics(*args, **kwargs):
+            if created_during_render:
+                claims_parent.mkdir(parents=True, exist_ok=True)
+            return Success([])
+
+        def events(*paths, **kwargs):
+            calls.append(paths)
+            if not claims_parent.exists():
+                claims_parent.mkdir(parents=True)
+                yield set()
+            else:
+                assert claims_parent.resolve() in paths
+                return
+
+        monkeypatch.setattr(cli_top, "_diagnostics", diagnostics)
+        monkeypatch.setattr(cli_top, "watch", events)
+        cli_top.run_top(plan_file)
+        assert claims_parent.resolve() in calls[-1]
+        assert len(calls) == (1 if created_during_render else 2)
+
+    @pytest.mark.parametrize("failure_at", ["render", "enter"])
+    def test_listener_cleanup_includes_initial_render_and_live_entry(
+        self,
+        plan_file: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        failure_at: str,
+    ) -> None:
+        from returns.result import Success
+
+        import vectl.cli_top as cli_top
+
+        stop_events = []
+        joins = []
+
+        class Listener:
+            def join(self, *, timeout):
+                assert stop_events[0].is_set()
+                joins.append(timeout)
+
+        def start(event):
+            stop_events.append(event)
+            return Success(Listener())
+
+        def fail(*args, **kwargs):
+            raise RuntimeError("initial view failed")
+
+        class FailingLive:
+            def __init__(self, *args, **kwargs):
+                return None
+
+            __enter__ = fail
+
+            def __exit__(self, *args):
+                return False
+
+        monkeypatch.setattr(cli_top, "_start_quit_key_listener", start)
+        monkeypatch.setattr(cli_top.out, "clear", lambda: None)
+        if failure_at == "render":
+            monkeypatch.setattr(cli_top, "build_top_renderable", fail)
+        else:
+            monkeypatch.setattr(cli_top, "Live", FailingLive)
+        with pytest.raises(RuntimeError, match="initial view failed"):
+            cli_top.run_top(plan_file)
+        assert stop_events[0].is_set()
+        assert joins == [0.5]
 
     def test_top_quit_key_sets_stop_event(self) -> None:
         import vectl.cli_top as cli_top
 
         stop_event = threading.Event()
 
+        assert cli_top._handle_quit_key("\x1b", stop_event).unwrap() is False
         assert cli_top._handle_quit_key("x", stop_event).unwrap() is False
         assert stop_event.is_set() is False
         assert cli_top._handle_quit_key("q", stop_event).unwrap() is True
@@ -3111,6 +3490,35 @@ class TestShow:
         assert "s1" in result.output
         assert "Step 1" in result.output
         assert "pending" in result.output
+
+    @pytest.mark.parametrize("status", [StepStatus.PENDING, StepStatus.DONE])
+    def test_show_ghost_claim_uses_canonical_step_id(
+        self,
+        plan_file: Path,
+        status: StepStatus,
+    ) -> None:
+        from vectl.plan_path import authority_for_plan_path
+
+        plan, _ = load_plan(plan_file)
+        plan.phases[0].steps[0].status = status
+        save_plan(plan, plan_file)
+        authority = authority_for_plan_path(plan_file)
+        save_claims(
+            {
+                f"{authority.branch}:s1": ClaimEntry(
+                    step_id="s1",
+                    branch=authority.branch,
+                    agent="ghost",
+                    claimed_at="2026-01-01T00:00:00Z",
+                )
+            },
+            authority.claims_path,
+        )
+        before = authority.claims_path.read_bytes()
+        result = runner.invoke(app, ["show", "p1.s1", "--plan", str(plan_file)])
+        assert result.exit_code == 0
+        assert "(ghost)" in result.output
+        assert authority.claims_path.read_bytes() == before
 
     def test_show_step_with_description(self, plan_file: Path) -> None:
         result = runner.invoke(app, ["show", "s3", "--plan", str(plan_file)])

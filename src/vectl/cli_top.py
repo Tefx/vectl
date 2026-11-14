@@ -19,24 +19,37 @@ except ImportError:  # pragma: no cover - POSIX-only q-key support
     tty = None
 
 from returns.result import Result, Success
+from rich import box
 from rich.console import Console, Group
 from rich.live import Live
-from rich.markup import escape as _esc
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 from watchfiles import Change, watch
 
-from vectl.cli_plan_common import _check_claim_mismatch, _load, out
-from vectl.duplicate_step_id_format import format_duplicate_step_id_diagnostics
-from vectl.models import Phase, PhaseStatus, Plan, StepStatus
-from vectl.plan_path import authority_for_plan_path
+from vectl.cli_plan_common import (
+    _check_claim_mismatch,
+    _claim_mismatch_diagnostics,
+    _duplicate_id_diagnostics,
+    out,
+)
+from vectl.io import load_plan_definition
+from vectl.models import Phase, PhaseStatus, Plan, PlanError, PlanIOError, StepStatus
+from vectl.plan_path import PlanAuthority, authority_for_plan_path, resolve_plan_path
 from vectl.semantics import is_step_locked
 
 _TOP_DEBOUNCE_MS = 750
 _TOP_POLL_DELAY_MS = 10_000
 _TOP_FIXED_ROW_ALLOWANCE = 14
-_TOP_MIN_PHASE_ROWS = 2
+_TOP_MIN_PHASE_ROWS = 1
+
+
+class _BorderlessPanel(Panel):
+    """Keep the Panel API while yielding only its content at very short heights."""
+
+    # @shell_orchestration: Rich rendering protocol yields segments, not a Result.
+    def __rich_console__(self, console, options):
+        yield from console.render(self.renderable, options.update(width=self.width))
 
 
 def _now_label() -> Result[str, str]:
@@ -156,19 +169,30 @@ def _visible_phase_indices(plan: Plan, max_phase_rows: int) -> Result[set[int], 
     if phase_count <= budget:
         return Success(set(range(phase_count)))
 
-    visible = {index for index, phase in enumerate(plan.phases) if phase.status != PhaseStatus.DONE}
+    active = [i for i, phase in enumerate(plan.phases) if phase.status == PhaseStatus.IN_PROGRESS]
+    waiting = [
+        i
+        for i, phase in enumerate(plan.phases)
+        if phase.status in (PhaseStatus.PENDING, PhaseStatus.LOCKED)
+    ]
+    visible = set((active + waiting)[:budget])
+    # Reserve one row for a fold notice when filling with completed history.
     tail_budget = max(0, budget - len(visible) - 1)
-    tail_start = max(0, phase_count - tail_budget)
-    visible.update(range(tail_start, phase_count))
+    done = [i for i, phase in enumerate(plan.phases) if phase.status == PhaseStatus.DONE]
+    if tail_budget:
+        visible.update(done[-tail_budget:])
+    if not visible and done:
+        visible.add(done[-1])
     return Success(visible)
 
 
 # @shell_orchestration: compact status/progress cell belongs to the live CLI table.
-def _phase_progress_cell(phase: Phase) -> Result[Text, str]:
+def _phase_progress_cell(phase: Phase, *, terminal_width: int = 80) -> Result[Text, str]:
     total = len(phase.steps)
     done = sum(1 for step in phase.steps if step.status in (StepStatus.DONE, StepStatus.SKIPPED))
     ratio = done / total if total else (1.0 if phase.status == PhaseStatus.DONE else 0.0)
-    filled = round(ratio * 10)
+    bar_width = 10 if terminal_width >= 80 else (4 if terminal_width >= 40 else 0)
+    filled = round(ratio * bar_width)
     labels = {
         PhaseStatus.DONE: ("✓ done", "green"),
         PhaseStatus.IN_PROGRESS: ("▶ active", "blue"),
@@ -176,51 +200,78 @@ def _phase_progress_cell(phase: Phase) -> Result[Text, str]:
         PhaseStatus.LOCKED: ("■ locked", "red"),
     }
     label, style = labels[phase.status]
-    cell = Text(f"{label} ", style=style)
+    cell = Text(f"{label} " if terminal_width >= 56 else "", style=style)
     cell.append("█" * filled, style=style)
-    cell.append("░" * (10 - filled), style="dim")
-    cell.append(f" {done}/{total}", style="dim")
+    cell.append("░" * (bar_width - filled), style="dim")
+    cell.append(f"{' ' if bar_width else ''}{done}/{total}", style="dim")
     return Success(cell)
 
 
 # @shell_orchestration: compact Rich table belongs to the live top output surface.
 # @shell_complexity: folding rows and phase progress must stay aligned in one table renderer.
-def _build_top_phase_table(plan: Plan, max_phase_rows: int) -> Result[Table, str]:
-    table = Table(expand=True, show_lines=True)
+def _build_top_phase_table(
+    plan: Plan,
+    max_phase_rows: int,
+    *,
+    terminal_width: int = 80,
+    show_lines: bool = True,
+    show_header: bool = True,
+) -> Result[Table, str]:
+    narrow = terminal_width < 56
+    wide = terminal_width >= 80
+    table = Table(
+        expand=True,
+        box=None if narrow or not show_header else box.SQUARE,
+        padding=(0, 0) if narrow else (0, 1),
+        show_lines=show_lines and wide,
+        show_header=show_header and not narrow,
+    )
     table.add_column("Phase", style="bold", no_wrap=True, overflow="ellipsis", ratio=3)
-    table.add_column("Name", overflow="fold", ratio=5)
-    table.add_column("Progress", no_wrap=True, width=26)
-    table.add_column("Depends On", no_wrap=True, overflow="ellipsis", ratio=3)
+    if not narrow:
+        table.add_column("Name", overflow="fold", ratio=5, min_width=26)
+    table.add_column("Progress", no_wrap=True, justify="right")
+    if wide:
+        table.add_column("Depends On", no_wrap=True, overflow="ellipsis", ratio=3)
 
     visible = _visible_phase_indices(plan, max_phase_rows).unwrap()
-    folded = 0
-    for index, phase in enumerate(plan.phases):
+    symbols = {
+        PhaseStatus.LOCKED: "■",
+        PhaseStatus.PENDING: "○",
+        PhaseStatus.IN_PROGRESS: "▶",
+        PhaseStatus.DONE: "✓",
+    }
+    index = 0
+    while index < len(plan.phases):
+        phase = plan.phases[index]
         if index not in visible:
-            folded += 1
-            continue
-        if folded:
-            table.add_row(
-                Text("…", style="dim"),
-                Text(f"{folded} completed phases folded", style="dim"),
-                "",
-                "",
+            start = index
+            while index < len(plan.phases) and index not in visible:
+                index += 1
+            completed = all(ph.status == PhaseStatus.DONE for ph in plan.phases[start:index])
+            label = f"{index - start} {'completed ' if completed else ''}phases folded"
+            cells = (
+                [Text(f"… {label}", style="dim"), ""]
+                if narrow
+                else [Text("…", style="dim"), Text(label, style="dim"), ""]
             )
-            folded = 0
-
-        table.add_row(
-            _esc(phase.id),
-            _esc(phase.name),
-            _phase_progress_cell(phase).unwrap(),
-            _esc(", ".join(phase.depends_on)) if phase.depends_on else "-",
+            if wide:
+                cells.append("")
+            table.add_row(*cells)
+            continue
+        primary = f"{symbols[phase.status]} {phase.id} {phase.name}" if narrow else phase.id
+        cells = [Text(primary, no_wrap=True, overflow="ellipsis")]
+        if not narrow:
+            cells.append(Text(phase.name, no_wrap=True, overflow="ellipsis"))
+        cells.append(
+            _phase_progress_cell(
+                phase,
+                terminal_width=terminal_width if show_header or narrow else 36,
+            ).unwrap()
         )
-
-    if folded:
-        table.add_row(
-            Text("…", style="dim"),
-            Text(f"{folded} completed phases folded", style="dim"),
-            "",
-            "",
-        )
+        if wide:
+            cells.append(Text(", ".join(phase.depends_on) or "-"))
+        table.add_row(*cells)
+        index += 1
 
     return Success(table)
 
@@ -234,12 +285,7 @@ def _diagnostics(
     branch: str | None = None,
     claims_path: Path | None = None,
 ) -> Result[list[Text], str]:
-    lines: list[Text] = []
-
-    duplicate_lines = format_duplicate_step_id_diagnostics(plan)
-    if duplicate_lines:
-        lines.append(Text("⚠ Duplicate step-ID diagnostics:", style="yellow"))
-        lines.extend(Text(f"  {line}", style="yellow") for line in duplicate_lines)
+    lines = _duplicate_id_diagnostics(plan).unwrap()
 
     try:
         has_mismatch, ghost_claims, stale_plan_claims, stale_entries = _check_claim_mismatch(
@@ -250,14 +296,9 @@ def _diagnostics(
         return Success(lines)
 
     if has_mismatch:
-        lines.append(Text("ℹ Stale claims detected (routine after agent restart):", style="dim"))
-        if ghost_claims:
-            lines.append(Text(f"  Ghost claims: {len(ghost_claims)}", style="dim"))
-        if stale_plan_claims:
-            lines.append(Text(f"  Stale plan claims: {len(stale_plan_claims)}", style="dim"))
-        if stale_entries:
-            lines.append(Text(f"  Stale claim entries: {len(stale_entries)}", style="dim"))
-        lines.append(Text("  → Run `vectl repair claims` to fix (safe, idempotent)", style="dim"))
+        lines.extend(
+            _claim_mismatch_diagnostics(ghost_claims, stale_plan_claims, stale_entries).unwrap()
+        )
 
     return Success(lines)
 
@@ -269,24 +310,64 @@ def _compose_top_panel(
     *,
     last_updated: str,
     phase_rows: int,
-    terminal_width: int | None = None,
+    terminal_width: int = 80,
+    terminal_height: int = 24,
+    dense: bool = False,
     message: str | None = None,
 ) -> Result[Panel, str]:
-    header = Text(f"Plan: {plan.project}", style="bold")
-    footer = Text("Auto-updates on plan changes · q/Ctrl-C to exit", style="dim")
-    footer.append(f"\nLast updated: {last_updated}", style="dim")
-    if message:
-        footer.append(f"\n{message}", style="yellow")
-
+    header = Text(f"Plan: {plan.project}", style="bold", no_wrap=True, overflow="ellipsis")
+    footer = Text(
+        f"{last_updated} · q/Ctrl-C to exit"
+        if dense or terminal_width < 80
+        else f"Auto-updates on plan changes · q/Ctrl-C to exit\nLast updated: {last_updated}",
+        style="dim",
+        no_wrap=True,
+        overflow="ellipsis",
+    )
     parts: list[Any] = [
         header,
         _step_summary(plan).unwrap(),
-        _build_top_phase_table(plan, phase_rows).unwrap(),
+        _build_top_phase_table(
+            plan,
+            phase_rows,
+            terminal_width=terminal_width,
+            show_lines=not dense,
+            show_header=terminal_height >= 15 and not dense,
+        ).unwrap(),
     ]
-    parts.extend(diagnostics)
+    parts[1].no_wrap = True
+    parts[1].overflow = "ellipsis"
+    if dense and diagnostics:
+        parts.append(
+            Text(
+                f"! {len(diagnostics)} diagnostic lines · vectl status for details",
+                style="yellow",
+                no_wrap=True,
+                overflow="ellipsis",
+            )
+        )
+    else:
+        for line in diagnostics:
+            text = line.copy()
+            if terminal_width < 80:
+                text = Text(
+                    text.plain.replace("⚠", "!").replace("ℹ", "i").replace("→", "i"),
+                    style=line.style,
+                )
+            parts.append(text)
     parts.append(footer)
+    if message:
+        parts.append(Text(message, style="yellow", no_wrap=True, overflow="ellipsis"))
+    panel_type = _BorderlessPanel if terminal_height < 10 else Panel
     return Success(
-        Panel(Group(*parts), title="vectl top", border_style="blue", width=terminal_width)
+        panel_type(
+            Group(*parts),
+            title=None if dense else "vectl top",
+            border_style="blue",
+            box=box.SQUARE if terminal_width >= 80 else box.HORIZONTALS,
+            padding=(0, 1) if terminal_width >= 80 and terminal_height >= 10 else (0, 0),
+            width=terminal_width,
+        )
     )
 
 
@@ -313,110 +394,126 @@ def build_top_renderable(
     width, height = _terminal_size().unwrap()
     terminal_height = max(1, height)
     terminal_width = max(20, width)
-    phase_rows = _top_phase_row_budget(terminal_height, len(diagnostics)).unwrap()
-    panel = _compose_top_panel(
-        plan,
-        diagnostics,
-        last_updated=last_updated,
-        phase_rows=phase_rows,
-        terminal_width=terminal_width,
-        message=message,
-    ).unwrap()
-
-    while phase_rows > _TOP_MIN_PHASE_ROWS:
-        if _rendered_line_count(panel, terminal_width).unwrap() <= terminal_height:
-            break
-        phase_rows -= 1
+    phase_rows = min(
+        max(1, len(plan.phases)), _top_phase_row_budget(terminal_height, len(diagnostics)).unwrap()
+    )
+    dense = terminal_height < 15
+    while True:
         panel = _compose_top_panel(
             plan,
             diagnostics,
             last_updated=last_updated,
             phase_rows=phase_rows,
             terminal_width=terminal_width,
+            terminal_height=terminal_height,
+            dense=dense,
             message=message,
         ).unwrap()
+        if _rendered_line_count(panel, terminal_width).unwrap() <= terminal_height:
+            return Success(panel)
+        if not dense:
+            dense = True
+        elif phase_rows > _TOP_MIN_PHASE_ROWS:
+            phase_rows -= 1
+        else:
+            return Success(panel)
 
-    return Success(panel)
 
-
-def _load_top_state(plan_path: Path | None) -> Result[tuple[Plan, Path], str]:
-    plan, _, resolved_plan_path = _load(plan_path)
-    return Success((plan, resolved_plan_path))
+def _load_top_state(plan_path: Path | None) -> Result[tuple[Plan, Path, PlanAuthority], str]:
+    resolved_plan_path = resolve_plan_path(plan_path)
+    plan, _ = load_plan_definition(resolved_plan_path)
+    authority = authority_for_plan_path(resolved_plan_path)
+    return Success((plan, resolved_plan_path, authority))
 
 
 # @shell_orchestration: live CLI loop coordinates filesystem watch, reads, and rendering.
 # @shell_complexity: Live, watchfiles, reload recovery, and quit-key cleanup share lifecycle.
 def run_top(plan_path: Path | None = None) -> None:
     """Run the live ``vectl top`` panel until interrupted."""
-    plan, resolved_plan_path = _load_top_state(plan_path).unwrap()
-    authority = authority_for_plan_path(resolved_plan_path)
-    claims_path = authority.claims_path
-    watched_files = {_canonical(resolved_plan_path).unwrap(), _canonical(claims_path).unwrap()}
-    watch_roots = _watch_roots(resolved_plan_path, claims_path).unwrap()
+    plan, resolved_plan_path, authority = _load_top_state(plan_path).unwrap()
     stop_event = threading.Event()
     quit_thread = _start_quit_key_listener(stop_event).unwrap()
-    terminal_size = _terminal_size().unwrap()
-    last_updated = _now_label().unwrap()
-    message = None
-    out.clear()
-
-    with Live(
-        build_top_renderable(
-            plan,
-            resolved_plan_path,
-            last_updated=last_updated,
-            message=message,
-            branch=authority.branch,
-            claims_path=authority.claims_path,
-        ).unwrap(),
-        console=out,
-        auto_refresh=False,
-        transient=False,
-    ) as live:
-        try:
-            for _changes in watch(
-                *watch_roots,
-                watch_filter=_make_watch_filter(watched_files).unwrap(),
-                recursive=False,
-                debounce=_TOP_DEBOUNCE_MS,
-                poll_delay_ms=_TOP_POLL_DELAY_MS,
-                raise_interrupt=False,
-                ignore_permission_denied=True,
-                stop_event=stop_event,
-                rust_timeout=500,
-                yield_on_timeout=True,
-            ):
-                if stop_event.is_set():
-                    break
-                current_size = _terminal_size().unwrap()
-                if _changes:
-                    message = None
-                    try:
-                        plan, resolved_plan_path = _load_top_state(plan_path).unwrap()
-                        authority = authority_for_plan_path(resolved_plan_path)
-                    except Exception:
-                        message = "Last reload failed; keeping previous view and retrying."
-                    last_updated = _now_label().unwrap()
-                elif current_size == terminal_size:
-                    continue
-                terminal_size = current_size
-                out.clear()
-                live.update(
-                    build_top_renderable(
-                        plan,
-                        resolved_plan_path,
-                        last_updated=last_updated,
-                        message=message,
-                        branch=authority.branch,
-                        claims_path=authority.claims_path,
-                    ).unwrap(),
-                    refresh=True,
+    try:
+        terminal_size = _terminal_size().unwrap()
+        last_updated = _now_label().unwrap()
+        message = None
+        out.clear()
+        with Live(
+            build_top_renderable(
+                plan,
+                resolved_plan_path,
+                last_updated=last_updated,
+                message=message,
+                branch=authority.branch,
+                claims_path=authority.claims_path,
+            ).unwrap(),
+            console=out,
+            auto_refresh=False,
+            transient=False,
+        ) as live:
+            while not stop_event.is_set():
+                # Diagnostics may have created the metadata directory during rendering.
+                watch_roots = _watch_roots(resolved_plan_path, authority.claims_path).unwrap()
+                watched_files = {resolved_plan_path, authority.claims_path}
+                changes = watch(
+                    *watch_roots,
+                    watch_filter=_make_watch_filter(watched_files).unwrap(),
+                    recursive=False,
+                    debounce=_TOP_DEBOUNCE_MS,
+                    poll_delay_ms=_TOP_POLL_DELAY_MS,
+                    raise_interrupt=False,
+                    ignore_permission_denied=True,
+                    stop_event=stop_event,
+                    rust_timeout=500,
+                    yield_on_timeout=True,
                 )
-        except KeyboardInterrupt:
-            stop_event.set()
-        finally:
-            stop_event.set()
-            if quit_thread is not None:
-                quit_thread.join(timeout=0.5)
+                try:
+                    for batch in changes:
+                        if stop_event.is_set():
+                            break
+                        current_size = _terminal_size().unwrap()
+                        if batch or message is not None:
+                            try:
+                                candidate = _load_top_state(plan_path).unwrap()
+                                plan, resolved_plan_path, authority = candidate
+                                message = None
+                                last_updated = _now_label().unwrap()
+                            except (PlanIOError, PlanError, OSError):
+                                message = "Last reload failed; keeping previous view and retrying."
+                        elif current_size == terminal_size:
+                            if (
+                                watch_roots
+                                == _watch_roots(resolved_plan_path, authority.claims_path).unwrap()
+                            ):
+                                continue
+                        terminal_size = current_size
+                        out.clear()
+                        live.update(
+                            build_top_renderable(
+                                plan,
+                                resolved_plan_path,
+                                last_updated=last_updated,
+                                message=message,
+                                branch=authority.branch,
+                                claims_path=authority.claims_path,
+                            ).unwrap(),
+                            refresh=True,
+                        )
+                        if (
+                            watched_files != {resolved_plan_path, authority.claims_path}
+                            or watch_roots
+                            != _watch_roots(resolved_plan_path, authority.claims_path).unwrap()
+                        ):
+                            break
+                    else:
+                        break
+                finally:
+                    changes.close()
+    except KeyboardInterrupt:
+        stop_event.set()
+    finally:
+        stop_event.set()
+        if quit_thread is not None:
+            quit_thread.join(timeout=0.5)
 
     out.print("[dim]Stopped.[/]")

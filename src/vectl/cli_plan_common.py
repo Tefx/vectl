@@ -24,6 +24,7 @@ from rich.table import Table
 from rich.text import Text
 
 from vectl import __version__
+from vectl.claims import claim_consistency, get_current_branch
 from vectl.core import (
     RecoverResult as RecoverResult,
     add_phase as add_phase,
@@ -144,7 +145,7 @@ def _phase_icon(status: PhaseStatus):
 
 # @shell_orchestration: Shared plan-level status table belongs to CLI output surface.
 def _build_phase_overview_table(p: Plan) -> Result[Table, str]:
-    """Build the plan-level phase overview table used by status and top."""
+    """Build the status command's phase overview, including status and dependencies."""
     table = Table(title=f"Plan: {p.project}", show_lines=True)
     table.add_column("Phase", style="bold")
     table.add_column("Name")
@@ -193,15 +194,43 @@ def _one_line_summary(description: str, max_len: int = 72):
     return ""
 
 
-def _print_duplicate_id_warning_block(p: Plan) -> None:
-    """Print duplicate step-ID diagnostics for read-only surfaces."""
+# @shell_orchestration: shared Rich diagnostic formatting for read-only CLI surfaces.
+def _duplicate_id_diagnostics(p: Plan) -> Result[list[Text], str]:
     lines = format_duplicate_step_id_diagnostics(p)
     if not lines:
-        return
+        return Success([])
+    return Success(
+        [
+            Text("⚠ Duplicate step-ID diagnostics:", style="yellow"),
+            *[Text(f"  {line}", style="yellow") for line in lines],
+        ]
+    )
 
-    out.print("[yellow]⚠ Duplicate step-ID diagnostics:[/]")
-    for line in lines:
-        out.print(f"  [yellow]{line}[/]")
+
+# @shell_orchestration: shared Rich claim diagnostic formatting for status and top.
+def _claim_mismatch_diagnostics(
+    ghost_claims: list[str],
+    stale_plan_claims: list[str],
+    stale_entries: list[str],
+) -> Result[list[Text], str]:
+    if not (ghost_claims or stale_plan_claims or stale_entries):
+        return Success([])
+    lines = [Text("ℹ Stale claims detected (routine after agent restart):", style="dim")]
+    for label, entries in (
+        ("Ghost claims", ghost_claims),
+        ("Stale plan claims", stale_plan_claims),
+        ("Stale claim entries", stale_entries),
+    ):
+        if entries:
+            lines.append(Text(f"  {label}: {len(entries)}", style="dim"))
+    lines.append(Text("  → Run `vectl repair claims` to fix (safe, idempotent)", style="dim"))
+    return Success(lines)
+
+
+def _print_duplicate_id_warning_block(p: Plan) -> None:
+    """Print duplicate step-ID diagnostics for read-only surfaces."""
+    for line in _duplicate_id_diagnostics(p).unwrap():
+        out.print(line)
 
 
 def _print_duplicate_id_recommendation_for_step(p: Plan, step_id: str) -> None:
@@ -440,31 +469,6 @@ def _print_admitted_plan_receipt(payload: dict[str, object]) -> None:
     typer.echo(f"mutation_receipt: {json.dumps(payload, sort_keys=True)}")
 
 
-def _git_toplevel_for(path: Path):
-    """Return git toplevel for a path, or None when unavailable."""
-    import subprocess as sp
-
-    try:
-        result = sp.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=str(path),
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-    except (OSError, sp.TimeoutExpired):
-        return None
-
-    if result.returncode != 0:
-        return None
-
-    resolved = result.stdout.strip()
-    if not resolved:
-        return None
-
-    return Path(resolved).resolve()
-
-
 # @shell_orchestration: CLI save policy delegates Git identity probes to the shared resolver.
 def _should_autosave_commit(authority: PlanAuthority):
     """Read the commit decision captured with Plan authority."""
@@ -485,16 +489,10 @@ def _check_claim_mismatch(
     claims_path: Path | None = None,
 ):
     """Return canonical key and full-entry claim consistency diagnostics."""
-    from vectl.claims import (
-        claim_consistency,
-        get_current_branch,
-        resolve_claims_path as claims_path_resolver,
-    )
-
     resolved_branch = branch if branch is not None else get_current_branch()
     consistency = claim_consistency(
         p,
-        claims_path or claims_path_resolver(plan_path),
+        claims_path or resolve_claims_path(plan_path),
         resolved_branch,
     ).unwrap()
     return (
@@ -575,9 +573,6 @@ DashboardOutputOption = typer.Option(
     help="Output file path for the HTML dashboard.",
 )
 
-
-# @shell_complexity: Typer command coordinates strategy panel, duplicate phase display, and guidance
-# text in one output surface.
 
 # Re-export private helpers for cohesive split command modules.
 __all__ = [name for name in globals() if not name.startswith("__")] + [

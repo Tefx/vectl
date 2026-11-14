@@ -18,6 +18,7 @@ from vectl.cli_plan_common import (
     _authority_for_plan_path,
     _build_phase_overview_table,
     _check_claim_mismatch,
+    _claim_mismatch_diagnostics,
     _die,
     _esc,
     _get_next_steps_with_phase,
@@ -140,14 +141,10 @@ def status(
     # B1: Show mismatch indicator when detected
     if has_mismatch:
         out.print()
-        out.print("[dim]ℹ Stale claims detected (routine after agent restart):[/]")
-        if ghost_claims:
-            out.print(f"  [dim]Ghost claims: {len(ghost_claims)}[/]")
-        if stale_plan_claims:
-            out.print(f"  [dim]Stale plan claims: {len(stale_plan_claims)}[/]")
-        if stale_entries:
-            out.print(f"  [dim]Stale claim entries: {len(stale_entries)}[/]")
-        out.print("[dim]  → Run `vectl repair claims` to fix (safe, idempotent)[/]")
+        for line in _claim_mismatch_diagnostics(
+            ghost_claims, stale_plan_claims, stale_entries
+        ).unwrap():
+            out.print(line)
 
     out.print()
     out.print("[dim]→ vectl next                      See claimable steps[/]")
@@ -222,7 +219,7 @@ def _show_step_detail(
 
     # B2: Check for mismatch for this specific step
     mismatch_info = ""
-    if plan_path is not None and step.status == StepStatus.CLAIMED:
+    if plan_path is not None:
         has_mismatch, ghost_claims, stale_plan_claims, stale_entries = _check_claim_mismatch(
             p, plan_path, branch=branch, claims_path=claims_path
         )
@@ -230,12 +227,12 @@ def _show_step_detail(
             from vectl.claims import get_current_branch
 
             resolved_branch = branch if branch is not None else get_current_branch()
-            step_key = f"{resolved_branch}:{step_id}"
+            step_key = f"{resolved_branch}:{step.id}"
             if step_key in ghost_claims:
                 mismatch_info = (
                     "⚠ Claim exists in claims.json but step is not claimed in plan (ghost)"
                 )
-            elif step_key not in ghost_claims and step_id in stale_plan_claims:
+            elif step.id in stale_plan_claims:
                 mismatch_info = "⚠ Step is claimed in plan but missing from claims.json"
             elif step_key in stale_entries:
                 mismatch_info = "⚠ Claim entry owner or timestamp differs from plan.yaml"
